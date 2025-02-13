@@ -20,25 +20,26 @@ class PermissionRoleSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Define your modules and their respective actions.
+        $defaultActions = ['create', 'read', 'update', 'delete', 'import', 'export'];
         // For most modules we use CRUD; for reports we only allow export.
         $modules = [
-            'user'              => ['create', 'read', 'update', 'delete'],
-            'grant'             => ['create', 'read', 'update', 'delete'],
-            'interview'         => ['create', 'read', 'update', 'delete'],
-            'employee'          => ['create', 'read', 'update', 'delete'],
-            'employment'        => ['create', 'read', 'update', 'delete'],
-            'employment_history'=> ['create', 'read', 'update', 'delete'],
-            'children'          => ['create', 'read', 'update', 'delete'],
-            'questionnaire'     => ['create', 'read', 'update', 'delete'],
-            'language'          => ['create', 'read', 'update', 'delete'],
-            'reference'         => ['create', 'read', 'update', 'delete'],
-            'education'         => ['create', 'read', 'update', 'delete'],
-            'payroll'           => ['create', 'read', 'update', 'delete'],
-            'attendance'        => ['create', 'read', 'update', 'delete'],
-            'training'          => ['create', 'read', 'update', 'delete'],
-            'reports'           => ['export'],
-            'travel_request'    => ['create', 'read', 'update', 'delete'],
-            'leave_request'     => ['create', 'read', 'update', 'delete'],
+            'user'               => $defaultActions,
+            'grant'              => $defaultActions,
+            'interview'          => $defaultActions,
+            'employee'           => $defaultActions,
+            'employment'         => $defaultActions,
+            'employment_history' => $defaultActions,
+            'children'           => $defaultActions,
+            'questionnaire'      => $defaultActions,
+            'language'           => $defaultActions,
+            'reference'          => $defaultActions,
+            'education'          => $defaultActions,
+            'payroll'            => $defaultActions,
+            'attendance'         => $defaultActions,
+            'training'           => $defaultActions,
+            'reports'            => $defaultActions,
+            'travel_request'     => $defaultActions,
+            'leave_request'      => $defaultActions,
         ];
 
         // Create a permission for each module-action pair.

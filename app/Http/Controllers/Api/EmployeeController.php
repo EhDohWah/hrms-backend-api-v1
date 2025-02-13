@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Employee;
+use Illuminate\Validation\Rule;
+use App\Models\WorkLocation;
+
 
 /**
  * @OA\Tag(
@@ -128,7 +131,7 @@ class EmployeeController extends Controller
             'last_name' => 'required|string|max:255',
             'gender' => 'required|string|max:10',
             'date_of_birth' => 'required|date',
-            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'status' => ['required', Rule::in(['Expats', 'Local ID', 'Local non ID'])],
             'religion' => 'nullable|string|max:100',
             'birth_place' => 'nullable|string|max:100',
             'identification_number' => 'nullable|string|max:50',
@@ -169,6 +172,7 @@ class EmployeeController extends Controller
      * @OA\Put(
      *     path="/employees/{id}",
      *     summary="Update employee details",
+     *     description="Updates an existing employee record with the provided information",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
@@ -180,15 +184,60 @@ class EmployeeController extends Controller
      *     ),
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/Employee")
+     *         description="Employee information to update",
+     *         @OA\JsonContent(
+     *             required={"staff_id","first_name","last_name","gender","date_of_birth","status"},
+     *             @OA\Property(property="staff_id", type="string", maxLength=50, example="EMP001"),
+     *             @OA\Property(property="first_name", type="string", maxLength=255, example="John"),
+     *             @OA\Property(property="middle_name", type="string", maxLength=255, nullable=true, example="William"),
+     *             @OA\Property(property="last_name", type="string", maxLength=255, example="Doe"),
+     *             @OA\Property(property="gender", type="string", maxLength=10, example="male"),
+     *             @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01"),
+     *             @OA\Property(property="status", type="string", enum={"active","inactive"}, example="active"),
+     *             @OA\Property(property="religion", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="birth_place", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="identification_number", type="string", maxLength=50, nullable=true),
+     *             @OA\Property(property="passport_number", type="string", maxLength=50, nullable=true),
+     *             @OA\Property(property="bank_name", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="bank_branch", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="bank_account_name", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="bank_account_number", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="office_phone", type="string", maxLength=20, nullable=true),
+     *             @OA\Property(property="mobile_phone", type="string", maxLength=20, nullable=true),
+     *             @OA\Property(property="height", type="number", format="float", nullable=true, example=175.5),
+     *             @OA\Property(property="weight", type="number", format="float", nullable=true, example=70.5),
+     *             @OA\Property(property="permanent_address", type="string", nullable=true),
+     *             @OA\Property(property="current_address", type="string", nullable=true),
+     *             @OA\Property(property="stay_with", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="military_status", type="boolean", example=false),
+     *             @OA\Property(property="marital_status", type="string", maxLength=20, nullable=true),
+     *             @OA\Property(property="spouse_name", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="spouse_occupation", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="father_name", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="father_occupation", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="mother_name", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="mother_occupation", type="string", maxLength=100, nullable=true),
+     *             @OA\Property(property="driver_license_number", type="string", maxLength=50, nullable=true)
+     *         )
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Employee updated successfully"
+     *         description="Employee updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="id", type="integer", example=1),
+     *             @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *             @OA\Property(property="first_name", type="string", example="John"),
+     *             @OA\Property(property="last_name", type="string", example="Doe"),
+     *             @OA\Property(property="updated_at", type="string", format="date-time")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
      *     )
      * )
      */
@@ -206,7 +255,7 @@ class EmployeeController extends Controller
             'last_name' => 'required|string|max:255',
             'gender' => 'required|string|max:10',
             'date_of_birth' => 'required|date',
-            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'status' => ['required', Rule::in(['Expats', 'Local ID', 'Local non ID'])],
             'religion' => 'nullable|string|max:100',
             'birth_place' => 'nullable|string|max:100',
             'identification_number' => 'nullable|string|max:50',
