@@ -90,7 +90,6 @@ class AuthController extends Controller
         $user->load('permissions', 'roles');
 
         // Create an API token
-        $user  = Auth::user();
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -176,6 +175,14 @@ class AuthController extends Controller
      */
     public function getUser(Request $request)
     {
+        // This method is needed in AuthController because:
+        // 1. It's a common authentication-related endpoint to get the currently logged-in user's details
+        // 2. It returns the authenticated user's profile along with their roles and permissions
+        // 3. Frontend applications typically need this info right after login to:
+        //    - Display user profile information
+        //    - Set up navigation/UI based on user roles
+        //    - Control access based on permissions
+        // 4. Having it in AuthController keeps all auth-related endpoints grouped together
         $user = $request->user();
         $user->load('roles', 'permissions');
 

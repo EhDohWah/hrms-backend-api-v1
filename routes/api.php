@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\GrantController;
+use App\Http\Controllers\Api\InterviewController;
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -38,6 +39,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('grants')->group(function () {
         Route::get('/', [GrantController::class, 'index'])->middleware('permission:grant.read');
         Route::post('/upload', [GrantController::class, 'upload'])->middleware('permission:grant.create');
+    });
+
+    // Interview routes (use middleware permission:read interviews)
+    Route::prefix('interviews')->group(function () {
+        Route::get('/', [InterviewController::class, 'index'])->middleware('permission:interview.read');
+        Route::post('/', [InterviewController::class, 'store'])->middleware('permission:interview.create');
     });
 });
 
