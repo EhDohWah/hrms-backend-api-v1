@@ -138,7 +138,7 @@ class AuthController extends Controller
      * Get the authenticated user with roles and permissions.
      *
      * @OA\Get(
-     *     path="/user",
+     *     path="/users",
      *     summary="Get authenticated user details",
      *     description="Returns the authenticated user with their roles and permissions",
      *     operationId="getUser",

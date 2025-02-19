@@ -169,7 +169,7 @@ class GrantController extends Controller
      *     )
      * )
      */
-    public function Index(Request $request)
+    public function index(Request $request)
     {
         $grants = Grant::with([
                 'grantItems' => function($query) {

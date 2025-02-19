@@ -18,8 +18,10 @@ class UserController extends Controller
      * Display a listing of users.
      *
      * @OA\Get(
-     *     path="/users",
+     *     path="/api/users",
      *     summary="Get list of users",
+     *     description="Returns a list of all users with their roles and permissions",
+     *     operationId="indexUsers",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(
@@ -27,16 +29,37 @@ class UserController extends Controller
      *         description="Successful operation",
      *         @OA\JsonContent(
      *             type="array",
-     *             @OA\Items(ref="#/components/schemas/User")
+     *             @OA\Items(
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="name", type="string", example="John Doe"),
+     *                 @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+     *                 @OA\Property(property="last_login_at", type="string", format="date-time"),
+     *                 @OA\Property(
+     *                     property="roles",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="Admin")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="permissions",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="user.read")
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
      *         response=401,
-     *         description="Unauthenticated"
+     *         description="Unauthenticated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=403,
-     *         description="Forbidden"
+     *         description="Forbidden",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Forbidden")
+     *         )
      *     )
      * )
      */

@@ -13,6 +13,7 @@ class Grant extends Model
     protected $fillable = [
         'name',
         'code',
+        'budget_line',
         'created_by',
         'updated_by'
     ];
