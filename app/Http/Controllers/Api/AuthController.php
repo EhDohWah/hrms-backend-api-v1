@@ -20,8 +20,13 @@ use Illuminate\Support\Facades\Hash;
  * )
  *
  * @OA\Server(
- *     url="http://127.0.0.1:8000/api/v1",
- *     description="Local API Server"
+ *     url="http://localhost:8000/api/v1",
+ *     description="Local Development Server"
+ * )
+ *
+ * @OA\Server(
+ *     url="https://hrms-backend-api-v1-main-wrhlmg.laravel.cloud/api/v1",
+ *     description="Production Server"
  * )
  *
  * @OA\SecurityScheme(
@@ -36,6 +41,7 @@ use Illuminate\Support\Facades\Hash;
  *     description="API Endpoints for user authentication"
  * )
  */
+
 class AuthController extends Controller
 {
     /**
