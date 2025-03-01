@@ -10,8 +10,8 @@
     },
     "servers": [
         {
-            "url": "http://127.0.0.1:8000/api/v1",
-            "description": "Local API Server"
+            "url": "http://localhost/api/v1",
+            "description": "API Server"
         }
     ],
     "paths": {
@@ -847,7 +847,7 @@
                 ],
                 "summary": "List all grants with their items",
                 "description": "Returns a list of grants and their associated items",
-                "operationId": "0000ee186fcb59ab3feb34f91ca7f81c",
+                "operationId": "1b227f45eff6f221b315a62d329ba8bc",
                 "parameters": [
                     {
                         "name": "grant_id",
