@@ -52,10 +52,10 @@ class PermissionRoleSeeder extends Seeder
         }
 
         // Create roles
-        $adminRole       = Role::firstOrCreate(['name' => 'Admin']);
-        $hrManagerRole   = Role::firstOrCreate(['name' => 'HR-Manager']);
-        $hrAssistantRole = Role::firstOrCreate(['name' => 'HR-Assistant']);
-        $employeeRole    = Role::firstOrCreate(['name' => 'Employee']);
+        $adminRole       = Role::firstOrCreate(['name' => 'admin']);
+        $hrManagerRole   = Role::firstOrCreate(['name' => 'hr-manager']);
+        $hrAssistantRole = Role::firstOrCreate(['name' => 'hr-assistant']);
+        $employeeRole    = Role::firstOrCreate(['name' => 'employee']);
 
         // Full access roles: Admin, HR-Manager, HR-Assistant get every permission.
         $fullPermissions = Permission::all();

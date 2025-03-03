@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
 
 /**
  * @OA\Tag(
@@ -18,7 +21,7 @@ class UserController extends Controller
      * Display a listing of users.
      *
      * @OA\Get(
-     *     path="/api/users",
+     *     path="/users",
      *     summary="Get list of users",
      *     description="Returns a list of all users with their roles and permissions",
      *     operationId="indexUsers",
@@ -123,7 +126,12 @@ class UserController extends Controller
      *     ),
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/User")
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="name", type="string", example="John Doe"),
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+     *             @OA\Property(property="password", type="string", format="password", example="password123")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -133,6 +141,10 @@ class UserController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="User not found"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
      *     )
      * )
      */
@@ -205,7 +217,7 @@ class UserController extends Controller
      *             @OA\Property(property="name", type="string", example="John Doe"),
      *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
      *             @OA\Property(property="password", type="string", format="password", example="password123"),
-     *             @OA\Property(property="role", type="string", enum={"Admin","HR-Manager","HR-Assistant","Employee"}, example="Employee"),
+     *             @OA\Property(property="role", type="string", example="employee", enum={"admin", "hr-manager", "hr-assistant", "employee"}),
      *             @OA\Property(
      *                 property="permissions",
      *                 type="array",
@@ -229,7 +241,11 @@ class UserController extends Controller
      *     ),
      *     @OA\Response(
      *         response=422,
-     *         description="Validation error"
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=500,
@@ -243,70 +259,88 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        // Validate all input at once
+        // 1) Validate input
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:Admin,HR-Manager,HR-Assistant,Employee',
-            'permissions' => 'sometimes|array',
-            'permissions.*' => 'string|exists:permissions,name'
+            'role'     => 'required|string|in:admin,hr-manager,hr-assistant,employee',
+            'permissions' => 'array', // optional custom permissions
+            'permissions.*' => 'string', // each permission must be a string
         ]);
 
+        // 2) Wrap everything in a transaction for data integrity
+        DB::beginTransaction();
+
         try {
-            // Create user with validated data
+            // Create the user
             $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'created_by' => auth()->user()->name,
-                'updated_by' => auth()->user()->name,
-                'last_login_at' => null
+                'name'       => $validated['name'],
+                'email'      => $validated['email'],
+                'password'   => Hash::make($validated['password']),
+                'created_by' => auth()->user()->name ?? 'system',
+                'updated_by' => auth()->user()->name ?? 'system',
+                'last_login_at' => null,
             ]);
 
-            // Assign role
+            // Assign the role (make sure the role exists in DB/Spatie)
             $user->assignRole($validated['role']);
 
-            // Sync permissions if provided
-            if (isset($validated['permissions'])) {
+            // 3) If custom permissions are provided, sync them. Otherwise use defaults.
+            if (!empty($validated['permissions'])) {
+                // Make sure each provided permission actually exists
+                // or simply assume they do if you're certain they've been seeded
                 $user->syncPermissions($validated['permissions']);
             } else {
-                // Set default permissions based on role
-                switch ($validated['role']) {
-                    case 'Employee':
-                        $user->syncPermissions([
-                            'user.read',
-                            'user.update',
-                            'attendance.create', 'attendance.read', 'attendance.update',
-                            'travel_request.create', 'travel_request.read', 'travel_request.update',
-                            'leave_request.create', 'leave_request.read', 'leave_request.update',
-                        ]);
-                        break;
-                    case 'Admin':
-                        // Admin gets all permissions
-                        $user->syncPermissions(Permission::all());
-                        break;
-                    case 'HR-Manager':
-                        // HR Manager gets all permissions
-                        $user->syncPermissions(Permission::all());
-                        break;
-                    case 'HR-Assistant':
-                        // HR Assistant gets all permissions
-                        $user->syncPermissions(Permission::all());
-                        break;
-                }
+                // 4) Default permissions based on role
+                $this->assignDefaultPermissions($user, $validated['role']);
             }
+
+            DB::commit(); // Commit the transaction
 
             return response()->json([
                 'message' => 'User created successfully',
-                'user' => $user->load('roles', 'permissions')
+                'user'    => $user->load('roles', 'permissions'),
             ], 201);
 
         } catch (\Exception $e) {
+            DB::rollBack(); // Revert DB changes on error
+
             return response()->json([
                 'message' => 'Error creating user',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Assigns default permissions to a user based on their role.
+     *
+     * @param  \App\Models\User  $user
+     * @param  string            $role
+     */
+    private function assignDefaultPermissions(User $user, string $role)
+    {
+        switch ($role) {
+            case 'employee':
+                $user->syncPermissions([
+                    'user.read',
+                    'user.update',
+                    'attendance.create',
+                    'attendance.read',
+                    'travel_request.create',
+                    'travel_request.read',
+                    'leave_request.create',
+                    'leave_request.read',
+                ]);
+                break;
+
+            case 'admin':
+            case 'hr-manager':
+            case 'hr-assistant':
+                // Assign all permissions
+                $user->syncPermissions(Permission::all());
+                break;
         }
     }
 }
