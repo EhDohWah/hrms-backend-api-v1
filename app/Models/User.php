@@ -55,6 +55,7 @@ class User extends Authenticatable
         'status',
         'last_login_at',
         'last_login_ip',
+        'profile_picture',
         'created_by',
         'updated_by'
     ];

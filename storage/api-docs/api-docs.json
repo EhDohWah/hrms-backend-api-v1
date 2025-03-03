@@ -1198,7 +1198,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "required": [
                                     "name",
@@ -1231,16 +1231,10 @@
                                         ],
                                         "example": "employee"
                                     },
-                                    "permissions": {
-                                        "description": "Optional array of permission names",
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "example": [
-                                            "user.read",
-                                            "user.update"
-                                        ]
+                                    "profile_picture": {
+                                        "description": "Optional profile picture file",
+                                        "type": "string",
+                                        "format": "binary"
                                     }
                                 },
                                 "type": "object"
@@ -1375,7 +1369,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "properties": {
                                     "name": {
@@ -1391,6 +1385,11 @@
                                         "type": "string",
                                         "format": "password",
                                         "example": "password123"
+                                    },
+                                    "profile_picture": {
+                                        "description": "Optional profile picture file",
+                                        "type": "string",
+                                        "format": "binary"
                                     }
                                 },
                                 "type": "object"

@@ -126,11 +126,34 @@ class UserController extends Controller
      *     ),
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
-     *             @OA\Property(property="password", type="string", format="password", example="password123")
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="name",
+     *                     type="string",
+     *                     example="John Doe"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="email",
+     *                     type="string",
+     *                     format="email",
+     *                     example="john@example.com"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="password",
+     *                     type="string",
+     *                     format="password",
+     *                     example="password123"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="profile_picture",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Optional profile picture file"
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -155,14 +178,36 @@ class UserController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        // validate the request
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8',
+         // Validate inputs, including an optional profile_picture file upload
+        $validated = $request->validate([
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:users,email,'.$user->id,
+            'password'        => 'nullable|string|min:8',
+            'profile_picture' => 'nullable|image|max:2048', // image file, max 2MB
         ]);
 
-        $user->update($request->all());
+        // If a profile_picture is provided, store it on the public disk
+        if ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+
+            // The file will be stored in storage/app/public/profile_pictures
+            // and accessible via public/storage/profile_pictures
+            $path = $file->store('profile_pictures', 'public');
+
+            // Update validated data with the path to the stored file
+            $validated['profile_picture'] = $path;
+        }
+
+        // If a new password is provided, hash it; otherwise, remove it from the update data
+        if (!empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        } else {
+            unset($validated['password']);
+        }
+
+
+        $user->update($validated);
+
         return response()->json($user);
     }
 
@@ -212,18 +257,39 @@ class UserController extends Controller
      *     security={{"bearerAuth":{}}},
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
-     *             required={"name","email","password","role"},
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
-     *             @OA\Property(property="password", type="string", format="password", example="password123"),
-     *             @OA\Property(property="role", type="string", example="employee", enum={"admin", "hr-manager", "hr-assistant", "employee"}),
-     *             @OA\Property(
-     *                 property="permissions",
-     *                 type="array",
-     *                 @OA\Items(type="string"),
-     *                 description="Optional array of permission names",
-     *                 example={"user.read","user.update"}
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"name","email","password","role"},
+     *                 @OA\Property(
+     *                     property="name",
+     *                     type="string",
+     *                     example="John Doe"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="email",
+     *                     type="string",
+     *                     format="email",
+     *                     example="john@example.com"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="password",
+     *                     type="string",
+     *                     format="password",
+     *                     example="password123"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="role",
+     *                     type="string",
+     *                     example="employee",
+     *                     enum={"admin", "hr-manager", "hr-assistant", "employee"}
+     *                 ),
+     *                 @OA\Property(
+     *                     property="profile_picture",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Optional profile picture file"
+     *                 )
      *             )
      *         )
      *     ),
@@ -261,26 +327,35 @@ class UserController extends Controller
     {
         // 1) Validate input
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role'     => 'required|string|in:admin,hr-manager,hr-assistant,employee',
-            'permissions' => 'array', // optional custom permissions
-            'permissions.*' => 'string', // each permission must be a string
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:users,email',
+            'password'        => 'required|string|min:8',
+            'role'            => 'required|string|in:admin,hr-manager,hr-assistant,employee',
+            'profile_picture' => 'nullable|image|max:2048', // optional image, max 2MB
         ]);
 
         // 2) Wrap everything in a transaction for data integrity
         DB::beginTransaction();
 
+        // If a profile picture file is provided, store it on the public disk
+        if ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+            // This will store the file in storage/app/public/profile_pictures
+            // and return a relative path like "profile_pictures/unique_filename.jpg"
+            $path = $file->store('profile_pictures', 'public');
+            $validated['profile_picture'] = $path;
+        }
+
         try {
             // Create the user
             $user = User::create([
-                'name'       => $validated['name'],
-                'email'      => $validated['email'],
-                'password'   => Hash::make($validated['password']),
-                'created_by' => auth()->user()->name ?? 'system',
-                'updated_by' => auth()->user()->name ?? 'system',
-                'last_login_at' => null,
+                'name'            => $validated['name'],
+                'email'           => $validated['email'],
+                'password'        => Hash::make($validated['password']),
+                'profile_picture' => $validated['profile_picture'] ?? null,
+                'created_by'      => auth()->user()->name ?? 'system',
+                'updated_by'      => auth()->user()->name ?? 'system',
+                'last_login_at'   => null,
             ]);
 
             // Assign the role (make sure the role exists in DB/Spatie)
@@ -288,11 +363,8 @@ class UserController extends Controller
 
             // 3) If custom permissions are provided, sync them. Otherwise use defaults.
             if (!empty($validated['permissions'])) {
-                // Make sure each provided permission actually exists
-                // or simply assume they do if you're certain they've been seeded
                 $user->syncPermissions($validated['permissions']);
             } else {
-                // 4) Default permissions based on role
                 $this->assignDefaultPermissions($user, $validated['role']);
             }
 
@@ -312,6 +384,8 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+
 
     /**
      * Assigns default permissions to a user based on their role.
