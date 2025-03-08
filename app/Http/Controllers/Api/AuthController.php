@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * @OA\Info(
@@ -60,7 +63,24 @@ class AuthController extends Controller
      *         description="Successful login",
      *         @OA\JsonContent(
      *             @OA\Property(property="access_token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."),
-     *             @OA\Property(property="token_type", type="string", example="Bearer")
+     *             @OA\Property(property="token_type", type="string", example="Bearer"),
+     *             @OA\Property(
+     *                 property="user",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="name", type="string", example="John Doe"),
+     *                 @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *                 @OA\Property(
+     *                     property="roles",
+     *                     type="array",
+     *                     @OA\Items(type="object")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="permissions",
+     *                     type="array",
+     *                     @OA\Items(type="object")
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -68,6 +88,13 @@ class AuthController extends Controller
      *         description="Invalid credentials",
      *         @OA\JsonContent(
      *             @OA\Property(property="message", type="string", example="Invalid credentials")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Too many login attempts",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Too many login attempts. Please try again in 60 seconds.")
      *         )
      *     )
      * )
@@ -80,17 +107,45 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        // Check for too many login attempts
+        if ($this->hasTooManyLoginAttempts($request)) {
+            $this->fireLockoutEvent($request);
+            $seconds = $this->limiter()->availableIn($this->throttleKey($request));
+            return response()->json([
+                'message' => "Too many login attempts. Please try again in {$seconds} seconds."
+            ], 429);
+        }
+
         // Attempt login
         if (!Auth::attempt($credentials)) {
+            $this->incrementLoginAttempts($request);
+            Log::warning('Failed login attempt', [
+                'email' => $request->email,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ]);
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        // Clear login attempts on success
+        $this->clearLoginAttempts($request);
+
         // also get permission and role of the user
         $user = Auth::user();
+
+        // Update last login timestamp
+        $user->last_login_at = Carbon::now();
+        $user->save();
+
         $user->load('permissions', 'roles');
 
         // Create an API token
         $token = $user->createToken('api-token')->plainTextToken;
+
+        Log::info('User logged in', [
+            'user_id' => $user->id,
+            'ip' => $request->ip()
+        ]);
 
         return response()->json([
             'access_token' => $token,
@@ -127,6 +182,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        Log::info('User logged out', [
+            'user_id' => $request->user()->id,
+            'ip' => $request->ip()
+        ]);
+
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
@@ -138,7 +198,7 @@ class AuthController extends Controller
      * Get the authenticated user with roles and permissions.
      *
      * @OA\Get(
-     *     path="/auth/users",
+     *     path="/user",
      *     summary="Get authenticated user details",
      *     description="Returns the authenticated user with their roles and permissions",
      *     operationId="getUser",
@@ -151,16 +211,29 @@ class AuthController extends Controller
      *             @OA\Property(property="id", type="integer", example=1),
      *             @OA\Property(property="name", type="string", example="John Doe"),
      *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
-     *             @OA\Property(property="last_login_at", type="string", format="date-time"),
+     *             @OA\Property(property="username", type="string", example="johndoe"),
+     *             @OA\Property(property="profile_picture", type="string", nullable=true),
+     *             @OA\Property(property="created_at", type="string", format="date-time"),
+     *             @OA\Property(property="updated_at", type="string", format="date-time"),
+     *             @OA\Property(property="last_login_at", type="string", format="date-time", nullable=true),
      *             @OA\Property(
      *                 property="roles",
      *                 type="array",
-     *                 @OA\Items(type="string", example="Admin")
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer"),
+     *                     @OA\Property(property="name", type="string", example="admin"),
+     *                     @OA\Property(property="display_name", type="string", example="Administrator")
+     *                 )
      *             ),
      *             @OA\Property(
      *                 property="permissions",
      *                 type="array",
-     *                 @OA\Items(type="string", example="user.read")
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer"),
+     *                     @OA\Property(property="name", type="string", example="user.read")
+     *                 )
      *             )
      *         )
      *     ),
@@ -187,5 +260,101 @@ class AuthController extends Controller
         $user->load('roles', 'permissions');
 
         return response()->json($user);
+    }
+
+    /**
+     * Refresh the user's token.
+     *
+     * @OA\Post(
+     *     path="/refresh-token",
+     *     summary="Refresh authentication token",
+     *     description="Generates a new token for the authenticated user",
+     *     operationId="refreshToken",
+     *     tags={"Authentication"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token refreshed successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="access_token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."),
+     *             @OA\Property(property="token_type", type="string", example="Bearer"),
+     *             @OA\Property(property="expires_in", type="integer", example=3600)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
+     *     )
+     * )
+     */
+    public function refreshToken(Request $request)
+    {
+        // Revoke the current token
+        $request->user()->currentAccessToken()->delete();
+
+        // Create a new token with the same expiration time
+        $tokenExpiration = 60; // minutes
+        $token = $request->user()->createToken('api-token', [], Carbon::now()->addMinutes($tokenExpiration))->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'expires_in'   => $tokenExpiration * 60 // seconds
+        ]);
+    }
+
+    // Rate limiting helper methods...
+
+    protected function hasTooManyLoginAttempts(Request $request)
+    {
+        return $this->limiter()->tooManyAttempts(
+            $this->throttleKey($request),
+            $this->maxAttempts()
+        );
+    }
+
+    protected function incrementLoginAttempts(Request $request)
+    {
+        $this->limiter()->hit(
+            $this->throttleKey($request),
+            $this->decayMinutes() * 60
+        );
+    }
+
+    protected function clearLoginAttempts(Request $request)
+    {
+        $this->limiter()->clear($this->throttleKey($request));
+    }
+
+    protected function fireLockoutEvent(Request $request)
+    {
+        Log::warning('User account locked due to too many login attempts', [
+            'email' => $request->email,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+    }
+
+    protected function limiter()
+    {
+        return app(\Illuminate\Cache\RateLimiter::class);
+    }
+
+    protected function maxAttempts()
+    {
+        return 5;
+    }
+
+    protected function decayMinutes()
+    {
+        return 1;
+    }
+
+    protected function throttleKey(Request $request)
+    {
+        return Str::lower($request->input('email')) . '|' . $request->ip();
     }
 }

@@ -8,6 +8,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 /**
  * @OA\Tag(
@@ -385,7 +388,300 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Update user profile picture.
+     *
+     * @OA\Post(
+     *     path="/profile-picture",
+     *     summary="Update user profile picture",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"profile_picture"},
+     *                 @OA\Property(
+     *                     property="profile_picture",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Profile picture file"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile picture updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Profile picture updated successfully"),
+     *             @OA\Property(property="profile_picture", type="string", example="profile_pictures/image.jpg")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function updateProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => 'required|image|max:2048', // Required image, max 2MB
+        ]);
 
+        $user = Auth::user();
+
+        // Delete old profile picture if exists
+        if ($user->profile_picture) {
+            Storage::disk('public')->delete($user->profile_picture);
+        }
+
+        // Store new profile picture
+        $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+
+        // Update user record
+        $user->profile_picture = $path;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile picture updated successfully',
+            'data' => [
+                'profile_picture' => $path,
+                'url' => Storage::disk('public')->url($path)
+            ]
+        ], 200);
+    }
+
+    /**
+     * Update user name.
+     *
+     * @OA\Put(
+     *     path="/username",
+     *     summary="Update user name",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name"},
+     *             @OA\Property(property="name", type="string", example="John Doe")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Username updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Username updated successfully"),
+     *             @OA\Property(property="name", type="string", example="John Doe")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function updateUsername(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        try {
+            $user = Auth::user();
+            $user->name = $request->name;
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Username updated successfully',
+                'name' => $user->name
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update username: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user email.
+     *
+     * @OA\Put(
+     *     path="/email",
+     *     summary="Update user email",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email"},
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Email updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Email updated successfully"),
+     *             @OA\Property(property="email", type="string", example="john@example.com")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function updateEmail(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('users')->ignore($user->id),
+            ],
+        ]);
+
+        try {
+            $user->email = $request->email;
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email updated successfully',
+                'email' => $user->email
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update email: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update user password.
+     *
+     * @OA\Put(
+     *     path="/password",
+     *     summary="Update user password",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"current_password", "new_password", "confirm_password"},
+     *             @OA\Property(property="current_password", type="string", format="password", example="current123"),
+     *             @OA\Property(property="new_password", type="string", format="password", example="new123"),
+     *             @OA\Property(property="confirm_password", type="string", format="password", example="new123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Password updated successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Current password is incorrect"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8',
+            'confirm_password' => 'required|string|same:new_password',
+        ]);
+
+        $user = Auth::user();
+
+        // Check if current password is correct
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect'
+            ], 400);
+        }
+
+        try {
+            // Update password
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password updated successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update password: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+     /**
+     * Get the authenticated user with roles and permissions.
+     *
+     * @OA\Get(
+     *     path="/user",
+     *     summary="Get authenticated user details",
+     *     description="Returns the authenticated user with their roles and permissions",
+     *     operationId="getUser",
+     *     tags={"Authentication"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="id", type="integer", example=1),
+     *             @OA\Property(property="name", type="string", example="John Doe"),
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+     *             @OA\Property(property="last_login_at", type="string", format="date-time"),
+     *             @OA\Property(
+     *                 property="roles",
+     *                 type="array",
+     *                 @OA\Items(type="string", example="Admin")
+     *             ),
+     *             @OA\Property(
+     *                 property="permissions",
+     *                 type="array",
+     *                 @OA\Items(type="string", example="user.read")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
+     *     )
+     * )
+     */
+    public function getUser(Request $request)
+    {
+
+        $user = $request->user();
+        $user->load('roles', 'permissions');
+
+        return response()->json($user);
+    }
 
     /**
      * Assigns default permissions to a user based on their role.

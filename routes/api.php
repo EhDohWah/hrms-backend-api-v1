@@ -15,7 +15,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     // Optional: logout endpoint
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/auth/users', [UserController::class, 'index'])->middleware('permission:user.read');
+
+    Route::get('/user', [UserController::class, 'getUser']);
+    Route::post('/profile-picture', [UserController::class, 'updateProfilePicture']);
+    Route::post('/username', [UserController::class, 'updateUsername']);
+    Route::post('/password', [UserController::class, 'updatePassword']);
+    Route::post('/email', [UserController::class, 'updateEmail']);
 
     // Employees routes (use middleware permission:read employees)
     Route::prefix('employees')->group(function () {
