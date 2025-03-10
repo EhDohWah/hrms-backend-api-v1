@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
-            $table->string('job_position');
-            $table->date('interview_date');
-            $table->time('start_time');
-            $table->time('end_time');
-            $table->enum('interview_mode', ['in-person', 'virtual']);
+            $table->foreignId('candidate_id')->nullable()->constrained('candidates')->onDelete('cascade');
+            $table->foreignId('grant_position_id')->nullable()->constrained('grant_positions')->onDelete('cascade');
+            $table->string('interviewer_name')->nullable();
+            $table->date('interview_date')->nullable();
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
+            $table->enum('interview_mode', ['in-person', 'virtual'])->nullable();
             $table->enum('interview_status', ['scheduled', 'completed', 'cancelled']);
             $table->decimal('score', 8, 2)->nullable();
             $table->text('feedback')->nullable();
-            // New field for storing resume file path (optional)
-            $table->string('resume')->nullable();
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
@@ -36,4 +36,6 @@ return new class extends Migration
     {
         Schema::dropIfExists('interviews');
     }
+
+
 };

@@ -25,12 +25,12 @@ return new class extends Migration
             $table->decimal('probation_salary', 10, 2);
             $table->unsignedBigInteger('supervisor_id')->nullable();
             $table->decimal('employee_tax', 10, 2)->nullable();
+            $table->decimal('fte', 10, 2)->nullable();
+            $table->boolean('active')->default(true);
+            $table->boolean('health_welfare')->default(false);
+            $table->boolean('pvd')->default(false);
+            $table->boolean('saving_fund')->default(false);
             $table->string('social_security_id')->nullable();
-            $table->decimal('employee_social_security', 10, 2)->nullable();
-            $table->decimal('employer_social_security', 10, 2)->nullable();
-            $table->decimal('employee_saving_fund', 10, 2)->nullable();
-            $table->decimal('employer_saving_fund', 10, 2)->nullable();
-            $table->decimal('employee_health_insurance', 10, 2)->nullable();
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();

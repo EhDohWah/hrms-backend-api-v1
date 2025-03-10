@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
 use App\Models\Employment;
+use App\Models\GrantPosition;
 
 /**
  * @OA\Schema(
@@ -20,10 +21,12 @@ use App\Models\Employment;
  *     @OA\Property(property="last_name", type="string", maxLength=255),
  *     @OA\Property(property="gender", type="string", maxLength=10),
  *     @OA\Property(property="date_of_birth", type="string", format="date"),
- *     @OA\Property(property="status", type="string", enum={"active", "inactive"}, default="active"),
+ *     @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, default="Expats"),
  *     @OA\Property(property="religion", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="birth_place", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="identification_number", type="string", maxLength=50, nullable=true),
+ *     @OA\Property(property="social_security_number", type="string", maxLength=50, nullable=true),
+ *     @OA\Property(property="tax_identification_number", type="string", maxLength=50, nullable=true),
  *     @OA\Property(property="passport_number", type="string", maxLength=50, nullable=true),
  *     @OA\Property(property="bank_name", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="bank_branch", type="string", maxLength=100, nullable=true),
@@ -31,8 +34,6 @@ use App\Models\Employment;
  *     @OA\Property(property="bank_account_number", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="office_phone", type="string", maxLength=20, nullable=true),
  *     @OA\Property(property="mobile_phone", type="string", maxLength=20, nullable=true),
- *     @OA\Property(property="height", type="number", format="float", nullable=true),
- *     @OA\Property(property="weight", type="number", format="float", nullable=true),
  *     @OA\Property(property="permanent_address", type="string", nullable=true),
  *     @OA\Property(property="current_address", type="string", nullable=true),
  *     @OA\Property(property="stay_with", type="string", maxLength=100, nullable=true),
@@ -66,6 +67,8 @@ class Employee extends Model
         'religion',
         'birth_place',
         'identification_number',
+        'social_security_number',
+        'tax_identification_number',
         'passport_number',
         'bank_name',
         'bank_branch',
@@ -73,8 +76,6 @@ class Employee extends Model
         'bank_account_number',
         'office_phone',
         'mobile_phone',
-        'height',
-        'weight',
         'permanent_address',
         'current_address',
         'stay_with',
@@ -113,7 +114,9 @@ class Employee extends Model
         return !is_null($this->user_id);
     }
 
-
+    // grant-position relationship
+    public function grantPosition()
+    {
+        return $this->hasOne(GrantPosition::class);
+    }
 }
-
-

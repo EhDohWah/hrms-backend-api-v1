@@ -641,47 +641,86 @@ class UserController extends Controller
      * @OA\Get(
      *     path="/user",
      *     summary="Get authenticated user details",
-     *     description="Returns the authenticated user with their roles and permissions",
+     *     description="Returns the authenticated user's basic details along with their roles and permissions.",
      *     operationId="getUser",
-     *     tags={"Authentication"},
+     *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(
      *         response=200,
-     *         description="Successful operation",
+     *         description="User details retrieved successfully",
      *         @OA\JsonContent(
-     *             @OA\Property(property="id", type="integer", example=1),
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
-     *             @OA\Property(property="last_login_at", type="string", format="date-time"),
+     *             type="object",
+     *             required={"id", "name", "email", "roles", "permissions"},
+     *             @OA\Property(
+     *                 property="id",
+     *                 type="integer",
+     *                 example=1,
+     *                 description="Unique identifier for the user"
+     *             ),
+     *             @OA\Property(
+     *                 property="name",
+     *                 type="string",
+     *                 example="John Doe",
+     *                 description="Full name of the user"
+     *             ),
+     *             @OA\Property(
+     *                 property="email",
+     *                 type="string",
+     *                 format="email",
+     *                 example="john@example.com",
+     *                 description="Email address of the user"
+     *             ),
+     *             @OA\Property(
+     *                 property="last_login_at",
+     *                 type="string",
+     *                 format="date-time",
+     *                 nullable=true,
+     *                 description="The date and time when the user last logged in"
+     *             ),
      *             @OA\Property(
      *                 property="roles",
      *                 type="array",
-     *                 @OA\Items(type="string", example="Admin")
+     *                 description="List of roles assigned to the user",
+     *                 @OA\Items(
+     *                     type="string",
+     *                     example="Admin",
+     *                     description="A role name"
+     *                 )
      *             ),
      *             @OA\Property(
      *                 property="permissions",
      *                 type="array",
-     *                 @OA\Items(type="string", example="user.read")
+     *                 description="List of permissions granted to the user",
+     *                 @OA\Items(
+     *                     type="string",
+     *                     example="user.read",
+     *                     description="A permission identifier"
+     *                 )
      *             )
      *         )
      *     ),
      *     @OA\Response(
      *         response=401,
-     *         description="Unauthenticated",
+     *         description="Unauthenticated - The request does not have valid authentication credentials",
      *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *             type="object",
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Unauthenticated"
+     *             )
      *         )
      *     )
      * )
      */
     public function getUser(Request $request)
     {
-
         $user = $request->user();
         $user->load('roles', 'permissions');
 
         return response()->json($user);
     }
+
 
     /**
      * Assigns default permissions to a user based on their role.

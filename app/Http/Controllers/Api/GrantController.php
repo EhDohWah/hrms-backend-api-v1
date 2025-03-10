@@ -127,49 +127,65 @@ class GrantController extends Controller
     /**
      * @OA\Get(
      *     path="/grants",
+     *     operationId="getGrants",
      *     summary="List all grants with their items",
-     *     description="Returns a list of grants and their associated items",
+     *     description="Returns a list of grants and their associated items.",
      *     tags={"Grants"},
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="grant_id",
-     *         in="query",
-     *         description="Filter by grant ID",
-     *         required=false,
-     *         @OA\Schema(type="integer")
-     *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="List of grants with items",
+     *         description="List of grants with items retrieved successfully",
      *         @OA\JsonContent(
-     *             type="array",
-     *             @OA\Items(
-     *                 @OA\Property(property="id", type="integer"),
-     *                 @OA\Property(property="code", type="string"),
-     *                 @OA\Property(property="name", type="string"),
-     *                 @OA\Property(
-     *                     property="grant_items",
-     *                     type="array",
-     *                     @OA\Items(
-     *                         @OA\Property(property="id", type="integer"),
-     *                         @OA\Property(property="grant_id", type="integer"),
-     *                         @OA\Property(property="bg_line", type="string"),
-     *                         @OA\Property(property="grant_position", type="string"),
-     *                         @OA\Property(property="grant_salary", type="number"),
-     *                         @OA\Property(property="grant_benefit", type="number"),
-     *                         @OA\Property(property="grant_level_of_effort", type="string"),
-     *                         @OA\Property(property="grant_position_number", type="string"),
-     *                         @OA\Property(property="grant_cost_by_monthly", type="number"),
-     *                         @OA\Property(property="grant_total_amount", type="number"),
-     *                         @OA\Property(property="grant_total_cost_by_person", type="number")
+     *             @OA\Property(property="status", type="string", example="success"),
+     *             @OA\Property(property="message", type="string", example="Grants retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="code", type="string", example="GR-2023-001"),
+     *                     @OA\Property(property="name", type="string", example="Health Initiative Grant"),
+     *                     @OA\Property(
+     *                         property="grant_items",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="grant_id", type="integer", example=1),
+     *                             @OA\Property(property="bg_line", type="string", example="BL-123"),
+     *                             @OA\Property(property="grant_position", type="string", example="Project Manager"),
+     *                             @OA\Property(property="grant_salary", type="number", format="float", example=75000),
+     *                             @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
+     *                             @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75),
+     *                             @OA\Property(property="grant_position_number", type="string", example="POS-001"),
+     *                             @OA\Property(property="grant_cost_by_monthly", type="number", format="float", example=7500),
+     *                             @OA\Property(property="grant_total_amount", type="number", format="float", example=90000),
+     *                             @OA\Property(property="grant_total_cost_by_person", type="number", format="float", example=90000)
+     *                         )
      *                     )
      *                 )
-     *             )
+     *             ),
+     *             @OA\Property(property="count", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access grants"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve grants"),
+     *             @OA\Property(property="error", type="string")
      *         )
      *     )
      * )
      */
-    public function index(Request $request)
+    public function index()
     {
         $grants = Grant::with([
                 'grantItems' => function($query) {
@@ -177,15 +193,14 @@ class GrantController extends Controller
                     // No need for position relationship now
                 }
             ])
-            ->whereHas('grantItems', function($query) use ($request) {
-                // Add grant_id filter
-                if ($request->has('grant_id')) {
-                    $query->where('grant_id', $request->grant_id);
-                }
-            })
-            ->get(['id', 'code', 'name']); // Select only necessary columns from the Grant table
+            ->get(['id', 'code', 'name', 'end_date']); // Select only necessary columns from the Grant table
 
-        return response()->json($grants);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Grants retrieved successfully',
+            'data' => $grants,
+            'count' => $grants->count()
+        ], 200);
     }
 
 
@@ -194,6 +209,19 @@ class GrantController extends Controller
         try {
             $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
             $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
+            $endDate = null;
+
+            // Try to extract end date if available
+            if (isset($data[3]['A'])) {
+                $endDateStr = trim(str_replace('End date -', '', $data[3]['A'] ?? ''));
+                if (!empty($endDateStr)) {
+                    try {
+                        $endDate = \Carbon\Carbon::parse($endDateStr)->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        $errors[] = "Sheet '$sheetName': Invalid end date format - " . $endDateStr;
+                    }
+                }
+            }
 
             // Validate required fields
             if (empty($grantCode)) {
@@ -210,6 +238,7 @@ class GrantController extends Controller
                 ['code' => $grantCode],
                 [
                     'name' => $grantName,
+                    'end_date' => $endDate,
                     'created_by' => auth()->user()->name ?? 'system',
                     'updated_by' => auth()->user()->name ?? 'system',
                 ]
@@ -308,6 +337,173 @@ class GrantController extends Controller
     {
         if (is_null($value)) return null;
         return floatval(preg_replace('/[^0-9.-]/', '', $value));
+    }
+
+
+    // create a function to store a new grant on the database by code and name
+    /**
+     * @OA\Post(
+     *     path="/grants",
+     *     summary="Create a new grant",
+     *     description="Store a new grant with the provided details",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"code", "name"},
+     *             @OA\Property(property="code", type="string", example="GR-2023-001"),
+     *             @OA\Property(property="name", type="string", example="Health Initiative Grant"),
+     *             @OA\Property(property="budget_line", type="string", example="BL-123", nullable=true),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Grant created successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/Grant")
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
+     */
+    public function storeGrant(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|string|unique:grants,code',
+            'name' => 'required|string|max:255',
+            'budget_line' => 'nullable|string|max:255',
+            'end_date' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $data = $validator->validated();
+            $data['created_by'] = Auth::user()->name ?? 'system';
+            $data['updated_by'] = Auth::user()->name ?? 'system';
+
+            $grant = Grant::create($data);
+
+            return response()->json([
+                'message' => 'Grant created successfully',
+                'data' => $grant
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to create grant',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/grants/items",
+     *     operationId="storeGrantItem",
+     *     summary="Store a new grant item",
+     *     description="Creates a new grant item associated with an existing grant",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"grant_id", "bg_line"},
+     *             @OA\Property(property="grant_id", type="integer", example=1, description="ID of the existing grant"),
+     *             @OA\Property(property="bg_line", type="string", example="BL-123", description="Budget line identifier"),
+     *             @OA\Property(property="grant_position", type="string", example="Project Manager", description="Position title"),
+     *             @OA\Property(property="grant_salary", type="number", format="float", example=75000, description="Salary amount"),
+     *             @OA\Property(property="grant_benefit", type="number", format="float", example=15000, description="Benefits amount"),
+     *             @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75, description="Level of effort (0-1)"),
+     *             @OA\Property(property="grant_position_number", type="string", example="POS-001", description="Position identifier"),
+     *             @OA\Property(property="grant_cost_by_monthly", type="number", format="float", example=7500, description="Monthly cost"),
+     *             @OA\Property(property="grant_total_cost_by_person", type="number", format="float", example=90000, description="Total cost per person"),
+     *             @OA\Property(property="grant_total_amount", type="number", format="float", example=90000, description="Total grant amount"),
+     *             @OA\Property(property="position_id", type="string", example="P123", description="Position reference ID")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Grant item created successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/GrantItem")
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error or duplicate item",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object"),
+     *             @OA\Property(property="error", type="string", example="Duplicate item with this BG Line already exists for this grant")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Failed to create grant item"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function storeGrantItem(Request $request)
+    {
+        // validate the request
+        $request->validate([
+            'grant_id' => 'required|exists:grants,id',
+            'bg_line' => 'required|string',
+            'grant_position' => 'nullable|string',
+            'grant_salary' => 'nullable|numeric',
+            'grant_benefit' => 'nullable|numeric',
+            'grant_level_of_effort' => 'nullable|numeric',
+            'grant_position_number' => 'nullable|string',
+            'grant_cost_by_monthly' => 'nullable|numeric',
+            'grant_total_amount' => 'nullable|numeric',
+            'grant_total_cost_by_person' => 'nullable|numeric',
+            'position_id' => 'nullable|string',
+        ]);
+
+        // Check for duplicates
+        $existingItem = GrantItem::where('grant_id', $request->grant_id)
+            ->where('bg_line', $request->bg_line)
+            ->exists();
+
+        if ($existingItem) {
+            return response()->json([
+                'error' => 'Duplicate item with this BG Line already exists for this grant'
+            ], 422);
+        }
+
+        // Add user info
+        $data = $request->all();
+        $data['created_by'] = auth()->user()->name ?? 'system';
+        $data['updated_by'] = auth()->user()->name ?? 'system';
+
+        $grantItem = GrantItem::create($data);
+        return response()->json($grantItem, 201);
     }
 
 

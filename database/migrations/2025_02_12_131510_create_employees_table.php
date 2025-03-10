@@ -31,6 +31,8 @@ return new class extends Migration
             $table->string('religion', 100)->nullable(); // religion is optional
             $table->string('birth_place', 100)->nullable(); // birth_place is optional
             $table->string('identification_number', 50)->nullable(); // identification_number is optional
+            $table->string('social_security_number', 50)->nullable(); // social_security_number is optional
+            $table->string('tax_identification_number', 50)->nullable(); // tax_identification_number is optional
             $table->string('passport_number', 50)->nullable(); // passport_number is optional
             $table->string('bank_name', 100)->nullable(); // bank_name is optional
             $table->string('bank_branch', 100)->nullable(); // bank_branch is optional
@@ -38,8 +40,6 @@ return new class extends Migration
             $table->string('bank_account_number', 100)->nullable(); // bank_account_number is optional
             $table->string('office_phone', 20)->nullable(); // office_phone is optional
             $table->string('mobile_phone', 20)->nullable(); // mobile_phone is optional
-            $table->decimal('height', 5, 2)->nullable(); // height is optional
-            $table->decimal('weight', 5, 2)->nullable(); // weight is optional
             $table->string('permanent_address')->nullable(); // permanent_address is optional
             $table->string('current_address')->nullable(); // current_address is optional
             $table->string('stay_with', 100)->nullable(); // stay_with is optional

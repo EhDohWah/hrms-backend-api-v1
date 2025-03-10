@@ -63,6 +63,36 @@
                                         "token_type": {
                                             "type": "string",
                                             "example": "Bearer"
+                                        },
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "John Doe"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email",
+                                                    "example": "user@example.com"
+                                                },
+                                                "roles": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "permissions": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -79,6 +109,22 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Invalid credentials"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many login attempts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Too many login attempts. Please try again in 60 seconds."
                                         }
                                     },
                                     "type": "object"
@@ -138,51 +184,32 @@
                 ]
             }
         },
-        "/auth/users": {
-            "get": {
+        "/refresh-token": {
+            "post": {
                 "tags": [
                     "Authentication"
                 ],
-                "summary": "Get authenticated user details",
-                "description": "Returns the authenticated user with their roles and permissions",
-                "operationId": "getUser",
+                "summary": "Refresh authentication token",
+                "description": "Generates a new token for the authenticated user",
+                "operationId": "refreshToken",
                 "responses": {
                     "200": {
-                        "description": "Successful operation",
+                        "description": "Token refreshed successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "id": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "Bearer"
+                                        },
+                                        "expires_in": {
                                             "type": "integer",
-                                            "example": 1
-                                        },
-                                        "name": {
-                                            "type": "string",
-                                            "example": "John Doe"
-                                        },
-                                        "email": {
-                                            "type": "string",
-                                            "format": "email",
-                                            "example": "john@example.com"
-                                        },
-                                        "last_login_at": {
-                                            "type": "string",
-                                            "format": "date-time"
-                                        },
-                                        "roles": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string",
-                                                "example": "Admin"
-                                            }
-                                        },
-                                        "permissions": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string",
-                                                "example": "user.read"
-                                            }
+                                            "example": 3600
                                         }
                                     },
                                     "type": "object"
@@ -737,81 +764,366 @@
                     "Grants"
                 ],
                 "summary": "List all grants with their items",
-                "description": "Returns a list of grants and their associated items",
-                "operationId": "1b227f45eff6f221b315a62d329ba8bc",
-                "parameters": [
-                    {
-                        "name": "grant_id",
-                        "in": "query",
-                        "description": "Filter by grant ID",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
+                "description": "Returns a list of grants and their associated items.",
+                "operationId": "getGrants",
                 "responses": {
                     "200": {
-                        "description": "List of grants with items",
+                        "description": "List of grants with items retrieved successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "properties": {
-                                            "id": {
-                                                "type": "integer"
-                                            },
-                                            "code": {
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "type": "string"
-                                            },
-                                            "grant_items": {
-                                                "type": "array",
-                                                "items": {
-                                                    "properties": {
-                                                        "id": {
-                                                            "type": "integer"
-                                                        },
-                                                        "grant_id": {
-                                                            "type": "integer"
-                                                        },
-                                                        "bg_line": {
-                                                            "type": "string"
-                                                        },
-                                                        "grant_position": {
-                                                            "type": "string"
-                                                        },
-                                                        "grant_salary": {
-                                                            "type": "number"
-                                                        },
-                                                        "grant_benefit": {
-                                                            "type": "number"
-                                                        },
-                                                        "grant_level_of_effort": {
-                                                            "type": "string"
-                                                        },
-                                                        "grant_position_number": {
-                                                            "type": "string"
-                                                        },
-                                                        "grant_cost_by_monthly": {
-                                                            "type": "number"
-                                                        },
-                                                        "grant_total_amount": {
-                                                            "type": "number"
-                                                        },
-                                                        "grant_total_cost_by_person": {
-                                                            "type": "number"
-                                                        }
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grants retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
                                                     },
-                                                    "type": "object"
-                                                }
+                                                    "code": {
+                                                        "type": "string",
+                                                        "example": "GR-2023-001"
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "Health Initiative Grant"
+                                                    },
+                                                    "grant_items": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "grant_id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "bg_line": {
+                                                                    "type": "string",
+                                                                    "example": "BL-123"
+                                                                },
+                                                                "grant_position": {
+                                                                    "type": "string",
+                                                                    "example": "Project Manager"
+                                                                },
+                                                                "grant_salary": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 75000
+                                                                },
+                                                                "grant_benefit": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 15000
+                                                                },
+                                                                "grant_level_of_effort": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 0.75
+                                                                },
+                                                                "grant_position_number": {
+                                                                    "type": "string",
+                                                                    "example": "POS-001"
+                                                                },
+                                                                "grant_cost_by_monthly": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 7500
+                                                                },
+                                                                "grant_total_amount": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 90000
+                                                                },
+                                                                "grant_total_cost_by_person": {
+                                                                    "type": "number",
+                                                                    "format": "float",
+                                                                    "example": 90000
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
                                             }
                                         },
-                                        "type": "object"
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission to access grants"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grants"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Create a new grant",
+                "description": "Store a new grant with the provided details",
+                "operationId": "a14c269cef568884cae7f1354a4111de",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "name"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string",
+                                        "example": "GR-2023-001"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Health Initiative Grant"
+                                    },
+                                    "budget_line": {
+                                        "type": "string",
+                                        "example": "BL-123",
+                                        "nullable": true
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-12-31",
+                                        "nullable": true
                                     }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Grant created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Grant"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grants/items": {
+            "post": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Store a new grant item",
+                "description": "Creates a new grant item associated with an existing grant",
+                "operationId": "storeGrantItem",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "grant_id",
+                                    "bg_line"
+                                ],
+                                "properties": {
+                                    "grant_id": {
+                                        "description": "ID of the existing grant",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "bg_line": {
+                                        "description": "Budget line identifier",
+                                        "type": "string",
+                                        "example": "BL-123"
+                                    },
+                                    "grant_position": {
+                                        "description": "Position title",
+                                        "type": "string",
+                                        "example": "Project Manager"
+                                    },
+                                    "grant_salary": {
+                                        "description": "Salary amount",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 75000
+                                    },
+                                    "grant_benefit": {
+                                        "description": "Benefits amount",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 15000
+                                    },
+                                    "grant_level_of_effort": {
+                                        "description": "Level of effort (0-1)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 0.75
+                                    },
+                                    "grant_position_number": {
+                                        "description": "Position identifier",
+                                        "type": "string",
+                                        "example": "POS-001"
+                                    },
+                                    "grant_cost_by_monthly": {
+                                        "description": "Monthly cost",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 7500
+                                    },
+                                    "grant_total_cost_by_person": {
+                                        "description": "Total cost per person",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 90000
+                                    },
+                                    "grant_total_amount": {
+                                        "description": "Total grant amount",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 90000
+                                    },
+                                    "position_id": {
+                                        "description": "Position reference ID",
+                                        "type": "string",
+                                        "example": "P123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Grant item created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GrantItem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error or duplicate item",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Duplicate item with this BG Line already exists for this grant"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to create grant item"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
@@ -1704,21 +2016,86 @@
                 ]
             }
         },
-        "/profile": {
+        "/user": {
             "get": {
                 "tags": [
                     "Users"
                 ],
-                "summary": "Get authenticated user profile",
-                "description": "Get authenticated user profile.",
-                "operationId": "a59bd18c5ff3b51fb102b2aa1275626c",
+                "summary": "Get authenticated user details",
+                "description": "Returns the authenticated user's basic details along with their roles and permissions.",
+                "operationId": "getUser",
                 "responses": {
                     "200": {
-                        "description": "User profile retrieved successfully",
+                        "description": "User details retrieved successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/User"
+                                    "required": [
+                                        "id",
+                                        "name",
+                                        "email",
+                                        "roles",
+                                        "permissions"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "description": "Unique identifier for the user",
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "name": {
+                                            "description": "Full name of the user",
+                                            "type": "string",
+                                            "example": "John Doe"
+                                        },
+                                        "email": {
+                                            "description": "Email address of the user",
+                                            "type": "string",
+                                            "format": "email",
+                                            "example": "john@example.com"
+                                        },
+                                        "last_login_at": {
+                                            "description": "The date and time when the user last logged in",
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "nullable": true
+                                        },
+                                        "roles": {
+                                            "description": "List of roles assigned to the user",
+                                            "type": "array",
+                                            "items": {
+                                                "description": "A role name",
+                                                "type": "string",
+                                                "example": "Admin"
+                                            }
+                                        },
+                                        "permissions": {
+                                            "description": "List of permissions granted to the user",
+                                            "type": "array",
+                                            "items": {
+                                                "description": "A permission identifier",
+                                                "type": "string",
+                                                "example": "user.read"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - The request does not have valid authentication credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
@@ -1734,6 +2111,74 @@
     },
     "components": {
         "schemas": {
+            "Candidate": {
+                "title": "Candidate",
+                "description": "Candidate model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "candidate_name": {
+                        "type": "string",
+                        "example": "John Doe"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "example": "123-456-7890"
+                    },
+                    "resume": {
+                        "type": "string",
+                        "example": "resume_file.pdf"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Department": {
+                "title": "Department",
+                "description": "Department model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Human Resources"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Department responsible for HR activities"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
             "Employee": {
                 "required": [
                     "staff_id",
@@ -1788,10 +2233,11 @@
                     },
                     "status": {
                         "type": "string",
-                        "default": "active",
+                        "default": "Expats",
                         "enum": [
-                            "active",
-                            "inactive"
+                            "Expats",
+                            "Local ID",
+                            "Local non ID"
                         ]
                     },
                     "religion": {
@@ -1805,6 +2251,16 @@
                         "nullable": true
                     },
                     "identification_number": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "nullable": true
+                    },
+                    "social_security_number": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "nullable": true
+                    },
+                    "tax_identification_number": {
                         "type": "string",
                         "maxLength": 50,
                         "nullable": true
@@ -1842,16 +2298,6 @@
                     "mobile_phone": {
                         "type": "string",
                         "maxLength": 20,
-                        "nullable": true
-                    },
-                    "height": {
-                        "type": "number",
-                        "format": "float",
-                        "nullable": true
-                    },
-                    "weight": {
-                        "type": "number",
-                        "format": "float",
                         "nullable": true
                     },
                     "permanent_address": {
@@ -1924,32 +2370,404 @@
                 },
                 "type": "object"
             },
+            "Employment": {
+                "required": [
+                    "employee_id",
+                    "employment_type_id",
+                    "start_date",
+                    "position_id",
+                    "department_id",
+                    "work_location_id",
+                    "position_salary",
+                    "probation_salary"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "readOnly": true
+                    },
+                    "employee_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "employment_type_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "probation_end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "position_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "department_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "work_location_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "position_salary": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "probation_salary": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "supervisor_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "employee_tax": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "fte": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true
+                    },
+                    "health_welfare": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "pvd": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "saving_fund": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "social_security_id": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "EmploymentType": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "readOnly": true
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "Grant": {
+                "title": "Grant",
+                "description": "Grant model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Research Grant 2023"
+                    },
+                    "code": {
+                        "type": "string",
+                        "example": "RG-2023-001"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-12-31"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "grant_items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GrantItem"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "GrantItem": {
+                "title": "Grant Item",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "grant_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "bg_line": {
+                        "type": "string",
+                        "example": "BL-123",
+                        "nullable": true
+                    },
+                    "grant_position": {
+                        "type": "string",
+                        "example": "Project Manager",
+                        "nullable": true
+                    },
+                    "grant_salary": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 75000,
+                        "nullable": true
+                    },
+                    "grant_benefit": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 15000,
+                        "nullable": true
+                    },
+                    "grant_level_of_effort": {
+                        "type": "string",
+                        "example": "0.75",
+                        "nullable": true
+                    },
+                    "grant_position_number": {
+                        "type": "string",
+                        "example": "POS-001",
+                        "nullable": true
+                    },
+                    "grant_cost_by_monthly": {
+                        "type": "string",
+                        "example": "7500",
+                        "nullable": true
+                    },
+                    "grant_total_cost_by_person": {
+                        "type": "string",
+                        "example": "90000",
+                        "nullable": true
+                    },
+                    "grant_benefit_fte": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.75,
+                        "nullable": true
+                    },
+                    "position_id": {
+                        "type": "string",
+                        "example": "P123",
+                        "nullable": true
+                    },
+                    "grant_total_amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 90000,
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "GrantPosition": {
+                "title": "Grant Position",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "grant_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "budget_line": {
+                        "type": "string",
+                        "example": "BL-123"
+                    },
+                    "grant_salary": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 75000
+                    },
+                    "grant_benefit": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 15000
+                    },
+                    "grant_level_of_effort": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.75
+                    },
+                    "grant_position_number": {
+                        "type": "string",
+                        "example": "POS-001"
+                    },
+                    "grant_monthly_cost": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 7500
+                    },
+                    "grant_total_person_cost": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 90000
+                    },
+                    "grant_total_amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 90000
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "Interview": {
                 "properties": {
                     "id": {
                         "type": "integer"
                     },
-                    "job_position": {
-                        "type": "string"
+                    "candidate_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "grant_position_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "interviewer_name": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "interview_date": {
                         "type": "string",
-                        "format": "date"
+                        "format": "date",
+                        "nullable": true
                     },
                     "start_time": {
                         "type": "string",
-                        "format": "time"
+                        "format": "time",
+                        "nullable": true
                     },
                     "end_time": {
                         "type": "string",
-                        "format": "time"
+                        "format": "time",
+                        "nullable": true
                     },
                     "interview_mode": {
                         "type": "string",
                         "enum": [
                             "in-person",
                             "virtual"
-                        ]
+                        ],
+                        "nullable": true
                     },
                     "interview_status": {
                         "type": "string",
@@ -1967,9 +2785,71 @@
                         "type": "string",
                         "nullable": true
                     },
-                    "resume": {
+                    "created_by": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "LetterTemplate": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "nullable": true
+                    },
+                    "content": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Position": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "created_by": {
                         "type": "string",
@@ -2045,6 +2925,36 @@
                             "type": "string",
                             "example": "user.read"
                         }
+                    }
+                },
+                "type": "object"
+            },
+            "WorkLocation": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "type": "object"

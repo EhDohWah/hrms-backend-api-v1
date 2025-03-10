@@ -94,7 +94,7 @@ return new class extends Migration
         }
 
         // Create a default hr manager user if not already exists
-        $defaultHrManagerEmail = 'hr-manager@hrms.com';
+        $defaultHrManagerEmail = 'hrmanager@hrms.com';
         if (!User::where('email', $defaultHrManagerEmail)->exists()) {
             $hrManagerUser = User::create([
                 'name'         => 'HR Manager User',
@@ -110,7 +110,7 @@ return new class extends Migration
         }
 
         // Create a default hr assistant user if not already exists
-        $defaultHrAssistantEmail = 'hr-assistant@hrms.com';
+        $defaultHrAssistantEmail = 'hrassistant@hrms.com';
         if (!User::where('email', $defaultHrAssistantEmail)->exists()) {
             $hrAssistantUser = User::create([
                 'name'         => 'HR Assistant User',

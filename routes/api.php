@@ -42,8 +42,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Grant routes (use middleware permission:read grants)
     Route::prefix('grants')->group(function () {
-        Route::get('/', [GrantController::class, 'index'])->middleware('permission:grant.read');
-        Route::post('/upload', [GrantController::class, 'upload'])->middleware('permission:grant.create');
+        Route::get('/', [GrantController::class, 'index'])->name('grants.index')->middleware('permission:grant.read');
+        Route::get('/items', [GrantController::class, 'getGrantItems'])->name('grants.items.index')->middleware('permission:grant.read');
+        Route::post('/', [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
+        Route::post('/items', [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
+        Route::post('/upload', [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.create');
     });
 
     // Interview routes (use middleware permission:read interviews)
