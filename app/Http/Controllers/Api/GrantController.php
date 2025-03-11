@@ -72,8 +72,9 @@ class GrantController extends Controller
 
             $processedGrants = 0;
             $errors = [];
+            $skippedGrants = [];
 
-            DB::transaction(function () use ($sheets, &$processedGrants, &$errors) {
+            DB::transaction(function () use ($sheets, &$processedGrants, &$errors, &$skippedGrants) {
                 foreach ($sheets as $sheet) {
                     $data = $sheet->toArray(null, true, true, true);
                     $sheetName = $sheet->getTitle();
@@ -88,8 +89,11 @@ class GrantController extends Controller
                     $grant = $this->createGrant($data, $sheetName, $errors);
 
                     if (!$grant) continue; // Error already recorded
+
+                    // Check if grant already exists and wasn't just created
                     if (!$grant->wasRecentlyCreated) {
                         $errors[] = "Sheet '$sheetName': Grant '{$grant->code}' already exists - items skipped";
+                        $skippedGrants[] = $grant->code;
                         continue;
                     }
 
@@ -112,6 +116,11 @@ class GrantController extends Controller
 
             if (!empty($errors)) {
                 $response['warnings'] = $errors;
+            }
+
+            if (!empty($skippedGrants)) {
+                $response['skipped_grants'] = $skippedGrants;
+                $response['message'] = 'Grant data import completed with skipped grants';
             }
 
             return response()->json($response);
