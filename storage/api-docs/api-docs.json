@@ -241,6 +241,368 @@
                 ]
             }
         },
+        "/departments": {
+            "get": {
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Get all departments",
+                "description": "Get a list of all departments",
+                "operationId": "ed301ff184301a8a43e12f111f178491",
+                "responses": {
+                    "200": {
+                        "description": "Departments retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Departments retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "created_by": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "updated_by": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Create a new department",
+                "description": "Create a new department record",
+                "operationId": "aba3da4ceba085b4372b051408640129",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Department created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department created successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/departments/{id}": {
+            "get": {
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Get a specific department",
+                "description": "Get details of a specific department by ID",
+                "operationId": "54c3150b5a05e5ea000b06738250e3bc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the department",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Department retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Department not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Update a department",
+                "description": "Update an existing department record",
+                "operationId": "7bed210c31f95f387c16fa4193171dba",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the department",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Department updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department updated successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Department not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Delete a department",
+                "description": "Delete a department record",
+                "operationId": "2b560600ee506df27168d372230feca2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the department",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Department deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Department not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/employees": {
             "get": {
                 "tags": [
@@ -255,10 +617,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Employee"
-                                    }
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employees retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Employee"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
@@ -275,8 +650,10 @@
                     "Employees"
                 ],
                 "summary": "Create a new employee",
-                "operationId": "2475af536398d342aca2fd7f60f9af3a",
+                "description": "Creates a new employee",
+                "operationId": "createEmployee",
                 "requestBody": {
+                    "description": "Employee data",
                     "required": true,
                     "content": {
                         "application/json": {
@@ -286,45 +663,185 @@
                                     "first_name",
                                     "last_name",
                                     "gender",
-                                    "date_of_birth"
+                                    "date_of_birth",
+                                    "status"
                                 ],
                                 "properties": {
                                     "staff_id": {
+                                        "description": "Unique staff identifier",
                                         "type": "string",
                                         "example": "EMP001"
                                     },
                                     "subsidiary": {
+                                        "description": "Employee subsidiary",
                                         "type": "string",
+                                        "enum": [
+                                            "SMRU",
+                                            "BHF"
+                                        ],
                                         "example": "SMRU"
                                     },
                                     "first_name": {
+                                        "description": "Employee first name",
                                         "type": "string",
                                         "example": "John"
                                     },
                                     "middle_name": {
+                                        "description": "Employee middle name",
                                         "type": "string",
                                         "example": "William"
                                     },
                                     "last_name": {
+                                        "description": "Employee last name",
                                         "type": "string",
                                         "example": "Doe"
                                     },
                                     "gender": {
+                                        "description": "Employee gender",
                                         "type": "string",
                                         "example": "male"
                                     },
                                     "date_of_birth": {
+                                        "description": "Employee date of birth",
                                         "type": "string",
                                         "format": "date",
                                         "example": "1990-01-01"
                                     },
                                     "status": {
+                                        "description": "Employee status",
                                         "type": "string",
-                                        "example": "active"
+                                        "enum": [
+                                            "Expats",
+                                            "Local ID",
+                                            "Local non ID"
+                                        ],
+                                        "example": "Expats"
+                                    },
+                                    "religion": {
+                                        "description": "Employee religion",
+                                        "type": "string",
+                                        "example": "Buddhism"
+                                    },
+                                    "birth_place": {
+                                        "description": "Employee birth place",
+                                        "type": "string",
+                                        "example": "Bangkok"
+                                    },
+                                    "identification_number": {
+                                        "description": "Employee ID number",
+                                        "type": "string",
+                                        "example": "1234567890123"
+                                    },
+                                    "social_security_number": {
+                                        "description": "Employee social security number",
+                                        "type": "string",
+                                        "example": "SSN123456"
+                                    },
+                                    "tax_number": {
+                                        "description": "Employee tax number",
+                                        "type": "string",
+                                        "example": "TAX123456"
+                                    },
+                                    "passport_number": {
+                                        "description": "Employee passport number",
+                                        "type": "string",
+                                        "example": "P123456"
+                                    },
+                                    "bank_name": {
+                                        "description": "Employee bank name",
+                                        "type": "string",
+                                        "example": "Bangkok Bank"
+                                    },
+                                    "bank_branch": {
+                                        "description": "Employee bank branch",
+                                        "type": "string",
+                                        "example": "Silom"
+                                    },
+                                    "bank_account_name": {
+                                        "description": "Employee bank account name",
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "bank_account_number": {
+                                        "description": "Employee bank account number",
+                                        "type": "string",
+                                        "example": "1234567890"
+                                    },
+                                    "office_phone": {
+                                        "description": "Employee office phone",
+                                        "type": "string",
+                                        "example": "021234567"
                                     },
                                     "mobile_phone": {
+                                        "description": "Employee mobile phone",
                                         "type": "string",
-                                        "example": "+1234567890"
+                                        "example": "+66812345678"
+                                    },
+                                    "permanent_address": {
+                                        "description": "Employee permanent address",
+                                        "type": "string",
+                                        "example": "123 Main St, Bangkok"
+                                    },
+                                    "current_address": {
+                                        "description": "Employee current address",
+                                        "type": "string",
+                                        "example": "456 Second St, Bangkok"
+                                    },
+                                    "stay_with": {
+                                        "description": "Employee stays with",
+                                        "type": "string",
+                                        "example": "Family"
+                                    },
+                                    "military_status": {
+                                        "description": "Employee military status",
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "marital_status": {
+                                        "description": "Employee marital status",
+                                        "type": "string",
+                                        "example": "Single"
+                                    },
+                                    "spouse_name": {
+                                        "description": "Employee spouse name",
+                                        "type": "string",
+                                        "example": "Jane Doe"
+                                    },
+                                    "spouse_occupation": {
+                                        "description": "Employee spouse occupation",
+                                        "type": "string",
+                                        "example": "Doctor"
+                                    },
+                                    "father_name": {
+                                        "description": "Employee father name",
+                                        "type": "string",
+                                        "example": "James Doe"
+                                    },
+                                    "father_occupation": {
+                                        "description": "Employee father occupation",
+                                        "type": "string",
+                                        "example": "Engineer"
+                                    },
+                                    "mother_name": {
+                                        "description": "Employee mother name",
+                                        "type": "string",
+                                        "example": "Mary Doe"
+                                    },
+                                    "mother_occupation": {
+                                        "description": "Employee mother occupation",
+                                        "type": "string",
+                                        "example": "Teacher"
+                                    },
+                                    "driver_license_number": {
+                                        "description": "Employee driver license number",
+                                        "type": "string",
+                                        "example": "DL123456"
+                                    },
+                                    "email": {
+                                        "description": "Employee email address",
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john.doe@example.com"
                                     }
                                 },
                                 "type": "object"
@@ -334,10 +851,50 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Employee created successfully"
+                        "description": "Employee created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee created successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employee"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Validation error"
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -372,7 +929,40 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Employee"
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee retrieved successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employee"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee not found"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
@@ -390,7 +980,7 @@
                 ],
                 "summary": "Update employee details",
                 "description": "Updates an existing employee record with the provided information",
-                "operationId": "f1e833660cfbccbfbdef00c84e24c5cb",
+                "operationId": "updateEmployee",
                 "parameters": [
                     {
                         "name": "id",
@@ -418,161 +1008,206 @@
                                 ],
                                 "properties": {
                                     "staff_id": {
+                                        "description": "Unique staff identifier",
                                         "type": "string",
                                         "maxLength": 50,
                                         "example": "EMP001"
                                     },
+                                    "subsidiary": {
+                                        "description": "Employee subsidiary",
+                                        "type": "string",
+                                        "enum": [
+                                            "SMRU",
+                                            "BHF"
+                                        ],
+                                        "example": "SMRU"
+                                    },
                                     "first_name": {
+                                        "description": "Employee first name",
                                         "type": "string",
                                         "maxLength": 255,
                                         "example": "John"
                                     },
                                     "middle_name": {
+                                        "description": "Employee middle name",
                                         "type": "string",
                                         "maxLength": 255,
                                         "example": "William",
                                         "nullable": true
                                     },
                                     "last_name": {
+                                        "description": "Employee last name",
                                         "type": "string",
                                         "maxLength": 255,
                                         "example": "Doe"
                                     },
                                     "gender": {
+                                        "description": "Employee gender",
                                         "type": "string",
                                         "maxLength": 10,
                                         "example": "male"
                                     },
                                     "date_of_birth": {
+                                        "description": "Employee date of birth",
                                         "type": "string",
                                         "format": "date",
                                         "example": "1990-01-01"
                                     },
                                     "status": {
+                                        "description": "Employee status",
                                         "type": "string",
                                         "enum": [
-                                            "active",
-                                            "inactive"
+                                            "Expats",
+                                            "Local ID",
+                                            "Local non ID"
                                         ],
-                                        "example": "active"
+                                        "example": "Expats"
                                     },
                                     "religion": {
+                                        "description": "Employee religion",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "birth_place": {
+                                        "description": "Employee birth place",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "identification_number": {
+                                        "description": "Employee ID number",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "nullable": true
+                                    },
+                                    "social_security_number": {
+                                        "description": "Employee social security number",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "nullable": true
+                                    },
+                                    "tax_number": {
+                                        "description": "Employee tax number",
                                         "type": "string",
                                         "maxLength": 50,
                                         "nullable": true
                                     },
                                     "passport_number": {
+                                        "description": "Employee passport number",
                                         "type": "string",
                                         "maxLength": 50,
                                         "nullable": true
                                     },
                                     "bank_name": {
+                                        "description": "Employee bank name",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "bank_branch": {
+                                        "description": "Employee bank branch",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "bank_account_name": {
+                                        "description": "Employee bank account name",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "bank_account_number": {
+                                        "description": "Employee bank account number",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "office_phone": {
+                                        "description": "Employee office phone",
                                         "type": "string",
                                         "maxLength": 20,
                                         "nullable": true
                                     },
                                     "mobile_phone": {
+                                        "description": "Employee mobile phone",
                                         "type": "string",
                                         "maxLength": 20,
                                         "nullable": true
                                     },
-                                    "height": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 175.5,
-                                        "nullable": true
-                                    },
-                                    "weight": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 70.5,
-                                        "nullable": true
-                                    },
                                     "permanent_address": {
+                                        "description": "Employee permanent address",
                                         "type": "string",
                                         "nullable": true
                                     },
                                     "current_address": {
+                                        "description": "Employee current address",
                                         "type": "string",
                                         "nullable": true
                                     },
                                     "stay_with": {
+                                        "description": "Employee stays with",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "military_status": {
+                                        "description": "Employee military status",
                                         "type": "boolean",
                                         "example": false
                                     },
                                     "marital_status": {
+                                        "description": "Employee marital status",
                                         "type": "string",
                                         "maxLength": 20,
                                         "nullable": true
                                     },
                                     "spouse_name": {
+                                        "description": "Employee spouse name",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "spouse_occupation": {
+                                        "description": "Employee spouse occupation",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "father_name": {
+                                        "description": "Employee father name",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "father_occupation": {
+                                        "description": "Employee father occupation",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "mother_name": {
+                                        "description": "Employee mother name",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "mother_occupation": {
+                                        "description": "Employee mother occupation",
                                         "type": "string",
                                         "maxLength": 100,
                                         "nullable": true
                                     },
                                     "driver_license_number": {
+                                        "description": "Employee driver license number",
                                         "type": "string",
                                         "maxLength": 50,
+                                        "nullable": true
+                                    },
+                                    "email": {
+                                        "description": "Employee email address",
+                                        "type": "string",
+                                        "format": "email",
                                         "nullable": true
                                     }
                                 },
@@ -588,25 +1223,16 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "id": {
-                                            "type": "integer",
-                                            "example": 1
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
-                                        "staff_id": {
+                                        "message": {
                                             "type": "string",
-                                            "example": "EMP001"
+                                            "example": "Employee updated successfully"
                                         },
-                                        "first_name": {
-                                            "type": "string",
-                                            "example": "John"
-                                        },
-                                        "last_name": {
-                                            "type": "string",
-                                            "example": "Doe"
-                                        },
-                                        "updated_at": {
-                                            "type": "string",
-                                            "format": "date-time"
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employee"
                                         }
                                     },
                                     "type": "object"
@@ -615,10 +1241,47 @@
                         }
                     },
                     "404": {
-                        "description": "Employee not found"
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Validation error"
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -632,7 +1295,8 @@
                     "Employees"
                 ],
                 "summary": "Delete an employee",
-                "operationId": "12f385259154107ce23e13cf62d2c158",
+                "description": "Deletes an employee by ID",
+                "operationId": "deleteEmployee",
                 "parameters": [
                     {
                         "name": "id",
@@ -646,10 +1310,44 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Employee deleted successfully"
+                        "description": "Employee deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Employee not found"
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -665,11 +1363,735 @@
                     "Employees"
                 ],
                 "summary": "Get Site records",
-                "description": "Get Site records",
-                "operationId": "37701ee04f72091dcdd26cc910ec7367",
+                "description": "Returns a list of all work locations/sites",
+                "operationId": "getSiteRecords",
                 "responses": {
                     "200": {
-                        "description": "Successful operation"
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Site records retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "Main Office"
+                                                    },
+                                                    "address": {
+                                                        "type": "string",
+                                                        "example": "123 Main Street"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employees/filter": {
+            "get": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Filter employees by criteria",
+                "description": "Returns employees filtered by the provided criteria",
+                "operationId": "filterEmployees",
+                "parameters": [
+                    {
+                        "name": "staff_id",
+                        "in": "query",
+                        "description": "Staff ID to filter by",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Employee status to filter by",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Expats",
+                                "Local ID",
+                                "Local non ID"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "subsidiary",
+                        "in": "query",
+                        "description": "Employee subsidiary to filter by",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "SMRU",
+                                "BHF"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Filtered employees retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employees retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Employee"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No employees found matching the criteria",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No employees found."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employees/{id}/profile-picture": {
+            "post": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Upload profile picture",
+                "description": "Upload a profile picture for an employee",
+                "operationId": "uploadProfilePictureEmployee",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Profile picture file",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "profile_picture"
+                                ],
+                                "properties": {
+                                    "profile_picture": {
+                                        "description": "Profile picture file (jpeg, png, jpg, gif, svg, max 2MB)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile picture uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Profile picture uploaded successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "profile_picture": {
+                                                    "type": "string",
+                                                    "example": "employee/profile_pictures/image.jpg"
+                                                },
+                                                "url": {
+                                                    "type": "string",
+                                                    "example": "http://example.com/storage/employee/profile_pictures/image.jpg"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employments": {
+            "get": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Get all employment records",
+                "description": "Returns a list of all employment records",
+                "operationId": "getEmployments",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Employment"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employments retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Create a new employment record",
+                "description": "Creates a new employment record with the provided data",
+                "operationId": "storeEmployment",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "employee_id",
+                                    "employment_type_id",
+                                    "start_date",
+                                    "position_id",
+                                    "department_id",
+                                    "work_location_id",
+                                    "position_salary"
+                                ],
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "employment_type_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-01-15"
+                                    },
+                                    "probation_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-04-15",
+                                        "nullable": true
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-15",
+                                        "nullable": true
+                                    },
+                                    "position_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "department_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "work_location_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "position_salary": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50000
+                                    },
+                                    "probation_salary": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 45000,
+                                        "nullable": true
+                                    },
+                                    "supervisor_id": {
+                                        "type": "integer",
+                                        "example": 2,
+                                        "nullable": true
+                                    },
+                                    "employee_tax": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 7,
+                                        "nullable": true
+                                    },
+                                    "fte": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "health_welfare": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "pvd": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "saving_fund": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "social_security_id": {
+                                        "type": "string",
+                                        "example": "SSN12345",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Employment created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employment"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment created successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employments/{id}": {
+            "get": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Get employment record by ID",
+                "description": "Returns a specific employment record by ID",
+                "operationId": "getEmployment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of employment record to return",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employment"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employment not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Update an existing employment record",
+                "description": "Updates an employment record with the provided data",
+                "operationId": "updateEmployment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of employment record to update",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "employment_type_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-01-15"
+                                    },
+                                    "probation_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-04-15",
+                                        "nullable": true
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-15",
+                                        "nullable": true
+                                    },
+                                    "position_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "department_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "work_location_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "position_salary": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50000
+                                    },
+                                    "probation_salary": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 45000,
+                                        "nullable": true
+                                    },
+                                    "supervisor_id": {
+                                        "type": "integer",
+                                        "example": 2,
+                                        "nullable": true
+                                    },
+                                    "employee_tax": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 7,
+                                        "nullable": true
+                                    },
+                                    "fte": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "health_welfare": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "pvd": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "saving_fund": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "social_security_id": {
+                                        "type": "string",
+                                        "example": "SSN12345",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employment updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employment"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment updated successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employment not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Delete an employment record",
+                "description": "Deletes an employment record by ID",
+                "operationId": "deleteEmployment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of employment record to delete",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employment deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employment not found"
                     }
                 },
                 "security": [
@@ -1406,6 +2828,466 @@
                 ]
             }
         },
+        "/positions": {
+            "get": {
+                "tags": [
+                    "Positions"
+                ],
+                "summary": "Get all positions",
+                "description": "Returns a list of all positions",
+                "operationId": "getPositions",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Position"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Positions"
+                ],
+                "summary": "Create a new position",
+                "description": "Creates a new position record",
+                "operationId": "storePosition",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "title"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "Software Engineer"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Develops software applications"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Position created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Position"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position created successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/positions/{id}": {
+            "get": {
+                "tags": [
+                    "Positions"
+                ],
+                "summary": "Get a specific position",
+                "description": "Returns a specific position by ID",
+                "operationId": "showPosition",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the position",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Position"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Positions"
+                ],
+                "summary": "Update a position",
+                "description": "Updates an existing position record",
+                "operationId": "updatePosition",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the position to update",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "Senior Software Engineer"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Leads software development projects"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Position updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Position"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position updated successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Positions"
+                ],
+                "summary": "Delete a position",
+                "description": "Deletes a position record",
+                "operationId": "deletePosition",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the position to delete",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Position deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "error"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/users": {
             "get": {
                 "tags": [
@@ -2107,6 +3989,284 @@
                     }
                 ]
             }
+        },
+        "/worklocations": {
+            "get": {
+                "tags": [
+                    "Work Locations"
+                ],
+                "summary": "Get all work locations",
+                "description": "Returns a list of all work locations",
+                "operationId": "getWorkLocations",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WorkLocation"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Work Locations"
+                ],
+                "summary": "Create a new work location",
+                "description": "Creates a new work location record",
+                "operationId": "storeWorkLocation",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "type"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "MKT"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "example": "Site"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Work location created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/WorkLocation"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Work location created successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/worklocations/{id}": {
+            "get": {
+                "tags": [
+                    "Work Locations"
+                ],
+                "summary": "Get a specific work location",
+                "description": "Returns a specific work location by ID",
+                "operationId": "getWorkLocation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the work location",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/WorkLocation"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Work location not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Work Locations"
+                ],
+                "summary": "Update a work location",
+                "description": "Updates an existing work location",
+                "operationId": "updateWorkLocation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the work location",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "WPA"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "example": "Site"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Work location updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/WorkLocation"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Work location updated successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Work location not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Work Locations"
+                ],
+                "summary": "Delete a work location",
+                "description": "Deletes a work location",
+                "operationId": "deleteWorkLocation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the work location",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Work location deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Work location deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Work location not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -2223,6 +4383,15 @@
                         "type": "string",
                         "maxLength": 255
                     },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "nullable": true
+                    },
+                    "profile_picture": {
+                        "type": "string",
+                        "nullable": true
+                    },
                     "gender": {
                         "type": "string",
                         "maxLength": 10
@@ -2260,7 +4429,7 @@
                         "maxLength": 50,
                         "nullable": true
                     },
-                    "tax_identification_number": {
+                    "tax_number": {
                         "type": "string",
                         "maxLength": 50,
                         "nullable": true
@@ -2355,6 +4524,14 @@
                     "driver_license_number": {
                         "type": "string",
                         "maxLength": 50,
+                        "nullable": true
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
                         "nullable": true
                     },
                     "created_at": {
@@ -2660,75 +4837,6 @@
                 },
                 "type": "object"
             },
-            "GrantPosition": {
-                "title": "Grant Position",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "example": 1
-                    },
-                    "grant_id": {
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "budget_line": {
-                        "type": "string",
-                        "example": "BL-123"
-                    },
-                    "grant_salary": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 75000
-                    },
-                    "grant_benefit": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 15000
-                    },
-                    "grant_level_of_effort": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 0.75
-                    },
-                    "grant_position_number": {
-                        "type": "string",
-                        "example": "POS-001"
-                    },
-                    "grant_monthly_cost": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 7500
-                    },
-                    "grant_total_person_cost": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 90000
-                    },
-                    "grant_total_amount": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 90000
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "created_by": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "updated_by": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                },
-                "type": "object"
-            },
             "Interview": {
                 "properties": {
                     "id": {
@@ -2974,8 +5082,16 @@
             "description": "API Endpoints for user authentication"
         },
         {
+            "name": "Departments",
+            "description": "API Endpoints for managing departments"
+        },
+        {
             "name": "Employees",
             "description": "API Endpoints for Employee management"
+        },
+        {
+            "name": "Employments",
+            "description": "API Endpoints for managing employee employment records"
         },
         {
             "name": "Grants",
@@ -2986,8 +5102,16 @@
             "description": "API Endpoints for managing interviews"
         },
         {
+            "name": "Positions",
+            "description": "API Endpoints for managing positions"
+        },
+        {
             "name": "Users",
             "description": "API Endpoints for user management"
+        },
+        {
+            "name": "Work Locations",
+            "description": "API Endpoints for managing work locations"
         }
     ]
 }

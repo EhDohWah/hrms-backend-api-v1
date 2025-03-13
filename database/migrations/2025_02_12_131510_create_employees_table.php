@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('first_name', 255); // first_name is required
             $table->string('middle_name', 255)->nullable(); // middle_name is optional
             $table->string('last_name', 255); // last_name is required
+            $table->string('email', 255)->nullable()->unique(); // email is optional must be unique
+            $table->string('profile_picture', 255)->nullable(); // profile_picture is optional
             $table->string('gender', 10); // Gender is required
             $table->date('date_of_birth'); // date_of_birth is required
             $table->enum('status', [
@@ -27,12 +29,11 @@ return new class extends Migration
                 'Local ID',
                 'Local non ID'
             ])->default('Expats'); // status is required
-
             $table->string('religion', 100)->nullable(); // religion is optional
             $table->string('birth_place', 100)->nullable(); // birth_place is optional
             $table->string('identification_number', 50)->nullable(); // identification_number is optional
             $table->string('social_security_number', 50)->nullable(); // social_security_number is optional
-            $table->string('tax_identification_number', 50)->nullable(); // tax_identification_number is optional
+            $table->string('tax_number', 50)->nullable(); // tax_number is optional
             $table->string('passport_number', 50)->nullable(); // passport_number is optional
             $table->string('bank_name', 100)->nullable(); // bank_name is optional
             $table->string('bank_branch', 100)->nullable(); // bank_branch is optional
@@ -55,7 +56,7 @@ return new class extends Migration
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
             $table->timestamps();
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade')->nullable();
         });
     }
 

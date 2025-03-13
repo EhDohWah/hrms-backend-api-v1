@@ -142,8 +142,8 @@ class AuthController extends Controller
         // Create an API token
         $token = $user->createToken('api-token')->plainTextToken;
 
-        // Set token expiration to 24 hours
-        $expiresIn = 86400; // 24 hours in seconds
+        // Set token expiration to 6 hours
+        $expiresIn = 21600; // 6 hours in seconds
 
         Log::info('User logged in', [
             'user_id' => $user->id,

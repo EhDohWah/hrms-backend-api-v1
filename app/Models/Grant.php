@@ -43,9 +43,4 @@ class Grant extends Model
     {
         return $this->hasMany(GrantItem::class);
     }
-
-    public function grantPositions()
-    {
-        return $this->hasMany(GrantPosition::class);
-    }
 }
