@@ -34,6 +34,7 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
+            $table->unsignedBigInteger('grant_item_id')->nullable(); // Optional - grant item id
 
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
             $table->foreign('employment_type_id')->references('id')->on('employment_types');
@@ -41,6 +42,7 @@ return new class extends Migration
             $table->foreign('department_id')->references('id')->on('departments');
             $table->foreign('work_location_id')->references('id')->on('work_locations');
             $table->foreign('supervisor_id')->references('id')->on('employees');
+            $table->foreign('grant_item_id')->references('id')->on('grant_items');
         });
     }
 

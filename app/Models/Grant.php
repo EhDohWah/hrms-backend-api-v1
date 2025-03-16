@@ -15,9 +15,10 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="Research Grant 2023"),
  *     @OA\Property(property="code", type="string", example="RG-2023-001"),
- *     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31"),
- *     @OA\Property(property="created_by", type="string", example="admin"),
- *     @OA\Property(property="updated_by", type="string", example="admin"),
+ *     @OA\Property(property="description", type="string", nullable=true, example="Funding for research activities"),
+ *     @OA\Property(property="end_date", type="string", format="date", nullable=true, example="2023-12-31"),
+ *     @OA\Property(property="created_by", type="string", nullable=true, example="admin"),
+ *     @OA\Property(property="updated_by", type="string", nullable=true, example="admin"),
  *     @OA\Property(property="created_at", type="string", format="date-time"),
  *     @OA\Property(property="updated_at", type="string", format="date-time"),
  *     @OA\Property(
@@ -34,6 +35,7 @@ class Grant extends Model
     protected $fillable = [
         'name',
         'code',
+        'description',
         'end_date',
         'created_by',
         'updated_by'

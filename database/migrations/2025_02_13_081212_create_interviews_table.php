@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('candidate_id')->nullable()->constrained('candidates')->onDelete('cascade');
-            $table->foreignId('grant_item_id')->nullable()->constrained('grant_items')->onDelete('cascade');
+            $table->unsignedBigInteger('candidate_id')->nullable();
             $table->string('interviewer_name')->nullable();
             $table->date('interview_date')->nullable();
             $table->time('start_time')->nullable();
@@ -26,6 +25,8 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
+
+            $table->foreign('candidate_id')->references('id')->on('candidates')->onDelete('cascade');
         });
     }
 

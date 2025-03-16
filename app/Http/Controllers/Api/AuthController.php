@@ -140,7 +140,7 @@ class AuthController extends Controller
         $user->load('permissions', 'roles');
 
         // Create an API token
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken($user->name . '-api-token')->plainTextToken;
 
         // Set token expiration to 6 hours
         $expiresIn = 21600; // 6 hours in seconds
@@ -232,14 +232,14 @@ class AuthController extends Controller
         // Revoke the current token
         $request->user()->currentAccessToken()->delete();
 
-        // Create a new token with the same expiration time
-        $tokenExpiration = 60; // minutes
-        $token = $request->user()->createToken('api-token', [], Carbon::now()->addMinutes($tokenExpiration))->plainTextToken;
+        // Create a new token with expiration set to 6 hours
+        $expiresIn = 21600; // 6 hours in seconds
+        $token = $request->user()->createToken($request->user()->name . '-api-token')->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'expires_in'   => $tokenExpiration * 60 // seconds
+            'expires_in'   => $expiresIn
         ]);
     }
 

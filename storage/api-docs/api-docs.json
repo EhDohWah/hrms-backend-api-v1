@@ -1648,6 +1648,93 @@
                 ]
             }
         },
+        "/employees/upload": {
+            "post": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Upload employee data from Excel file",
+                "description": "Upload employee data from Excel file",
+                "operationId": "uploadEmployeeData",
+                "requestBody": {
+                    "description": "Excel file containing employee data",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "description": "Excel file containing employee data",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employee data uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee data uploaded successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/employments": {
             "get": {
                 "tags": [
@@ -1712,7 +1799,8 @@
                                     "position_id",
                                     "department_id",
                                     "work_location_id",
-                                    "position_salary"
+                                    "position_salary",
+                                    "grant_items_id"
                                 ],
                                 "properties": {
                                     "employee_id": {
@@ -1800,6 +1888,11 @@
                                         "type": "string",
                                         "example": "SSN12345",
                                         "nullable": true
+                                    },
+                                    "grant_items_id": {
+                                        "description": "Reference to the grant item for position limit",
+                                        "type": "integer",
+                                        "example": 1
                                     }
                                 },
                                 "type": "object"
@@ -1831,11 +1924,8 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad request"
-                    },
                     "422": {
-                        "description": "Validation error"
+                        "description": "Validation error or position full"
                     }
                 },
                 "security": [
@@ -2007,6 +2097,11 @@
                                         "type": "string",
                                         "example": "SSN12345",
                                         "nullable": true
+                                    },
+                                    "grant_items_id": {
+                                        "description": "Reference to the grant item",
+                                        "type": "integer",
+                                        "example": 1
                                     }
                                 },
                                 "type": "object"
@@ -2540,6 +2635,575 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to create grant item"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grant-items/{id}": {
+            "put": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Update a grant item",
+                "description": "Update an existing grant item by ID",
+                "operationId": "5e7d28ef53a8cc164051445cb2dcfaff",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "grant_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "bg_line": {
+                                        "type": "string",
+                                        "example": "BG-123"
+                                    },
+                                    "grant_position": {
+                                        "type": "string",
+                                        "example": "Project Manager"
+                                    },
+                                    "grant_salary": {
+                                        "type": "number",
+                                        "example": 5000
+                                    },
+                                    "grant_benefit": {
+                                        "type": "number",
+                                        "example": 1000
+                                    },
+                                    "grant_level_of_effort": {
+                                        "type": "number",
+                                        "example": 0.75
+                                    },
+                                    "grant_position_number": {
+                                        "type": "string",
+                                        "example": "P-123"
+                                    },
+                                    "grant_cost_by_monthly": {
+                                        "type": "number",
+                                        "example": 4500
+                                    },
+                                    "grant_total_amount": {
+                                        "type": "number",
+                                        "example": 54000
+                                    },
+                                    "grant_total_cost_by_person": {
+                                        "type": "number",
+                                        "example": 54000
+                                    },
+                                    "position_id": {
+                                        "type": "string",
+                                        "example": "POS-123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Grant item updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GrantItem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant item not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Delete a grant item",
+                "description": "Delete a specific grant item by ID",
+                "operationId": "015c940ac759ceb7ca52dfcd8f945ef5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Grant item deleted successfully"
+                    },
+                    "404": {
+                        "description": "Grant item not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete grant item"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grants/{id}": {
+            "put": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Update a grant",
+                "description": "Updates an existing grant with the provided data",
+                "operationId": "updateGrant",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the grant to update",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Updated Grant Name"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "example": "GR-2023-002"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Updated grant description"
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-12-31"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Grant updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Grant"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant updated successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to update grant"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Delete a grant",
+                "description": "Delete a grant and all its associated items",
+                "operationId": "37a4ce1aa26bd674ef4462e4fd812c5f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete grant"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grants/grant-positions": {
+            "get": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get grant statistics with position recruitment status",
+                "description": "Retrieves statistics for all grants including position recruitment status",
+                "operationId": "getGrantStatistics",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant statistics retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "grant_id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "grant_code": {
+                                                        "type": "string",
+                                                        "example": "GR-001"
+                                                    },
+                                                    "grant_name": {
+                                                        "type": "string",
+                                                        "example": "Research Grant"
+                                                    },
+                                                    "budget_line": {
+                                                        "type": "string",
+                                                        "example": "123456"
+                                                    },
+                                                    "positions": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "position": {
+                                                                    "type": "string",
+                                                                    "example": "Researcher"
+                                                                },
+                                                                "manpower": {
+                                                                    "type": "integer",
+                                                                    "example": 3
+                                                                },
+                                                                "recruited": {
+                                                                    "type": "integer",
+                                                                    "example": 2
+                                                                },
+                                                                "finding": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "total_manpower": {
+                                                        "type": "integer",
+                                                        "example": 5
+                                                    },
+                                                    "total_recruited": {
+                                                        "type": "integer",
+                                                        "example": 3
+                                                    },
+                                                    "total_finding": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "Completed",
+                                                            "Active",
+                                                            "Pending"
+                                                        ],
+                                                        "example": "Active"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission to access grant statistics"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grant statistics"
                                         },
                                         "error": {
                                             "type": "string"
@@ -4641,6 +5305,136 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "grant_item_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "EmploymentHistory": {
+                "required": [
+                    "employment_id",
+                    "employee_id",
+                    "employment_type_id",
+                    "start_date",
+                    "position_id",
+                    "department_id",
+                    "work_location_id",
+                    "position_salary"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "readOnly": true
+                    },
+                    "employment_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "employee_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "employment_type_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "probation_end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                    },
+                    "position_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "department_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "work_location_id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "position_salary": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "probation_salary": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "supervisor_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "employee_tax": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "fte": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true
+                    },
+                    "health_welfare": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "pvd": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "saving_fund": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "social_security_id": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "grant_item_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
                     "created_by": {
                         "type": "string",
                         "nullable": true
@@ -4717,18 +5511,26 @@
                         "type": "string",
                         "example": "RG-2023-001"
                     },
+                    "description": {
+                        "type": "string",
+                        "example": "Funding for research activities",
+                        "nullable": true
+                    },
                     "end_date": {
                         "type": "string",
                         "format": "date",
-                        "example": "2023-12-31"
+                        "example": "2023-12-31",
+                        "nullable": true
                     },
                     "created_by": {
                         "type": "string",
-                        "example": "admin"
+                        "example": "admin",
+                        "nullable": true
                     },
                     "updated_by": {
                         "type": "string",
-                        "example": "admin"
+                        "example": "admin",
+                        "nullable": true
                     },
                     "created_at": {
                         "type": "string",

@@ -9,6 +9,8 @@ use App\Models\EmploymentType;
 use App\Models\Position;
 use App\Models\Department;
 use App\Models\WorkLocation;
+use App\Models\EmploymentHistory;
+use App\Models\GrantItem;
 
 /**
  * @OA\Schema(
@@ -33,6 +35,7 @@ use App\Models\WorkLocation;
  *     @OA\Property(property="pvd", type="boolean", default=false),
  *     @OA\Property(property="saving_fund", type="boolean", default=false),
  *     @OA\Property(property="social_security_id", type="string", nullable=true),
+ *     @OA\Property(property="grant_item_id", type="integer", format="int64", nullable=true),
  *     @OA\Property(property="created_by", type="string", nullable=true),
  *     @OA\Property(property="updated_by", type="string", nullable=true),
  *     @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
@@ -62,9 +65,72 @@ class Employment extends Model
         'pvd',
         'saving_fund',
         'social_security_id',
+        'grant_item_id',
         'created_by',
         'updated_by'
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When a new Employment record is created:
+        static::created(function ($employment) {
+            EmploymentHistory::create([
+                'employment_id' => $employment->id,
+                'employee_id' => $employment->employee_id,
+                'employment_type_id' => $employment->employment_type_id,
+                'start_date' => $employment->start_date,
+                'probation_end_date' => $employment->probation_end_date,
+                'end_date' => $employment->end_date,
+                'position_id' => $employment->position_id,
+                'department_id' => $employment->department_id,
+                'work_location_id' => $employment->work_location_id,
+                'position_salary' => $employment->position_salary,
+                'probation_salary' => $employment->probation_salary,
+                'supervisor_id' => $employment->supervisor_id,
+                'employee_tax' => $employment->employee_tax,
+                'fte' => $employment->fte,
+                'active' => $employment->active,
+                'health_welfare' => $employment->health_welfare,
+                'pvd' => $employment->pvd,
+                'saving_fund' => $employment->saving_fund,
+                'social_security_id' => $employment->social_security_id,
+                'grant_item_id' => $employment->grant_item_id,
+                'created_by' => $employment->created_by,
+                'updated_by' => $employment->updated_by,
+            ]);
+        });
+
+        // When an existing Employment record is updated:
+        static::updated(function ($employment) {
+            EmploymentHistory::create([
+                'employment_id' => $employment->id,
+                'employee_id' => $employment->employee_id,
+                'employment_type_id' => $employment->employment_type_id,
+                'start_date' => $employment->start_date,
+                'probation_end_date' => $employment->probation_end_date,
+                'end_date' => $employment->end_date,
+                'position_id' => $employment->position_id,
+                'department_id' => $employment->department_id,
+                'work_location_id' => $employment->work_location_id,
+                'position_salary' => $employment->position_salary,
+                'probation_salary' => $employment->probation_salary,
+                'supervisor_id' => $employment->supervisor_id,
+                'employee_tax' => $employment->employee_tax,
+                'fte' => $employment->fte,
+                'active' => $employment->active,
+                'health_welfare' => $employment->health_welfare,
+                'pvd' => $employment->pvd,
+                'saving_fund' => $employment->saving_fund,
+                'social_security_id' => $employment->social_security_id,
+                'grant_item_id' => $employment->grant_item_id,
+                'created_by' => $employment->created_by,
+                'updated_by' => $employment->updated_by,
+            ]);
+        });
+    }
+
 
     public function employee()
     {
@@ -94,5 +160,10 @@ class Employment extends Model
     public function supervisor()
     {
         return $this->belongsTo(Employee::class, 'supervisor_id');
+    }
+
+    public function grantItem()
+    {
+        return $this->belongsTo(GrantItem::class, 'grant_item_id');
     }
 }

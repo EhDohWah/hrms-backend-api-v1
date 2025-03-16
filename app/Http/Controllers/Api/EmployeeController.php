@@ -26,7 +26,7 @@ class EmployeeController extends Controller
      * @OA\Get(
      *     path="/employees",
      *     summary="Get all employees",
-     *     description="Returns a list of all employees",
+     *     description="Returns a list of all employees with related data",
      *     operationId="getEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
@@ -48,7 +48,19 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
-        $employees = Employee::all();
+        $employees = Employee::with([
+            'employment',
+            'employment.department',
+            'employment.position',
+            'employment.employmentType',
+            'employment.workLocation',
+            'employment.grantItem',
+            'employment.grantItem.grant',
+            'employment.supervisor',
+            'employeeBeneficiaries',
+            'employeeIdentification'
+        ])->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Employees retrieved successfully',
@@ -62,7 +74,7 @@ class EmployeeController extends Controller
      * @OA\Get(
      *     path="/employees/{id}",
      *     summary="Get a single employee",
-     *     description="Returns a single employee by ID",
+     *     description="Returns a single employee by ID with related data",
      *     operationId="getEmployeeById",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
@@ -90,7 +102,18 @@ class EmployeeController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $employee = Employee::find($id);
+        $employee = Employee::with([
+            'employment',
+            'employment.department',
+            'employment.position',
+            'employment.employmentType',
+            'employment.workLocation',
+            'employment.grantItem',
+            'employment.grantItem.grant',
+            'employment.supervisor',
+            'employeeBeneficiaries',
+            'employeeIdentification'
+        ])->find($id);
 
         if (!$employee) {
             return response()->json([
@@ -105,7 +128,6 @@ class EmployeeController extends Controller
             'data' => $employee
         ]);
     }
-
 
     /**
      * Create a new employee
@@ -670,6 +692,192 @@ class EmployeeController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Validate uploaded file
+     *
+     * @param \Illuminate\Http\Request $request
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    private function validateFile(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240' // Added max file size
+        ]);
+    }
+
+    /**
+     * Convert string value to float
+     *
+     * @param mixed $value Value to convert
+     * @return float|null Converted float value or null if input is null
+     */
+    private function toFloat($value): ?float
+    {
+        if (is_null($value)) return null;
+        return floatval(preg_replace('/[^0-9.-]/', '', $value));
+    }
+
+    /**
+     * Upload employee data from Excel file
+     *
+     * @OA\Post(
+     *     path="/employees/upload",
+     *     summary="Upload employee data from Excel file",
+     *     description="Upload employee data from Excel file",
+     *     operationId="uploadEmployeeData",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Excel file containing employee data",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"file"},
+     *                 @OA\Property(
+     *                     property="file",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Excel file containing employee data"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employee data uploaded successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee data uploaded successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation error"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     )
+     * )
+     */
+    public function uploadEmployeeData(Request $request)
+    {
+        $this->validateFile($request);
+
+        $file = $request->file('file');
+        $filePath = $file->getRealPath();
+
+        $data = Excel::toArray(new EmployeeImport, $filePath);
+
+        if (empty($data)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No data found in the uploaded file'
+            ], 422);
+        }
+
+        $employeeData = $data[0];
+        $errors = [];
+
+        foreach ($employeeData as $row) {
+            $staffId = $row[0];
+            $subsidiary = $row[1];
+            $firstName = $row[2];
+            $middleName = $row[3];
+            $lastName = $row[4];
+            $gender = $row[5];
+            $dateOfBirth = $row[6];
+            $status = $row[7];
+            $religion = $row[8];
+            $birthPlace = $row[9];
+            $identificationNumber = $row[10];
+            $socialSecurityNumber = $row[11];
+            $taxNumber = $row[12];
+            $passportNumber = $row[13];
+            $bankName = $row[14];
+            $bankBranch = $row[15];
+            $bankAccountNumber = $row[16];
+            $officePhone = $row[17];
+            $mobilePhone = $row[18];
+            $permanentAddress = $row[19];
+            $currentAddress = $row[20];
+            $stayWith = $row[21];
+            $militaryStatus = $row[22];
+            $maritalStatus = $row[23];
+            $spouseName = $row[24];
+            $spouseOccupation = $row[25];
+            $fatherName = $row[26];
+            $fatherOccupation = $row[27];
+            $motherName = $row[28];
+            $motherOccupation = $row[29];
+            $driverLicenseNumber = $row[30];
+            $email = $row[31];
+
+            // Validate required fields
+            if (empty($staffId) || empty($subsidiary) || empty($firstName) || empty($lastName) || empty($gender) || empty($dateOfBirth) || empty($status)) {
+                $errors[] = "Missing required fields for employee: $staffId";
+                continue;
+            }
+
+            // Check if employee already exists
+            $existingEmployee = Employee::where('staff_id', $staffId)->first();
+
+            if ($existingEmployee) {
+                $errors[] = "Employee already exists: $staffId";
+                continue;
+            }
+
+            // Create new employee
+            $employee = new Employee();
+            $employee->staff_id = $staffId;
+            $employee->subsidiary = $subsidiary;
+            $employee->first_name = $firstName;
+            $employee->middle_name = $middleName;
+            $employee->last_name = $lastName;
+            $employee->gender = $gender;
+            $employee->date_of_birth = $dateOfBirth;
+            $employee->status = $status;
+            $employee->religion = $religion;
+            $employee->birth_place = $birthPlace;
+            $employee->identification_number = $identificationNumber;
+            $employee->social_security_number = $socialSecurityNumber;
+            $employee->tax_number = $taxNumber;
+            $employee->passport_number = $passportNumber;
+            $employee->bank_name = $bankName;
+            $employee->bank_branch = $bankBranch;
+            $employee->bank_account_number = $bankAccountNumber;
+            $employee->office_phone = $officePhone;
+            $employee->mobile_phone = $mobilePhone;
+            $employee->permanent_address = $permanentAddress;
+            $employee->current_address = $currentAddress;
+            $employee->stay_with = $stayWith;
+            $employee->military_status = $militaryStatus;
+            $employee->marital_status = $maritalStatus;
+            $employee->spouse_name = $spouseName;
+            $employee->spouse_occupation = $spouseOccupation;
+            $employee->father_name = $fatherName;
+            $employee->father_occupation = $fatherOccupation;
+            $employee->mother_name = $motherName;
+            $employee->mother_occupation = $motherOccupation;
+            $employee->driver_license_number = $driverLicenseNumber;
+            $employee->email = $email;
+
+            $employee->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee data uploaded successfully',
+            'data' => $employeeData
+        ]);
+    }
+
 
 
 }

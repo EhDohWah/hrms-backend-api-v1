@@ -63,16 +63,15 @@ class Employee extends Model
         'subsidiary',
         'user_id',
         'first_name',
-        'middle_name',
         'last_name',
-        'email',
+        'first_name_th',
+        'last_name_th',
         'profile_picture',
         'gender',
         'date_of_birth',
         'status',
+        'nationality',
         'religion',
-        'birth_place',
-        'identification_number',
         'social_security_number',
         'tax_number',
         'passport_number',
@@ -80,11 +79,9 @@ class Employee extends Model
         'bank_branch',
         'bank_account_name',
         'bank_account_number',
-        'office_phone',
         'mobile_phone',
         'permanent_address',
         'current_address',
-        'stay_with',
         'military_status',
         'marital_status',
         'spouse_name',
@@ -94,6 +91,7 @@ class Employee extends Model
         'mother_name',
         'mother_occupation',
         'driver_license_number',
+        'remark',
         'created_by',
         'updated_by'
     ];
@@ -120,9 +118,16 @@ class Employee extends Model
         return !is_null($this->user_id);
     }
 
-    // grant-position relationship
-    public function grantPosition()
+
+    // employee-beneficiary relationship
+    public function employeeBeneficiaries()
     {
-        return $this->hasOne(GrantPosition::class);
+        return $this->hasMany(EmployeeBeneficiary::class);
+    }
+
+    // employee-identification relationship
+    public function employeeIdentification()
+    {
+        return $this->hasOne(EmployeeIdentification::class);
     }
 }

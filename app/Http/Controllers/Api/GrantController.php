@@ -11,6 +11,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Employee;
+use App\Models\Position;
+use App\Models\Employment;
 
 /**
  * @OA\Tag(
@@ -202,7 +205,8 @@ class GrantController extends Controller
                     // No need for position relationship now
                 }
             ])
-            ->get(['id', 'code', 'name', 'end_date']); // Select only necessary columns from the Grant table
+            ->orderBy('created_at', 'desc') // Order by created_at in descending order to show latest grants first
+            ->get(['id', 'code', 'name', 'description', 'end_date']); // Select only necessary columns from the Grant table
 
         return response()->json([
             'status' => 'success',
@@ -218,8 +222,6 @@ class GrantController extends Controller
         try {
             $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
             $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
-            $endDate = null;
-
             // Try to extract end date if available
             if (isset($data[3]['A'])) {
                 $endDateStr = trim(str_replace('End date -', '', $data[3]['A'] ?? ''));
@@ -231,6 +233,8 @@ class GrantController extends Controller
                     }
                 }
             }
+
+            $description = trim(str_replace('Description -', '', $data[4]['A'] ?? ''));
 
             // Validate required fields
             if (empty($grantCode)) {
@@ -248,6 +252,7 @@ class GrantController extends Controller
                 [
                     'name' => $grantName,
                     'end_date' => $endDate,
+                    'description' => $description,
                     'created_by' => auth()->user()->name ?? 'system',
                     'updated_by' => auth()->user()->name ?? 'system',
                 ]
@@ -515,5 +520,511 @@ class GrantController extends Controller
         return response()->json($grantItem, 201);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/grant-items/{id}",
+     *     summary="Update a grant item",
+     *     description="Update an existing grant item by ID",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Grant item ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="grant_id", type="integer", example=1),
+     *             @OA\Property(property="bg_line", type="string", example="BG-123"),
+     *             @OA\Property(property="grant_position", type="string", example="Project Manager"),
+     *             @OA\Property(property="grant_salary", type="number", example=5000),
+     *             @OA\Property(property="grant_benefit", type="number", example=1000),
+     *             @OA\Property(property="grant_level_of_effort", type="number", example=0.75),
+     *             @OA\Property(property="grant_position_number", type="string", example="P-123"),
+     *             @OA\Property(property="grant_cost_by_monthly", type="number", example=4500),
+     *             @OA\Property(property="grant_total_amount", type="number", example=54000),
+     *             @OA\Property(property="grant_total_cost_by_person", type="number", example=54000),
+     *             @OA\Property(property="position_id", type="string", example="POS-123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grant item updated successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/GrantItem")
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant item not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Grant item not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission"
+     *     )
+     * )
+     */
+    public function updateGrantItem(Request $request, $id)
+    {
+        // Find the grant item or return 404
+        $grantItem = GrantItem::findOrFail($id);
+
+        // Validate the request
+        $validated = $request->validate([
+            'grant_id' => 'sometimes|required|exists:grants,id',
+            'bg_line' => 'sometimes|required|string',
+            'grant_position' => 'nullable|string',
+            'grant_salary' => 'nullable|numeric',
+            'grant_benefit' => 'nullable|numeric',
+            'grant_level_of_effort' => 'nullable|numeric|min:0|max:1',
+            'grant_position_number' => 'nullable|string',
+            'grant_cost_by_monthly' => 'nullable|numeric',
+            'grant_total_amount' => 'nullable|numeric',
+            'grant_total_cost_by_person' => 'nullable|numeric',
+            'position_id' => 'nullable|string',
+        ]);
+
+        // Check for duplicates if bg_line or grant_id is being changed
+        if (($request->has('bg_line') && $request->bg_line !== $grantItem->bg_line) ||
+            ($request->has('grant_id') && $request->grant_id !== $grantItem->grant_id)) {
+
+            $existingItem = GrantItem::where('grant_id', $request->grant_id ?? $grantItem->grant_id)
+                ->where('bg_line', $request->bg_line ?? $grantItem->bg_line)
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($existingItem) {
+                return response()->json([
+                    'message' => 'The given data was invalid',
+                    'errors' => [
+                        'bg_line' => ['Duplicate item with this BG Line already exists for this grant']
+                    ]
+                ], 422);
+            }
+        }
+
+        // Add user info
+        $validated['updated_by'] = auth()->user()->name ?? 'system';
+
+        // Update the grant item
+        $grantItem->update($validated);
+
+        return response()->json($grantItem);
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/grants/{id}",
+     *     summary="Delete a grant",
+     *     description="Delete a grant and all its associated items",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Grant ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grant deleted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant deleted successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Grant not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to delete grant"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function deleteGrant($id)
+    {
+        try {
+            // Find the grant or return 404
+            $grant = Grant::findOrFail($id);
+
+            // Use a transaction to ensure all related items are deleted
+            DB::beginTransaction();
+
+            // Delete all related grant items first
+            $grant->grantItems()->delete();
+
+            // Delete the grant
+            $grant->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant deleted successfully'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Grant not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete grant',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/grant-items/{id}",
+     *     summary="Delete a grant item",
+     *     description="Delete a specific grant item by ID",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Grant item ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="Grant item deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant item not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Grant item not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Failed to delete grant item"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function deleteGrantItem($id)
+    {
+        try {
+            $grantItem = GrantItem::findOrFail($id);
+            $grant = $grantItem->grant;
+
+            DB::transaction(function () use ($grantItem, $grant) {
+                $grantItem->delete();
+                if ($grant && $grant->items()->count() === 0) {
+                    $grant->delete();
+                }
+            });
+
+            return response()->json(null, 204);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Grant item not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete grant item',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/grants/{id}",
+     *     operationId="updateGrant",
+     *     summary="Update a grant",
+     *     description="Updates an existing grant with the provided data",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID of the grant to update",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string", example="Updated Grant Name"),
+     *             @OA\Property(property="code", type="string", example="GR-2023-002"),
+     *             @OA\Property(property="description", type="string", example="Updated grant description"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2023-12-31")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grant updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/Grant"),
+     *             @OA\Property(property="message", type="string", example="Grant updated successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Grant not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to update grant")
+     *         )
+     *     )
+     * )
+     */
+    public function updateGrant(Request $request, $id)
+    {
+        try {
+            // Validate the request data
+            $validator = Validator::make($request->all(), [
+                'name' => 'sometimes|required|string|max:255',
+                'code' => 'sometimes|required|string|max:255',
+                'description' => 'nullable|string',
+                'end_date' => 'nullable|date'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Find the grant
+            $grant = Grant::findOrFail($id);
+
+            // Update the grant
+            $grant->update($request->all());
+            $grant->updated_by = auth()->user()->name ?? 'system';
+            $grant->save();
+
+            return response()->json([
+                'success' => true,
+                'data' => $grant,
+                'message' => 'Grant updated successfully'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Grant not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update grant: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/grants/grant-positions",
+     *     operationId="getGrantStatistics",
+     *     summary="Get grant statistics with position recruitment status",
+     *     description="Retrieves statistics for all grants including position recruitment status",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant statistics retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="grant_id", type="integer", example=1),
+     *                     @OA\Property(property="grant_code", type="string", example="GR-001"),
+     *                     @OA\Property(property="grant_name", type="string", example="Research Grant"),
+     *                     @OA\Property(property="budget_line", type="string", example="123456"),
+     *                     @OA\Property(
+     *                         property="positions",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             @OA\Property(property="position", type="string", example="Researcher"),
+     *                             @OA\Property(property="manpower", type="integer", example=3),
+     *                             @OA\Property(property="recruited", type="integer", example=2),
+     *                             @OA\Property(property="finding", type="integer", example=1)
+     *                         )
+     *                     ),
+     *                     @OA\Property(property="total_manpower", type="integer", example=5),
+     *                     @OA\Property(property="total_recruited", type="integer", example=3),
+     *                     @OA\Property(property="total_finding", type="integer", example=2),
+     *                     @OA\Property(property="status", type="string", example="Active", enum={"Completed", "Active", "Pending"})
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access grant statistics"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve grant statistics"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function getGrantPositions(Request $request)
+    {
+        try {
+            // Eager-load grantItems to minimize queries
+            $grants = Grant::with('grantItems')->get();
+
+            // If no grants exist, return an empty result
+            if ($grants->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data'    => [],
+                    'message' => 'No grants found'
+                ]);
+            }
+
+            $grantStats = [];
+
+            foreach ($grants as $grant) {
+                $totalPositions      = 0;  // Sum of all position_number across this grant
+                $recruitedPositions  = 0;  // Sum of all currently hired employees
+                $openPositions       = 0;  // Positions still open = totalPositions - recruitedPositions
+                $grantPositions      = []; // Detailed breakdown of each position
+
+                // Loop through each grant item to build statistics
+                foreach ($grant->grantItems as $item) {
+                    // position_number is how many people can fill this role
+                    // grant_position (or position_title) is the name of the role
+                    $positionTitle = $item->grant_position;
+                    $manpower      = $item->grant_position_number ?? 0; // Adjust based on your column name
+                    $budgetLine    = $item->bg_line; // Get budget line for each grant item
+
+                    // Count how many active employees are linked to this item
+                    $activeEmployees = Employment::where('grant_item_id', $item->id)
+                        ->where(function ($query) {
+                            $query->whereNull('end_date')
+                                  ->orWhere('end_date', '>', now());
+                        })
+                        ->count();
+
+                    // Update aggregates
+                    // $totalPositions     += $manpower;
+                    // $recruitedPositions += $activeEmployees;
+                    // $openPositions      += ($manpower - $activeEmployees);
+
+                    // Add this position's breakdown
+                    $grantPositions[] = [
+                        'position'    => $positionTitle,
+                        'budget_line' => $budgetLine,
+                        'manpower'    => $manpower,
+                        'recruited'   => $activeEmployees,
+                        'finding'     => $manpower - $activeEmployees,
+                    ];
+                }
+
+                // Determine overall grant status
+                // 1) If the grant's end_date is in the past => Completed
+                // 2) If recruitedPositions == totalPositions => Completed
+                // 3) If recruitedPositions == 0 => Pending
+                // 4) Otherwise => Active
+                // $status = 'Active';
+                // if ($grant->end_date && $grant->end_date < now()) {
+                //     $status = 'Completed';
+                // } elseif ($recruitedPositions == $totalPositions) {
+                //     $status = 'Completed';
+                // } elseif ($recruitedPositions == 0) {
+                //     $status = 'Pending';
+                // }
+
+                // Build the grant statistics array
+                $grantStats[] = [
+                    'grant_id'         => $grant->id,
+                    'grant_code'       => $grant->code,
+                    'grant_name'       => $grant->name,
+                    'positions'        => $grantPositions,
+                    // 'total_manpower'   => $totalPositions,
+                    // 'total_recruited'  => $recruitedPositions,
+                    // 'total_finding'    => $openPositions,
+                    // 'status'           => $status,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data'    => $grantStats,
+                'message' => 'Grant statistics retrieved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant statistics: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

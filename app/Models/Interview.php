@@ -30,7 +30,6 @@ class Interview extends Model
     use HasFactory;
     protected $fillable = [
         'candidate_id',
-        'grant_position_id',
         'interviewer_name',
         'interview_date',
         'start_time',
