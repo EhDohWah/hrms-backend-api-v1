@@ -18,13 +18,8 @@ return new class extends Migration
             $table->string('grant_position')->nullable();
             $table->decimal('grant_salary', 15, 2)->nullable();
             $table->decimal('grant_benefit', 15, 2)->nullable();
-            $table->string('grant_level_of_effort')->nullable();
+            $table->decimal('grant_level_of_effort', 5, 2)->nullable();
             $table->string('grant_position_number')->nullable();
-            $table->string('grant_cost_by_monthly')->nullable();
-            $table->string('grant_total_cost_by_person')->nullable();
-            $table->decimal('grant_benefit_fte', 15, 2)->nullable();
-            $table->string('position_id')->nullable();
-            $table->decimal('grant_total_amount', 15, 2)->nullable();
             $table->timestamps();
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();

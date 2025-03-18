@@ -23,8 +23,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
-            $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
         });
 
         // Leave Requests
@@ -39,8 +39,8 @@ return new class extends Migration
             $table->string('status', 50)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
-            $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
 
             $table->foreign('employee_id')
                   ->references('id')
@@ -61,8 +61,8 @@ return new class extends Migration
             $table->decimal('remaining_days', 18, 2)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
-            $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
 
             $table->foreign('employee_id')
                   ->references('id')
@@ -86,8 +86,8 @@ return new class extends Migration
             $table->string('status', 50)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
-            $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
 
             $table->foreign('leave_request_id')
                   ->references('id')
@@ -103,8 +103,8 @@ return new class extends Migration
             $table->date('date')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
-            $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
         });
     }
 

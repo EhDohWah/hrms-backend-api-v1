@@ -169,9 +169,6 @@ class GrantController extends Controller
      *                             @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
      *                             @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75),
      *                             @OA\Property(property="grant_position_number", type="string", example="POS-001"),
-     *                             @OA\Property(property="grant_cost_by_monthly", type="number", format="float", example=7500),
-     *                             @OA\Property(property="grant_total_amount", type="number", format="float", example=90000),
-     *                             @OA\Property(property="grant_total_cost_by_person", type="number", format="float", example=90000)
      *                         )
      *                     )
      *                 )
@@ -201,7 +198,7 @@ class GrantController extends Controller
     {
         $grants = Grant::with([
                 'grantItems' => function($query) {
-                    $query->select('id', 'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number', 'grant_cost_by_monthly', 'grant_total_amount', 'grant_total_cost_by_person');
+                    $query->select('id', 'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
                     // No need for position relationship now
                 }
             ])
@@ -279,12 +276,15 @@ class GrantController extends Controller
         $grantItems = [];
 
         try {
-            for ($i = 4; $i < count($data); $i++) {
+            // Skip header rows (1-6) and start processing from row 7
+            $headerRowsCount = 6;
+
+            for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
                 $row = $data[$i];
                 $bgLine = $row['A'] ?? null;
 
-                // Validate row
-                if (!is_numeric(trim(str_replace(',', '', $bgLine)))) {
+                // Skip empty rows or non-data rows
+                if (empty($bgLine)) {
                     continue;
                 }
 
@@ -298,27 +298,28 @@ class GrantController extends Controller
                     continue;
                 }
 
-                // Prepare item data
+                // Prepare item data based on the updated schema
+                // Handle empty cells by explicitly setting them to null
                 $grantItems[] = [
                     'grant_id' => $grant->id,
                     'bg_line' => $bgLine,
-                    'grant_position' => $row['B'] ?? null,
-                    'grant_salary' => $this->toFloat($row['C']),
-                    'grant_benefit' => $this->toFloat($row['D']),
-                    'grant_level_of_effort' => isset($row['E']) ? trim(str_replace('%', '', $row['E'])) : null,
-                    'grant_position_number' => $row['F'] ?? null,
-                    'grant_cost_by_monthly' => $this->toFloat($row['G']),
-                    'grant_total_amount' => $this->toFloat($row['H']),
-                    'grant_total_cost_by_person' => $this->toFloat($row['I']),
-                    'position_id' => $row['J'] ?? null,
+                    'grant_position' => isset($row['B']) && $row['B'] !== '' ? $row['B'] : null,
+                    'grant_salary' => isset($row['C']) && $row['C'] !== '' ? $this->toFloat($row['C']) : null,
+                    'grant_benefit' => isset($row['D']) && $row['D'] !== '' ? $this->toFloat($row['D']) : null,
+                    'grant_level_of_effort' => isset($row['E']) && $row['E'] !== '' ?
+                        (float)trim(str_replace('%', '', $row['E'])) : null,
+                    'grant_position_number' => isset($row['F']) && $row['F'] !== '' ? $row['F'] : null,
                     'created_by' => auth()->user()->name ?? 'system',
                     'updated_by' => auth()->user()->name ?? 'system',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ];
+
+                $itemsProcessed++;
             }
 
             if (!empty($grantItems)) {
                 GrantItem::insert($grantItems);
-                $itemsProcessed = count($grantItems);
             }
         } catch (\Exception $e) {
             $errors[] = "Sheet '$sheetName': Error processing items - " . $e->getMessage();
@@ -445,10 +446,6 @@ class GrantController extends Controller
      *             @OA\Property(property="grant_benefit", type="number", format="float", example=15000, description="Benefits amount"),
      *             @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75, description="Level of effort (0-1)"),
      *             @OA\Property(property="grant_position_number", type="string", example="POS-001", description="Position identifier"),
-     *             @OA\Property(property="grant_cost_by_monthly", type="number", format="float", example=7500, description="Monthly cost"),
-     *             @OA\Property(property="grant_total_cost_by_person", type="number", format="float", example=90000, description="Total cost per person"),
-     *             @OA\Property(property="grant_total_amount", type="number", format="float", example=90000, description="Total grant amount"),
-     *             @OA\Property(property="position_id", type="string", example="P123", description="Position reference ID")
      *         )
      *     ),
      *     @OA\Response(
@@ -494,10 +491,6 @@ class GrantController extends Controller
             'grant_benefit' => 'nullable|numeric',
             'grant_level_of_effort' => 'nullable|numeric',
             'grant_position_number' => 'nullable|string',
-            'grant_cost_by_monthly' => 'nullable|numeric',
-            'grant_total_amount' => 'nullable|numeric',
-            'grant_total_cost_by_person' => 'nullable|numeric',
-            'position_id' => 'nullable|string',
         ]);
 
         // Check for duplicates
@@ -544,10 +537,6 @@ class GrantController extends Controller
      *             @OA\Property(property="grant_benefit", type="number", example=1000),
      *             @OA\Property(property="grant_level_of_effort", type="number", example=0.75),
      *             @OA\Property(property="grant_position_number", type="string", example="P-123"),
-     *             @OA\Property(property="grant_cost_by_monthly", type="number", example=4500),
-     *             @OA\Property(property="grant_total_amount", type="number", example=54000),
-     *             @OA\Property(property="grant_total_cost_by_person", type="number", example=54000),
-     *             @OA\Property(property="position_id", type="string", example="POS-123")
      *         )
      *     ),
      *     @OA\Response(
@@ -590,10 +579,6 @@ class GrantController extends Controller
             'grant_benefit' => 'nullable|numeric',
             'grant_level_of_effort' => 'nullable|numeric|min:0|max:1',
             'grant_position_number' => 'nullable|string',
-            'grant_cost_by_monthly' => 'nullable|numeric',
-            'grant_total_amount' => 'nullable|numeric',
-            'grant_total_cost_by_person' => 'nullable|numeric',
-            'position_id' => 'nullable|string',
         ]);
 
         // Check for duplicates if bg_line or grant_id is being changed
@@ -894,12 +879,12 @@ class GrantController extends Controller
      *                     @OA\Property(property="grant_id", type="integer", example=1),
      *                     @OA\Property(property="grant_code", type="string", example="GR-001"),
      *                     @OA\Property(property="grant_name", type="string", example="Research Grant"),
-     *                     @OA\Property(property="budget_line", type="string", example="123456"),
      *                     @OA\Property(
      *                         property="positions",
      *                         type="array",
      *                         @OA\Items(
      *                             @OA\Property(property="position", type="string", example="Researcher"),
+     *                             @OA\Property(property="budget_line", type="string", example="BL-123"),
      *                             @OA\Property(property="manpower", type="integer", example=3),
      *                             @OA\Property(property="recruited", type="integer", example=2),
      *                             @OA\Property(property="finding", type="integer", example=1)
@@ -936,7 +921,7 @@ class GrantController extends Controller
     {
         try {
             // Eager-load grantItems to minimize queries
-            $grants = Grant::with('grantItems')->get();
+            $grants = Grant::with('grantItems.employmentGrantAllocations')->get();
 
             // If no grants exist, return an empty result
             if ($grants->isEmpty()) {
@@ -963,8 +948,9 @@ class GrantController extends Controller
                     $manpower      = $item->grant_position_number ?? 0; // Adjust based on your column name
                     $budgetLine    = $item->bg_line; // Get budget line for each grant item
 
-                    // Count how many active employees are linked to this item
-                    $activeEmployees = Employment::where('grant_item_id', $item->id)
+                    // Count how many active allocations are linked to this grant item
+                    $activeAllocations = $item->employmentGrantAllocations()
+                        ->where('active', true)
                         ->where(function ($query) {
                             $query->whereNull('end_date')
                                   ->orWhere('end_date', '>', now());
@@ -972,33 +958,29 @@ class GrantController extends Controller
                         ->count();
 
                     // Update aggregates
-                    // $totalPositions     += $manpower;
-                    // $recruitedPositions += $activeEmployees;
-                    // $openPositions      += ($manpower - $activeEmployees);
+                    $totalPositions     += $manpower;
+                    $recruitedPositions += $activeAllocations;
+                    $openPositions      += ($manpower - $activeAllocations);
 
                     // Add this position's breakdown
                     $grantPositions[] = [
                         'position'    => $positionTitle,
                         'budget_line' => $budgetLine,
                         'manpower'    => $manpower,
-                        'recruited'   => $activeEmployees,
-                        'finding'     => $manpower - $activeEmployees,
+                        'recruited'   => $activeAllocations,
+                        'finding'     => $manpower - $activeAllocations,
                     ];
                 }
 
                 // Determine overall grant status
-                // 1) If the grant's end_date is in the past => Completed
-                // 2) If recruitedPositions == totalPositions => Completed
-                // 3) If recruitedPositions == 0 => Pending
-                // 4) Otherwise => Active
-                // $status = 'Active';
-                // if ($grant->end_date && $grant->end_date < now()) {
-                //     $status = 'Completed';
-                // } elseif ($recruitedPositions == $totalPositions) {
-                //     $status = 'Completed';
-                // } elseif ($recruitedPositions == 0) {
-                //     $status = 'Pending';
-                // }
+                $status = 'Active';
+                if ($grant->end_date && $grant->end_date < now()) {
+                    $status = 'Completed';
+                } elseif ($recruitedPositions == $totalPositions && $totalPositions > 0) {
+                    $status = 'Completed';
+                } elseif ($recruitedPositions == 0 && $totalPositions > 0) {
+                    $status = 'Pending';
+                }
 
                 // Build the grant statistics array
                 $grantStats[] = [
@@ -1009,7 +991,7 @@ class GrantController extends Controller
                     // 'total_manpower'   => $totalPositions,
                     // 'total_recruited'  => $recruitedPositions,
                     // 'total_finding'    => $openPositions,
-                    // 'status'           => $status,
+                    'status'           => $status,
                 ];
             }
 

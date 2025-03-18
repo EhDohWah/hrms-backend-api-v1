@@ -23,6 +23,7 @@ return new class extends Migration
                 'description'      => 'Annual vacation leave.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Traditional Day-Off',
@@ -30,6 +31,7 @@ return new class extends Migration
                 'description'      => 'Traditional day-off leave. Specific details may apply.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Sick (State Disease)',
@@ -37,6 +39,7 @@ return new class extends Migration
                 'description'      => 'Sick leave for state-certified diseases.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Maternity or Paternity',
@@ -44,6 +47,7 @@ return new class extends Migration
                 'description'      => 'Leave for maternity or paternity purposes.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Compassionate',
@@ -51,6 +55,7 @@ return new class extends Migration
                 'description'      => 'Compassionate leave for death or severe illness in immediate family (spouse, children, parents, in-laws, siblings, or grandparents).',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Career Development Training',
@@ -58,6 +63,7 @@ return new class extends Migration
                 'description'      => 'Leave for career development training. Please attach the training request form.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Personal Leave',
@@ -65,6 +71,7 @@ return new class extends Migration
                 'description'      => 'Personal leave for individual matters.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Military Leave',
@@ -72,6 +79,7 @@ return new class extends Migration
                 'description'      => 'Leave for military duties or training.',
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
             [
                 'name'             => 'Sterilization Leave',
@@ -79,6 +87,7 @@ return new class extends Migration
                 'description'      => "Leave for sterilization procedures. Duration depends on doctor's consideration.",
                 'created_at'       => $now,
                 'updated_at'       => $now,
+                'created_by'       => 'Migration',
             ],
         ];
 

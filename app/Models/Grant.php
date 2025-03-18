@@ -43,6 +43,6 @@ class Grant extends Model
 
     public function grantItems()
     {
-        return $this->hasMany(GrantItem::class);
+        return $this->hasMany(GrantItem::class, 'grant_id');
     }
 }

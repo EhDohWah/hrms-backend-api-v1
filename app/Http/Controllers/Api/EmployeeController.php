@@ -9,6 +9,7 @@ use Illuminate\Validation\Rule;
 use App\Models\WorkLocation;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\EmploymentGrantAllocation;
 
 
 
@@ -54,8 +55,8 @@ class EmployeeController extends Controller
             'employment.position',
             'employment.employmentType',
             'employment.workLocation',
-            'employment.grantItem',
-            'employment.grantItem.grant',
+            'employment.grantAllocations.grantItemAllocation',
+            'employment.grantAllocations.grantItemAllocation.grant',
             'employment.supervisor',
             'employeeBeneficiaries',
             'employeeIdentification'
@@ -108,8 +109,8 @@ class EmployeeController extends Controller
             'employment.position',
             'employment.employmentType',
             'employment.workLocation',
-            'employment.grantItem',
-            'employment.grantItem.grant',
+            'employment.grantAllocations.grantItemAllocation',
+            'employment.grantAllocations.grantItemAllocation.grant',
             'employment.supervisor',
             'employeeBeneficiaries',
             'employeeIdentification'
@@ -878,6 +879,41 @@ class EmployeeController extends Controller
         ]);
     }
 
+
+    // employee grant-item add
+    public function addEmployeeGrantItem(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'grant_item_id' => 'required|exists:grant_items,id',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date',
+            'amount' => 'required|numeric',
+            'currency' => 'required|string',
+            'payment_method' => 'required|string',
+            'payment_account' => 'required|string',
+            'payment_account_name' => 'required|string',
+        ]);
+
+        $employee = Employee::find($request->employee_id);
+        $grantItem = GrantItem::find($request->grant_item_id);
+
+        $employee->grant_items()->attach($grantItem, [
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'amount' => $request->amount,
+            'currency' => $request->currency,
+            'payment_method' => $request->payment_method,
+            'payment_account' => $request->payment_account,
+            'payment_account_name' => $request->payment_account_name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee grant-item added successfully',
+            'data' => $employee
+        ]);
+    }
 
 
 }

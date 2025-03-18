@@ -61,7 +61,6 @@ return new class extends Migration
                 'updated_at'          => now(),
                 'created_by'          => 'Migration',
                 'updated_by'          => 'Migration',
-                'grant_item_id'       => null,
             ],
             [
                 'employee_id'         => $employee2->id,
@@ -86,7 +85,7 @@ return new class extends Migration
                 'updated_at'          => now(),
                 'created_by'          => 'Migration',
                 'updated_by'          => 'Migration',
-                'grant_item_id'       => null,
+
             ],
             [
                 'employee_id'         => $employee3->id,
@@ -111,7 +110,6 @@ return new class extends Migration
                 'updated_at'          => now(),
                 'created_by'          => 'Migration',
                 'updated_by'          => 'Migration',
-                'grant_item_id'       => null,
             ],
             [
                 'employee_id'         => $employee4->id,
@@ -136,7 +134,6 @@ return new class extends Migration
                 'updated_at'          => now(),
                 'created_by'          => 'Migration',
                 'updated_by'          => 'Migration',
-                'grant_item_id'       => null,
             ],
         ]);
     }

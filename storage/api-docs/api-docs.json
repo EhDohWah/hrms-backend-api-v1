@@ -609,7 +609,7 @@
                     "Employees"
                 ],
                 "summary": "Get all employees",
-                "description": "Returns a list of all employees",
+                "description": "Returns a list of all employees with related data",
                 "operationId": "getEmployees",
                 "responses": {
                     "200": {
@@ -910,7 +910,7 @@
                     "Employees"
                 ],
                 "summary": "Get a single employee",
-                "description": "Returns a single employee by ID",
+                "description": "Returns a single employee by ID with related data",
                 "operationId": "getEmployeeById",
                 "parameters": [
                     {
@@ -2196,6 +2196,179 @@
                 ]
             }
         },
+        "/employments/employment-grant-allocations": {
+            "post": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Add an employment grant allocation",
+                "description": "Creates a new employment grant allocation for an employee",
+                "operationId": "addEmploymentGrantAllocation",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "employment_id",
+                                    "grant_items_id",
+                                    "level_of_effort",
+                                    "start_date"
+                                ],
+                                "properties": {
+                                    "employment_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "grant_items_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "level_of_effort": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 100
+                                    },
+                                    "start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-01-01"
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2023-12-31"
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment grant allocation added successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EmploymentGrantAllocation"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - Grant position limit reached",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cannot add more allocations. Grant position limit reached."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employments/employment-grant-allocations/{id}": {
+            "delete": {
+                "tags": [
+                    "Employments"
+                ],
+                "summary": "Delete an employment grant allocation",
+                "description": "Deletes an employment grant allocation by ID",
+                "operationId": "deleteEmploymentGrantAllocation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the employment grant allocation",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment grant allocation deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employment grant allocation not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employment grant allocation not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/grants/upload": {
             "post": {
                 "tags": [
@@ -2352,21 +2525,6 @@
                                                                 "grant_position_number": {
                                                                     "type": "string",
                                                                     "example": "POS-001"
-                                                                },
-                                                                "grant_cost_by_monthly": {
-                                                                    "type": "number",
-                                                                    "format": "float",
-                                                                    "example": 7500
-                                                                },
-                                                                "grant_total_amount": {
-                                                                    "type": "number",
-                                                                    "format": "float",
-                                                                    "example": 90000
-                                                                },
-                                                                "grant_total_cost_by_person": {
-                                                                    "type": "number",
-                                                                    "format": "float",
-                                                                    "example": 90000
                                                                 }
                                                             },
                                                             "type": "object"
@@ -2556,29 +2714,6 @@
                                         "description": "Position identifier",
                                         "type": "string",
                                         "example": "POS-001"
-                                    },
-                                    "grant_cost_by_monthly": {
-                                        "description": "Monthly cost",
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 7500
-                                    },
-                                    "grant_total_cost_by_person": {
-                                        "description": "Total cost per person",
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 90000
-                                    },
-                                    "grant_total_amount": {
-                                        "description": "Total grant amount",
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 90000
-                                    },
-                                    "position_id": {
-                                        "description": "Position reference ID",
-                                        "type": "string",
-                                        "example": "P123"
                                     }
                                 },
                                 "type": "object"
@@ -2705,22 +2840,6 @@
                                     "grant_position_number": {
                                         "type": "string",
                                         "example": "P-123"
-                                    },
-                                    "grant_cost_by_monthly": {
-                                        "type": "number",
-                                        "example": 4500
-                                    },
-                                    "grant_total_amount": {
-                                        "type": "number",
-                                        "example": 54000
-                                    },
-                                    "grant_total_cost_by_person": {
-                                        "type": "number",
-                                        "example": 54000
-                                    },
-                                    "position_id": {
-                                        "type": "string",
-                                        "example": "POS-123"
                                     }
                                 },
                                 "type": "object"
@@ -3126,10 +3245,6 @@
                                                         "type": "string",
                                                         "example": "Research Grant"
                                                     },
-                                                    "budget_line": {
-                                                        "type": "string",
-                                                        "example": "123456"
-                                                    },
                                                     "positions": {
                                                         "type": "array",
                                                         "items": {
@@ -3137,6 +3252,10 @@
                                                                 "position": {
                                                                     "type": "string",
                                                                     "example": "Researcher"
+                                                                },
+                                                                "budget_line": {
+                                                                    "type": "string",
+                                                                    "example": "BL-123"
                                                                 },
                                                                 "manpower": {
                                                                     "type": "integer",
@@ -3237,9 +3356,9 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
@@ -3252,8 +3371,13 @@
                                                     "id": {
                                                         "type": "integer"
                                                     },
-                                                    "job_position": {
-                                                        "type": "string"
+                                                    "candidate_id": {
+                                                        "type": "integer",
+                                                        "nullable": true
+                                                    },
+                                                    "interviewer_name": {
+                                                        "type": "string",
+                                                        "nullable": true
                                                     },
                                                     "interview_date": {
                                                         "type": "string",
@@ -3290,10 +3414,6 @@
                                                         "type": "string",
                                                         "nullable": true
                                                     },
-                                                    "resume": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
                                                     "created_by": {
                                                         "type": "string",
                                                         "nullable": true
@@ -3324,6 +3444,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to retrieve interviews"
@@ -3357,17 +3481,16 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "job_position",
-                                    "interview_date",
-                                    "start_time",
-                                    "end_time",
-                                    "interview_mode",
                                     "interview_status"
                                 ],
                                 "properties": {
-                                    "job_position": {
+                                    "candidate_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "interviewer_name": {
                                         "type": "string",
-                                        "maxLength": 255
+                                        "nullable": true
                                     },
                                     "interview_date": {
                                         "type": "string",
@@ -3404,10 +3527,6 @@
                                         "type": "string",
                                         "nullable": true
                                     },
-                                    "resume": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
                                     "created_by": {
                                         "type": "string",
                                         "nullable": true
@@ -3429,9 +3548,9 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
@@ -3452,6 +3571,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Validation failed"
@@ -3471,9 +3594,370 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to create interview"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/interviews/{id}": {
+            "get": {
+                "tags": [
+                    "Interviews"
+                ],
+                "summary": "Get interview details",
+                "description": "Get details of a specific interview",
+                "operationId": "84542473a802321f8503879facb61d60",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Interview ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Interview retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Interview not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve interview"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Interviews"
+                ],
+                "summary": "Update an interview",
+                "description": "Update an existing interview record",
+                "operationId": "fde8508f0873af40ba384643142a37dc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Interview ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "candidate_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "interviewer_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "interview_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "start_time": {
+                                        "type": "string",
+                                        "format": "time"
+                                    },
+                                    "end_time": {
+                                        "type": "string",
+                                        "format": "time"
+                                    },
+                                    "interview_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "in-person",
+                                            "virtual"
+                                        ]
+                                    },
+                                    "interview_status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "scheduled",
+                                            "completed",
+                                            "cancelled"
+                                        ]
+                                    },
+                                    "score": {
+                                        "type": "number",
+                                        "nullable": true
+                                    },
+                                    "feedback": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "updated_by": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Interview updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview updated successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Interview not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to update interview"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Interviews"
+                ],
+                "summary": "Delete an interview",
+                "description": "Delete an existing interview record",
+                "operationId": "7aba3cb1a55aaa9b3b17a7c266b3001c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Interview ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Interview deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Interview not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Interview not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete interview"
                                         },
                                         "error": {
                                             "type": "string"
@@ -5305,11 +5789,6 @@
                         "type": "string",
                         "nullable": true
                     },
-                    "grant_item_id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "nullable": true
-                    },
                     "created_by": {
                         "type": "string",
                         "nullable": true
@@ -5327,6 +5806,53 @@
                         "type": "string",
                         "format": "date-time",
                         "readOnly": true
+                    }
+                },
+                "type": "object"
+            },
+            "EmploymentGrantAllocation": {
+                "title": "Employment Grant Allocation",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "employment_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "grant_items_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "level_of_effort": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.75
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-01-01"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-12-31",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "type": "object"

@@ -47,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment.create');
         Route::put('/{id}', [EmploymentController::class, 'update'])->middleware('permission:employment.update');
         Route::delete('/{id}', [EmploymentController::class, 'destroy'])->middleware('permission:employment.delete');
+        Route::delete('/employment-grant-allocations/{id}', [EmploymentController::class, 'deleteEmploymentGrantAllocation'])->middleware('permission:employment.delete');
+        Route::post('/employment-grant-allocations', [EmploymentController::class, 'addEmploymentGrantAllocation'])->middleware('permission:employment.create');
     });
 
 

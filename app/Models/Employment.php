@@ -35,7 +35,6 @@ use App\Models\GrantItem;
  *     @OA\Property(property="pvd", type="boolean", default=false),
  *     @OA\Property(property="saving_fund", type="boolean", default=false),
  *     @OA\Property(property="social_security_id", type="string", nullable=true),
- *     @OA\Property(property="grant_item_id", type="integer", format="int64", nullable=true),
  *     @OA\Property(property="created_by", type="string", nullable=true),
  *     @OA\Property(property="updated_by", type="string", nullable=true),
  *     @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
@@ -65,7 +64,6 @@ class Employment extends Model
         'pvd',
         'saving_fund',
         'social_security_id',
-        'grant_item_id',
         'created_by',
         'updated_by'
     ];
@@ -96,7 +94,6 @@ class Employment extends Model
                 'pvd' => $employment->pvd,
                 'saving_fund' => $employment->saving_fund,
                 'social_security_id' => $employment->social_security_id,
-                'grant_item_id' => $employment->grant_item_id,
                 'created_by' => $employment->created_by,
                 'updated_by' => $employment->updated_by,
             ]);
@@ -124,7 +121,6 @@ class Employment extends Model
                 'pvd' => $employment->pvd,
                 'saving_fund' => $employment->saving_fund,
                 'social_security_id' => $employment->social_security_id,
-                'grant_item_id' => $employment->grant_item_id,
                 'created_by' => $employment->created_by,
                 'updated_by' => $employment->updated_by,
             ]);
@@ -162,8 +158,8 @@ class Employment extends Model
         return $this->belongsTo(Employee::class, 'supervisor_id');
     }
 
-    public function grantItem()
+    public function grantAllocations()
     {
-        return $this->belongsTo(GrantItem::class, 'grant_item_id');
+        return $this->hasMany(EmploymentGrantAllocation::class, 'employment_id');
     }
 }

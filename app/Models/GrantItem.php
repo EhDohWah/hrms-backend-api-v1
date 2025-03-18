@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Grant;
+use App\Models\EmploymentGrantAllocation;
 use OpenApi\Annotations as OA;
 
 /**
@@ -36,14 +37,35 @@ class GrantItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit',
-        'grant_level_of_effort', 'grant_position_number', 'grant_cost_by_monthly',
-        'grant_total_cost_by_person', 'grant_benefit_fte', 'position_id', 'grant_total_amount',
-        'created_by', 'updated_by'
+        'grant_id',
+        'bg_line',
+        'grant_position',
+        'grant_salary',
+        'grant_benefit',
+        'grant_level_of_effort',
+        'grant_position_number',
+        'created_by',
+        'updated_by'
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'grant_salary' => 'decimal:2',
+        'grant_benefit' => 'decimal:2',
+        'grant_level_of_effort' => 'decimal:2',
     ];
 
     public function grant()
     {
-        return $this->belongsTo(Grant::class);
+        return $this->belongsTo(Grant::class, 'grant_id');
+    }
+
+    public function employmentGrantAllocations()
+    {
+        return $this->hasMany(EmploymentGrantAllocation::class, 'grant_items_id');
     }
 }
