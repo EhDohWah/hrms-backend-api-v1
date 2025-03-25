@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
 use App\Models\Employment;
 use App\Models\GrantPosition;
+use App\Models\EmployeeBeneficiary;
+use App\Models\EmployeeIdentification;
 
 /**
  * @OA\Schema(
@@ -24,6 +26,7 @@ use App\Models\GrantPosition;
  *     @OA\Property(property="gender", type="string", maxLength=10),
  *     @OA\Property(property="date_of_birth", type="string", format="date"),
  *     @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, default="Expats"),
+ *     @OA\Property(property="nationality", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="religion", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="birth_place", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="identification_number", type="string", maxLength=50, nullable=true),
@@ -48,6 +51,7 @@ use App\Models\GrantPosition;
  *     @OA\Property(property="mother_name", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="mother_occupation", type="string", maxLength=100, nullable=true),
  *     @OA\Property(property="driver_license_number", type="string", maxLength=50, nullable=true),
+ *     @OA\Property(property="remark", type="string", nullable=true),
  *     @OA\Property(property="created_by", type="string", nullable=true),
  *     @OA\Property(property="updated_by", type="string", nullable=true),
  *     @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
@@ -96,13 +100,17 @@ class Employee extends Model
         'updated_by'
     ];
 
-
-
+    /**
+     * Get the user associated with the employee
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Get the employment record associated with the employee
+     */
     public function employment()
     {
         return $this->hasOne(Employment::class);
@@ -118,14 +126,17 @@ class Employee extends Model
         return !is_null($this->user_id);
     }
 
-
-    // employee-beneficiary relationship
+    /**
+     * Get the beneficiaries for the employee
+     */
     public function employeeBeneficiaries()
     {
         return $this->hasMany(EmployeeBeneficiary::class);
     }
 
-    // employee-identification relationship
+    /**
+     * Get the identification record for the employee
+     */
     public function employeeIdentification()
     {
         return $this->hasOne(EmployeeIdentification::class);

@@ -22,6 +22,7 @@ return new class extends Migration
         // Define default actions and modules
         $defaultActions = ['create', 'read', 'update', 'delete', 'import', 'export'];
         $modules = [
+            'admin'              => $defaultActions,
             'user'               => $defaultActions,
             'grant'              => $defaultActions,
             'interview'          => $defaultActions,
@@ -90,7 +91,7 @@ return new class extends Migration
                 'status'       => 'active',
             ]);
             $adminUser->assignRole($adminRole);
-            $adminUser->syncPermissions(Permission::all());
+            $adminUser->syncPermissions($fullPermissions);
         }
 
         // Create a default hr manager user if not already exists
@@ -106,7 +107,7 @@ return new class extends Migration
                 'status'       => 'active',
             ]);
             $hrManagerUser->assignRole($hrManagerRole);
-            $hrManagerUser->syncPermissions(Permission::all());
+            $hrManagerUser->syncPermissions($fullPermissions);
         }
 
         // Create a default hr assistant user if not already exists
@@ -122,7 +123,7 @@ return new class extends Migration
                 'status'       => 'active',
             ]);
             $hrAssistantUser->assignRole($hrAssistantRole);
-            $hrAssistantUser->syncPermissions(Permission::all());
+            $hrAssistantUser->syncPermissions($fullPermissions);
         }
 
         // Create a default employee user if not already exists
@@ -138,19 +139,7 @@ return new class extends Migration
                 'status'       => 'active',
             ]);
             $employeeUser->assignRole($employeeRole);
-            $employeeUser->syncPermissions([
-                'user.read',
-                'user.update',
-                'attendance.create',
-                'attendance.read',
-                'attendance.update',
-                'travel_request.create',
-                'travel_request.read',
-                'travel_request.update',
-                'leave_request.create',
-                'leave_request.read',
-                'leave_request.update',
-            ]);
+            $employeeUser->syncPermissions($employeePermissions);
         }
     }
 

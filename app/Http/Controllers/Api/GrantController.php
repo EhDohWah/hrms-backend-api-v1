@@ -113,16 +113,19 @@ class GrantController extends Controller
             });
 
             $response = [
+                'success' => true,
                 'message' => 'Grant data import completed',
-                'processed_grants' => $processedGrants,
+                'data' => [
+                    'processed_grants' => $processedGrants
+                ]
             ];
 
             if (!empty($errors)) {
-                $response['warnings'] = $errors;
+                $response['data']['warnings'] = $errors;
             }
 
             if (!empty($skippedGrants)) {
-                $response['skipped_grants'] = $skippedGrants;
+                $response['data']['skipped_grants'] = $skippedGrants;
                 $response['message'] = 'Grant data import completed with skipped grants';
             }
 
@@ -130,6 +133,7 @@ class GrantController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to import grant data',
                 'error' => $e->getMessage(),
             ], 500);
@@ -157,6 +161,8 @@ class GrantController extends Controller
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="code", type="string", example="GR-2023-001"),
      *                     @OA\Property(property="name", type="string", example="Health Initiative Grant"),
+     *                     @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
+     *                     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true),
      *                     @OA\Property(
      *                         property="grant_items",
      *                         type="array",
@@ -203,10 +209,10 @@ class GrantController extends Controller
                 }
             ])
             ->orderBy('created_at', 'desc') // Order by created_at in descending order to show latest grants first
-            ->get(['id', 'code', 'name', 'description', 'end_date']); // Select only necessary columns from the Grant table
+            ->get(['id', 'code', 'name', 'subsidiary', 'description', 'end_date']); // Select only necessary columns from the Grant table
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Grants retrieved successfully',
             'data' => $grants,
             'count' => $grants->count()
@@ -214,14 +220,109 @@ class GrantController extends Controller
     }
 
 
+    /**
+     * @OA\Get(
+     *     path="/grants/items",
+     *     operationId="getGrantItems",
+     *     summary="List all grant items",
+     *     description="Returns a list of all grant items across all grants",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grant items retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant items retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="grant_id", type="integer", example=1),
+     *                     @OA\Property(property="grant_code", type="string", example="GR-2023-001"),
+     *                     @OA\Property(property="grant_name", type="string", example="Health Initiative Grant"),
+     *                     @OA\Property(property="bg_line", type="string", example="BL-123"),
+     *                     @OA\Property(property="grant_position", type="string", example="Project Manager"),
+     *                     @OA\Property(property="grant_salary", type="number", format="float", example=75000),
+     *                     @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
+     *                     @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75),
+     *                     @OA\Property(property="grant_position_number", type="string", example="POS-001")
+     *                 )
+     *             ),
+     *             @OA\Property(property="count", type="integer", example=10)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access grant items"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve grant items"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function getGrantItems()
+    {
+        try {
+            $grantItems = GrantItem::with(['grant:id,code,name'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $formattedItems = $grantItems->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'grant_id' => $item->grant_id,
+                    'grant_code' => $item->grant->code,
+                    'grant_name' => $item->grant->name,
+                    'bg_line' => $item->bg_line,
+                    'grant_position' => $item->grant_position,
+                    'grant_salary' => $item->grant_salary,
+                    'grant_benefit' => $item->grant_benefit,
+                    'grant_level_of_effort' => $item->grant_level_of_effort,
+                    'grant_position_number' => $item->grant_position_number
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant items retrieved successfully',
+                'data' => $formattedItems,
+                'count' => $formattedItems->count()
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant items',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+
+
+
     private function createGrant(array $data, string $sheetName, array &$errors)
     {
         try {
             $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
             $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
+            $subsidiary = trim(str_replace('Subsidiary -', '', $data[3]['A'] ?? ''));
             // Try to extract end date if available
-            if (isset($data[3]['A'])) {
-                $endDateStr = trim(str_replace('End date -', '', $data[3]['A'] ?? ''));
+            if (isset($data[4]['A'])) {
+                $endDateStr = trim(str_replace('End date -', '', $data[4]['A'] ?? ''));
                 if (!empty($endDateStr)) {
                     try {
                         $endDate = \Carbon\Carbon::parse($endDateStr)->format('Y-m-d');
@@ -231,7 +332,7 @@ class GrantController extends Controller
                 }
             }
 
-            $description = trim(str_replace('Description -', '', $data[4]['A'] ?? ''));
+            $description = trim(str_replace('Description -', '', $data[5]['A'] ?? ''));
 
             // Validate required fields
             if (empty($grantCode)) {
@@ -249,6 +350,7 @@ class GrantController extends Controller
                 [
                     'name' => $grantName,
                     'end_date' => $endDate,
+                    'subsidiary' => $subsidiary,
                     'description' => $description,
                     'created_by' => auth()->user()->name ?? 'system',
                     'updated_by' => auth()->user()->name ?? 'system',
@@ -277,7 +379,7 @@ class GrantController extends Controller
 
         try {
             // Skip header rows (1-6) and start processing from row 7
-            $headerRowsCount = 6;
+            $headerRowsCount = 7;
 
             for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
                 $row = $data[$i];
@@ -355,10 +457,10 @@ class GrantController extends Controller
     }
 
 
-    // create a function to store a new grant on the database by code and name
     /**
      * @OA\Post(
      *     path="/grants",
+     *     operationId="storeGrant",
      *     summary="Create a new grant",
      *     description="Store a new grant with the provided details",
      *     tags={"Grants"},
@@ -366,29 +468,48 @@ class GrantController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"code", "name"},
+     *             required={"code", "name", "subsidiary"},
      *             @OA\Property(property="code", type="string", example="GR-2023-001"),
      *             @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *             @OA\Property(property="budget_line", type="string", example="BL-123", nullable=true),
+     *             @OA\Property(property="subsidiary", type="string", example="Main Branch"),
+     *             @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true)
      *         )
      *     ),
      *     @OA\Response(
      *         response=201,
      *         description="Grant created successfully",
-     *         @OA\JsonContent(ref="#/components/schemas/Grant")
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant created successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 ref="#/components/schemas/Grant"
+     *             )
+     *         )
      *     ),
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
      *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to create grant"),
+     *             @OA\Property(property="error", type="string")
+     *         )
      *     )
      * )
      */
@@ -397,12 +518,14 @@ class GrantController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => 'required|string|unique:grants,code',
             'name' => 'required|string|max:255',
-            'budget_line' => 'nullable|string|max:255',
+            'subsidiary' => 'required|string|max:255',
+            'description' => 'nullable|string|max:255',
             'end_date' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
+                'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
             ], 422);
@@ -416,11 +539,13 @@ class GrantController extends Controller
             $grant = Grant::create($data);
 
             return response()->json([
+                'success' => true,
                 'message' => 'Grant created successfully',
                 'data' => $grant
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to create grant',
                 'error' => $e->getMessage()
             ], 500);
@@ -500,7 +625,8 @@ class GrantController extends Controller
 
         if ($existingItem) {
             return response()->json([
-                'error' => 'Duplicate item with this BG Line already exists for this grant'
+                'success' => false,
+                'message' => 'Duplicate item with this BG Line already exists for this grant'
             ], 422);
         }
 
@@ -510,7 +636,11 @@ class GrantController extends Controller
         $data['updated_by'] = auth()->user()->name ?? 'system';
 
         $grantItem = GrantItem::create($data);
-        return response()->json($grantItem, 201);
+        return response()->json([
+            'success' => true,
+            'message' => 'Grant item created successfully',
+            'data' => $grantItem
+        ], 201);
     }
 
     /**
@@ -577,7 +707,7 @@ class GrantController extends Controller
             'grant_position' => 'nullable|string',
             'grant_salary' => 'nullable|numeric',
             'grant_benefit' => 'nullable|numeric',
-            'grant_level_of_effort' => 'nullable|numeric|min:0|max:1',
+            'grant_level_of_effort' => 'nullable|numeric|min:0|max:100',
             'grant_position_number' => 'nullable|string',
         ]);
 
@@ -592,6 +722,7 @@ class GrantController extends Controller
 
             if ($existingItem) {
                 return response()->json([
+                    'success' => false,
                     'message' => 'The given data was invalid',
                     'errors' => [
                         'bg_line' => ['Duplicate item with this BG Line already exists for this grant']
@@ -606,7 +737,11 @@ class GrantController extends Controller
         // Update the grant item
         $grantItem->update($validated);
 
-        return response()->json($grantItem);
+        return response()->json([
+            'success' => true,
+            'message' => 'Grant item updated successfully',
+            'data' => $grantItem
+        ], 200);
     }
 
     /**
@@ -692,7 +827,7 @@ class GrantController extends Controller
 
     /**
      * @OA\Delete(
-     *     path="/grant-items/{id}",
+     *     path="/grants/items/{id}",
      *     summary="Delete a grant item",
      *     description="Delete a specific grant item by ID",
      *     tags={"Grants"},
@@ -705,13 +840,18 @@ class GrantController extends Controller
      *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
-     *         response=204,
-     *         description="Grant item deleted successfully"
+     *         response=200,
+     *         description="Grant item deleted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant item deleted successfully")
+     *         )
      *     ),
      *     @OA\Response(
      *         response=404,
      *         description="Grant item not found",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Grant item not found")
      *         )
      *     ),
@@ -723,6 +863,7 @@ class GrantController extends Controller
      *         response=500,
      *         description="Server error",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to delete grant item"),
      *             @OA\Property(property="error", type="string")
      *         )
@@ -737,16 +878,23 @@ class GrantController extends Controller
 
             DB::transaction(function () use ($grantItem, $grant) {
                 $grantItem->delete();
-                if ($grant && $grant->items()->count() === 0) {
+                if ($grant && $grant->grantItems()->count() === 0) {
                     $grant->delete();
                 }
             });
 
-            return response()->json(null, 204);
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant item deleted successfully'
+            ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Grant item not found'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Grant item not found'
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to delete grant item',
                 'error' => $e->getMessage()
             ], 500);
@@ -857,6 +1005,16 @@ class GrantController extends Controller
             ], 500);
         }
     }
+
+
+
+
+    /**
+     *
+     * Grant Position Section
+     *
+     */
+
 
     /**
      * @OA\Get(
@@ -988,9 +1146,9 @@ class GrantController extends Controller
                     'grant_code'       => $grant->code,
                     'grant_name'       => $grant->name,
                     'positions'        => $grantPositions,
-                    // 'total_manpower'   => $totalPositions,
-                    // 'total_recruited'  => $recruitedPositions,
-                    // 'total_finding'    => $openPositions,
+                    'total_manpower'   => $totalPositions,
+                    'total_recruited'  => $recruitedPositions,
+                    'total_finding'    => $openPositions,
                     'status'           => $status,
                 ];
             }
@@ -1004,7 +1162,8 @@ class GrantController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve grant statistics: ' . $e->getMessage()
+                'message' => 'Failed to retrieve grant statistics',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

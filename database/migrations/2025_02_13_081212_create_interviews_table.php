@@ -18,8 +18,8 @@ return new class extends Migration
             $table->date('interview_date')->nullable();
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
-            $table->enum('interview_mode', ['in-person', 'virtual'])->nullable();
-            $table->enum('interview_status', ['scheduled', 'completed', 'cancelled']);
+            $table->string('interview_mode')->nullable();
+            $table->string('interview_status');
             $table->decimal('score', 8, 2)->nullable();
             $table->text('feedback')->nullable();
             $table->timestamps();

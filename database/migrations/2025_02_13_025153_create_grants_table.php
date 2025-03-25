@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('code');
             $table->string('name');
+            $table->string('subsidiary');
             $table->text('description')->nullable();
             $table->date('end_date')->nullable();
             $table->timestamps();

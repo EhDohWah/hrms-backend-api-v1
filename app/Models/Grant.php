@@ -33,8 +33,9 @@ class Grant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
         'code',
+        'name',
+        'subsidiary',
         'description',
         'end_date',
         'created_by',

@@ -135,6 +135,7 @@ class AuthController extends Controller
 
         // Update last login timestamp
         $user->last_login_at = Carbon::now();
+        $user->last_login_ip = $request->ip();
         $user->save();
 
         $user->load('permissions', 'roles');

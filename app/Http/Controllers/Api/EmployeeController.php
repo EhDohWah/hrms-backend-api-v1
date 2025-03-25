@@ -7,11 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use Illuminate\Validation\Rule;
 use App\Models\WorkLocation;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Models\EmploymentGrantAllocation;
-
-
 
 /**
  * @OA\Tag(
@@ -51,13 +47,9 @@ class EmployeeController extends Controller
     {
         $employees = Employee::with([
             'employment',
-            'employment.department',
-            'employment.position',
-            'employment.employmentType',
             'employment.workLocation',
             'employment.grantAllocations.grantItemAllocation',
             'employment.grantAllocations.grantItemAllocation.grant',
-            'employment.supervisor',
             'employeeBeneficiaries',
             'employeeIdentification'
         ])->get();
@@ -105,13 +97,9 @@ class EmployeeController extends Controller
     {
         $employee = Employee::with([
             'employment',
-            'employment.department',
-            'employment.position',
-            'employment.employmentType',
             'employment.workLocation',
             'employment.grantAllocations.grantItemAllocation',
             'employment.grantAllocations.grantItemAllocation.grant',
-            'employment.supervisor',
             'employeeBeneficiaries',
             'employeeIdentification'
         ])->find($id);
@@ -449,7 +437,6 @@ class EmployeeController extends Controller
             'message' => 'Employee deleted successfully'
         ]);
     }
-
 
     /**
      * Get Site records
@@ -879,7 +866,6 @@ class EmployeeController extends Controller
         ]);
     }
 
-
     // employee grant-item add
     public function addEmployeeGrantItem(Request $request)
     {
@@ -914,6 +900,5 @@ class EmployeeController extends Controller
             'data' => $employee
         ]);
     }
-
 
 }

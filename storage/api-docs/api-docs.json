@@ -15,6 +15,371 @@
         }
     ],
     "paths": {
+        "/admin/users": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get list of users",
+                "description": "Returns a list of all users with their roles and permissions",
+                "operationId": "indexUsers",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "name": {
+                                                "type": "string",
+                                                "example": "John Doe"
+                                            },
+                                            "email": {
+                                                "type": "string",
+                                                "format": "email",
+                                                "example": "john@example.com"
+                                            },
+                                            "last_login_at": {
+                                                "type": "string",
+                                                "format": "date-time"
+                                            },
+                                            "roles": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "Admin"
+                                                }
+                                            },
+                                            "permissions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "example": "user.read"
+                                                }
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Forbidden"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create new user",
+                "description": "Store a newly created user in storage.",
+                "operationId": "c1a236770c7d092468c3861022c6bd6e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation",
+                                    "role"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "admin",
+                                            "hr-manager",
+                                            "hr-assistant",
+                                            "employee"
+                                        ],
+                                        "example": "employee"
+                                    },
+                                    "permissions": {
+                                        "description": "Array of permission strings",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "example": "user.read"
+                                        }
+                                    },
+                                    "profile_picture": {
+                                        "description": "Optional profile picture file",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User created successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "user": {
+                                                    "$ref": "#/components/schemas/User"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error creating user"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "error": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/users/{id}": {
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Update user roles, permissions and password",
+                "description": "Update a user's roles, permissions and password if provided.",
+                "operationId": "dfa5d5e3ed641f80bd5667b85b9cd31f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "role": {
+                                        "description": "User role",
+                                        "type": "string",
+                                        "enum": [
+                                            "admin",
+                                            "hr-manager",
+                                            "hr-assistant",
+                                            "employee"
+                                        ],
+                                        "example": "employee"
+                                    },
+                                    "permissions": {
+                                        "description": "Array of permission strings",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "example": "user.read"
+                                        }
+                                    },
+                                    "password": {
+                                        "description": "New password (optional)",
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "description": "Confirm new password",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete user",
+                "description": "Delete a user.",
+                "operationId": "b9560f86da2bdc0825358d9f683e34b5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted successfully"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/login": {
             "post": {
                 "tags": [
@@ -241,61 +606,33 @@
                 ]
             }
         },
-        "/departments": {
+        "/department-positions": {
             "get": {
                 "tags": [
-                    "Departments"
+                    "Department Positions"
                 ],
-                "summary": "Get all departments",
-                "description": "Get a list of all departments",
-                "operationId": "ed301ff184301a8a43e12f111f178491",
+                "summary": "Get all department positions",
+                "description": "Returns a list of all department positions",
+                "operationId": "getDepartmentPositions",
                 "responses": {
                     "200": {
-                        "description": "Departments retrieved successfully",
+                        "description": "Successful operation",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Departments retrieved successfully"
+                                            "example": "Department positions retrieved successfully"
                                         },
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "description": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string",
-                                                        "format": "date-time"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string",
-                                                        "format": "date-time"
-                                                    },
-                                                    "created_by": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "updated_by": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    }
-                                                },
-                                                "type": "object"
+                                                "$ref": "#/components/schemas/DepartmentPosition"
                                             }
                                         }
                                     },
@@ -303,12 +640,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    },
-                    "500": {
-                        "description": "Server error"
                     }
                 },
                 "security": [
@@ -319,26 +650,32 @@
             },
             "post": {
                 "tags": [
-                    "Departments"
+                    "Department Positions"
                 ],
-                "summary": "Create a new department",
-                "description": "Create a new department record",
-                "operationId": "aba3da4ceba085b4372b051408640129",
+                "summary": "Create a new department position",
+                "description": "Creates a new department position and returns it",
+                "operationId": "storeDepartmentPosition",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "name"
+                                    "department",
+                                    "position"
                                 ],
                                 "properties": {
-                                    "name": {
+                                    "department": {
                                         "type": "string",
-                                        "maxLength": 255
+                                        "example": "Human Resources"
                                     },
-                                    "description": {
+                                    "position": {
                                         "type": "string",
+                                        "example": "HR Manager"
+                                    },
+                                    "report_to": {
+                                        "type": "string",
+                                        "example": "CEO",
                                         "nullable": true
                                     }
                                 },
@@ -349,21 +686,21 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Department created successfully",
+                        "description": "Department position created successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Department created successfully"
+                                            "example": "Department position created successfully"
                                         },
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/DepartmentPosition"
                                         }
                                     },
                                     "type": "object"
@@ -372,10 +709,27 @@
                         }
                     },
                     "422": {
-                        "description": "Validation error"
-                    },
-                    "500": {
-                        "description": "Server error"
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -385,70 +739,43 @@
                 ]
             }
         },
-        "/departments/{id}": {
+        "/department-positions/{id}": {
             "get": {
                 "tags": [
-                    "Departments"
+                    "Department Positions"
                 ],
-                "summary": "Get a specific department",
-                "description": "Get details of a specific department by ID",
-                "operationId": "54c3150b5a05e5ea000b06738250e3bc",
+                "summary": "Get a specific department position",
+                "description": "Returns a specific department position by ID",
+                "operationId": "getDepartmentPosition",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID of the department",
+                        "description": "ID of department position to return",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Department retrieved successfully",
+                        "description": "Successful operation",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Department retrieved successfully"
+                                            "example": "Department position retrieved successfully"
                                         },
                                         "data": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "name": {
-                                                    "type": "string"
-                                                },
-                                                "description": {
-                                                    "type": "string",
-                                                    "nullable": true
-                                                },
-                                                "created_at": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                },
-                                                "updated_at": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                },
-                                                "created_by": {
-                                                    "type": "string",
-                                                    "nullable": true
-                                                },
-                                                "updated_by": {
-                                                    "type": "string",
-                                                    "nullable": true
-                                                }
-                                            },
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/DepartmentPosition"
                                         }
                                     },
                                     "type": "object"
@@ -457,10 +784,24 @@
                         }
                     },
                     "404": {
-                        "description": "Department not found"
-                    },
-                    "500": {
-                        "description": "Server error"
+                        "description": "Department position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -471,19 +812,20 @@
             },
             "put": {
                 "tags": [
-                    "Departments"
+                    "Department Positions"
                 ],
-                "summary": "Update a department",
-                "description": "Update an existing department record",
-                "operationId": "7bed210c31f95f387c16fa4193171dba",
+                "summary": "Update a department position",
+                "description": "Updates a department position and returns it",
+                "operationId": "updateDepartmentPosition",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID of the department",
+                        "description": "ID of department position to update",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
@@ -492,16 +834,18 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "name"
-                                ],
                                 "properties": {
-                                    "name": {
+                                    "department": {
                                         "type": "string",
-                                        "maxLength": 255
+                                        "example": "Human Resources"
                                     },
-                                    "description": {
+                                    "position": {
                                         "type": "string",
+                                        "example": "HR Director"
+                                    },
+                                    "report_to": {
+                                        "type": "string",
+                                        "example": "CEO",
                                         "nullable": true
                                     }
                                 },
@@ -512,21 +856,21 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Department updated successfully",
+                        "description": "Department position updated successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Department updated successfully"
+                                            "example": "Department position updated successfully"
                                         },
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/DepartmentPosition"
                                         }
                                     },
                                     "type": "object"
@@ -535,13 +879,47 @@
                         }
                     },
                     "404": {
-                        "description": "Department not found"
+                        "description": "Department position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Validation error"
-                    },
-                    "500": {
-                        "description": "Server error"
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation error"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -552,36 +930,37 @@
             },
             "delete": {
                 "tags": [
-                    "Departments"
+                    "Department Positions"
                 ],
-                "summary": "Delete a department",
-                "description": "Delete a department record",
-                "operationId": "2b560600ee506df27168d372230feca2",
+                "summary": "Delete a department position",
+                "description": "Deletes a department position",
+                "operationId": "deleteDepartmentPosition",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "ID of the department",
+                        "description": "ID of department position to delete",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "format": "int64"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Department deleted successfully",
+                        "description": "Department position deleted successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Department deleted successfully"
+                                            "example": "Department position deleted successfully"
                                         }
                                     },
                                     "type": "object"
@@ -590,10 +969,24 @@
                         }
                     },
                     "404": {
-                        "description": "Department not found"
-                    },
-                    "500": {
-                        "description": "Server error"
+                        "description": "Department position not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Department position not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -2487,6 +2880,17 @@
                                                         "type": "string",
                                                         "example": "Health Initiative Grant"
                                                     },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "example": "Funding for health initiatives",
+                                                        "nullable": true
+                                                    },
+                                                    "end_date": {
+                                                        "type": "string",
+                                                        "format": "date",
+                                                        "example": "2023-12-31",
+                                                        "nullable": true
+                                                    },
                                                     "grant_items": {
                                                         "type": "array",
                                                         "items": {
@@ -2582,7 +2986,7 @@
                 ],
                 "summary": "Create a new grant",
                 "description": "Store a new grant with the provided details",
-                "operationId": "a14c269cef568884cae7f1354a4111de",
+                "operationId": "storeGrant",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -2590,7 +2994,8 @@
                             "schema": {
                                 "required": [
                                     "code",
-                                    "name"
+                                    "name",
+                                    "subsidiary"
                                 ],
                                 "properties": {
                                     "code": {
@@ -2601,9 +3006,13 @@
                                         "type": "string",
                                         "example": "Health Initiative Grant"
                                     },
-                                    "budget_line": {
+                                    "subsidiary": {
                                         "type": "string",
-                                        "example": "BL-123",
+                                        "example": "Main Branch"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Funding for health initiatives",
                                         "nullable": true
                                     },
                                     "end_date": {
@@ -2624,7 +3033,20 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Grant"
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant created successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Grant"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
@@ -2635,9 +3057,13 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
-                                            "example": "The given data was invalid."
+                                            "example": "Validation failed"
                                         },
                                         "errors": {
                                             "type": "object"
@@ -2650,6 +3076,29 @@
                     },
                     "401": {
                         "description": "Unauthenticated"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to create grant"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -2660,6 +3109,125 @@
             }
         },
         "/grants/items": {
+            "get": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "List all grant items",
+                "description": "Returns a list of all grant items across all grants",
+                "operationId": "getGrantItems",
+                "responses": {
+                    "200": {
+                        "description": "Grant items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant items retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "grant_id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "grant_code": {
+                                                        "type": "string",
+                                                        "example": "GR-2023-001"
+                                                    },
+                                                    "grant_name": {
+                                                        "type": "string",
+                                                        "example": "Health Initiative Grant"
+                                                    },
+                                                    "bg_line": {
+                                                        "type": "string",
+                                                        "example": "BL-123"
+                                                    },
+                                                    "grant_position": {
+                                                        "type": "string",
+                                                        "example": "Project Manager"
+                                                    },
+                                                    "grant_salary": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 75000
+                                                    },
+                                                    "grant_benefit": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 15000
+                                                    },
+                                                    "grant_level_of_effort": {
+                                                        "type": "number",
+                                                        "format": "float",
+                                                        "example": 0.75
+                                                    },
+                                                    "grant_position_number": {
+                                                        "type": "string",
+                                                        "example": "POS-001"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 10
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission to access grant items"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grant items"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "post": {
                 "tags": [
                     "Grants"
@@ -2902,73 +3470,6 @@
                         "bearerAuth": []
                     }
                 ]
-            },
-            "delete": {
-                "tags": [
-                    "Grants"
-                ],
-                "summary": "Delete a grant item",
-                "description": "Delete a specific grant item by ID",
-                "operationId": "015c940ac759ceb7ca52dfcd8f945ef5",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Grant item ID",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Grant item deleted successfully"
-                    },
-                    "404": {
-                        "description": "Grant item not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Grant item not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Unauthorized - User does not have permission"
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Failed to delete grant item"
-                                        },
-                                        "error": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
             }
         },
         "/grants/{id}": {
@@ -3188,6 +3689,100 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to delete grant"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grants/items/{id}": {
+            "delete": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Delete a grant item",
+                "description": "Delete a specific grant item by ID",
+                "operationId": "80ee08020a27491c1f4ede56aab54b16",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant item deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant item not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete grant item"
                                         },
                                         "error": {
                                             "type": "string"
@@ -3976,14 +4571,14 @@
                 ]
             }
         },
-        "/positions": {
+        "/lookups": {
             "get": {
                 "tags": [
-                    "Positions"
+                    "Lookups"
                 ],
-                "summary": "Get all positions",
-                "description": "Returns a list of all positions",
-                "operationId": "getPositions",
+                "summary": "Get all lookup values organized by category",
+                "description": "Returns all system lookup values grouped by their respective categories",
+                "operationId": "getLookups",
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -3991,631 +4586,89 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "data": {
+                                        "gender": {
+                                            "description": "List of gender options",
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/Position"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Positions"
-                ],
-                "summary": "Create a new position",
-                "description": "Creates a new position record",
-                "operationId": "storePosition",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "title"
-                                ],
-                                "properties": {
-                                    "title": {
-                                        "type": "string",
-                                        "example": "Software Engineer"
-                                    },
-                                    "description": {
-                                        "type": "string",
-                                        "example": "Develops software applications"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Position created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/Position"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position created successfully"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "errors": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/positions/{id}": {
-            "get": {
-                "tags": [
-                    "Positions"
-                ],
-                "summary": "Get a specific position",
-                "description": "Returns a specific position by ID",
-                "operationId": "showPosition",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the position",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/Position"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Position not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Positions"
-                ],
-                "summary": "Update a position",
-                "description": "Updates an existing position record",
-                "operationId": "updatePosition",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the position to update",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "title": {
-                                        "type": "string",
-                                        "example": "Senior Software Engineer"
-                                    },
-                                    "description": {
-                                        "type": "string",
-                                        "example": "Leads software development projects"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Position updated successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/Position"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position updated successfully"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Position not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "errors": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Positions"
-                ],
-                "summary": "Delete a position",
-                "description": "Deletes a position record",
-                "operationId": "deletePosition",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the position to delete",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Position deleted successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position deleted successfully"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Position not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Position not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "error"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/users": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get list of users",
-                "description": "Returns a list of all users with their roles and permissions",
-                "operationId": "indexUsers",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "properties": {
-                                            "id": {
-                                                "type": "integer",
-                                                "example": 1
-                                            },
-                                            "name": {
-                                                "type": "string",
-                                                "example": "John Doe"
-                                            },
-                                            "email": {
-                                                "type": "string",
-                                                "format": "email",
-                                                "example": "john@example.com"
-                                            },
-                                            "last_login_at": {
-                                                "type": "string",
-                                                "format": "date-time"
-                                            },
-                                            "roles": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string",
-                                                    "example": "Admin"
-                                                }
-                                            },
-                                            "permissions": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string",
-                                                    "example": "user.read"
-                                                }
+                                                "$ref": "#/components/schemas/Lookup"
                                             }
                                         },
-                                        "type": "object"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Unauthenticated"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Forbidden"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Create new user",
-                "description": "Create a new user.",
-                "operationId": "262eb5ca1fdea354023c0a8870442c1e",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "required": [
-                                    "name",
-                                    "email",
-                                    "password",
-                                    "role"
-                                ],
-                                "properties": {
-                                    "name": {
-                                        "type": "string",
-                                        "example": "John Doe"
-                                    },
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email",
-                                        "example": "john@example.com"
-                                    },
-                                    "password": {
-                                        "type": "string",
-                                        "format": "password",
-                                        "example": "password123"
-                                    },
-                                    "role": {
-                                        "type": "string",
-                                        "enum": [
-                                            "admin",
-                                            "hr-manager",
-                                            "hr-assistant",
-                                            "employee"
-                                        ],
-                                        "example": "employee"
-                                    },
-                                    "profile_picture": {
-                                        "description": "Optional profile picture file",
-                                        "type": "string",
-                                        "format": "binary"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "User created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "User created successfully"
+                                        "subsidiary": {
+                                            "description": "List of subsidiary options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
                                         },
-                                        "user": {
-                                            "$ref": "#/components/schemas/User"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "The given data was invalid"
+                                        "employee_status": {
+                                            "description": "List of employee status options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
                                         },
-                                        "errors": {
-                                            "type": "object"
+                                        "nationality": {
+                                            "description": "List of nationality options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "religion": {
+                                            "description": "List of religion options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "marital_status": {
+                                            "description": "List of marital status options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "site": {
+                                            "description": "List of site options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "user_status": {
+                                            "description": "List of user status options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "interview_mode": {
+                                            "description": "List of interview mode options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "interview_status": {
+                                            "description": "List of interview status options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "identification_types": {
+                                            "description": "List of identification type options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
+                                        },
+                                        "employment_type": {
+                                            "description": "List of employment type options",
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Lookup"
+                                            }
                                         }
                                     },
                                     "type": "object"
@@ -4624,23 +4677,77 @@
                         }
                     },
                     "500": {
-                        "description": "Server error",
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Lookups"
+                ],
+                "summary": "Create a new lookup value",
+                "description": "Stores a new lookup value in the system",
+                "operationId": "storeLookup",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "type",
+                                    "value"
+                                ],
+                                "properties": {
+                                    "type": {
+                                        "description": "Lookup type",
+                                        "type": "string",
+                                        "example": "gender"
+                                    },
+                                    "value": {
+                                        "description": "Display value",
+                                        "type": "string",
+                                        "example": "Non-binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Lookup created successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
                                         "message": {
                                             "type": "string",
-                                            "example": "Error creating user"
+                                            "example": "Lookup created successfully"
                                         },
-                                        "error": {
-                                            "type": "string"
+                                        "data": {
+                                            "$ref": "#/components/schemas/Lookup"
                                         }
                                     },
                                     "type": "object"
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
                     }
                 },
                 "security": [
@@ -4650,19 +4757,19 @@
                 ]
             }
         },
-        "/users/{id}": {
+        "/lookups/{id}": {
             "get": {
                 "tags": [
-                    "Users"
+                    "Lookups"
                 ],
-                "summary": "Get user by ID",
-                "description": "Display a single user.",
-                "operationId": "6946bbab7898f59a09e3c8e529a38907",
+                "summary": "Get a specific lookup value",
+                "description": "Returns details for a specific lookup value",
+                "operationId": "showLookup",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "User ID",
+                        "description": "Lookup ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -4675,13 +4782,16 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/User"
+                                    "$ref": "#/components/schemas/Lookup"
                                 }
                             }
                         }
                     },
                     "404": {
-                        "description": "User not found"
+                        "description": "Lookup not found"
+                    },
+                    "500": {
+                        "description": "Server error"
                     }
                 },
                 "security": [
@@ -4692,16 +4802,16 @@
             },
             "put": {
                 "tags": [
-                    "Users"
+                    "Lookups"
                 ],
-                "summary": "Update existing user",
-                "description": "Update a user.",
-                "operationId": "05028d02ea3e9a99abd6260cfe05b179",
+                "summary": "Update a lookup value",
+                "description": "Updates an existing lookup value in the system",
+                "operationId": "updateLookup",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "User ID",
+                        "description": "Lookup ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -4711,27 +4821,18 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "properties": {
-                                    "name": {
+                                    "type": {
+                                        "description": "Lookup type",
                                         "type": "string",
-                                        "example": "John Doe"
+                                        "example": "gender"
                                     },
-                                    "email": {
+                                    "value": {
+                                        "description": "Display value",
                                         "type": "string",
-                                        "format": "email",
-                                        "example": "john@example.com"
-                                    },
-                                    "password": {
-                                        "type": "string",
-                                        "format": "password",
-                                        "example": "password123"
-                                    },
-                                    "profile_picture": {
-                                        "description": "Optional profile picture file",
-                                        "type": "string",
-                                        "format": "binary"
+                                        "example": "Updated Value"
                                     }
                                 },
                                 "type": "object"
@@ -4741,20 +4842,36 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "User updated successfully",
+                        "description": "Lookup updated successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/User"
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Lookup updated successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Lookup"
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
                     },
                     "404": {
-                        "description": "User not found"
+                        "description": "Lookup not found"
                     },
                     "422": {
                         "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
                     }
                 },
                 "security": [
@@ -4765,16 +4882,16 @@
             },
             "delete": {
                 "tags": [
-                    "Users"
+                    "Lookups"
                 ],
-                "summary": "Delete user",
-                "description": "Delete a user.",
-                "operationId": "b3d28da5dc9de7fc1bd425f93b54ff7b",
+                "summary": "Delete a lookup value",
+                "description": "Removes a lookup value from the system",
+                "operationId": "deleteLookup",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "User ID",
+                        "description": "Lookup ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -4783,10 +4900,30 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "User deleted successfully"
+                        "description": "Lookup deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Lookup deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "User not found"
+                        "description": "Lookup not found"
+                    },
+                    "500": {
+                        "description": "Server error"
                     }
                 },
                 "security": [
@@ -4796,14 +4933,61 @@
                 ]
             }
         },
-        "/profile-picture": {
+        "/lookups/type/{type}": {
+            "get": {
+                "tags": [
+                    "Lookups"
+                ],
+                "summary": "Get lookup values by type",
+                "description": "Returns all lookup values for a specific type",
+                "operationId": "getLookupsByType",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "description": "Lookup type (e.g., gender, nationality)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Lookup"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No lookups found for this type"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/user/profile-picture": {
             "post": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Update user profile picture",
                 "description": "Update user profile picture.",
-                "operationId": "77a307591501c7e540f0204d7ccda6c7",
+                "operationId": "220a790c95b99067df27724868ba24fe",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -4856,14 +5040,14 @@
                 ]
             }
         },
-        "/username": {
-            "put": {
+        "/user/username": {
+            "post": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Update user name",
                 "description": "Update user name.",
-                "operationId": "802d461d381ce58b4d221c8fd4bcecd4",
+                "operationId": "3e27ac34580dd53b9d5582c2d5774c7d",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -4915,14 +5099,14 @@
                 ]
             }
         },
-        "/email": {
-            "put": {
+        "/user/email": {
+            "post": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Update user email",
                 "description": "Update user email.",
-                "operationId": "5f93bb4fb100eaf0cb0b4d6a51896ebd",
+                "operationId": "2fe0123db0eff590c3b180dc268eba53",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -4975,14 +5159,14 @@
                 ]
             }
         },
-        "/password": {
-            "put": {
+        "/user/password": {
+            "post": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Update user password",
                 "description": "Update user password.",
-                "operationId": "fd7db07f5a5df29f32f21cbfb2ed87d9",
+                "operationId": "37ec0ac34a5eb75f5988a70316e39f7b",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -5046,7 +5230,7 @@
                 ]
             }
         },
-        "/user": {
+        "/user/user": {
             "get": {
                 "tags": [
                     "Users"
@@ -5451,38 +5635,47 @@
                 },
                 "type": "object"
             },
-            "Department": {
-                "title": "Department",
-                "description": "Department model",
+            "DepartmentPosition": {
+                "title": "Department Position",
+                "description": "Department Position model",
                 "properties": {
                     "id": {
+                        "description": "Department Position ID",
                         "type": "integer",
-                        "format": "int64",
-                        "example": 1
+                        "format": "int64"
                     },
-                    "name": {
-                        "type": "string",
-                        "example": "Human Resources"
+                    "department": {
+                        "description": "Department name",
+                        "type": "string"
                     },
-                    "description": {
-                        "type": "string",
-                        "example": "Department responsible for HR activities"
+                    "position": {
+                        "description": "Position title",
+                        "type": "string"
                     },
-                    "created_by": {
+                    "report_to": {
+                        "description": "Name or identifier of the manager position",
                         "type": "string",
-                        "example": "admin"
-                    },
-                    "updated_by": {
-                        "type": "string",
-                        "example": "admin"
+                        "nullable": true
                     },
                     "created_at": {
+                        "description": "Creation date",
                         "type": "string",
                         "format": "date-time"
                     },
                     "updated_at": {
+                        "description": "Last update date",
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "created_by": {
+                        "description": "User who created the record",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "description": "User who last updated the record",
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -5556,6 +5749,11 @@
                             "Local ID",
                             "Local non ID"
                         ]
+                    },
+                    "nationality": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
                     },
                     "religion": {
                         "type": "string",
@@ -5672,6 +5870,10 @@
                     "driver_license_number": {
                         "type": "string",
                         "maxLength": 50,
+                        "nullable": true
+                    },
+                    "remark": {
+                        "type": "string",
                         "nullable": true
                     },
                     "created_by": {
@@ -6267,33 +6469,42 @@
                 },
                 "type": "object"
             },
-            "Position": {
+            "Lookup": {
+                "title": "Lookup",
+                "description": "Lookup model for various system reference data",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "description": "Lookup ID",
+                        "type": "integer",
+                        "format": "int64"
                     },
-                    "title": {
+                    "type": {
+                        "description": "Type of lookup (gender, subsidiary, etc.)",
                         "type": "string"
                     },
-                    "description": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time"
+                    "value": {
+                        "description": "Display value",
+                        "type": "string"
                     },
                     "created_by": {
+                        "description": "User who created the record",
                         "type": "string",
                         "nullable": true
                     },
                     "updated_by": {
+                        "description": "User who last updated the record",
                         "type": "string",
                         "nullable": true
+                    },
+                    "created_at": {
+                        "description": "Creation timestamp",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Last update timestamp",
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "type": "object"
@@ -6406,12 +6617,16 @@
     },
     "tags": [
         {
+            "name": "Admin",
+            "description": "Admin API Endpoints"
+        },
+        {
             "name": "Authentication",
             "description": "API Endpoints for user authentication"
         },
         {
-            "name": "Departments",
-            "description": "API Endpoints for managing departments"
+            "name": "Department Positions",
+            "description": "API Endpoints for Department Position management"
         },
         {
             "name": "Employees",
@@ -6430,8 +6645,8 @@
             "description": "API Endpoints for managing interviews"
         },
         {
-            "name": "Positions",
-            "description": "API Endpoints for managing positions"
+            "name": "Lookups",
+            "description": "API Endpoints for system lookup values"
         },
         {
             "name": "Users",

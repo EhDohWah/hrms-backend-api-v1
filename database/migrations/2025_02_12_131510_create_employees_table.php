@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->string('staff_id', 50)->unique(); // staff_id is unique
-            //add subsdiary id
-            $table->enum('subsidiary', ['SMRU', 'BHF'])->default('SMRU'); // subsidiary is required
+            $table->string('subsidiary', 20); // subsidiary is required
             $table->unsignedBigInteger('user_id')->nullable(); // user_id is optional
             $table->string('first_name', 255); // first_name is required
             $table->string('last_name', 255); // last_name is required
@@ -24,11 +23,7 @@ return new class extends Migration
             $table->string('profile_picture', 255)->nullable(); // profile_picture is optional
             $table->string('gender', 10); // Gender is required
             $table->date('date_of_birth'); // date_of_birth is required
-            $table->enum('status', [
-                'Expats',
-                'Local ID',
-                'Local non ID'
-            ])->default('Expats'); // status is required
+            $table->string('status', 20)->default('Expats'); // status is required, values: Expats, Local ID, Local non ID
             $table->string('nationality', 100)->nullable(); // nationality is optional
             $table->string('religion', 100)->nullable(); // religion is optional
             $table->string('social_security_number', 50)->nullable(); // social_security_number is optional
