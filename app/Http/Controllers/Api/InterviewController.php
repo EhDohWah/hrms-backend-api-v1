@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Interview;
-use App\Models\Candidate;
 
 /**
  * @OA\Tag(
@@ -34,13 +33,16 @@ class InterviewController extends Controller
      *                 @OA\Items(
      *                     type="object",
      *                     @OA\Property(property="id", type="integer"),
-     *                     @OA\Property(property="candidate_id", type="integer", nullable=true),
+     *                     @OA\Property(property="candidate_name", type="string"),
+     *                     @OA\Property(property="phone", type="string", nullable=true),
+     *                     @OA\Property(property="resume", type="string", nullable=true),
+     *                     @OA\Property(property="job_position", type="string"),
      *                     @OA\Property(property="interviewer_name", type="string", nullable=true),
-     *                     @OA\Property(property="interview_date", type="string", format="date"),
-     *                     @OA\Property(property="start_time", type="string", format="time"),
-     *                     @OA\Property(property="end_time", type="string", format="time"),
-     *                     @OA\Property(property="interview_mode", type="string", enum={"in-person", "virtual"}),
-     *                     @OA\Property(property="interview_status", type="string", enum={"scheduled", "completed", "cancelled"}),
+     *                     @OA\Property(property="interview_date", type="string", format="date", nullable=true),
+     *                     @OA\Property(property="start_time", type="string", format="time", nullable=true),
+     *                     @OA\Property(property="end_time", type="string", format="time", nullable=true),
+     *                     @OA\Property(property="interview_mode", type="string", nullable=true),
+     *                     @OA\Property(property="interview_status", type="string", nullable=true),
      *                     @OA\Property(property="score", type="number", nullable=true),
      *                     @OA\Property(property="feedback", type="string", nullable=true),
      *                     @OA\Property(property="created_by", type="string", nullable=true),
@@ -71,7 +73,7 @@ class InterviewController extends Controller
     public function index()
     {
         try {
-            $interviews = Interview::with('candidate')->get();
+            $interviews = Interview::all();
 
             return response()->json([
                 'success' => true,
@@ -98,18 +100,21 @@ class InterviewController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"interview_status"},
-     *             @OA\Property(property="candidate_id", type="integer", nullable=true),
-     *             @OA\Property(property="interviewer_name", type="string", nullable=true),
-     *             @OA\Property(property="interview_date", type="string", format="date"),
-     *             @OA\Property(property="start_time", type="string", format="time"),
-     *             @OA\Property(property="end_time", type="string", format="time"),
-     *             @OA\Property(property="interview_mode", type="string", enum={"in-person", "virtual"}),
-     *             @OA\Property(property="interview_status", type="string", enum={"scheduled", "completed", "cancelled"}),
-     *             @OA\Property(property="score", type="number", nullable=true),
-     *             @OA\Property(property="feedback", type="string", nullable=true),
-     *             @OA\Property(property="created_by", type="string", nullable=true),
-     *             @OA\Property(property="updated_by", type="string", nullable=true)
+     *             required={"candidate_name", "job_position"},
+     *             @OA\Property(property="candidate_name", type="string", maxLength=255, example="John Smith"),
+     *             @OA\Property(property="phone", type="string", maxLength=10, nullable=true, example="0812345678"),
+     *             @OA\Property(property="resume", type="string", maxLength=255, nullable=true, example="resume_john_smith.pdf"),
+     *             @OA\Property(property="job_position", type="string", maxLength=255, example="Senior Software Engineer"),
+     *             @OA\Property(property="interviewer_name", type="string", nullable=true, example="Jane Doe"),
+     *             @OA\Property(property="interview_date", type="string", format="date", nullable=true, example="2023-05-15"),
+     *             @OA\Property(property="start_time", type="string", format="time", nullable=true, example="10:00:00"),
+     *             @OA\Property(property="end_time", type="string", format="time", nullable=true, example="11:30:00"),
+     *             @OA\Property(property="interview_mode", type="string", nullable=true, example="Video Conference"),
+     *             @OA\Property(property="interview_status", type="string", nullable=true, example="Scheduled"),
+     *             @OA\Property(property="score", type="number", nullable=true, example=85.5),
+     *             @OA\Property(property="feedback", type="string", nullable=true, example="Candidate demonstrated strong technical skills and good communication abilities."),
+     *             @OA\Property(property="created_by", type="string", nullable=true, example="admin@example.com"),
+     *             @OA\Property(property="updated_by", type="string", nullable=true, example="recruiter@example.com")
      *         )
      *     ),
      *     @OA\Response(
@@ -118,7 +123,27 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview created successfully"),
-     *             @OA\Property(property="data", type="object")
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="candidate_name", type="string", example="John Smith"),
+     *                 @OA\Property(property="phone", type="string", example="0812345678"),
+     *                 @OA\Property(property="resume", type="string", example="resume_john_smith.pdf"),
+     *                 @OA\Property(property="job_position", type="string", example="Senior Software Engineer"),
+     *                 @OA\Property(property="interviewer_name", type="string", example="Jane Doe"),
+     *                 @OA\Property(property="interview_date", type="string", format="date", example="2023-05-15"),
+     *                 @OA\Property(property="start_time", type="string", format="time", example="10:00:00"),
+     *                 @OA\Property(property="end_time", type="string", format="time", example="11:30:00"),
+     *                 @OA\Property(property="interview_mode", type="string", example="Video Conference"),
+     *                 @OA\Property(property="interview_status", type="string", example="Scheduled"),
+     *                 @OA\Property(property="score", type="number", example=85.5),
+     *                 @OA\Property(property="feedback", type="string", example="Candidate demonstrated strong technical skills and good communication abilities."),
+     *                 @OA\Property(property="created_by", type="string", example="admin@example.com"),
+     *                 @OA\Property(property="updated_by", type="string", example="recruiter@example.com"),
+     *                 @OA\Property(property="created_at", type="string", format="date-time", example="2023-05-10T14:30:00.000000Z"),
+     *                 @OA\Property(property="updated_at", type="string", format="date-time", example="2023-05-10T14:30:00.000000Z")
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -127,7 +152,20 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="candidate_name",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The candidate name field is required.")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="job_position",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The job position field is required.")
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -136,7 +174,7 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to create interview"),
-     *             @OA\Property(property="error", type="string")
+     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
      *         )
      *     )
      * )
@@ -145,13 +183,16 @@ class InterviewController extends Controller
     {
         try {
             $validated = $request->validate([
-                'candidate_id' => 'nullable|exists:candidates,id',
+                'candidate_name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:10',
+                'resume' => 'nullable|string|max:255',
+                'job_position' => 'required|string|max:255',
                 'interviewer_name' => 'nullable|string|max:255',
                 'interview_date' => 'nullable|date',
                 'start_time' => 'nullable|date_format:H:i:s',
                 'end_time' => 'nullable|date_format:H:i:s|after:start_time',
-                'interview_mode' => 'nullable|in:in-person,virtual',
-                'interview_status' => 'required|in:scheduled,completed,cancelled',
+                'interview_mode' => 'nullable|string',
+                'interview_status' => 'nullable|string',
                 'score' => 'nullable|numeric|between:0,100',
                 'feedback' => 'nullable|string',
                 'created_by' => 'nullable|string',
@@ -226,7 +267,7 @@ class InterviewController extends Controller
     public function show($id)
     {
         try {
-            $interview = Interview::with('candidate')->findOrFail($id);
+            $interview = Interview::findOrFail($id);
 
             return response()->json([
                 'success' => true,
@@ -265,16 +306,19 @@ class InterviewController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             @OA\Property(property="candidate_id", type="integer", nullable=true),
-     *             @OA\Property(property="interviewer_name", type="string", nullable=true),
-     *             @OA\Property(property="interview_date", type="string", format="date"),
-     *             @OA\Property(property="start_time", type="string", format="time"),
-     *             @OA\Property(property="end_time", type="string", format="time"),
-     *             @OA\Property(property="interview_mode", type="string", enum={"in-person", "virtual"}),
-     *             @OA\Property(property="interview_status", type="string", enum={"scheduled", "completed", "cancelled"}),
-     *             @OA\Property(property="score", type="number", nullable=true),
-     *             @OA\Property(property="feedback", type="string", nullable=true),
-     *             @OA\Property(property="updated_by", type="string", nullable=true)
+     *             @OA\Property(property="candidate_name", type="string", maxLength=255, example="Jane Doe"),
+     *             @OA\Property(property="phone", type="string", maxLength=10, nullable=true, example="0987654321"),
+     *             @OA\Property(property="resume", type="string", maxLength=255, nullable=true, example="jane_doe_resume.pdf"),
+     *             @OA\Property(property="job_position", type="string", maxLength=255, example="Frontend Developer"),
+     *             @OA\Property(property="interviewer_name", type="string", nullable=true, example="John Smith"),
+     *             @OA\Property(property="interview_date", type="string", format="date", nullable=true, example="2023-06-15"),
+     *             @OA\Property(property="start_time", type="string", format="time", nullable=true, example="14:00:00"),
+     *             @OA\Property(property="end_time", type="string", format="time", nullable=true, example="15:30:00"),
+     *             @OA\Property(property="interview_mode", type="string", nullable=true, example="In-person"),
+     *             @OA\Property(property="interview_status", type="string", nullable=true, example="Completed"),
+     *             @OA\Property(property="score", type="number", nullable=true, example=92.5),
+     *             @OA\Property(property="feedback", type="string", nullable=true, example="Excellent technical skills and cultural fit. Strong problem-solving abilities demonstrated during the coding exercise."),
+     *             @OA\Property(property="updated_by", type="string", nullable=true, example="hr_manager@company.com")
      *         )
      *     ),
      *     @OA\Response(
@@ -283,7 +327,27 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview updated successfully"),
-     *             @OA\Property(property="data", type="object")
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=5),
+     *                 @OA\Property(property="candidate_name", type="string", example="Jane Doe"),
+     *                 @OA\Property(property="phone", type="string", example="0987654321"),
+     *                 @OA\Property(property="resume", type="string", example="jane_doe_resume.pdf"),
+     *                 @OA\Property(property="job_position", type="string", example="Frontend Developer"),
+     *                 @OA\Property(property="interviewer_name", type="string", example="John Smith"),
+     *                 @OA\Property(property="interview_date", type="string", format="date", example="2023-06-15"),
+     *                 @OA\Property(property="start_time", type="string", format="time", example="14:00:00"),
+     *                 @OA\Property(property="end_time", type="string", format="time", example="15:30:00"),
+     *                 @OA\Property(property="interview_mode", type="string", example="In-person"),
+     *                 @OA\Property(property="interview_status", type="string", example="Completed"),
+     *                 @OA\Property(property="score", type="number", example=92.5),
+     *                 @OA\Property(property="feedback", type="string", example="Excellent technical skills and cultural fit. Strong problem-solving abilities demonstrated during the coding exercise."),
+     *                 @OA\Property(property="created_by", type="string", example="recruiter@company.com"),
+     *                 @OA\Property(property="updated_by", type="string", example="hr_manager@company.com"),
+     *                 @OA\Property(property="created_at", type="string", format="date-time", example="2023-06-10T09:15:27.000000Z"),
+     *                 @OA\Property(property="updated_at", type="string", format="date-time", example="2023-06-15T16:30:45.000000Z")
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -300,7 +364,25 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="candidate_name",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The candidate name field is required.")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="job_position",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The job position field is required.")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="end_time",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The end time must be a time after start time.")
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -309,7 +391,7 @@ class InterviewController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to update interview"),
-     *             @OA\Property(property="error", type="string")
+     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
      *         )
      *     )
      * )
@@ -320,13 +402,16 @@ class InterviewController extends Controller
             $interview = Interview::findOrFail($id);
 
             $validated = $request->validate([
-                'candidate_id' => 'nullable|exists:candidates,id',
+                'candidate_name' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:10',
+                'resume' => 'nullable|string|max:255',
+                'job_position' => 'nullable|string|max:255',
                 'interviewer_name' => 'nullable|string|max:255',
                 'interview_date' => 'nullable|date',
                 'start_time' => 'nullable|date_format:H:i:s',
                 'end_time' => 'nullable|date_format:H:i:s|after:start_time',
-                'interview_mode' => 'nullable|in:in-person,virtual',
-                'interview_status' => 'nullable|in:scheduled,completed,cancelled',
+                'interview_mode' => 'nullable|string',
+                'interview_status' => 'nullable|string',
                 'score' => 'nullable|numeric|between:0,100',
                 'feedback' => 'nullable|string',
                 'updated_by' => 'nullable|string'

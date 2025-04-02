@@ -15,6 +15,13 @@ use App\Http\Controllers\Api\EmploymentTypeController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\DepartmentpositionController;
+use App\Http\Controllers\Api\LeaveManagementController;
+use App\Http\Controllers\Api\TravelRequestController;
+use App\Http\Controllers\Api\TravelRequestApprovalController;
+use App\Http\Controllers\Api\PayrollController;
+use App\Http\Controllers\Api\EmployeeReferenceController;
+use App\Http\Controllers\Api\EmployeeTrainingController;
+use App\Http\Controllers\Api\EmployeeChildrenController;
 
 
 // Public route for login
@@ -40,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Employees routes (use middleware permission:read employees)
     Route::prefix('employees')->group(function () {
+        Route::post('/upload', [EmployeeController::class, 'uploadEmployeeData'])->middleware('permission:employee.import');
         Route::get('/', [EmployeeController::class, 'index'])->middleware('permission:employee.read');
         Route::get('/filter', [EmployeeController::class, 'filterEmployees'])->middleware('permission:employee.read');
         Route::get('/site-records', [EmployeeController::class, 'getSiteRecords'])->middleware('permission:employee.read');
@@ -112,9 +120,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('interviews')->group(function () {
         Route::get('/', [InterviewController::class, 'index'])->middleware('permission:interview.read');
         Route::post('/', [InterviewController::class, 'store'])->middleware('permission:interview.create');
+        Route::get('/{id}', [InterviewController::class, 'show'])->middleware('permission:interview.read');
+        Route::put('/{id}', [InterviewController::class, 'update'])->middleware('permission:interview.update');
+        Route::delete('/{id}', [InterviewController::class, 'destroy'])->middleware('permission:interview.delete');
     });
-
-
 
     // Work location routes (use middleware permission:read work locations)
     Route::prefix('worklocations')->group(function () {
@@ -125,6 +134,104 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [WorklocationController::class, 'destroy'])->middleware('permission:employee.delete');
     });
 
+    // Leave management routes (use middleware permission:read leaves)
+    Route::prefix('leaves')->group(function () {
+        Route::get('/types', [LeaveManagementController::class, 'getLeaveTypes'])->middleware('permission:leave_request.read');
+        Route::get('/types/{id}', [LeaveManagementController::class, 'getLeaveType'])->middleware('permission:leave_request.read');
+        Route::post('/types', [LeaveManagementController::class, 'createLeaveType'])->middleware('permission:leave_request.create');
+        Route::put('/types/{id}', [LeaveManagementController::class, 'updateLeaveType'])->middleware('permission:leave_request.update');
+        Route::delete('/types/{id}', [LeaveManagementController::class, 'deleteLeaveType'])->middleware('permission:leave_request.delete');
+
+        Route::get('/requests', [LeaveManagementController::class, 'getLeaveRequests'])->middleware('permission:leave_request.read');
+        Route::get('/requests/{id}', [LeaveManagementController::class, 'getLeaveRequest'])->middleware('permission:leave_request.read');
+        Route::post('/requests', [LeaveManagementController::class, 'createLeaveRequest'])->middleware('permission:leave_request.create');
+        Route::put('/requests/{id}', [LeaveManagementController::class, 'updateLeaveRequest'])->middleware('permission:leave_request.update');
+        Route::delete('/requests/{id}', [LeaveManagementController::class, 'deleteLeaveRequest'])->middleware('permission:leave_request.delete');
+
+        Route::get('/balances', [LeaveManagementController::class, 'getLeaveBalances'])->middleware('permission:leave_request.read');
+        Route::get('/balances/{id}', [LeaveManagementController::class, 'getLeaveBalance'])->middleware('permission:leave_request.read');
+        Route::post('/balances', [LeaveManagementController::class, 'createLeaveBalance'])->middleware('permission:leave_request.create');
+        Route::put('/balances/{id}', [LeaveManagementController::class, 'updateLeaveBalance'])->middleware('permission:leave_request.update');
+        Route::delete('/balances/{id}', [LeaveManagementController::class, 'deleteLeaveBalance'])->middleware('permission:leave_request.delete');
+
+        Route::get('/approvals', [LeaveManagementController::class, 'getApprovals'])->middleware('permission:leave_request.read');
+        Route::get('/approvals/{id}', [LeaveManagementController::class, 'getApproval'])->middleware('permission:leave_request.read');
+        Route::post('/approvals', [LeaveManagementController::class, 'createApproval'])->middleware('permission:leave_request.create');
+        Route::put('/approvals/{id}', [LeaveManagementController::class, 'updateApproval'])->middleware('permission:leave_request.update');
+        Route::delete('/approvals/{id}', [LeaveManagementController::class, 'deleteApproval'])->middleware('permission:leave_request.delete');
+
+        Route::get('/traditional', [LeaveManagementController::class, 'getTraditionalLeaves'])->middleware('permission:leave_request.read');
+        Route::get('/traditional/{id}', [LeaveManagementController::class, 'getTraditionalLeave'])->middleware('permission:leave_request.read');
+        Route::post('/traditional', [LeaveManagementController::class, 'createTraditionalLeave'])->middleware('permission:leave_request.create');
+        Route::put('/traditional/{id}', [LeaveManagementController::class, 'updateTraditionalLeave'])->middleware('permission:leave_request.update');
+        Route::delete('/traditional/{id}', [LeaveManagementController::class, 'deleteTraditionalLeave'])->middleware('permission:leave_request.delete');
+    });
+
+
+    // Payroll routes (use middleware permission:read payrolls)
+    Route::prefix('payrolls')->group(function () {
+        Route::get('/', [PayrollController::class, 'index'])->middleware('permission:payroll.read');
+        Route::get('/{id}', [PayrollController::class, 'show'])->middleware('permission:payroll.read');
+        Route::post('/', [PayrollController::class, 'store'])->middleware('permission:payroll.create');
+        Route::put('/{id}', [PayrollController::class, 'update'])->middleware('permission:payroll.update');
+        Route::delete('/{id}', [PayrollController::class, 'destroy'])->middleware('permission:payroll.delete');
+    });
+
+    // Travel request routes (use middleware permission:read travel requests)
+    Route::prefix('travel-requests')->group(function () {
+        Route::get('/', [TravelRequestController::class, 'index'])->middleware('permission:travel_request.read');
+        Route::post('/', [TravelRequestController::class, 'store'])->middleware('permission:travel_request.create');
+        Route::get('/{id}', [TravelRequestController::class, 'show'])->middleware('permission:travel_request.read');
+        Route::put('/{id}', [TravelRequestController::class, 'update'])->middleware('permission:travel_request.update');
+        Route::delete('/{id}', [TravelRequestController::class, 'destroy'])->middleware('permission:travel_request.delete');
+    });
+
+    // Travel request approval routes (use middleware permission:read travel request approvals)
+    Route::prefix('travel-request-approvals')->group(function () {
+        Route::get('/', [TravelRequestApprovalController::class, 'index'])->middleware('permission:travel_request.read');
+        Route::post('/', [TravelRequestApprovalController::class, 'store'])->middleware('permission:travel_request.create');
+        Route::get('/{id}', [TravelRequestApprovalController::class, 'show'])->middleware('permission:travel_request.read');
+        Route::put('/{id}', [TravelRequestApprovalController::class, 'update'])->middleware('permission:travel_request.update');
+        Route::delete('/{id}', [TravelRequestApprovalController::class, 'destroy'])->middleware('permission:travel_request.delete');
+    });
+
+    // Employee reference routes
+    Route::prefix('employee-references')->group(function () {
+        Route::get('/', [EmployeeReferenceController::class, 'index'])->middleware('permission:reference.read');
+        Route::post('/', [EmployeeReferenceController::class, 'store'])->middleware('permission:reference.create');
+        Route::get('/{id}', [EmployeeReferenceController::class, 'show'])->middleware('permission:reference.read');
+        Route::put('/{id}', [EmployeeReferenceController::class, 'update'])->middleware('permission:reference.update');
+        Route::delete('/{id}', [EmployeeReferenceController::class, 'destroy'])->middleware('permission:reference.delete');
+    });
+
+
+    // Employee training routes
+    // Training routes
+    Route::prefix('trainings')->group(function () {
+        Route::get('/', [EmployeeTrainingController::class, 'listTrainings'])->middleware('permission:training.read');
+        Route::post('/', [EmployeeTrainingController::class, 'storeTraining'])->middleware('permission:training.create');
+        Route::get('/{id}', [EmployeeTrainingController::class, 'showTraining'])->middleware('permission:training.read');
+        Route::put('/{id}', [EmployeeTrainingController::class, 'updateTraining'])->middleware('permission:training.update');
+        Route::delete('/{id}', [EmployeeTrainingController::class, 'destroyTraining'])->middleware('permission:training.delete');
+    });
+
+    // Employee training routes
+    Route::prefix('employee-trainings')->group(function () {
+        Route::get('/', [EmployeeTrainingController::class, 'index'])->middleware('permission:training.read');
+        Route::post('/', [EmployeeTrainingController::class, 'store'])->middleware('permission:training.create');
+        Route::get('/{id}', [EmployeeTrainingController::class, 'show'])->middleware('permission:training.read');
+        Route::put('/{id}', [EmployeeTrainingController::class, 'update'])->middleware('permission:training.update');
+        Route::delete('/{id}', [EmployeeTrainingController::class, 'destroy'])->middleware('permission:training.delete');
+    });
+
+    // Employee children routes
+    Route::prefix('employee-children')->group(function () {
+        Route::get('/', [EmployeeChildrenController::class, 'index'])->middleware('permission:children.read');
+        Route::post('/', [EmployeeChildrenController::class, 'store'])->middleware('permission:children.create');
+        Route::get('/{id}', [EmployeeChildrenController::class, 'show'])->middleware('permission:children.read');
+        Route::put('/{id}', [EmployeeChildrenController::class, 'update'])->middleware('permission:children.update');
+        Route::delete('/{id}', [EmployeeChildrenController::class, 'destroy'])->middleware('permission:children.delete');
+    });
 
 
 });

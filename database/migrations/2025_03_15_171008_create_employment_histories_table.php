@@ -20,17 +20,15 @@ return new class extends Migration
             $table->date('probation_end_date')->nullable(); // Optional - when probation ends
             $table->date('end_date')->nullable(); // Optional - when employment ends (for contracts)
             $table->unsignedBigInteger('department_position_id')->nullable(); // Required - department
-            $table->string('work_location'); // Required - where employee works
+            $table->unsignedBigInteger('work_location_id')->nullable(); // Required - work location
             $table->decimal('position_salary', 10, 2); // Required - regular salary
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
-            $table->unsignedBigInteger('supervisor_id')->nullable(); // Optional - reporting manager
             $table->decimal('employee_tax', 10, 2)->nullable(); // Optional - tax rate
             $table->decimal('fte', 10, 2)->nullable(); // Optional - full-time equivalent
             $table->boolean('active')->default(true); // Required - employment status
             $table->boolean('health_welfare')->default(false); // Required - health benefits flag
             $table->boolean('pvd')->default(false); // Required - provident fund flag
             $table->boolean('saving_fund')->default(false); // Required - saving fund flag
-            $table->string('social_security_id')->nullable(); // Optional - social security identifier
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
@@ -38,7 +36,7 @@ return new class extends Migration
             // Foreign keys
             $table->foreign('employment_id')->references('id')->on('employments')->onDelete('cascade');
             $table->foreign('employee_id')->references('id')->on('employees');
-            $table->foreign('supervisor_id')->references('id')->on('employees');
+            $table->foreign('work_location_id')->references('id')->on('work_locations');
             $table->foreign('department_position_id')->references('id')->on('department_positions');
         });
     }

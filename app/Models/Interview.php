@@ -10,9 +10,12 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="Interview",
  *     type="object",
+ *     required={"candidate_name", "job_position"},
  *     @OA\Property(property="id", type="integer"),
- *     @OA\Property(property="candidate_id", type="integer", nullable=true),
- *     @OA\Property(property="grant_position_id", type="integer", nullable=true),
+ *     @OA\Property(property="candidate_name", type="string", maxLength=255),
+ *     @OA\Property(property="phone", type="string", maxLength=10, nullable=true),
+ *     @OA\Property(property="resume", type="string", maxLength=255, nullable=true),
+ *     @OA\Property(property="job_position", type="string", maxLength=255),
  *     @OA\Property(property="interviewer_name", type="string", nullable=true),
  *     @OA\Property(property="interview_date", type="string", format="date", nullable=true),
  *     @OA\Property(property="start_time", type="string", format="time", nullable=true),
@@ -29,7 +32,10 @@ class Interview extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'candidate_id',
+        'candidate_name',
+        'phone',
+        'resume',
+        'job_position',
         'interviewer_name',
         'interview_date',
         'start_time',
@@ -42,13 +48,5 @@ class Interview extends Model
         'updated_by'
     ];
 
-    public function candidate()
-    {
-        return $this->belongsTo(Candidate::class);
-    }
 
-    public function grantPosition()
-    {
-        return $this->belongsTo(GrantPosition::class);
-    }
 }

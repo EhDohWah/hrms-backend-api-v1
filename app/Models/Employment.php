@@ -6,27 +6,25 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Employee;
 use App\Models\EmploymentType;
-use App\Models\Position;
-use App\Models\Department;
+use App\Models\DepartmentPosition;
 use App\Models\WorkLocation;
 use App\Models\EmploymentHistory;
-use App\Models\GrantItem;
+use App\Models\EmploymentGrantAllocation;
 
 /**
  * @OA\Schema(
  *     schema="Employment",
- *     required={"employee_id", "employment_type_id", "start_date", "position_id", "department_id", "work_location_id", "position_salary", "probation_salary"},
+ *     required={"employee_id", "employment_type", "start_date", "department_position_id", "work_location_id", "position_salary"},
  *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
  *     @OA\Property(property="employee_id", type="integer", format="int64"),
- *     @OA\Property(property="employment_type_id", type="integer", format="int64"),
+ *     @OA\Property(property="employment_type", type="string"),
  *     @OA\Property(property="start_date", type="string", format="date"),
  *     @OA\Property(property="probation_end_date", type="string", format="date", nullable=true),
  *     @OA\Property(property="end_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="position_id", type="integer", format="int64"),
- *     @OA\Property(property="department_id", type="integer", format="int64"),
- *     @OA\Property(property="work_location_id", type="integer", format="int64"),
+ *     @OA\Property(property="department_position_id", type="integer", format="int64", nullable=true),
+ *     @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
  *     @OA\Property(property="position_salary", type="number", format="float"),
- *     @OA\Property(property="probation_salary", type="number", format="float"),
+ *     @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
  *     @OA\Property(property="supervisor_id", type="integer", format="int64", nullable=true),
  *     @OA\Property(property="employee_tax", type="number", format="float", nullable=true),
  *     @OA\Property(property="fte", type="number", format="float", nullable=true),
@@ -47,23 +45,20 @@ class Employment extends Model
 
     protected $fillable = [
         'employee_id',
-        'employment_type_id',
+        'employment_type',
         'start_date',
         'probation_end_date',
         'end_date',
-        'position_id',
-        'department_id',
+        'department_position_id',
         'work_location_id',
         'position_salary',
         'probation_salary',
-        'supervisor_id',
         'employee_tax',
         'fte',
         'active',
         'health_welfare',
         'pvd',
         'saving_fund',
-        'social_security_id',
         'created_by',
         'updated_by'
     ];
@@ -71,31 +66,30 @@ class Employment extends Model
     protected static function boot()
     {
         parent::boot();
-
         // When a new Employment record is created:
         static::created(function ($employment) {
+            // Create a history record with all the employment attributes
             EmploymentHistory::create([
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
-                'employment_type_id' => $employment->employment_type_id,
+                'employment_type' => $employment->employment_type,
                 'start_date' => $employment->start_date,
                 'probation_end_date' => $employment->probation_end_date,
                 'end_date' => $employment->end_date,
-                'position_id' => $employment->position_id,
-                'department_id' => $employment->department_id,
+                'department_position_id' => $employment->department_position_id,
                 'work_location_id' => $employment->work_location_id,
                 'position_salary' => $employment->position_salary,
                 'probation_salary' => $employment->probation_salary,
-                'supervisor_id' => $employment->supervisor_id,
                 'employee_tax' => $employment->employee_tax,
                 'fte' => $employment->fte,
                 'active' => $employment->active,
                 'health_welfare' => $employment->health_welfare,
                 'pvd' => $employment->pvd,
                 'saving_fund' => $employment->saving_fund,
-                'social_security_id' => $employment->social_security_id,
                 'created_by' => $employment->created_by,
                 'updated_by' => $employment->updated_by,
+                'change_type' => 'created',
+                'change_date' => now(),
             ]);
         });
 
@@ -104,25 +98,24 @@ class Employment extends Model
             EmploymentHistory::create([
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
-                'employment_type_id' => $employment->employment_type_id,
+                'employment_type' => $employment->employment_type,
                 'start_date' => $employment->start_date,
                 'probation_end_date' => $employment->probation_end_date,
                 'end_date' => $employment->end_date,
-                'position_id' => $employment->position_id,
-                'department_id' => $employment->department_id,
+                'department_position_id' => $employment->department_position_id,
                 'work_location_id' => $employment->work_location_id,
                 'position_salary' => $employment->position_salary,
                 'probation_salary' => $employment->probation_salary,
-                'supervisor_id' => $employment->supervisor_id,
                 'employee_tax' => $employment->employee_tax,
                 'fte' => $employment->fte,
                 'active' => $employment->active,
                 'health_welfare' => $employment->health_welfare,
                 'pvd' => $employment->pvd,
                 'saving_fund' => $employment->saving_fund,
-                'social_security_id' => $employment->social_security_id,
                 'created_by' => $employment->created_by,
                 'updated_by' => $employment->updated_by,
+                'change_type' => 'updated',
+                'change_date' => now(),
             ]);
         });
     }
@@ -133,30 +126,19 @@ class Employment extends Model
         return $this->belongsTo(Employee::class, 'employee_id');
     }
 
-    public function employmentType()
+
+
+    public function departmentPosition()
     {
-        return $this->belongsTo(EmploymentType::class, 'employment_type_id');
+        return $this->belongsTo(DepartmentPosition::class, 'department_position_id');
     }
 
-    public function position()
-    {
-        return $this->belongsTo(Position::class, 'position_id');
-    }
-
-    public function department()
-    {
-        return $this->belongsTo(Department::class, 'department_id');
-    }
 
     public function workLocation()
     {
         return $this->belongsTo(WorkLocation::class, 'work_location_id');
     }
 
-    public function supervisor()
-    {
-        return $this->belongsTo(Employee::class, 'supervisor_id');
-    }
 
     public function grantAllocations()
     {

@@ -59,6 +59,7 @@ return new class extends Migration
             $table->unsignedBigInteger('employee_id'); // match employees.id type
             $table->unsignedBigInteger('leave_type_id'); // use unsignedBigInteger to match leave_types.id
             $table->decimal('remaining_days', 18, 2)->nullable();
+            $table->year('year')->default(date('Y'));
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();

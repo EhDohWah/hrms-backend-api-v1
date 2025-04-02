@@ -13,20 +13,21 @@ return new class extends Migration
     {
         Schema::create('interviews', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('candidate_id')->nullable();
+            $table->string('candidate_name', 255);
+            $table->string('phone', 10)->nullable();
+            $table->string('resume', 255)->nullable();
+            $table->string('job_position', 255);
             $table->string('interviewer_name')->nullable();
             $table->date('interview_date')->nullable();
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->string('interview_mode')->nullable();
-            $table->string('interview_status');
+            $table->string('interview_status')->nullable();
             $table->decimal('score', 8, 2)->nullable();
             $table->text('feedback')->nullable();
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
-
-            $table->foreign('candidate_id')->references('id')->on('candidates')->onDelete('cascade');
         });
     }
 

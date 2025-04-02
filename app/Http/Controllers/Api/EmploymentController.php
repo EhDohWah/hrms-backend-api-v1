@@ -17,7 +17,6 @@ use App\Models\EmploymentGrantAllocation;
  *     description="API Endpoints for managing employee employment records"
  * )
  */
-
 class EmploymentController extends Controller
 {
     /**
@@ -46,7 +45,8 @@ class EmploymentController extends Controller
     public function index()
     {
         try {
-            $employments = Employment::all();
+            // Optionally, additional relationships (e.g. employee, grantAllocations) can be loaded if needed.
+            $employments = Employment::with(['employee', 'departmentPosition', 'workLocation'])->get();
 
             return response()->json([
                 'success' => true,
@@ -74,26 +74,22 @@ class EmploymentController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"employee_id", "employment_type_id", "start_date", "position_id", "department_id", "work_location_id", "position_salary", "grant_items_id"},
+     *             required={"employee_id", "employment_type", "start_date", "department_position_id", "work_location_id", "position_salary"},
      *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="employment_type_id", type="integer", example=1),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2023-01-15"),
-     *             @OA\Property(property="probation_end_date", type="string", format="date", example="2023-04-15", nullable=true),
+     *             @OA\Property(property="employment_type", type="string", example="Full-Time"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
+     *             @OA\Property(property="probation_end_date", type="string", format="date", example="2025-04-15", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", example="2024-01-15", nullable=true),
-     *             @OA\Property(property="position_id", type="integer", example=1),
-     *             @OA\Property(property="department_id", type="integer", example=1),
+     *             @OA\Property(property="department_position_id", type="integer", example=1),
      *             @OA\Property(property="work_location_id", type="integer", example=1),
      *             @OA\Property(property="position_salary", type="number", format="float", example=50000),
      *             @OA\Property(property="probation_salary", type="number", format="float", example=45000, nullable=true),
-     *             @OA\Property(property="supervisor_id", type="integer", example=2, nullable=true),
      *             @OA\Property(property="employee_tax", type="number", format="float", example=7, nullable=true),
      *             @OA\Property(property="fte", type="number", format="float", example=1.0, nullable=true),
      *             @OA\Property(property="active", type="boolean", example=true),
      *             @OA\Property(property="health_welfare", type="boolean", example=true),
      *             @OA\Property(property="pvd", type="boolean", example=false),
-     *             @OA\Property(property="saving_fund", type="boolean", example=false),
-     *             @OA\Property(property="social_security_id", type="string", example="SSN12345", nullable=true),
-     *             @OA\Property(property="grant_items_id", type="integer", example=1, description="Reference to the grant item for position limit")
+     *             @OA\Property(property="saving_fund", type="boolean", example=false)
      *         )
      *     ),
      *     @OA\Response(
@@ -106,32 +102,28 @@ class EmploymentController extends Controller
      *             @OA\Property(property="message", type="string", example="Employment created successfully")
      *         )
      *     ),
-     *     @OA\Response(response=422, description="Validation error or position full")
+     *     @OA\Response(response=422, description="Validation error")
      * )
      */
     public function store(Request $request)
     {
         // Validate the incoming request data.
         $validator = Validator::make($request->all(), [
-            'employee_id'         => 'required|exists:employees,id',
-            'employment_type_id'  => 'required|exists:employment_types,id',
-            'start_date'          => 'required|date',
-            'probation_end_date'  => 'nullable|date',
-            'end_date'            => 'nullable|date',
-            'position_id'         => 'required|exists:positions,id',
-            'department_id'       => 'required|exists:departments,id',
-            'work_location_id'    => 'required|exists:work_locations,id',
-            'position_salary'     => 'required|numeric',
-            'probation_salary'    => 'nullable|numeric',
-            'supervisor_id'       => 'nullable|exists:employees,id',
-            'employee_tax'        => 'nullable|numeric',
-            'fte'                 => 'nullable|numeric',
-            'active'              => 'boolean',
-            'health_welfare'      => 'boolean',
-            'pvd'                 => 'boolean',
-            'saving_fund'         => 'boolean',
-            'social_security_id'  => 'nullable|string',
-            'grant_items_id'      => 'required|exists:grant_items,id',
+            'employee_id'            => 'required|exists:employees,id',
+            'employment_type'        => 'required|string',
+            'start_date'             => 'required|date',
+            'probation_end_date'     => 'nullable|date',
+            'end_date'               => 'nullable|date',
+            'department_position_id' => 'required|exists:department_positions,id',
+            'work_location_id'       => 'required|exists:work_locations,id',
+            'position_salary'        => 'required|numeric',
+            'probation_salary'       => 'nullable|numeric',
+            'employee_tax'           => 'nullable|numeric',
+            'fte'                    => 'nullable|numeric',
+            'active'                 => 'boolean',
+            'health_welfare'         => 'boolean',
+            'pvd'                    => 'boolean',
+            'saving_fund'            => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -142,33 +134,6 @@ class EmploymentController extends Controller
             ], 422);
         }
 
-        // Check if the grant position is already full.
-        try {
-            $grantItem = GrantItem::findOrFail($request->grant_items_id);
-
-            // Count active employments: active if end_date is null or greater than today.
-            $activeCount = Employment::where('grant_items_id', $grantItem->id)
-                ->where(function ($query) {
-                    $query->whereNull('end_date')
-                          ->orWhere('end_date', '>', Carbon::now());
-                })
-                ->count();
-
-            // Compare with the maximum allowed (cast if necessary).
-            if ($activeCount >= (int) $grantItem->grant_position_number) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot create employment: the position is already full.'
-                ], 422);
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error checking position limit: ' . $e->getMessage()
-            ], 500);
-        }
-
-        // Create the employment record.
         try {
             $data = $request->all();
             $data['created_by'] = Auth::user()->name ?? 'System';
@@ -257,24 +222,20 @@ class EmploymentController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="employment_type_id", type="integer", example=1),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2023-01-15"),
-     *             @OA\Property(property="probation_end_date", type="string", format="date", example="2023-04-15", nullable=true),
+     *             @OA\Property(property="employment_type", type="string", example="Full-Time"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
+     *             @OA\Property(property="probation_end_date", type="string", format="date", example="2025-04-15", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", example="2024-01-15", nullable=true),
-     *             @OA\Property(property="position_id", type="integer", example=1),
-     *             @OA\Property(property="department_id", type="integer", example=1),
+     *             @OA\Property(property="department_position_id", type="integer", example=1),
      *             @OA\Property(property="work_location_id", type="integer", example=1),
      *             @OA\Property(property="position_salary", type="number", format="float", example=50000),
      *             @OA\Property(property="probation_salary", type="number", format="float", example=45000, nullable=true),
-     *             @OA\Property(property="supervisor_id", type="integer", example=2, nullable=true),
      *             @OA\Property(property="employee_tax", type="number", format="float", example=7, nullable=true),
      *             @OA\Property(property="fte", type="number", format="float", example=1.0, nullable=true),
      *             @OA\Property(property="active", type="boolean", example=true),
      *             @OA\Property(property="health_welfare", type="boolean", example=true),
      *             @OA\Property(property="pvd", type="boolean", example=false),
-     *             @OA\Property(property="saving_fund", type="boolean", example=false),
-     *             @OA\Property(property="social_security_id", type="string", example="SSN12345", nullable=true),
-     *             @OA\Property(property="grant_items_id", type="integer", example=1, description="Reference to the grant item")
+     *             @OA\Property(property="saving_fund", type="boolean", example=false)
      *         )
      *     ),
      *     @OA\Response(
@@ -294,25 +255,21 @@ class EmploymentController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'employee_id'         => 'exists:employees,id',
-            'employment_type_id'  => 'exists:employment_types,id',
-            'start_date'          => 'date',
-            'probation_end_date'  => 'nullable|date',
-            'end_date'            => 'nullable|date',
-            'position_id'         => 'exists:positions,id',
-            'department_id'       => 'exists:departments,id',
-            'work_location_id'    => 'exists:work_locations,id',
-            'position_salary'     => 'numeric',
-            'probation_salary'    => 'nullable|numeric',
-            'supervisor_id'       => 'nullable|exists:employees,id',
-            'employee_tax'        => 'nullable|numeric',
-            'fte'                 => 'nullable|numeric',
-            'active'              => 'boolean',
-            'health_welfare'      => 'boolean',
-            'pvd'                 => 'boolean',
-            'saving_fund'         => 'boolean',
-            'social_security_id'  => 'nullable|string',
-            'grant_items_id'      => 'exists:grant_items,id',
+            'employee_id'            => 'exists:employees,id',
+            'employment_type'        => 'string',
+            'start_date'             => 'date',
+            'probation_end_date'     => 'nullable|date',
+            'end_date'               => 'nullable|date',
+            'department_position_id' => 'exists:department_positions,id',
+            'work_location_id'       => 'exists:work_locations,id',
+            'position_salary'        => 'numeric',
+            'probation_salary'       => 'nullable|numeric',
+            'employee_tax'           => 'nullable|numeric',
+            'fte'                    => 'nullable|numeric',
+            'active'                 => 'boolean',
+            'health_welfare'         => 'boolean',
+            'pvd'                    => 'boolean',
+            'saving_fund'            => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -327,24 +284,6 @@ class EmploymentController extends Controller
             $employment = Employment::findOrFail($id);
             $data = $request->all();
             $data['updated_by'] = Auth::user()->name ?? 'System';
-
-            // If grant_items_id is being updated, check the position limit.
-            if (isset($data['grant_items_id']) && $data['grant_items_id'] != $employment->grant_items_id) {
-                $grantItem = GrantItem::findOrFail($data['grant_items_id']);
-                $activeCount = Employment::where('grant_items_id', $grantItem->id)
-                    ->where(function ($query) {
-                        $query->whereNull('end_date')
-                              ->orWhere('end_date', '>', Carbon::now());
-                    })
-                    ->count();
-
-                if ($activeCount >= (int) $grantItem->grant_position_number) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot update employment: the position is already full.'
-                    ], 422);
-                }
-            }
 
             $employment->update($data);
 
@@ -408,8 +347,6 @@ class EmploymentController extends Controller
         }
     }
 
-
-
     /**
      * Add an employment grant allocation
      *
@@ -427,8 +364,8 @@ class EmploymentController extends Controller
      *             @OA\Property(property="employment_id", type="integer", example=1),
      *             @OA\Property(property="grant_items_id", type="integer", example=1),
      *             @OA\Property(property="level_of_effort", type="number", format="float", example=100.0),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2023-12-31"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-01"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2025-12-31"),
      *             @OA\Property(property="active", type="boolean", example=true)
      *         )
      *     ),
@@ -456,12 +393,12 @@ class EmploymentController extends Controller
     public function addEmploymentGrantAllocation(Request $request)
     {
         $request->validate([
-            'employment_id' => 'required|exists:employments,id',
-            'grant_items_id' => 'required|exists:grant_items,id',
+            'employment_id'   => 'required|exists:employments,id',
+            'grant_items_id'  => 'required|exists:grant_items,id',
             'level_of_effort' => 'required|numeric|min:0|max:100',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'active' => 'boolean'
+            'start_date'      => 'required|date',
+            'end_date'        => 'nullable|date|after_or_equal:start_date',
+            'active'          => 'boolean'
         ]);
 
         // Get the grant item to check its position number
@@ -481,18 +418,18 @@ class EmploymentController extends Controller
         }
 
         $grantAllocation = EmploymentGrantAllocation::create([
-            'employment_id' => $request->employment_id,
-            'grant_items_id' => $request->grant_items_id,
+            'employment_id'   => $request->employment_id,
+            'grant_items_id'  => $request->grant_items_id,
             'level_of_effort' => $request->level_of_effort,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'active' => $request->active ?? true
+            'start_date'      => $request->start_date,
+            'end_date'        => $request->end_date,
+            'active'          => $request->active ?? true
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Employment grant allocation added successfully',
-            'data' => $grantAllocation
+            'data'    => $grantAllocation
         ]);
     }
 
@@ -543,6 +480,6 @@ class EmploymentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employment grant allocation deleted successfully'
-        ]);
+        ], 201);
     }
 }

@@ -11,29 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_beneficiaries', function (Blueprint $table) {
+        Schema::create('employee_trainings', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('employee_id');
-            $table->string('beneficiary_name', 255);
-            $table->string('beneficiary_relationship', 255);
-            $table->string('phone_number', 10)->nullable();
-            $table->timestamps();
+            $table->unsignedBigInteger('training_id');
+            $table->string('status', 50);
+            $table->timestamps(); // creates created_at and updated_at
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
 
-            $table->foreign('employee_id')
-                  ->references('id')->on('employees')
-                  ->onDelete('cascade');
+            // Foreign key constraint: employee_trainings.training_id references trainings.id
+            $table->foreign('employee_id')->references('id')->on('employees');
+            $table->foreign('training_id')->references('id')->on('trainings');
         });
     }
-
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_beneficiaries');
+        Schema::dropIfExists('employee_trainings');
     }
-
 };

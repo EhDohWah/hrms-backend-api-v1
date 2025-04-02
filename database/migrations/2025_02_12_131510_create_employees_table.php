@@ -13,43 +13,53 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
-            $table->string('staff_id', 50)->unique(); // staff_id is unique
-            $table->string('subsidiary', 20); // subsidiary is required
-            $table->unsignedBigInteger('user_id')->nullable(); // user_id is optional
-            $table->string('first_name', 255); // first_name is required
-            $table->string('last_name', 255); // last_name is required
-            $table->string('first_name_th', 255)->nullable(); // first_name in Thai
-            $table->string('last_name_th', 255)->nullable(); // last_name in Thai
-            $table->string('profile_picture', 255)->nullable(); // profile_picture is optional
-            $table->string('gender', 10); // Gender is required
-            $table->date('date_of_birth'); // date_of_birth is required
-            $table->string('status', 20)->default('Expats'); // status is required, values: Expats, Local ID, Local non ID
-            $table->string('nationality', 100)->nullable(); // nationality is optional
-            $table->string('religion', 100)->nullable(); // religion is optional
-            $table->string('social_security_number', 50)->nullable(); // social_security_number is optional
-            $table->string('tax_number', 50)->nullable(); // tax_number is optional
-            $table->string('passport_number', 50)->nullable(); // passport_number is optional
-            $table->string('bank_name', 100)->nullable(); // bank_name is optional
-            $table->string('bank_branch', 100)->nullable(); // bank_branch is optional
-            $table->string('bank_account_name', 100)->nullable(); // bank_account_name is optional
-            $table->string('bank_account_number', 100)->nullable(); // bank_account_number is optional
-            $table->string('mobile_phone', 20)->nullable(); // mobile_phone is optional
-            $table->string('permanent_address')->nullable(); // permanent_address is optional
-            $table->string('current_address')->nullable(); // current_address is optional
-            $table->boolean('military_status')->default(false); // military_status is required
-            $table->string('marital_status', 20)->nullable(); // marital_status is optional
-            $table->string('spouse_name', 100)->nullable(); // spouse_name is optional
-            $table->string('spouse_occupation', 100)->nullable(); // spouse_occupation is optional
-            $table->string('father_name', 100)->nullable(); // father_name is optional
-            $table->string('father_occupation', 100)->nullable(); // father_occupation is optional
-            $table->string('mother_name', 100)->nullable(); // mother_name is optional
-            $table->string('mother_occupation', 100)->nullable(); // mother_occupation is optional
-            $table->string('driver_license_number', 50)->nullable(); // driver_license_number is optional
-            $table->text('remark')->nullable(); // remark is optional
-            $table->string('created_by', 255)->nullable();
-            $table->string('updated_by', 255)->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('department_position_id')->nullable();
+            $table->string('subsidiary', 5);
+            $table->string('staff_id', 50);
+            $table->string('initial_en', 5)->nullable();
+            $table->string('initial_th', 5)->nullable();
+            $table->string('first_name_en', 255)->nullable();
+            $table->string('last_name_en', 255)->nullable();
+            $table->string('first_name_th', 255)->nullable();
+            $table->string('last_name_th', 255)->nullable();
+            $table->string('gender', 10);
+            $table->date('date_of_birth');
+            $table->string('date_of_birth_th', 10)->nullable();
+            $table->integer('age')->nullable();
+            $table->string('status', 20);
+            $table->string('nationality', 100);
+            $table->string('religion', 100)->nullable();
+            $table->string('social_security_number', 50)->nullable();
+            $table->string('tax_number', 50)->nullable();
+            $table->string('bank_name', 100)->nullable();
+            $table->string('bank_branch', 100)->nullable();
+            $table->string('bank_account_name', 100)->nullable();
+            $table->string('bank_account_number', 50)->nullable();
+            $table->string('mobile_phone', 10)->nullable();
+            $table->text('permanent_address')->nullable();
+            $table->text('current_address')->nullable();
+            $table->string('military_status', 50)->nullable();
+            $table->string('marital_status', 50)->nullable();
+            $table->string('spouse_name', 200)->nullable();
+            $table->string('spouse_phone_number', 10)->nullable();
+            $table->string('emergency_contact_person_name', 100)->nullable();
+            $table->string('emergency_contact_person_relationship', 100)->nullable();
+            $table->string('emergency_contact_person_phone', 10)->nullable();
+            $table->string('father_name', 200)->nullable();
+            $table->string('father_occupation', 200)->nullable();
+            $table->string('father_phone_number', 10)->nullable();
+            $table->string('mother_name', 200)->nullable();
+            $table->string('mother_occupation', 200)->nullable();
+            $table->string('mother_phone_number', 10)->nullable();
+            $table->string('driver_license_number', 100)->nullable();
+            $table->string('remark', 255)->nullable();
             $table->timestamps();
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade')->nullable();
+            $table->string('created_by', 100)->nullable();
+            $table->string('updated_by', 100)->nullable();
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
+            $table->foreign('department_position_id')->references('id')->on('department_positions')->onDelete('cascade');
         });
     }
 

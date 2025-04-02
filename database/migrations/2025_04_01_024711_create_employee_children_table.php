@@ -11,29 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_beneficiaries', function (Blueprint $table) {
+        Schema::create('employee_children', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('employee_id');
-            $table->string('beneficiary_name', 255);
-            $table->string('beneficiary_relationship', 255);
-            $table->string('phone_number', 10)->nullable();
-            $table->timestamps();
+            $table->string('name', 100);
+            $table->date('date_of_birth');
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
+            $table->timestamps();
 
-            $table->foreign('employee_id')
-                  ->references('id')->on('employees')
-                  ->onDelete('cascade');
+            // Foreign key constraint (optional, adjust as needed)
+            $table->foreign('employee_id')->references('id')->on('employees');
         });
     }
-
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_beneficiaries');
+        Schema::dropIfExists('employee_children');
     }
-
 };
