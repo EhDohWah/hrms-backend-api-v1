@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('interview_status')->nullable();
             $table->decimal('score', 8, 2)->nullable();
             $table->text('feedback')->nullable();
+            $table->text('reference_info')->nullable();
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();

@@ -11,7 +11,7 @@ use OpenApi\Annotations as OA;
  *     schema="Interview",
  *     type="object",
  *     required={"candidate_name", "job_position"},
- *     @OA\Property(property="id", type="integer"),
+ *     @OA\Property(property="id", type="integer", readOnly=true),
  *     @OA\Property(property="candidate_name", type="string", maxLength=255),
  *     @OA\Property(property="phone", type="string", maxLength=10, nullable=true),
  *     @OA\Property(property="resume", type="string", maxLength=255, nullable=true),
@@ -24,8 +24,11 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="interview_status", type="string", enum={"scheduled", "completed", "cancelled"}),
  *     @OA\Property(property="score", type="number", nullable=true),
  *     @OA\Property(property="feedback", type="string", nullable=true),
+ *     @OA\Property(property="reference_info", type="string", nullable=true),
  *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true)
+ *     @OA\Property(property="updated_by", type="string", nullable=true),
+ *     @OA\Property(property="created_at", type="string", format="date-time"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time")
  * )
  */
 class Interview extends Model
@@ -44,6 +47,7 @@ class Interview extends Model
         'interview_status',
         'score',
         'feedback',
+        'reference_info',
         'created_by',
         'updated_by'
     ];

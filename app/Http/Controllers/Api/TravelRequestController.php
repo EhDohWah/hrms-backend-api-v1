@@ -45,20 +45,12 @@ class TravelRequestController extends Controller
      */
     public function index()
     {
-        try {
-            $travelRequests = TravelRequest::with(['employee', 'departmentPosition', 'approvals'])->get();
-            return response()->json([
-                'success' => true,
-                'message' => 'Travel requests retrieved successfully',
-                'data'    => $travelRequests,
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success'  => false,
-                'message'  => 'Error retrieving travel requests',
-                'error'    => $e->getMessage(),
-            ], 500);
-        }
+        $travelRequests = TravelRequest::with(['employee', 'departmentPosition', 'approvals'])->get();
+        return response()->json([
+            'success' => true,
+            'message' => 'Travel requests retrieved successfully',
+            'data'    => $travelRequests,
+        ], 200);
     }
 
     /**
@@ -149,20 +141,12 @@ class TravelRequestController extends Controller
             ], 422);
         }
 
-        try {
-            $travelRequest = TravelRequest::create($validator->validated());
-            return response()->json([
-                'success' => true,
-                'message' => 'Travel request created successfully',
-                'data'    => $travelRequest
-            ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success'  => false,
-                'message'  => 'Error creating travel request',
-                'error'    => $e->getMessage(),
-            ], 500);
-        }
+        $travelRequest = TravelRequest::create($validator->validated());
+        return response()->json([
+            'success' => true,
+            'message' => 'Travel request created successfully',
+            'data'    => $travelRequest
+        ], 201);
     }
 
     /**
@@ -202,20 +186,12 @@ class TravelRequestController extends Controller
      */
     public function show($id)
     {
-        try {
-            $travelRequest = TravelRequest::with(['employee', 'departmentPosition', 'approvals'])->findOrFail($id);
-            return response()->json([
-                'success' => true,
-                'message' => 'Travel request retrieved successfully',
-                'data'    => $travelRequest
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Travel request not found',
-                'error'   => $e->getMessage(),
-            ], 404);
-        }
+        $travelRequest = TravelRequest::with(['employee', 'departmentPosition', 'approvals'])->findOrFail($id);
+        return response()->json([
+            'success' => true,
+            'message' => 'Travel request retrieved successfully',
+            'data'    => $travelRequest
+        ], 200);
     }
 
     /**
@@ -312,21 +288,13 @@ class TravelRequestController extends Controller
             ], 422);
         }
 
-        try {
-            $travelRequest = TravelRequest::findOrFail($id);
-            $travelRequest->update($validator->validated());
-            return response()->json([
-                'success' => true,
-                'message' => 'Travel request updated successfully',
-                'data'    => $travelRequest
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating travel request',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        $travelRequest = TravelRequest::findOrFail($id);
+        $travelRequest->update($validator->validated());
+        return response()->json([
+            'success' => true,
+            'message' => 'Travel request updated successfully',
+            'data'    => $travelRequest
+        ], 200);
     }
 
     /**
@@ -365,19 +333,11 @@ class TravelRequestController extends Controller
      */
     public function destroy($id)
     {
-        try {
-            $travelRequest = TravelRequest::findOrFail($id);
-            $travelRequest->delete();
-            return response()->json([
-                'success' => true,
-                'message' => 'Travel request deleted successfully'
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting travel request',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        $travelRequest = TravelRequest::findOrFail($id);
+        $travelRequest->delete();
+        return response()->json([
+            'success' => true,
+            'message' => 'Travel request deleted successfully'
+        ], 200);
     }
 }

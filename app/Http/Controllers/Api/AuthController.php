@@ -11,6 +11,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Throwable;
 
 /**
  * @OA\Info(
@@ -87,6 +89,7 @@ class AuthController extends Controller
      *         response=401,
      *         description="Invalid credentials",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Invalid credentials")
      *         )
      *     ),
@@ -94,7 +97,17 @@ class AuthController extends Controller
      *         response=429,
      *         description="Too many login attempts",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Too many login attempts. Please try again in 60 seconds.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Something went wrong"),
+     *             @OA\Property(property="error", type="string", example="Server error message")
      *         )
      *     )
      * )
@@ -112,6 +125,7 @@ class AuthController extends Controller
             $this->fireLockoutEvent($request);
             $seconds = $this->limiter()->availableIn($this->throttleKey($request));
             return response()->json([
+                'success' => false,
                 'message' => "Too many login attempts. Please try again in {$seconds} seconds."
             ], 429);
         }
@@ -124,7 +138,10 @@ class AuthController extends Controller
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent()
             ]);
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
         }
 
         // Clear login attempts on success
@@ -152,6 +169,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
+            'success' => true,
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'expires_in'   => $expiresIn,
@@ -173,6 +191,7 @@ class AuthController extends Controller
      *         response=200,
      *         description="Successfully logged out",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Logged out successfully")
      *         )
      *     ),
@@ -180,12 +199,22 @@ class AuthController extends Controller
      *         response=401,
      *         description="Unauthenticated",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Something went wrong"),
+     *             @OA\Property(property="error", type="string", example="Server error message")
      *         )
      *     )
      * )
      */
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
         Log::info('User logged out', [
             'user_id' => $request->user()->id,
@@ -195,7 +224,10 @@ class AuthController extends Controller
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully'
+        ]);
     }
 
 
@@ -214,21 +246,32 @@ class AuthController extends Controller
      *         response=200,
      *         description="Token refreshed successfully",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="access_token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."),
      *             @OA\Property(property="token_type", type="string", example="Bearer"),
-     *             @OA\Property(property="expires_in", type="integer", example=3600)
+     *             @OA\Property(property="expires_in", type="integer", example=21600)
      *         )
      *     ),
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
      *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Something went wrong"),
+     *             @OA\Property(property="error", type="string", example="Server error message")
      *         )
      *     )
      * )
      */
-    public function refreshToken(Request $request)
+    public function refreshToken(Request $request): JsonResponse
     {
         // Revoke the current token
         $request->user()->currentAccessToken()->delete();
@@ -238,6 +281,7 @@ class AuthController extends Controller
         $token = $request->user()->createToken($request->user()->name . '-api-token')->plainTextToken;
 
         return response()->json([
+            'success' => true,
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'expires_in'   => $expiresIn

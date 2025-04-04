@@ -471,6 +471,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Invalid credentials"
@@ -487,9 +491,37 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Too many login attempts. Please try again in 60 seconds."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Server error message"
                                         }
                                     },
                                     "type": "object"
@@ -515,6 +547,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Logged out successfully"
@@ -531,9 +567,37 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Server error message"
                                         }
                                     },
                                     "type": "object"
@@ -564,6 +628,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
                                         "access_token": {
                                             "type": "string",
                                             "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."
@@ -574,7 +642,7 @@
                                         },
                                         "expires_in": {
                                             "type": "integer",
-                                            "example": 3600
+                                            "example": 21600
                                         }
                                     },
                                     "type": "object"
@@ -588,9 +656,37 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Unauthenticated"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Something went wrong"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Server error message"
                                         }
                                     },
                                     "type": "object"
@@ -1065,12 +1161,12 @@
                                         "example": "2020-01-01"
                                     },
                                     "created_by": {
-                                        "type": "integer",
-                                        "example": 1
+                                        "type": "string",
+                                        "example": "admin"
                                     },
                                     "updated_by": {
-                                        "type": "integer",
-                                        "example": 1,
+                                        "type": "string",
+                                        "example": "admin",
                                         "nullable": true
                                     }
                                 },
@@ -1242,12 +1338,12 @@
                                         "example": "2020-01-01"
                                     },
                                     "created_by": {
-                                        "type": "integer",
-                                        "example": 1
+                                        "type": "string",
+                                        "example": "admin"
                                     },
                                     "updated_by": {
-                                        "type": "integer",
-                                        "example": 1,
+                                        "type": "string",
+                                        "example": "admin",
                                         "nullable": true
                                     }
                                 },
@@ -2679,289 +2775,6 @@
                                 }
                             }
                         }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/employee-references": {
-            "get": {
-                "tags": [
-                    "Employee References"
-                ],
-                "summary": "Get all employee references",
-                "description": "Returns a list of all employee references",
-                "operationId": "getEmployeeReferences",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee references retrieved successfully"
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/EmployeeReference"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Employee References"
-                ],
-                "summary": "Create a new employee reference",
-                "description": "Creates a new employee reference and returns the created resource",
-                "operationId": "storeEmployeeReference",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/EmployeeReference"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successfully created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee reference created successfully"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EmployeeReference"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request"
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/employee-references/{id}": {
-            "get": {
-                "tags": [
-                    "Employee References"
-                ],
-                "summary": "Get a specific employee reference",
-                "description": "Returns a specific employee reference by ID",
-                "operationId": "showEmployeeReference",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the employee reference",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee reference retrieved successfully"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EmployeeReference"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found"
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Employee References"
-                ],
-                "summary": "Update an employee reference",
-                "description": "Updates an existing employee reference and returns the updated resource",
-                "operationId": "updateEmployeeReference",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the employee reference to update",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/EmployeeReference"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successfully updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee reference updated successfully"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EmployeeReference"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request"
-                    },
-                    "404": {
-                        "description": "Resource not found"
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Employee References"
-                ],
-                "summary": "Delete an employee reference",
-                "description": "Deletes an employee reference",
-                "operationId": "deleteEmployeeReference",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the employee reference to delete",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee reference deleted successfully"
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found"
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
                     }
                 },
                 "security": [
@@ -5442,69 +5255,7 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "candidate_name": {
-                                                        "type": "string"
-                                                    },
-                                                    "phone": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "resume": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "job_position": {
-                                                        "type": "string"
-                                                    },
-                                                    "interviewer_name": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "interview_date": {
-                                                        "type": "string",
-                                                        "format": "date",
-                                                        "nullable": true
-                                                    },
-                                                    "start_time": {
-                                                        "type": "string",
-                                                        "format": "time",
-                                                        "nullable": true
-                                                    },
-                                                    "end_time": {
-                                                        "type": "string",
-                                                        "format": "time",
-                                                        "nullable": true
-                                                    },
-                                                    "interview_mode": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "interview_status": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "score": {
-                                                        "type": "number",
-                                                        "nullable": true
-                                                    },
-                                                    "feedback": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "created_by": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    },
-                                                    "updated_by": {
-                                                        "type": "string",
-                                                        "nullable": true
-                                                    }
-                                                },
-                                                "type": "object"
+                                                "$ref": "#/components/schemas/Interview"
                                             }
                                         }
                                     },
@@ -5561,88 +5312,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "candidate_name",
-                                    "job_position"
-                                ],
-                                "properties": {
-                                    "candidate_name": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "John Smith"
-                                    },
-                                    "phone": {
-                                        "type": "string",
-                                        "maxLength": 10,
-                                        "example": "0812345678",
-                                        "nullable": true
-                                    },
-                                    "resume": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "resume_john_smith.pdf",
-                                        "nullable": true
-                                    },
-                                    "job_position": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "Senior Software Engineer"
-                                    },
-                                    "interviewer_name": {
-                                        "type": "string",
-                                        "example": "Jane Doe",
-                                        "nullable": true
-                                    },
-                                    "interview_date": {
-                                        "type": "string",
-                                        "format": "date",
-                                        "example": "2023-05-15",
-                                        "nullable": true
-                                    },
-                                    "start_time": {
-                                        "type": "string",
-                                        "format": "time",
-                                        "example": "10:00:00",
-                                        "nullable": true
-                                    },
-                                    "end_time": {
-                                        "type": "string",
-                                        "format": "time",
-                                        "example": "11:30:00",
-                                        "nullable": true
-                                    },
-                                    "interview_mode": {
-                                        "type": "string",
-                                        "example": "Video Conference",
-                                        "nullable": true
-                                    },
-                                    "interview_status": {
-                                        "type": "string",
-                                        "example": "Scheduled",
-                                        "nullable": true
-                                    },
-                                    "score": {
-                                        "type": "number",
-                                        "example": 85.5,
-                                        "nullable": true
-                                    },
-                                    "feedback": {
-                                        "type": "string",
-                                        "example": "Candidate demonstrated strong technical skills and good communication abilities.",
-                                        "nullable": true
-                                    },
-                                    "created_by": {
-                                        "type": "string",
-                                        "example": "admin@example.com",
-                                        "nullable": true
-                                    },
-                                    "updated_by": {
-                                        "type": "string",
-                                        "example": "recruiter@example.com",
-                                        "nullable": true
-                                    }
-                                },
-                                "type": "object"
+                                "$ref": "#/components/schemas/Interview"
                             }
                         }
                     }
@@ -5663,82 +5333,7 @@
                                             "example": "Interview created successfully"
                                         },
                                         "data": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer",
-                                                    "example": 1
-                                                },
-                                                "candidate_name": {
-                                                    "type": "string",
-                                                    "example": "John Smith"
-                                                },
-                                                "phone": {
-                                                    "type": "string",
-                                                    "example": "0812345678"
-                                                },
-                                                "resume": {
-                                                    "type": "string",
-                                                    "example": "resume_john_smith.pdf"
-                                                },
-                                                "job_position": {
-                                                    "type": "string",
-                                                    "example": "Senior Software Engineer"
-                                                },
-                                                "interviewer_name": {
-                                                    "type": "string",
-                                                    "example": "Jane Doe"
-                                                },
-                                                "interview_date": {
-                                                    "type": "string",
-                                                    "format": "date",
-                                                    "example": "2023-05-15"
-                                                },
-                                                "start_time": {
-                                                    "type": "string",
-                                                    "format": "time",
-                                                    "example": "10:00:00"
-                                                },
-                                                "end_time": {
-                                                    "type": "string",
-                                                    "format": "time",
-                                                    "example": "11:30:00"
-                                                },
-                                                "interview_mode": {
-                                                    "type": "string",
-                                                    "example": "Video Conference"
-                                                },
-                                                "interview_status": {
-                                                    "type": "string",
-                                                    "example": "Scheduled"
-                                                },
-                                                "score": {
-                                                    "type": "number",
-                                                    "example": 85.5
-                                                },
-                                                "feedback": {
-                                                    "type": "string",
-                                                    "example": "Candidate demonstrated strong technical skills and good communication abilities."
-                                                },
-                                                "created_by": {
-                                                    "type": "string",
-                                                    "example": "admin@example.com"
-                                                },
-                                                "updated_by": {
-                                                    "type": "string",
-                                                    "example": "recruiter@example.com"
-                                                },
-                                                "created_at": {
-                                                    "type": "string",
-                                                    "format": "date-time",
-                                                    "example": "2023-05-10T14:30:00.000000Z"
-                                                },
-                                                "updated_at": {
-                                                    "type": "string",
-                                                    "format": "date-time",
-                                                    "example": "2023-05-10T14:30:00.000000Z"
-                                                }
-                                            },
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/Interview"
                                         }
                                     },
                                     "type": "object"
@@ -5852,7 +5447,7 @@
                                             "example": "Interview retrieved successfully"
                                         },
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/Interview"
                                         }
                                     },
                                     "type": "object"
@@ -5933,79 +5528,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "properties": {
-                                    "candidate_name": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "Jane Doe"
-                                    },
-                                    "phone": {
-                                        "type": "string",
-                                        "maxLength": 10,
-                                        "example": "0987654321",
-                                        "nullable": true
-                                    },
-                                    "resume": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "jane_doe_resume.pdf",
-                                        "nullable": true
-                                    },
-                                    "job_position": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "example": "Frontend Developer"
-                                    },
-                                    "interviewer_name": {
-                                        "type": "string",
-                                        "example": "John Smith",
-                                        "nullable": true
-                                    },
-                                    "interview_date": {
-                                        "type": "string",
-                                        "format": "date",
-                                        "example": "2023-06-15",
-                                        "nullable": true
-                                    },
-                                    "start_time": {
-                                        "type": "string",
-                                        "format": "time",
-                                        "example": "14:00:00",
-                                        "nullable": true
-                                    },
-                                    "end_time": {
-                                        "type": "string",
-                                        "format": "time",
-                                        "example": "15:30:00",
-                                        "nullable": true
-                                    },
-                                    "interview_mode": {
-                                        "type": "string",
-                                        "example": "In-person",
-                                        "nullable": true
-                                    },
-                                    "interview_status": {
-                                        "type": "string",
-                                        "example": "Completed",
-                                        "nullable": true
-                                    },
-                                    "score": {
-                                        "type": "number",
-                                        "example": 92.5,
-                                        "nullable": true
-                                    },
-                                    "feedback": {
-                                        "type": "string",
-                                        "example": "Excellent technical skills and cultural fit. Strong problem-solving abilities demonstrated during the coding exercise.",
-                                        "nullable": true
-                                    },
-                                    "updated_by": {
-                                        "type": "string",
-                                        "example": "hr_manager@company.com",
-                                        "nullable": true
-                                    }
-                                },
-                                "type": "object"
+                                "$ref": "#/components/schemas/Interview"
                             }
                         }
                     }
@@ -6026,82 +5549,7 @@
                                             "example": "Interview updated successfully"
                                         },
                                         "data": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer",
-                                                    "example": 5
-                                                },
-                                                "candidate_name": {
-                                                    "type": "string",
-                                                    "example": "Jane Doe"
-                                                },
-                                                "phone": {
-                                                    "type": "string",
-                                                    "example": "0987654321"
-                                                },
-                                                "resume": {
-                                                    "type": "string",
-                                                    "example": "jane_doe_resume.pdf"
-                                                },
-                                                "job_position": {
-                                                    "type": "string",
-                                                    "example": "Frontend Developer"
-                                                },
-                                                "interviewer_name": {
-                                                    "type": "string",
-                                                    "example": "John Smith"
-                                                },
-                                                "interview_date": {
-                                                    "type": "string",
-                                                    "format": "date",
-                                                    "example": "2023-06-15"
-                                                },
-                                                "start_time": {
-                                                    "type": "string",
-                                                    "format": "time",
-                                                    "example": "14:00:00"
-                                                },
-                                                "end_time": {
-                                                    "type": "string",
-                                                    "format": "time",
-                                                    "example": "15:30:00"
-                                                },
-                                                "interview_mode": {
-                                                    "type": "string",
-                                                    "example": "In-person"
-                                                },
-                                                "interview_status": {
-                                                    "type": "string",
-                                                    "example": "Completed"
-                                                },
-                                                "score": {
-                                                    "type": "number",
-                                                    "example": 92.5
-                                                },
-                                                "feedback": {
-                                                    "type": "string",
-                                                    "example": "Excellent technical skills and cultural fit. Strong problem-solving abilities demonstrated during the coding exercise."
-                                                },
-                                                "created_by": {
-                                                    "type": "string",
-                                                    "example": "recruiter@company.com"
-                                                },
-                                                "updated_by": {
-                                                    "type": "string",
-                                                    "example": "hr_manager@company.com"
-                                                },
-                                                "created_at": {
-                                                    "type": "string",
-                                                    "format": "date-time",
-                                                    "example": "2023-06-10T09:15:27.000000Z"
-                                                },
-                                                "updated_at": {
-                                                    "type": "string",
-                                                    "format": "date-time",
-                                                    "example": "2023-06-15T16:30:45.000000Z"
-                                                }
-                                            },
-                                            "type": "object"
+                                            "$ref": "#/components/schemas/Interview"
                                         }
                                     },
                                     "type": "object"
@@ -10991,83 +10439,6 @@
                 },
                 "type": "object"
             },
-            "EmployeeReference": {
-                "title": "Employee Reference",
-                "description": "Employee Reference model",
-                "properties": {
-                    "id": {
-                        "description": "ID",
-                        "type": "integer",
-                        "format": "int64",
-                        "example": 1
-                    },
-                    "referee_name": {
-                        "description": "Name of the referee",
-                        "type": "string",
-                        "maxLength": 200,
-                        "example": "John Doe"
-                    },
-                    "occupation": {
-                        "description": "Occupation of the referee",
-                        "type": "string",
-                        "maxLength": 200,
-                        "example": "Software Engineer"
-                    },
-                    "candidate_name": {
-                        "description": "Name of the candidate",
-                        "type": "string",
-                        "maxLength": 100,
-                        "example": "Jane Smith"
-                    },
-                    "relation": {
-                        "description": "Relation between referee and candidate",
-                        "type": "string",
-                        "maxLength": 200,
-                        "example": "Former Manager"
-                    },
-                    "address": {
-                        "description": "Address of the referee",
-                        "type": "string",
-                        "maxLength": 200,
-                        "example": "123 Main St, City"
-                    },
-                    "phone_number": {
-                        "description": "Phone number of the referee",
-                        "type": "string",
-                        "maxLength": 50,
-                        "example": "+1234567890"
-                    },
-                    "email": {
-                        "description": "Email of the referee",
-                        "type": "string",
-                        "maxLength": 200,
-                        "example": "john.doe@example.com"
-                    },
-                    "created_at": {
-                        "description": "Creation date",
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "description": "Last update date",
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "created_by": {
-                        "description": "User who created the record",
-                        "type": "string",
-                        "maxLength": 100,
-                        "example": "admin"
-                    },
-                    "updated_by": {
-                        "description": "User who last updated the record",
-                        "type": "string",
-                        "maxLength": 100,
-                        "example": "admin"
-                    }
-                },
-                "type": "object"
-            },
             "EmployeeTraining": {
                 "title": "Employee Training",
                 "description": "Employee Training model",
@@ -11547,7 +10918,8 @@
                 ],
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "readOnly": true
                     },
                     "candidate_name": {
                         "type": "string",
@@ -11610,6 +10982,10 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "reference_info": {
+                        "type": "string",
+                        "nullable": true
+                    },
                     "created_by": {
                         "type": "string",
                         "nullable": true
@@ -11617,6 +10993,14 @@
                     "updated_by": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "type": "object"
@@ -12289,10 +11673,6 @@
         {
             "name": "Employees",
             "description": "API Endpoints for Employee management"
-        },
-        {
-            "name": "Employee References",
-            "description": "API Endpoints for managing employee references"
         },
         {
             "name": "Trainings",
