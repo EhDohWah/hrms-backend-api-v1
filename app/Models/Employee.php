@@ -9,6 +9,7 @@ use App\Models\Employment;
 use App\Models\GrantPosition;
 use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
+use App\Models\EmployeeGrantAllocation;
 
 /**
  * @OA\Schema(
@@ -159,5 +160,10 @@ class Employee extends Model
     public function employeeIdentification()
     {
         return $this->hasOne(EmployeeIdentification::class);
+    }
+
+    public function employeeGrantAllocations()
+    {
+        return $this->hasMany(EmployeeGrantAllocation::class, 'employee_id');
     }
 }

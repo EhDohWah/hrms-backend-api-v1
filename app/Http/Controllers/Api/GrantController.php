@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Employment;
+use App\Models\EmployeeGrantAllocation;
 
 /**
  * @OA\Tag(
@@ -311,7 +312,91 @@ class GrantController extends Controller
 
 
 
+    /**
+     * @OA\Get(
+     *     path="/grants/items/{id}",
+     *     operationId="getGrantItem",
+     *     summary="Get a specific grant item by ID",
+     *     description="Returns a specific grant item by ID with its associated grant details",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of grant item to return",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant item retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="grant_id", type="integer", example=1),
+     *                 @OA\Property(property="grant", type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="code", type="string", example="GR-2023-001"),
+     *                     @OA\Property(property="name", type="string", example="Health Initiative Grant"),
+     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="description", type="string", example="Grant for health initiatives"),
+     *                     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31")
+     *                 ),
+     *                 @OA\Property(property="bg_line", type="string", example="BL-123"),
+     *                 @OA\Property(property="grant_position", type="string", example="Project Manager"),
+     *                 @OA\Property(property="grant_salary", type="number", format="float", example=75000),
+     *                 @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
+     *                 @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75),
+     *                 @OA\Property(property="grant_position_number", type="integer", example=2)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant item not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Grant item not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve grant item"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function getGrantItem($id)
+    {
+        try {
+            $grantItem = GrantItem::with('grant')->findOrFail($id);
 
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant item retrieved successfully',
+                'data' => $grantItem
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Grant item not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant item',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     private function createGrant(array $data, string $sheetName, array &$errors)
@@ -1079,7 +1164,7 @@ class GrantController extends Controller
     {
         try {
             // Eager-load grantItems to minimize queries
-            $grants = Grant::with('grantItems.employmentGrantAllocations')->get();
+            $grants = Grant::with('grantItems.employeeGrantAllocations')->get();
 
             // If no grants exist, return an empty result
             if ($grants->isEmpty()) {
@@ -1107,7 +1192,7 @@ class GrantController extends Controller
                     $budgetLine    = $item->bg_line; // Get budget line for each grant item
 
                     // Count how many active allocations are linked to this grant item
-                    $activeAllocations = $item->employmentGrantAllocations()
+                    $activeAllocations = $item->employeeGrantAllocations()
                         ->where('active', true)
                         ->where(function ($query) {
                             $query->whereNull('end_date')

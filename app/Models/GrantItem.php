@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Grant;
-use App\Models\EmploymentGrantAllocation;
+use App\Models\EmployeeGrantAllocation;
 use OpenApi\Annotations as OA;
 
 /**
@@ -64,8 +64,8 @@ class GrantItem extends Model
         return $this->belongsTo(Grant::class, 'grant_id');
     }
 
-    public function employmentGrantAllocations()
+    public function employeeGrantAllocations()
     {
-        return $this->hasMany(EmploymentGrantAllocation::class, 'grant_items_id');
+        return $this->hasMany(EmployeeGrantAllocation::class, 'grant_items_id');
     }
 }

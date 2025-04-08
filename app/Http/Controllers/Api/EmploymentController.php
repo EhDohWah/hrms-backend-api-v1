@@ -347,139 +347,70 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Add an employment grant allocation
-     *
-     * @OA\Post(
-     *     path="/employments/employment-grant-allocations",
-     *     summary="Add an employment grant allocation",
-     *     description="Creates a new employment grant allocation for an employee",
-     *     operationId="addEmploymentGrantAllocation",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"employment_id","grant_items_id","level_of_effort","start_date"},
-     *             @OA\Property(property="employment_id", type="integer", example=1),
-     *             @OA\Property(property="grant_items_id", type="integer", example=1),
-     *             @OA\Property(property="level_of_effort", type="number", format="float", example=100.0),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-01"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2025-12-31"),
-     *             @OA\Property(property="active", type="boolean", example=true)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment grant allocation added successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmploymentGrantAllocation")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Bad request - Grant position limit reached",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Cannot add more allocations. Grant position limit reached.")
-     *         )
-     *     )
-     * )
-     */
-    public function addEmploymentGrantAllocation(Request $request)
-    {
-        $request->validate([
-            'employment_id'   => 'required|exists:employments,id',
-            'grant_items_id'  => 'required|exists:grant_items,id',
-            'level_of_effort' => 'required|numeric|min:0|max:100',
-            'start_date'      => 'required|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-            'active'          => 'boolean'
-        ]);
 
-        // Get the grant item to check its position number
-        $grantItem = GrantItem::findOrFail($request->grant_items_id);
 
-        // Count existing allocations for this grant item
-        $existingAllocationsCount = EmploymentGrantAllocation::where('grant_items_id', $request->grant_items_id)
-            ->where('active', true)
-            ->count();
 
-        // Check if we've reached the position limit for this grant
-        if ($existingAllocationsCount >= $grantItem->grant_position_number) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot add more allocations. Grant position limit reached.'
-            ], 400);
-        }
+    /// For reference only
+    // public function addEmploymentGrantAllocation(Request $request)
+    // {
+    //     $request->validate([
+    //         'employment_id'   => 'required|exists:employments,id',
+    //         'grant_items_id'  => 'required|exists:grant_items,id',
+    //         'level_of_effort' => 'required|numeric|min:0|max:100',
+    //         'start_date'      => 'required|date',
+    //         'end_date'        => 'nullable|date|after_or_equal:start_date',
+    //         'active'          => 'boolean'
+    //     ]);
 
-        $grantAllocation = EmploymentGrantAllocation::create([
-            'employment_id'   => $request->employment_id,
-            'grant_items_id'  => $request->grant_items_id,
-            'level_of_effort' => $request->level_of_effort,
-            'start_date'      => $request->start_date,
-            'end_date'        => $request->end_date,
-            'active'          => $request->active ?? true
-        ]);
+    //     // Get the grant item to check its position number
+    //     $grantItem = GrantItem::findOrFail($request->grant_items_id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employment grant allocation added successfully',
-            'data'    => $grantAllocation
-        ]);
-    }
+    //     // Count existing allocations for this grant item
+    //     $existingAllocationsCount = EmploymentGrantAllocation::where('grant_items_id', $request->grant_items_id)
+    //         ->where('active', true)
+    //         ->count();
 
-    /**
-     * Delete an employment grant allocation
-     *
-     * @OA\Delete(
-     *     path="/employments/employment-grant-allocations/{id}",
-     *     summary="Delete an employment grant allocation",
-     *     description="Deletes an employment grant allocation by ID",
-     *     operationId="deleteEmploymentGrantAllocation",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="id", in="path", required=true, description="ID of the employment grant allocation", @OA\Schema(type="integer")),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment grant allocation deleted successfully")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employment grant allocation not found",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employment grant allocation not found")
-     *         )
-     *     )
-     * )
-     */
-    public function deleteEmploymentGrantAllocation(Request $request, $id)
-    {
-        $grantAllocation = EmploymentGrantAllocation::find($id);
+    //     // Check if we've reached the position limit for this grant
+    //     if ($existingAllocationsCount >= $grantItem->grant_position_number) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Cannot add more allocations. Grant position limit reached.'
+    //         ], 400);
+    //     }
 
-        if (!$grantAllocation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employment grant allocation not found'
-            ], 404);
-        }
+    //     $grantAllocation = EmploymentGrantAllocation::create([
+    //         'employment_id'   => $request->employment_id,
+    //         'grant_items_id'  => $request->grant_items_id,
+    //         'level_of_effort' => $request->level_of_effort,
+    //         'start_date'      => $request->start_date,
+    //         'end_date'        => $request->end_date,
+    //         'active'          => $request->active ?? true
+    //     ]);
 
-        $grantAllocation->delete();
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Employment grant allocation added successfully',
+    //         'data'    => $grantAllocation
+    //     ]);
+    // }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employment grant allocation deleted successfully'
-        ], 201);
-    }
+
+    // public function deleteEmploymentGrantAllocation(Request $request, $id)
+    // {
+    //     $grantAllocation = EmploymentGrantAllocation::find($id);
+
+    //     if (!$grantAllocation) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Employment grant allocation not found'
+    //         ], 404);
+    //     }
+
+    //     $grantAllocation->delete();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Employment grant allocation deleted successfully'
+    //     ], 201);
+    // }
 }

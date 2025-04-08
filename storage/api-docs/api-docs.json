@@ -2784,6 +2784,484 @@
                 ]
             }
         },
+        "/employee-grant-allocations": {
+            "get": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Get all employee grant allocations",
+                "description": "Display a listing of the resource.",
+                "operationId": "bfcba0728f563864f5cc85dde6e24927",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocations retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve employee grant allocations"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Create a new employee grant allocation",
+                "description": "Store a newly created resource in storage.",
+                "operationId": "fc2fad0db2c951755c3e9863afaa5141",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation created successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to create employee grant allocation"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employee-grant-allocations/{id}": {
+            "get": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Get an employee grant allocation by ID",
+                "description": "Display the specified resource.",
+                "operationId": "84cb980a22cac467e98ae12f25eee14b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee Grant Allocation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation retrieved successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                        },
+                                        "total_allocations": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "employees": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve employee grant allocation"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Update an employee grant allocation by ID",
+                "description": "Update the specified resource in storage.",
+                "operationId": "484f400cb80d249c9d4a6508661e70bc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee Grant Allocation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation updated successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to update employee grant allocation"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Delete an employee grant allocation by ID",
+                "description": "Remove the specified resource from storage.",
+                "operationId": "29b0d6c777677f5d44e9367c8b876177",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee Grant Allocation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee grant allocation not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete employee grant allocation"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/trainings": {
             "get": {
                 "tags": [
@@ -3882,179 +4360,6 @@
                 ]
             }
         },
-        "/employments/employment-grant-allocations": {
-            "post": {
-                "tags": [
-                    "Employments"
-                ],
-                "summary": "Add an employment grant allocation",
-                "description": "Creates a new employment grant allocation for an employee",
-                "operationId": "addEmploymentGrantAllocation",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "employment_id",
-                                    "grant_items_id",
-                                    "level_of_effort",
-                                    "start_date"
-                                ],
-                                "properties": {
-                                    "employment_id": {
-                                        "type": "integer",
-                                        "example": 1
-                                    },
-                                    "grant_items_id": {
-                                        "type": "integer",
-                                        "example": 1
-                                    },
-                                    "level_of_effort": {
-                                        "type": "number",
-                                        "format": "float",
-                                        "example": 100
-                                    },
-                                    "start_date": {
-                                        "type": "string",
-                                        "format": "date",
-                                        "example": "2025-01-01"
-                                    },
-                                    "end_date": {
-                                        "type": "string",
-                                        "format": "date",
-                                        "example": "2025-12-31"
-                                    },
-                                    "active": {
-                                        "type": "boolean",
-                                        "example": true
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employment grant allocation added successfully"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EmploymentGrantAllocation"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - Grant position limit reached",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Cannot add more allocations. Grant position limit reached."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/employments/employment-grant-allocations/{id}": {
-            "delete": {
-                "tags": [
-                    "Employments"
-                ],
-                "summary": "Delete an employment grant allocation",
-                "description": "Deletes an employment grant allocation by ID",
-                "operationId": "deleteEmploymentGrantAllocation",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the employment grant allocation",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employment grant allocation deleted successfully"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Employment grant allocation not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employment grant allocation not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
         "/grants/upload": {
             "post": {
                 "tags": [
@@ -4649,6 +4954,259 @@
                 ]
             }
         },
+        "/grants/items/{id}": {
+            "get": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get a specific grant item by ID",
+                "description": "Returns a specific grant item by ID with its associated grant details",
+                "operationId": "getGrantItem",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of grant item to return",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "GR-2023-001"
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Health Initiative Grant"
+                                                        },
+                                                        "subsidiary": {
+                                                            "type": "string",
+                                                            "example": "SMRU"
+                                                        },
+                                                        "description": {
+                                                            "type": "string",
+                                                            "example": "Grant for health initiatives"
+                                                        },
+                                                        "end_date": {
+                                                            "type": "string",
+                                                            "format": "date",
+                                                            "example": "2023-12-31"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "bg_line": {
+                                                    "type": "string",
+                                                    "example": "BL-123"
+                                                },
+                                                "grant_position": {
+                                                    "type": "string",
+                                                    "example": "Project Manager"
+                                                },
+                                                "grant_salary": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 75000
+                                                },
+                                                "grant_benefit": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 15000
+                                                },
+                                                "grant_level_of_effort": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 0.75
+                                                },
+                                                "grant_position_number": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant item not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grant item"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Delete a grant item",
+                "description": "Delete a specific grant item by ID",
+                "operationId": "80ee08020a27491c1f4ede56aab54b16",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant item deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant item not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant item not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete grant item"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/grant-items/{id}": {
             "put": {
                 "tags": [
@@ -4982,100 +5540,6 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to delete grant"
-                                        },
-                                        "error": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/grants/items/{id}": {
-            "delete": {
-                "tags": [
-                    "Grants"
-                ],
-                "summary": "Delete a grant item",
-                "description": "Delete a specific grant item by ID",
-                "operationId": "80ee08020a27491c1f4ede56aab54b16",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Grant item ID",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Grant item deleted successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Grant item deleted successfully"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Grant item not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Grant item not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Unauthorized - User does not have permission"
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Failed to delete grant item"
                                         },
                                         "error": {
                                             "type": "string"
@@ -10439,6 +10903,53 @@
                 },
                 "type": "object"
             },
+            "EmployeeGrantAllocation": {
+                "required": [
+                    "employee_id",
+                    "grant_items_id",
+                    "level_of_effort",
+                    "start_date",
+                    "active"
+                ],
+                "properties": {
+                    "employee_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "grant_items_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "level_of_effort": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 0.5
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2024-01-01"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2024-12-31"
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    }
+                },
+                "type": "object"
+            },
             "EmployeeTraining": {
                 "title": "Employee Training",
                 "description": "Employee Training model",
@@ -10590,53 +11101,6 @@
                         "type": "string",
                         "format": "date-time",
                         "readOnly": true
-                    }
-                },
-                "type": "object"
-            },
-            "EmploymentGrantAllocation": {
-                "title": "Employment Grant Allocation",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "example": 1
-                    },
-                    "employment_id": {
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "grant_items_id": {
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "level_of_effort": {
-                        "type": "number",
-                        "format": "float",
-                        "example": 0.75
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "format": "date",
-                        "example": "2023-01-01"
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "format": "date",
-                        "example": "2023-12-31",
-                        "nullable": true
-                    },
-                    "active": {
-                        "type": "boolean",
-                        "example": true
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time"
                     }
                 },
                 "type": "object"
@@ -11673,6 +12137,10 @@
         {
             "name": "Employees",
             "description": "API Endpoints for Employee management"
+        },
+        {
+            "name": "EmployeeGrantAllocations",
+            "description": "API Endpoints for Employee Grant Allocations"
         },
         {
             "name": "Trainings",

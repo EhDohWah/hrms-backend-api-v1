@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\EmployeeReferenceController;
 use App\Http\Controllers\Api\EmployeeTrainingController;
 use App\Http\Controllers\Api\EmployeeChildrenController;
-
+use App\Http\Controllers\Api\EmployeeGrantAllocationController;
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -58,6 +58,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/profile-picture', [EmployeeController::class, 'uploadProfilePicture'])->middleware('permission:employee.update');
     });
 
+    // Employee grant allocation routes
+    Route::prefix('employee-grant-allocations')->group(function () {
+        Route::get('/', [EmployeeGrantAllocationController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [EmployeeGrantAllocationController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [EmployeeGrantAllocationController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [EmployeeGrantAllocationController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [EmployeeGrantAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
+
     // Employment routes
     Route::prefix('employments')->group(function () {
         Route::get('/', [EmploymentController::class, 'index'])->middleware('permission:employment.read');
@@ -65,8 +74,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment.create');
         Route::put('/{id}', [EmploymentController::class, 'update'])->middleware('permission:employment.update');
         Route::delete('/{id}', [EmploymentController::class, 'destroy'])->middleware('permission:employment.delete');
-        Route::delete('/employment-grant-allocations/{id}', [EmploymentController::class, 'deleteEmploymentGrantAllocation'])->middleware('permission:employment.delete');
-        Route::post('/employment-grant-allocations', [EmploymentController::class, 'addEmploymentGrantAllocation'])->middleware('permission:employment.create');
     });
 
     // Department position routes (use middleware permission:read department positions)
@@ -107,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [GrantController::class, 'index'])->name('grants.index')->middleware('permission:grant.read');
         Route::get('/items', [GrantController::class, 'getGrantItems'])->name('grants.items.index')->middleware('permission:grant.read');
         Route::post('/', [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
+        Route::get('/items/{id}', [GrantController::class, 'getGrantItem'])->name('grants.items.show')->middleware('permission:grant.read');    
         Route::post('/items', [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
         Route::post('/upload', [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.import');
         Route::delete('/{id}', [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grant.delete');
