@@ -318,22 +318,8 @@ class JobOfferController extends Controller
      * Create a method to preview or display the job offer letter on vue component modal,
      *
      * @param string $custom_offer_id
-     * @return \Illuminate\Http\Response
+     *
      */
-    public function previewJobOffer($custom_offer_id)
-    {
-        $jobOffer = JobOffer::where('custom_offer_id', $custom_offer_id)->first();
-        return view('jobOffer', compact('jobOffer'));
-    }
-
-
-
-
-
-
-
-
-
 
     /**
      * @OA\Get(
@@ -414,7 +400,10 @@ class JobOfferController extends Controller
         $filename = 'job-offer-' . $jobOffer->candidate_name . '.pdf';
 
         // Return the PDF as a download
-        return $pdf->download($filename);
+        return $pdf->download($filename)
+                   ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                   ->header('Pragma', 'no-cache')
+                   ->header('Expires', '0');
     }
 
     function formatDateWithSuperscript($date)
