@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('job_offers', function (Blueprint $table) {
             $table->id();
-            $table->string('custom_offer_id')->unique()->after('id');
+            $table->string('custom_offer_id')->unique();
             $table->date('date');
             $table->string('candidate_name');
             $table->string('position_name');
