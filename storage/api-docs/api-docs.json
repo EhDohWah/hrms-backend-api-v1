@@ -2956,7 +2956,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Employee Grant Allocation ID",
+                        "description": "Grant Item ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -2976,10 +2976,13 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee grant allocation retrieved successfully"
+                                            "example": "Grant item allocations retrieved successfully"
                                         },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                        "grant_item": {
+                                            "type": "object"
+                                        },
+                                        "grant_details": {
+                                            "type": "object"
                                         },
                                         "total_allocations": {
                                             "type": "integer",
@@ -3009,7 +3012,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee grant allocation not found"
+                                            "example": "Grant item not found"
                                         }
                                     },
                                     "type": "object"
@@ -3029,7 +3032,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Failed to retrieve employee grant allocation"
+                                            "example": "Failed to retrieve grant item allocations"
                                         },
                                         "error": {
                                             "type": "string"
@@ -6193,6 +6196,574 @@
                                         },
                                         "error": {
                                             "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/job-offers": {
+            "get": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Get all job offers",
+                "description": "Returns a list of all job offers",
+                "operationId": "getJobOffers",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offers retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/JobOffer"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve job offers"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Create a new job offer",
+                "description": "Creates a new job offer and returns it",
+                "operationId": "storeJobOffer",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JobOffer"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Job offer created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer created successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/JobOffer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to create job offer"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/job-offers/{id}": {
+            "get": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Get a job offer by ID",
+                "description": "Returns a single job offer",
+                "operationId": "getJobOfferById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of job offer to return",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer retrieved successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/JobOffer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Job offer not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve job offer"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Update a job offer",
+                "description": "Updates a job offer and returns it",
+                "operationId": "updateJobOffer",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of job offer to update",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/JobOffer"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Job offer updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer updated successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/JobOffer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Job offer not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to update job offer"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Delete a job offer",
+                "description": "Deletes a job offer by ID",
+                "operationId": "deleteJobOffer",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of job offer to delete",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job offer deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Job offer not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete job offer"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/job-offers/{custom_offer_id}/pdf": {
+            "get": {
+                "tags": [
+                    "Job Offers"
+                ],
+                "summary": "Generate a PDF job offer letter",
+                "description": "Generates a downloadable PDF job offer letter based on the custom offer ID",
+                "operationId": "generateJobOfferPdf",
+                "parameters": [
+                    {
+                        "name": "custom_offer_id",
+                        "in": "path",
+                        "description": "Custom ID of the job offer",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF generated successfully",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Job offer not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Job offer not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to generate PDF"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
                                         }
                                     },
                                     "type": "object"
@@ -11394,11 +11965,6 @@
                         "maxLength": 10,
                         "nullable": true
                     },
-                    "resume": {
-                        "type": "string",
-                        "maxLength": 255,
-                        "nullable": true
-                    },
                     "job_position": {
                         "type": "string",
                         "maxLength": 255
@@ -11424,22 +11990,19 @@
                     },
                     "interview_mode": {
                         "type": "string",
-                        "enum": [
-                            "in-person",
-                            "virtual"
-                        ],
                         "nullable": true
                     },
                     "interview_status": {
                         "type": "string",
-                        "enum": [
-                            "scheduled",
-                            "completed",
-                            "cancelled"
-                        ]
+                        "nullable": true
+                    },
+                    "hired_status": {
+                        "type": "string",
+                        "nullable": true
                     },
                     "score": {
                         "type": "number",
+                        "format": "decimal",
                         "nullable": true
                     },
                     "feedback": {
@@ -11463,6 +12026,66 @@
                         "format": "date-time"
                     },
                     "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "JobOffer": {
+                "title": "Job Offer",
+                "description": "Job Offer model",
+                "properties": {
+                    "id": {
+                        "description": "Job offer ID",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "date": {
+                        "description": "Offer date",
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "candidate_name": {
+                        "description": "Name of the candidate",
+                        "type": "string"
+                    },
+                    "position_name": {
+                        "description": "Name of the position",
+                        "type": "string"
+                    },
+                    "salary_detail": {
+                        "description": "Salary details",
+                        "type": "string"
+                    },
+                    "acceptance_deadline": {
+                        "description": "Deadline for acceptance",
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "acceptance_status": {
+                        "description": "Status of acceptance",
+                        "type": "string"
+                    },
+                    "note": {
+                        "description": "Additional notes",
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "description": "User who created the record",
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "description": "User who last updated the record",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "Creation timestamp",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Last update timestamp",
                         "type": "string",
                         "format": "date-time"
                     }
@@ -12161,6 +12784,10 @@
         {
             "name": "Interviews",
             "description": "API Endpoints for managing interviews"
+        },
+        {
+            "name": "Job Offers",
+            "description": "Operations related to job offers"
         },
         {
             "name": "Leave Management",

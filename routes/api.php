@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\EmployeeReferenceController;
 use App\Http\Controllers\Api\EmployeeTrainingController;
 use App\Http\Controllers\Api\EmployeeChildrenController;
 use App\Http\Controllers\Api\EmployeeGrantAllocationController;
+use App\Http\Controllers\Api\JobOfferController;
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -114,7 +115,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [GrantController::class, 'index'])->name('grants.index')->middleware('permission:grant.read');
         Route::get('/items', [GrantController::class, 'getGrantItems'])->name('grants.items.index')->middleware('permission:grant.read');
         Route::post('/', [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
-        Route::get('/items/{id}', [GrantController::class, 'getGrantItem'])->name('grants.items.show')->middleware('permission:grant.read');    
+        Route::get('/items/{id}', [GrantController::class, 'getGrantItem'])->name('grants.items.show')->middleware('permission:grant.read');
         Route::post('/items', [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
         Route::post('/upload', [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.import');
         Route::delete('/{id}', [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grant.delete');
@@ -241,6 +242,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [EmployeeChildrenController::class, 'destroy'])->middleware('permission:children.delete');
     });
 
+
+    // Job offer routes
+    Route::prefix('job-offers')->group(function () {
+        Route::get('/', [JobOfferController::class, 'index'])->middleware('permission:job_offer.read');
+        Route::post('/', [JobOfferController::class, 'store'])->middleware('permission:job_offer.create');
+        Route::get('/{id}', [JobOfferController::class, 'show'])->middleware('permission:job_offer.read');
+        Route::put('/{id}', [JobOfferController::class, 'update'])->middleware('permission:job_offer.update');
+        Route::delete('/{id}', [JobOfferController::class, 'destroy'])->middleware('permission:job_offer.delete');
+        Route::get('/{id}/pdf', [JobOfferController::class, 'generatePdf'])->middleware('permission:job_offer.read');
+    });
 
 });
 

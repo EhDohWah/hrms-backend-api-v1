@@ -15,15 +15,15 @@ return new class extends Migration
             $table->id();
             $table->string('candidate_name', 255);
             $table->string('phone', 10)->nullable();
-            $table->string('resume', 255)->nullable();
             $table->string('job_position', 255);
-            $table->string('interviewer_name')->nullable();
+            $table->text('interviewer_name')->nullable();
             $table->date('interview_date')->nullable();
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->string('interview_mode')->nullable();
             $table->string('interview_status')->nullable();
-            $table->decimal('score', 8, 2)->nullable();
+            $table->string('hired_status')->nullable();
+            $table->decimal('score', 5, 2)->nullable();
             $table->text('feedback')->nullable();
             $table->text('reference_info')->nullable();
             $table->timestamps();

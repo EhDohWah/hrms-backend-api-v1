@@ -40,6 +40,7 @@ return new class extends Migration
             'reports'            => $defaultActions,
             'travel_request'     => $defaultActions,
             'leave_request'      => $defaultActions,
+            'job_offer'          => $defaultActions,
         ];
 
         // Create each permission (if not exists)
