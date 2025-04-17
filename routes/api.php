@@ -19,11 +19,12 @@ use App\Http\Controllers\Api\LeaveManagementController;
 use App\Http\Controllers\Api\TravelRequestController;
 use App\Http\Controllers\Api\TravelRequestApprovalController;
 use App\Http\Controllers\Api\PayrollController;
-use App\Http\Controllers\Api\EmployeeReferenceController;
 use App\Http\Controllers\Api\EmployeeTrainingController;
 use App\Http\Controllers\Api\EmployeeChildrenController;
 use App\Http\Controllers\Api\EmployeeGrantAllocationController;
 use App\Http\Controllers\Api\JobOfferController;
+use App\Http\Controllers\Api\Reports\InterviewReportController;
+use App\Http\Controllers\Api\Reports\JobOfferReportController;
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -204,17 +205,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [TravelRequestApprovalController::class, 'destroy'])->middleware('permission:travel_request.delete');
     });
 
-    // Employee reference routes
-    Route::prefix('employee-references')->group(function () {
-        Route::get('/', [EmployeeReferenceController::class, 'index'])->middleware('permission:reference.read');
-        Route::post('/', [EmployeeReferenceController::class, 'store'])->middleware('permission:reference.create');
-        Route::get('/{id}', [EmployeeReferenceController::class, 'show'])->middleware('permission:reference.read');
-        Route::put('/{id}', [EmployeeReferenceController::class, 'update'])->middleware('permission:reference.update');
-        Route::delete('/{id}', [EmployeeReferenceController::class, 'destroy'])->middleware('permission:reference.delete');
-    });
-
-
-    // Employee training routes
     // Training routes
     Route::prefix('trainings')->group(function () {
         Route::get('/', [EmployeeTrainingController::class, 'listTrainings'])->middleware('permission:training.read');
@@ -253,6 +243,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/pdf', [JobOfferController::class, 'generatePdf'])->middleware('permission:job_offer.read');
     });
 
+    // Report routes
+    Route::prefix('reports')->group(function () {
+        Route::post('/interview-report/export-pdf', [InterviewReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+        Route::post('/job-offer-report/export-pdf', [JobOfferReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+    });
 });
 
 

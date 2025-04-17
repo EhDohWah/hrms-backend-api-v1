@@ -9502,6 +9502,182 @@
                 ]
             }
         },
+        "/reports/interview-report/export-pdf": {
+            "post": {
+                "tags": [
+                    "Interview Reports"
+                ],
+                "summary": "Export interview report as PDF",
+                "description": "Generates a downloadable PDF report of interviews within a specified date range",
+                "operationId": "exportInterviewReportPdf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "start_date",
+                                    "end_date"
+                                ],
+                                "properties": {
+                                    "start_date": {
+                                        "description": "Start date in format YYYY-MM-DD",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-04-02"
+                                    },
+                                    "end_date": {
+                                        "description": "End date in format YYYY-MM-DD",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-04-31"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PDF generated successfully",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Invalid date format."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Failed to generate PDF"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/job-offer-report/export-pdf": {
+            "post": {
+                "tags": [
+                    "Job Offer Reports"
+                ],
+                "summary": "Export job offer report as PDF",
+                "description": "Generates a downloadable PDF report of job offers within a specified date range",
+                "operationId": "exportJobOfferReportPdf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "start_date",
+                                    "end_date"
+                                ],
+                                "properties": {
+                                    "start_date": {
+                                        "description": "Start date in format YYYY-MM-DD",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-04-02"
+                                    },
+                                    "end_date": {
+                                        "description": "End date in format YYYY-MM-DD",
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-04-31"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PDF generated successfully",
+                        "content": {
+                            "application/pdf": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Invalid date format."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Failed to generate PDF"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/travel-request-approvals": {
             "get": {
                 "tags": [
@@ -12804,6 +12980,14 @@
         {
             "name": "Reports",
             "description": "API Endpoints for generating various reports"
+        },
+        {
+            "name": "Interview Reports",
+            "description": "Operations related to interview reports"
+        },
+        {
+            "name": "Job Offer Reports",
+            "description": "Operations related to job offer reports"
         },
         {
             "name": "Travel Request Approvals",
