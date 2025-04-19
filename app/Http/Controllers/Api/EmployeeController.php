@@ -381,10 +381,11 @@ class EmployeeController extends Controller
     {
         $employees = Employee::with([
             'employment',
+            'employeeGrantAllocations',
             'employment.workLocation',
             'employment.departmentPosition',
-            'employment.grantAllocations.grantItemAllocation',
-            'employment.grantAllocations.grantItemAllocation.grant',
+            // 'employment.grantAllocations.grantItemAllocation',
+            // 'employment.grantAllocations.grantItemAllocation.grant',
             'employeeBeneficiaries',
             'employeeIdentification'
         ])->get();
@@ -432,9 +433,12 @@ class EmployeeController extends Controller
     {
         $employee = Employee::with([
             'employment',
+            'employeeGrantAllocations',
+            'employeeGrantAllocations.grantItemAllocation',
+            'employeeGrantAllocations.grantItemAllocation.grant',
             'employment.workLocation',
-            'employment.grantAllocations.grantItemAllocation',
-            'employment.grantAllocations.grantItemAllocation.grant',
+            // 'employment.grantAllocations.grantItemAllocation',
+            // 'employment.grantAllocations.grantItemAllocation.grant',
             'employeeBeneficiaries',
             'employeeIdentification'
         ])->find($id);
