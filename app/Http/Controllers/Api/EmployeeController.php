@@ -232,7 +232,21 @@ class EmployeeController extends Controller
                 ]);
 
                 if ($employeeValidator->fails()) {
-                    $errors[] = "Row $i: " . $employeeValidator->errors()->first() . " (Staff ID: {$employeeData['staff_id']})";
+                    $errors = $employeeValidator->errors()->toArray();
+                    $errorFields = array_keys($errors);
+                    $firstErrorField = $errorFields[0];
+                    $firstErrorMessage = $errors[$firstErrorField][0];
+
+                    $errorMessage = "Row $i: Error in field '$firstErrorField' - $firstErrorMessage";
+
+                    // Add staff ID for reference if available
+                    if (!empty($employeeData['staff_id'])) {
+                        $errorMessage .= " (Staff ID: {$employeeData['staff_id']})";
+                    } else {
+                        $errorMessage .= " (Staff ID is missing)";
+                    }
+
+                    $errors[] = $errorMessage;
                     continue;
                 }
 
