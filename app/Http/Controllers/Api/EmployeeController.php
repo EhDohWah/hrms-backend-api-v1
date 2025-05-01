@@ -186,22 +186,9 @@ class EmployeeController extends Controller
         try {
             if (app()->environment('production')) {
                 Excel::queueImport($import, $request->file('file'));
-
-                // Since this is an API controller, we should return JSON instead of redirecting back
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Import queued — you\'ll get an email when it\'s done!'
-                ]);
             } else {
                 $import = new DevEmployeesImport;
                 Excel::import($import, $request->file('file'));
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Import completed',
-                    'data' => [
-                        'processed_employees' => count($import->getProcessedEmployees()),
-                    ],
-                ], 200);
             }
         } catch (\Exception $e) {
             return response()->json([
