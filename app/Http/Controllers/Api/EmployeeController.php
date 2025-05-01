@@ -181,14 +181,14 @@ class EmployeeController extends Controller
      */
     public function uploadEmployeeData(UploadEmployeeImportRequest $request)
     {
-        // 2) Run the import synchronously so bindValue() fires immediately
-        $import = new EmployeesImport;
+        $file = $request->file('file');
+
         try {
             if (app()->environment('production')) {
-                Excel::queueImport($import, $request->file('file'));
+                Excel::queueImport(new EmployeesImport, $file);
             } else {
                 $import = new DevEmployeesImport;
-                Excel::import($import, $request->file('file'));
+                Excel::import($import, $file);
             }
         } catch (\Exception $e) {
             return response()->json([
