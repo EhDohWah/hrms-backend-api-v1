@@ -183,52 +183,40 @@ class EmployeeController extends Controller
     {
         $file = $request->file('file');
 
-        try {
-            if (app()->environment('production')) {
-                Excel::queueImport(new EmployeesImport, $file);
-            } else {
-                $import = new DevEmployeesImport;
-                Excel::import($import, $file);
-            }
-        } catch (\Exception $e) {
+        if (app()->environment('production')) {
+            Excel::queueImport(new EmployeesImport, $file);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Failed to import employee data',
-                'error' => $e->getMessage()
-            ], 500);
+                'success' => true,
+                'message' => "Import queued; you'll get notified when it's done.",
+            ], 202);
         }
 
-        // 3) Gather everything for debugging
+        // ── Dev branch ────────────────────────────────────────────────────────
+        $import = new DevEmployeesImport;
+        Excel::import($import, $file);
+
+        // Now $import is defined, so you can safely gather debug info:
         $processed = $import->getProcessedEmployees();
         $errors    = $import->getErrors();
         $fails     = $import->getValidationFailures();
         $snapshot  = $import->getFirstRowSnapshot();
 
-        // --- if you still want to inspect all of that in one go, uncomment: ---
-        // dd(compact('processed','errors','fails','snapshot'));
-
-        // 4) If nothing got inserted, return 422 + full debug info
         if (empty($processed)) {
             return response()->json([
                 'success' => false,
                 'message' => 'No rows were imported – check your column headings & data.',
-                'debug'   => [
-                    'first_row_snapshot'   => $snapshot,    // columns + values
-                    'custom_errors'        => $errors,      // your onFailure & other errors
-                    'validation_failures'  => $fails,       // per-cell validation messages
-                ],
+                'debug'   => compact('snapshot','errors','fails'),
             ], 422);
         }
 
-        // 5) Otherwise return success
         return response()->json([
-            'success' => true,
-            'message' => 'Employee data upload completed',
-            'data'    => [
-                'processed_employees' => count($processed),
-            ],
+            'success'             => true,
+            'message'             => 'Employee data upload completed',
+            'processed_employees' => count($processed),
         ], 200);
     }
+
 
     /**
      * Get all employees
