@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('employees')->group(function () {
         Route::post('/upload', [EmployeeController::class, 'uploadEmployeeData'])->middleware('permission:employee.import');
         Route::get('/', [EmployeeController::class, 'index'])->middleware('permission:employee.read');
+        Route::get('/{id}', [EmployeeController::class, 'employeeDetails'])->middleware('permission:employee.read');
         Route::get('/filter', [EmployeeController::class, 'filterEmployees'])->middleware('permission:employee.read');
         Route::get('/site-records', [EmployeeController::class, 'getSiteRecords'])->middleware('permission:employee.read');
         Route::get('/staff-id/{id}', [EmployeeController::class, 'show'])->middleware('permission:employee.read');

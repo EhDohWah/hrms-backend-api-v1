@@ -8,12 +8,10 @@ use Maatwebsite\Excel\Concerns\{
     ToCollection,
     WithHeadingRow,
     WithChunkReading,
-    WithValidation,
     WithCustomValueBinder,
     SkipsEmptyRows
 };
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Employee;
@@ -27,14 +25,13 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-class EmployeesImport extends DefaultValueBinder implements
+class DevEmployeesImport extends DefaultValueBinder implements
     ToCollection,
     WithHeadingRow,
     WithChunkReading,
     WithCustomValueBinder,
     SkipsEmptyRows,
-    SkipsOnFailure,
-    ShouldQueue
+    SkipsOnFailure
 {
     use Importable;
 
@@ -340,7 +337,6 @@ class EmployeesImport extends DefaultValueBinder implements
                         $this->errors[] = "Failed to insert beneficiaries: " . $e->getMessage();
                     }
                 }
-
 
                 Log::info('Employee import completed successfully', [
                     'employees_processed' => count($this->processedEmployees),

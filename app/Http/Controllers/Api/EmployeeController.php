@@ -24,6 +24,7 @@ use App\Models\Employment;
 use App\Models\EmployeeGrantAllocation;
 use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
+use App\Imports\DevEmployeesImport;
 
 /**
  * @OA\Tag(
@@ -192,7 +193,15 @@ class EmployeeController extends Controller
                     'message' => 'Import queued — you\'ll get an email when it\'s done!'
                 ]);
             } else {
+                $import = new DevEmployeesImport;
                 Excel::import($import, $request->file('file'));
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Import completed',
+                    'data' => [
+                        'processed_employees' => count($import->getProcessedEmployees()),
+                    ],
+                ], 200);
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -495,7 +504,7 @@ class EmployeeController extends Controller
      * Get a single employee
      *
      * @OA\Get(
-     *     path="/employees/{staff_id}",
+     *     path="/employees/staff-id/{staff_id}",
      *     summary="Get a single employee",
      *     description="Returns employee(s) by staff ID with related data",
      *     operationId="getEmployeeByStaffId",
@@ -599,6 +608,71 @@ class EmployeeController extends Controller
                 'success' => true,
                 'message' => 'Employee(s) retrieved successfully',
             ]);
+    }
+
+    /**
+     * Get employee details
+     *
+     * @OA\Get(
+     *     path="/employees/{id}",
+     *     summary="Get employee details",
+     *     description="Returns employee details by ID with related data including employment, grant allocations, beneficiaries, and identification",
+     *     operationId="getEmployeeDetailsById",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, description="ID of the employee", @OA\Schema(type="integer")),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 ref="#/components/schemas/Employee",
+     *                 description="Employee data with related information"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Employee not found")
+     *         )
+     *     )
+     * )
+     */
+    public function employeeDetails(Request $request, $id)
+    {
+        $employee = Employee::with([
+            'employment',
+            'employeeGrantAllocations',
+            'employeeGrantAllocations.grantItemAllocation',
+            'employeeGrantAllocations.grantItemAllocation.grant',
+            'employment.workLocation',
+            // 'employment.grantAllocations.grantItemAllocation',
+            // 'employment.grantAllocations.grantItemAllocation.grant',
+            'employeeBeneficiaries',
+            'employeeIdentification'
+        ])->find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee retrieved successfully',
+            'data' => $employee
+        ]);
     }
 
     /**
