@@ -132,10 +132,10 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $jobOffer->candidate_name }}</td>
-                        <td>{{ \Carbon\Carbon::parse($jobOffer->date)->format('Y-m-d') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($jobOffer->date)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->position_name ?? 'N/A' }}</td>
                         <td>{{ $jobOffer->salary_detail ?? 'N/A' }}</td>
-                        <td>{{ \Carbon\Carbon::parse($jobOffer->acceptance_deadline)->format('Y-m-d') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($jobOffer->acceptance_deadline)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->acceptance_status ?? 'N/A' }}</td>
                     </tr>
                 @endforeach

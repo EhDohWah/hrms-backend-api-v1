@@ -130,7 +130,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $interview->candidate_name }}</td>
-                        <td>{{ \Carbon\Carbon::parse($interview->created_at)->format('Y-m-d') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($interview->created_at)->format('d-m-Y') }}</td>
                         <td>{{ $interview->hired_status }}</td>
                         <td>{{ $interview->job_position ?? 'N/A' }}</td>
                         <td>{{ $interview->interviewer_name ?? 'N/A' }}</td>

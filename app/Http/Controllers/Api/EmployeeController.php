@@ -11,6 +11,19 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\EmployeesImport;
+use Illuminate\Support\Facades\Log;
+use App\Http\Requests\UploadEmployeeImportRequest;
+use App\Http\Resources\EmployeeResource;
+use App\Http\Requests\FilterEmployeeRequest;
+use App\Http\Resources\EmployeeCollection;
+use App\Http\Requests\ShowEmployeeRequest;
+use App\Http\Resources\EmployeeDetailResource;
+use App\Models\Employment;
+use App\Models\EmployeeGrantAllocation;
+use App\Models\EmployeeBeneficiary;
+use App\Models\EmployeeIdentification;
 
 /**
  * @OA\Tag(
@@ -20,6 +33,90 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  */
 class EmployeeController extends Controller
 {
+
+    /**
+     * @OA\Delete(
+     *     path="/employees/delete-selected",
+     *     summary="Delete multiple employees by their IDs",
+     *     description="Deletes multiple employees and their related records based on the provided IDs",
+     *     operationId="deleteSelectedEmployees",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Employee IDs to delete",
+     *         @OA\JsonContent(
+     *             required={"ids"},
+     *             @OA\Property(
+     *                 property="ids",
+     *                 type="array",
+     *                 description="Array of employee IDs to delete",
+     *                 @OA\Items(type="integer")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employees deleted successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="5 employee(s) deleted successfully"),
+     *             @OA\Property(property="count", type="integer", example=5)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to delete employees"),
+     *             @OA\Property(property="error", type="string", example="Error message details")
+     *         )
+     *     )
+     * )
+     *
+     * Delete multiple employees by their IDs
+     *
+     * @param FilterEmployeeRequest $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteSelectedEmployees(FilterEmployeeRequest $request)
+    {
+        $validated = $request->validated();
+        $ids = $validated['ids'];
+
+        try {
+            DB::beginTransaction();
+
+            // Delete related records first to maintain referential integrity
+            EmployeeGrantAllocation::whereIn('employee_id', $ids)->delete();
+            EmployeeBeneficiary::whereIn('employee_id', $ids)->delete();
+            EmployeeIdentification::whereIn('employee_id', $ids)->delete();
+            Employment::whereIn('employee_id', $ids)->delete();
+
+            // Delete the employees
+            $count = Employee::whereIn('id', $ids)->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $count . ' employee(s) deleted successfully',
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete employees: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete employees',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * @OA\Post(
@@ -53,18 +150,21 @@ class EmployeeController extends Controller
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee data upload completed"),
      *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="processed_employees", type="integer", example=5),
-     *                 @OA\Property(property="errors", type="array", @OA\Items(type="string"))
+     *                 @OA\Property(property="processed_employees", type="integer", example=5)
      *             )
      *         )
      *     ),
      *     @OA\Response(
      *         response=422,
-     *         description="Validation error (no file or invalid format)",
+     *         description="Validation error or no rows imported",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
+     *             @OA\Property(property="message", type="string", example="No rows were imported – check your column headings & data."),
+     *             @OA\Property(property="debug", type="object",
+     *                 @OA\Property(property="first_row_snapshot", type="object", example={"staff_id": "A001", "first_name": "John"}),
+     *                 @OA\Property(property="custom_errors", type="array", @OA\Items(type="string")),
+     *                 @OA\Property(property="validation_failures", type="array", @OA\Items(type="string"))
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -78,292 +178,61 @@ class EmployeeController extends Controller
      *     )
      * )
      */
-    public function uploadEmployeeData(Request $request)
+    public function uploadEmployeeData(UploadEmployeeImportRequest $request)
     {
-        // 1) Validate the uploaded file
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-        ]);
-
+        // 2) Run the import synchronously so bindValue() fires immediately
+        $import = new EmployeesImport;
         try {
-            // 2) Load the spreadsheet
-            $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
-            $sheet       = $spreadsheet->getActiveSheet();
-            $rows        = $sheet->toArray(null, true, true, true);
+            if (app()->environment('production')) {
+                Excel::queueImport($import, $request->file('file'));
 
-            // If there's no data or only headers, return early
-            if (count($rows) < 2) {
+                // Since this is an API controller, we should return JSON instead of redirecting back
                 return response()->json([
-                    'success' => false,
-                    'message' => 'No valid rows found in the uploaded file'
-                ], 422);
-            }
-
-            $processedCount = 0;
-            $errors         = [];
-
-            // 3) Process each row (starting at row 2 if row 1 is headers)
-            for ($i = 2; $i <= count($rows); $i++) {
-                $row = $rows[$i];
-
-                // Skip the row if it doesn't contain any data
-                if (!array_filter($row)) {
-                    continue;
-                }
-
-                // Build employee data (without identifications or beneficiaries)
-                $employeeData = [
-                    'subsidiary'                   => $row['A'] ?? 'SMRU',
-                    'staff_id'                     => $row['B'] ?? null,
-                    'user_id'                      => null, // Map if available
-                    'department_position_id'       => null, // Parse from Excel if available
-                    'initial_en'                   => $row['C'] ?? null,
-                    'first_name_en'                => $row['D'] ?? null,
-                    'last_name_en'                 => $row['E'] ?? null,
-                    'initial_th'                   => $row['F'] ?? null,
-                    'first_name_th'                => $row['G'] ?? null,
-                    'last_name_th'                 => $row['H'] ?? null,
-                    'gender'                       => $row['I'] ?? null,
-                    'date_of_birth'                => $this->parseDate($row['J'] ?? null),
-                    'date_of_birth_th'             => $this->parseDate($row['K'] ?? null),
-                    'age'                          => $row['L'] ?? null,
-                    'status'                       => $row['M'] ?? null,
-                    'nationality'                  => $row['N'] ?? null,
-                    'religion'                     => $row['O'] ?? null,
-                    'social_security_number'       => $row['R'] ?? null,
-                    'tax_number'                   => $row['S'] ?? null,
-                    'driver_license_number'        => $row['T'] ?? null,
-                    'bank_name'                    => $row['U'] ?? null,
-                    'bank_branch'                  => $row['V'] ?? null,
-                    'bank_account_name'            => $row['W'] ?? null,
-                    'bank_account_number'          => $row['X'] ?? null,
-                    'mobile_phone'                 => $row['Y'] ?? null,
-                    'current_address'              => $row['Z'] ?? null,
-                    'permanent_address'            => $row['AA'] ?? null,
-                    'marital_status'               => $row['AB'] ?? null,
-                    'spouse_name'                  => $row['AC'] ?? null,
-                    'spouse_phone_number'          => $row['AD'] ?? null,
-                    'emergency_contact_person_name'=> $row['AE'] ?? null,
-                    'emergency_contact_person_relationship' => $row['AF'] ?? null,
-                    'emergency_contact_person_phone'=> $row['AG'] ?? null,
-                    'father_name'                  => $row['AH'] ?? null,
-                    'father_occupation'            => $row['AI'] ?? null,
-                    'father_phone_number'          => $row['AJ'] ?? null,
-                    'mother_name'                  => $row['AK'] ?? null,
-                    'mother_occupation'            => $row['AL'] ?? null,
-                    'mother_phone_number'          => $row['AM'] ?? null,
-                    'military_status'              => $this->boolFromString($row['AT'] ?? null),
-                    'remark'                       => $row['AU'] ?? null,
-                ];
-
-
-
-                // Build identifications array (for example, using columns P, Q for type & document number)
-                $identifications = [];
-                if (!empty($row['P']) && !empty($row['Q'])) {
-                    $identifications[] = [
-                        'id_type'         => $row['P'],
-                        'document_number' => $row['Q'],
-                        'issue_date'      => null,
-                        'expiry_date'     => null,
-                    ];
-                }
-
-                // Build beneficiaries array from Excel columns (for example, columns AN–AS)
-                $beneficiaries = [];
-                if (!empty($row['AN'])) {
-                    $beneficiaries[] = [
-                        'beneficiary_name'        => $row['AN'],
-                        'beneficiary_relationship'=> $row['AO'] ?? null,
-                        'phone_number'            => $row['AP'] ?? null,
-                    ];
-                }
-                if (!empty($row['AQ'])) {
-                    $beneficiaries[] = [
-                        'beneficiary_name'        => $row['AQ'],
-                        'beneficiary_relationship'=> $row['AR'] ?? null,
-                        'phone_number'            => $row['AS'] ?? null,
-                    ];
-                }
-
-                // Validate only the employee data first
-                $employeeValidator = Validator::make($employeeData, [
-                    'staff_id' => 'required|string|max:50|unique:employees,staff_id',
-                    'subsidiary' => 'nullable|string|in:SMRU,BHF',
-                    'user_id' => 'nullable|integer|exists:users,id',
-                    'department_position_id' => 'nullable|integer|exists:department_positions,id',
-                    'initial_en' => 'nullable|string|max:10',
-                    'initial_th' => 'nullable|string|max:10',
-                    'first_name_en' => 'required|string|max:255',
-                    'last_name_en' => 'nullable|string|max:255',
-                    'first_name_th' => 'nullable|string|max:255',
-                    'last_name_th' => 'nullable|string|max:255',
-                    'gender' => 'required|string|max:10',
-                    'date_of_birth' => 'required|date',
-                    'date_of_birth_th' => 'nullable|string',
-                    'age' => 'nullable|integer',
-                    'status' => 'required|string',
-                    'nationality' => 'nullable|string|max:100',
-                    'religion' => 'nullable|string|max:100',
-                    'social_security_number' => 'nullable|string|max:50',
-                    'tax_number' => 'nullable|string|max:50',
-                    'bank_name' => 'nullable|string|max:100',
-                    'bank_branch' => 'nullable|string|max:100',
-                    'bank_account_name' => 'nullable|string|max:100',
-                    'bank_account_number' => 'nullable|string|max:50',
-                    'mobile_phone' => 'nullable|string|max:20',
-                    'permanent_address' => 'nullable|string',
-                    'current_address' => 'nullable|string',
-                    'military_status' => 'nullable|boolean',
-                    'marital_status' => 'nullable|string|max:20',
-                    'spouse_name' => 'nullable|string|max:100',
-                    'spouse_phone_number' => 'nullable|string|max:20',
-                    'emergency_contact_person_name' => 'nullable|string|max:100',
-                    'emergency_contact_person_relationship' => 'nullable|string|max:50',
-                    'emergency_contact_person_phone' => 'nullable|string|max:20',
-                    'father_name' => 'nullable|string|max:100',
-                    'father_occupation' => 'nullable|string|max:100',
-                    'father_phone_number' => 'nullable|string|max:20',
-                    'mother_name' => 'nullable|string|max:100',
-                    'mother_occupation' => 'nullable|string|max:100',
-                    'mother_phone_number' => 'nullable|string|max:20',
-                    'driver_license_number' => 'nullable|string|max:50',
-                    'remark' => 'nullable|string',
+                    'success' => true,
+                    'message' => 'Import queued — you\'ll get an email when it\'s done!'
                 ]);
-
-                if ($employeeValidator->fails()) {
-                    $errors = $employeeValidator->errors()->toArray();
-                    $errorFields = array_keys($errors);
-                    $firstErrorField = $errorFields[0];
-                    $firstErrorMessage = $errors[$firstErrorField][0];
-
-                    $errorMessage = "Row $i: Error in field '$firstErrorField' - $firstErrorMessage";
-
-                    // Add staff ID for reference if available
-                    if (!empty($employeeData['staff_id'])) {
-                        $errorMessage .= " (Staff ID: {$employeeData['staff_id']})";
-                    } else {
-                        $errorMessage .= " (Staff ID is missing)";
-                    }
-
-                    $errors[] = $errorMessage;
-                    continue;
-                }
-
-                // Now create the employee and then load the related identifications and beneficiaries
-                try {
-                    DB::beginTransaction();
-
-                    // Create employee first
-                    $createdEmployee = Employee::create(array_merge($employeeData, [
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                    ]));
-
-                    // Validate and create identifications (if any)
-                    if (!empty($identifications)) {
-                        $identificationValidator = Validator::make(
-                            ['identifications' => $identifications],
-                            [
-                                'identifications' => 'array',
-                                'identifications.*.id_type' => 'required|string',
-                                'identifications.*.document_number' => 'required|string',
-                                'identifications.*.issue_date' => 'nullable|date',
-                                'identifications.*.expiry_date' => 'nullable|date',
-                            ]
-                        );
-                        if ($identificationValidator->fails()) {
-                            $errors[] = "Row $i: " . $identificationValidator->errors()->first() . " (Staff ID: {$employeeData['staff_id']})";
-                            DB::rollBack();
-                            continue;
-                        }
-                        foreach ($identifications as $identData) {
-                            $createdEmployee->employeeIdentification()->create(array_merge($identData, [
-                                'created_by' => auth()->user()->name ?? 'system',
-                                'updated_by' => auth()->user()->name ?? 'system',
-                            ]));
-                        }
-                    }
-
-                    // Validate and create beneficiaries (if any)
-                    if (!empty($beneficiaries)) {
-                        $beneficiaryValidator = Validator::make(
-                            ['beneficiaries' => $beneficiaries],
-                            [
-                                'beneficiaries' => 'array',
-                                'beneficiaries.*.beneficiary_name' => 'required|string',
-                                'beneficiaries.*.beneficiary_relationship' => 'required|string',
-                                'beneficiaries.*.phone_number' => 'nullable|string',
-                            ]
-                        );
-                        if ($beneficiaryValidator->fails()) {
-                            $errors[] = "Row $i: " . $beneficiaryValidator->errors()->first() . " (Staff ID: {$employeeData['staff_id']})";
-                            DB::rollBack();
-                            continue;
-                        }
-                        foreach ($beneficiaries as $beneData) {
-                            $createdEmployee->employeeBeneficiaries()->create(array_merge($beneData, [
-                                'created_by' => auth()->user()->name ?? 'system',
-                                'updated_by' => auth()->user()->name ?? 'system',
-                            ]));
-                        }
-                    }
-
-                    DB::commit();
-                    $processedCount++;
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    $errors[] = "Row $i: Failed to create employee (Staff ID: {$employeeData['staff_id']}). Error: {$e->getMessage()}";
-                }
+            } else {
+                Excel::import($import, $request->file('file'));
             }
-
-            // Final response
-            return response()->json([
-                'success' => true,
-                'message' => 'Employee data upload completed',
-                'data' => [
-                    'processed_employees' => $processedCount,
-                    'errors' => $errors,
-                ],
-            ], 200);
-
         } catch (\Exception $e) {
-            // Catch any unexpected top-level errors
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to import employee data',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage()
             ], 500);
         }
-    }
 
-    /**
-     * Helper to parse date from Excel cell if needed.
-     */
-    private function parseDate($value)
-    {
-        if (empty($value)) {
-            return null;
-        }
-        try {
-            return \Carbon\Carbon::parse($value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null; // or throw an exception
-        }
-    }
+        // 3) Gather everything for debugging
+        $processed = $import->getProcessedEmployees();
+        $errors    = $import->getErrors();
+        $fails     = $import->getValidationFailures();
+        $snapshot  = $import->getFirstRowSnapshot();
 
-    /**
-     * Convert a string like "Yes"/"No" to boolean if needed
-     */
-    private function boolFromString($value)
-    {
-        if (is_null($value)) {
-            return false;
-        }
-        $lower = strtolower(trim($value));
-        return in_array($lower, ['yes', '1', 'true']);
-    }
+        // --- if you still want to inspect all of that in one go, uncomment: ---
+        // dd(compact('processed','errors','fails','snapshot'));
 
+        // 4) If nothing got inserted, return 422 + full debug info
+        if (empty($processed)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No rows were imported – check your column headings & data.',
+                'debug'   => [
+                    'first_row_snapshot'   => $snapshot,    // columns + values
+                    'custom_errors'        => $errors,      // your onFailure & other errors
+                    'validation_failures'  => $fails,       // per-cell validation messages
+                ],
+            ], 422);
+        }
+
+        // 5) Otherwise return success
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee data upload completed',
+            'data'    => [
+                'processed_employees' => count($processed),
+            ],
+        ], 200);
+    }
 
     /**
      * Get all employees
@@ -371,10 +240,73 @@ class EmployeeController extends Controller
      * @OA\Get(
      *     path="/employees",
      *     summary="Get all employees",
-     *     description="Returns a list of all employees with related data",
+     *     description="Returns a list of all employees with related data and statistics",
      *     operationId="getEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         required=true,
+     *         description="Number of items per page",
+     *         @OA\Schema(type="integer", minimum=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="staff_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by staff ID",
+     *         @OA\Schema(type="string", maxLength=50)
+     *     ),
+     *     @OA\Parameter(
+     *         name="status",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by employee status",
+     *         @OA\Schema(type="string", enum={"Expats", "Local ID", "Local non ID"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="subsidiary",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by subsidiary",
+     *         @OA\Schema(type="string", enum={"SMRU", "BHF"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="gender",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by gender",
+     *         @OA\Schema(type="string", enum={"Male", "Female"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="date_of_birth",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by date of birth",
+     *         @OA\Schema(type="string", format="date")
+     *     ),
+     *     @OA\Parameter(
+     *         name="age",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by age",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_by",
+     *         in="query",
+     *         required=false,
+     *         description="Field to sort by",
+     *         @OA\Schema(type="string", enum={"subsidiary", "staff_id", "initials", "first_name_en", "last_name_en", "gender", "date_of_birth", "age", "status", "id_type", "id_number", "social_security_number", "tax_number", "mobile_phone"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_order",
+     *         in="query",
+     *         required=false,
+     *         description="Sort direction",
+     *         @OA\Schema(type="string", enum={"asc", "desc"})
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
@@ -385,51 +317,239 @@ class EmployeeController extends Controller
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/Employee")
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *                     @OA\Property(property="initial_en", type="string", example="Mr."),
+     *                     @OA\Property(property="first_name_en", type="string", example="John"),
+     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
+     *                     @OA\Property(property="gender", type="string", example="Male"),
+     *                     @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01"),
+     *                     @OA\Property(property="age", type="integer", example=33),
+     *                     @OA\Property(property="status", type="string", example="Local ID"),
+     *                     @OA\Property(property="id_type", type="string", example="Passport"),
+     *                     @OA\Property(property="id_number", type="string", example="AB123456"),
+     *                     @OA\Property(property="social_security_number", type="string", example="1234567890"),
+     *                     @OA\Property(property="tax_number", type="string", example="TAX123456"),
+     *                     @OA\Property(property="mobile_phone", type="string", example="+66812345678"),
+     *                     @OA\Property(
+     *                         property="identification",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="id_type", type="string", example="Passport"),
+     *                             @OA\Property(property="document_number", type="string", example="AB123456"),
+     *                             @OA\Property(property="issue_date", type="string", format="date", example="2018-01-01"),
+     *                             @OA\Property(property="expiry_date", type="string", format="date", example="2028-01-01")
+     *                         )
+     *                     )
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="statistics",
+     *                 type="object",
+     *                 @OA\Property(property="totalEmployees", type="integer", example=450),
+     *                 @OA\Property(property="activeCount", type="integer", example=400),
+     *                 @OA\Property(property="inactiveCount", type="integer", example=50),
+     *                 @OA\Property(property="newJoinerCount", type="integer", example=15),
+     *                 @OA\Property(
+     *                     property="subsidiaryCount",
+     *                     type="object",
+     *                     @OA\Property(property="SMRU_count", type="integer", example=300),
+     *                     @OA\Property(property="BHF_count", type="integer", example=150)
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="links",
+     *                 type="object",
+     *                 example={"first": "http://example.com/api/employees?page=1", "last": "http://example.com/api/employees?page=5", "prev": null, "next": "http://example.com/api/employees?page=2"}
+     *             ),
+     *             @OA\Property(
+     *                 property="meta",
+     *                 type="object",
+     *                 example={"current_page": 1, "from": 1, "last_page": 5, "path": "http://example.com/api/employees", "per_page": 100, "to": 100, "total": 450}
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="per_page",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The per page must be at least 100.")
+     *                 )
      *             )
      *         )
      *     )
      * )
      */
-    public function index(Request $request)
+    public function index(FilterEmployeeRequest $request)
     {
-        $employees = Employee::with([
-            'employment',
-            'employeeGrantAllocations',
-            'employment.workLocation',
-            'employment.departmentPosition',
-            // 'employment.grantAllocations.grantItemAllocation',
-            // 'employment.grantAllocations.grantItemAllocation.grant',
-            'employeeBeneficiaries',
-            'employeeIdentification'
-        ])->get();
+        $validated = $request->validated();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employees retrieved successfully',
-            'data' => $employees
+        // 1) Start the query
+        $q = Employee::select([
+            'id',
+            'subsidiary',
+            'staff_id',
+            'initial_en',
+            'first_name_en',
+            'last_name_en',
+            'gender',
+            'date_of_birth',
+            'age',
+            'status',
+            'social_security_number',
+            'tax_number',
+            'mobile_phone'
+        ])->with([
+            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
+            'employment:id,employee_id,active,start_date'
         ]);
+
+        // 2) Apply filters if present
+        if (!empty($validated['staff_id'])) {
+            $q->where('staff_id', 'like', '%'.$validated['staff_id'].'%');
+        }
+        if (!empty($validated['status'])) {
+            $q->where('status', $validated['status']);
+        }
+        if (!empty($validated['subsidiary'])) {
+            $q->where('subsidiary', $validated['subsidiary']);
+        }
+
+        if (!empty($validated['gender'])) {
+            $q->where('gender', $validated['gender']);
+        }
+
+        if (!empty($validated['date_of_birth'])) {
+            $q->where('date_of_birth', $validated['date_of_birth']);
+        }
+
+        if (!empty($validated['age'])) {
+            $q->where('age', $validated['age']);
+        }
+
+        if (!empty($validated['status'])) {
+            $q->where('status', $validated['status']);
+        }
+
+        // 3) Apply sorting if present
+        if (!empty($validated['sort_by'])) {
+            $dir = $validated['sort_order'] ?? 'asc';
+            $q->orderBy($validated['sort_by'], $dir);
+        }
+
+        if (!empty($validated['id_type'])) {
+            $q->whereHas('employeeIdentification', function($query) use ($validated) {
+                $query->where('id_type', $validated['id_type']);
+            });
+        }
+
+        // 4) Paginate
+        $employees = $q->paginate($validated['per_page']);
+
+        // 5) Calculate statistics
+        $allEmployees = Employee::with('employment:id,employee_id,active,start_date')->get();
+
+        $now = now();
+        $threeMonthsAgo = now()->subMonths(3);
+
+        $statistics = [
+            'totalEmployees' => $allEmployees->count(),
+            'activeCount' => $allEmployees->filter(function($employee) {
+                return $employee->employment && $employee->employment->active === 1;
+            })->count(),
+            'inactiveCount' => $allEmployees->filter(function($employee) {
+                return $employee->employment && $employee->employment->active === 0;
+            })->count(),
+            'newJoinerCount' => $allEmployees->filter(function($employee) {
+                if (!$employee->employment || !$employee->employment->start_date) return false;
+                $startDate = new \DateTime($employee->employment->start_date);
+                return $startDate >= $threeMonthsAgo && $startDate <= $now;
+            })->count(),
+            'subsidiaryCount' => [
+                'SMRU_count' => $allEmployees->where('subsidiary', 'SMRU')->count(),
+                'BHF_count' => $allEmployees->where('subsidiary', 'BHF')->count()
+            ]
+        ];
+
+        // 6) Return wrapped in your Resource/Collection with statistics
+        return (new EmployeeCollection($employees))
+                ->additional([
+                    'success' => true,
+                    'message' => 'Employees retrieved successfully',
+                    'statistics' => $statistics
+                ]);
     }
 
     /**
      * Get a single employee
      *
      * @OA\Get(
-     *     path="/employees/{id}",
+     *     path="/employees/{staff_id}",
      *     summary="Get a single employee",
-     *     description="Returns a single employee by ID with related data",
-     *     operationId="getEmployeeById",
+     *     description="Returns employee(s) by staff ID with related data",
+     *     operationId="getEmployeeByStaffId",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="id", in="path", required=true, description="ID of the employee", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="staff_id", in="path", required=true, description="Staff ID of the employee", @OA\Schema(type="string")),
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Employee")
+     *             @OA\Property(property="message", type="string", example="Employee(s) retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *                     @OA\Property(property="initial_en", type="string", example="Mr."),
+     *                     @OA\Property(property="first_name_en", type="string", example="John"),
+     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
+     *                     @OA\Property(property="gender", type="string", example="male"),
+     *                     @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01"),
+     *                     @OA\Property(property="age", type="integer", example=33),
+     *                     @OA\Property(property="status", type="string", example="Expats"),
+     *                     @OA\Property(property="social_security_number", type="string", example="SSN123456"),
+     *                     @OA\Property(property="tax_number", type="string", example="TAX123456"),
+     *                     @OA\Property(property="mobile_phone", type="string", example="0812345678"),
+     *                     @OA\Property(
+     *                         property="employee_identification",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="employee_id", type="integer", example=1),
+     *                             @OA\Property(property="id_type", type="string", example="Passport"),
+     *                             @OA\Property(property="document_number", type="string", example="P12345678"),
+     *                             @OA\Property(property="issue_date", type="string", format="date", example="2020-01-01"),
+     *                             @OA\Property(property="expiry_date", type="string", format="date", example="2030-01-01")
+     *                         )
+     *                     ),
+     *                     @OA\Property(
+     *                         property="employment",
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="employee_id", type="integer", example=1),
+     *                         @OA\Property(property="active", type="integer", example=1),
+     *                         @OA\Property(property="start_date", type="string", format="date", example="2023-01-01")
+     *                     )
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -437,38 +557,48 @@ class EmployeeController extends Controller
      *         description="Employee not found",
      *         @OA\JsonContent(
      *             type="object",
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
+     *             @OA\Property(property="message", type="string", example="No employee found with staff_id = EMP001")
      *         )
      *     )
      * )
      */
-    public function show(Request $request, $id)
+    public function show(ShowEmployeeRequest $request, string $staff_id)
     {
-        $employee = Employee::with([
-            'employment',
-            'employeeGrantAllocations',
-            'employeeGrantAllocations.grantItemAllocation',
-            'employeeGrantAllocations.grantItemAllocation.grant',
-            'employment.workLocation',
-            // 'employment.grantAllocations.grantItemAllocation',
-            // 'employment.grantAllocations.grantItemAllocation.grant',
-            'employeeBeneficiaries',
-            'employeeIdentification'
-        ])->find($id);
+        // 1) base query: same columns + relations as your show()
+            $query = Employee::select([
+                'id',
+                'subsidiary',
+                'staff_id',
+                'initial_en',
+                'first_name_en',
+                'last_name_en',
+                'gender',
+                'date_of_birth',
+                'age',
+                'status',
+                'social_security_number',
+                'tax_number',
+                'mobile_phone',
+            ])
+            ->with([
+                'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
+                'employment:id,employee_id,active,start_date',
+            ]);
 
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employee not found'
-            ], 404);
+        // 2) exact match on staff_id
+        $employees = $query->where('staff_id', $staff_id)->get();
+
+        // 3) if none found, return 404
+        if ($employees->isEmpty()) {
+        abort(404, "No employee found with staff_id = {$staff_id}");
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee retrieved successfully',
-            'data' => $employee
-        ]);
+        // 4) wrap in a collection resource so `data` is an array
+        return (new EmployeeCollection($employees))
+            ->additional([
+                'success' => true,
+                'message' => 'Employee(s) retrieved successfully',
+            ]);
     }
 
     /**

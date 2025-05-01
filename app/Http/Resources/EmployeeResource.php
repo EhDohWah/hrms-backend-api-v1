@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Employee;
+use App\Models\EmployeeIdentification;
+
+class EmployeeResource extends JsonResource
+{
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'subsidiary' => $this->subsidiary,
+            'staff_id' => $this->staff_id,
+            'initial_en' => $this->initial_en,
+            'first_name_en' => $this->first_name_en,
+            'last_name_en' => $this->last_name_en,
+            'gender' => $this->gender,
+            'date_of_birth' => $this->date_of_birth,
+            'age' => $this->age,
+            'status' => $this->status,
+            'id_type' => $this->employeeIdentification ? $this->employeeIdentification->id_type : null,
+            'id_number' => $this->employeeIdentification ? $this->employeeIdentification->id_number : null,
+            'social_security_number' => $this->social_security_number,
+            'tax_number' => $this->tax_number,
+            'mobile_phone' => $this->mobile_phone,
+            'identification' => $this->employeeIdentification->map(function ($item) {
+                return [
+                    'id_type' => $item->id_type,
+                    'document_number' => $item->document_number,
+                    'issue_date' => $item->issue_date,
+                    'expiry_date' => $item->expiry_date,
+                ];
+            })     
+        ];
+    }
+}

@@ -1493,6 +1493,94 @@
                 ]
             }
         },
+        "/employees/delete-selected": {
+            "delete": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Delete multiple employees by their IDs",
+                "description": "Deletes multiple employees and their related records based on the provided IDs",
+                "operationId": "deleteSelectedEmployees",
+                "requestBody": {
+                    "description": "Employee IDs to delete",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "ids"
+                                ],
+                                "properties": {
+                                    "ids": {
+                                        "description": "Array of employee IDs to delete",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employees deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "5 employee(s) deleted successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to delete employees"
+                                        },
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Error message details"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/employees/upload": {
             "post": {
                 "tags": [
@@ -1542,12 +1630,6 @@
                                                 "processed_employees": {
                                                     "type": "integer",
                                                     "example": 5
-                                                },
-                                                "errors": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
                                                 }
                                             },
                                             "type": "object"
@@ -1559,7 +1641,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation error (no file or invalid format)",
+                        "description": "Validation error or no rows imported",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1570,9 +1652,30 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Validation error"
+                                            "example": "No rows were imported – check your column headings & data."
                                         },
-                                        "errors": {
+                                        "debug": {
+                                            "properties": {
+                                                "first_row_snapshot": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "staff_id": "A001",
+                                                        "first_name": "John"
+                                                    }
+                                                },
+                                                "custom_errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "validation_failures": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
                                             "type": "object"
                                         }
                                     },
@@ -1618,8 +1721,127 @@
                     "Employees"
                 ],
                 "summary": "Get all employees",
-                "description": "Returns a list of all employees with related data",
+                "description": "Returns a list of all employees with related data and statistics",
                 "operationId": "getEmployees",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Number of items per page",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "staff_id",
+                        "in": "query",
+                        "description": "Filter by staff ID",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 50
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by employee status",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Expats",
+                                "Local ID",
+                                "Local non ID"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "subsidiary",
+                        "in": "query",
+                        "description": "Filter by subsidiary",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "SMRU",
+                                "BHF"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "gender",
+                        "in": "query",
+                        "description": "Filter by gender",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Male",
+                                "Female"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "date_of_birth",
+                        "in": "query",
+                        "description": "Filter by date of birth",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "age",
+                        "in": "query",
+                        "description": "Filter by age",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Field to sort by",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "subsidiary",
+                                "staff_id",
+                                "initials",
+                                "first_name_en",
+                                "last_name_en",
+                                "gender",
+                                "date_of_birth",
+                                "age",
+                                "status",
+                                "id_type",
+                                "id_number",
+                                "social_security_number",
+                                "tax_number",
+                                "mobile_phone"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort direction",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -1638,8 +1860,176 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/Employee"
+                                                "properties": {
+                                                    "subsidiary": {
+                                                        "type": "string",
+                                                        "example": "SMRU"
+                                                    },
+                                                    "staff_id": {
+                                                        "type": "string",
+                                                        "example": "EMP001"
+                                                    },
+                                                    "initial_en": {
+                                                        "type": "string",
+                                                        "example": "Mr."
+                                                    },
+                                                    "first_name_en": {
+                                                        "type": "string",
+                                                        "example": "John"
+                                                    },
+                                                    "last_name_en": {
+                                                        "type": "string",
+                                                        "example": "Doe"
+                                                    },
+                                                    "gender": {
+                                                        "type": "string",
+                                                        "example": "Male"
+                                                    },
+                                                    "date_of_birth": {
+                                                        "type": "string",
+                                                        "format": "date",
+                                                        "example": "1990-01-01"
+                                                    },
+                                                    "age": {
+                                                        "type": "integer",
+                                                        "example": 33
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "example": "Local ID"
+                                                    },
+                                                    "id_type": {
+                                                        "type": "string",
+                                                        "example": "Passport"
+                                                    },
+                                                    "id_number": {
+                                                        "type": "string",
+                                                        "example": "AB123456"
+                                                    },
+                                                    "social_security_number": {
+                                                        "type": "string",
+                                                        "example": "1234567890"
+                                                    },
+                                                    "tax_number": {
+                                                        "type": "string",
+                                                        "example": "TAX123456"
+                                                    },
+                                                    "mobile_phone": {
+                                                        "type": "string",
+                                                        "example": "+66812345678"
+                                                    },
+                                                    "identification": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id_type": {
+                                                                    "type": "string",
+                                                                    "example": "Passport"
+                                                                },
+                                                                "document_number": {
+                                                                    "type": "string",
+                                                                    "example": "AB123456"
+                                                                },
+                                                                "issue_date": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2018-01-01"
+                                                                },
+                                                                "expiry_date": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2028-01-01"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
                                             }
+                                        },
+                                        "statistics": {
+                                            "properties": {
+                                                "totalEmployees": {
+                                                    "type": "integer",
+                                                    "example": 450
+                                                },
+                                                "activeCount": {
+                                                    "type": "integer",
+                                                    "example": 400
+                                                },
+                                                "inactiveCount": {
+                                                    "type": "integer",
+                                                    "example": 50
+                                                },
+                                                "newJoinerCount": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "subsidiaryCount": {
+                                                    "properties": {
+                                                        "SMRU_count": {
+                                                            "type": "integer",
+                                                            "example": 300
+                                                        },
+                                                        "BHF_count": {
+                                                            "type": "integer",
+                                                            "example": 150
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "example": {
+                                                "first": "http://example.com/api/employees?page=1",
+                                                "last": "http://example.com/api/employees?page=5",
+                                                "prev": null,
+                                                "next": "http://example.com/api/employees?page=2"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "example": {
+                                                "current_page": 1,
+                                                "from": 1,
+                                                "last_page": 5,
+                                                "path": "http://example.com/api/employees",
+                                                "per_page": 100,
+                                                "to": 100,
+                                                "total": 450
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "per_page": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The per page must be at least 100."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -2029,22 +2419,22 @@
                 ]
             }
         },
-        "/employees/{id}": {
+        "/employees/{staff_id}": {
             "get": {
                 "tags": [
                     "Employees"
                 ],
                 "summary": "Get a single employee",
-                "description": "Returns a single employee by ID with related data",
-                "operationId": "getEmployeeById",
+                "description": "Returns employee(s) by staff ID with related data",
+                "operationId": "getEmployeeByStaffId",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": "staff_id",
                         "in": "path",
-                        "description": "ID of the employee",
+                        "description": "Staff ID of the employee",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2061,10 +2451,124 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee retrieved successfully"
+                                            "example": "Employee(s) retrieved successfully"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/Employee"
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "subsidiary": {
+                                                        "type": "string",
+                                                        "example": "SMRU"
+                                                    },
+                                                    "staff_id": {
+                                                        "type": "string",
+                                                        "example": "EMP001"
+                                                    },
+                                                    "initial_en": {
+                                                        "type": "string",
+                                                        "example": "Mr."
+                                                    },
+                                                    "first_name_en": {
+                                                        "type": "string",
+                                                        "example": "John"
+                                                    },
+                                                    "last_name_en": {
+                                                        "type": "string",
+                                                        "example": "Doe"
+                                                    },
+                                                    "gender": {
+                                                        "type": "string",
+                                                        "example": "male"
+                                                    },
+                                                    "date_of_birth": {
+                                                        "type": "string",
+                                                        "format": "date",
+                                                        "example": "1990-01-01"
+                                                    },
+                                                    "age": {
+                                                        "type": "integer",
+                                                        "example": 33
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "example": "Expats"
+                                                    },
+                                                    "social_security_number": {
+                                                        "type": "string",
+                                                        "example": "SSN123456"
+                                                    },
+                                                    "tax_number": {
+                                                        "type": "string",
+                                                        "example": "TAX123456"
+                                                    },
+                                                    "mobile_phone": {
+                                                        "type": "string",
+                                                        "example": "0812345678"
+                                                    },
+                                                    "employee_identification": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "employee_id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "id_type": {
+                                                                    "type": "string",
+                                                                    "example": "Passport"
+                                                                },
+                                                                "document_number": {
+                                                                    "type": "string",
+                                                                    "example": "P12345678"
+                                                                },
+                                                                "issue_date": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2020-01-01"
+                                                                },
+                                                                "expiry_date": {
+                                                                    "type": "string",
+                                                                    "format": "date",
+                                                                    "example": "2030-01-01"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "employment": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "employee_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "active": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "start_date": {
+                                                                "type": "string",
+                                                                "format": "date",
+                                                                "example": "2023-01-01"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
                                         }
                                     },
                                     "type": "object"
@@ -2078,13 +2582,9 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee not found"
+                                            "example": "No employee found with staff_id = EMP001"
                                         }
                                     },
                                     "type": "object"
@@ -2098,7 +2598,9 @@
                         "bearerAuth": []
                     }
                 ]
-            },
+            }
+        },
+        "/employees/{id}": {
             "put": {
                 "tags": [
                     "Employees"
