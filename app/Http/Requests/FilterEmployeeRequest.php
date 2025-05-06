@@ -22,8 +22,6 @@ class FilterEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ids' => 'nullable|array',
-            'ids.*' => 'nullable|integer|exists:employees,id',
             'per_page' => 'required|integer|min:1',
             'staff_id'   => ['nullable','string','max:10'],
             'status'     => ['nullable','in:Expats,Local ID,Local non ID'],

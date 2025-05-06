@@ -92,9 +92,9 @@ class DevEmployeesImport extends DefaultValueBinder implements
             // 2) Normalize id_type
             $map = [
                 '10 years ID' => '10YearsID',
-                'Burmese ID'  => 'Other',
-                'CI'          => 'Other',
-                'Borderpass'  => 'Other',
+                'Burmese ID'  => 'BurmeseID',
+                'CI'          => 'CI',
+                'Borderpass'  => 'Borderpass',
                 'Thai ID'     => 'ThaiID',
                 'Passport'    => 'Passport',
                 'Other'       => 'Other',
@@ -103,10 +103,15 @@ class DevEmployeesImport extends DefaultValueBinder implements
                 $r['id_type'] = $map[$r['id_type']] ?? 'Other';
             }
 
-            unset($r['age']); // drop the formula column
+            // 3) Cast Excel's =YEARFRAC(K2,TODAY()) result into an integer age
+        $rawAge = trim((string)($r['age'] ?? ''));
+        $r['age'] = is_numeric($rawAge)
+            ? (int) floor($rawAge)
+            : null;
 
-            return $r;
+        return $r;
         });
+
 
         // 3) now run your validator *against* $normalized
         $validator = Validator::make(
@@ -139,14 +144,14 @@ class DevEmployeesImport extends DefaultValueBinder implements
             // Log the start of import process
             Log::info('Starting employee import process', ['rows_count' => $rows->count()]);
 
-            DB::transaction(function() use ($rows) {
+            DB::transaction(function() use ($normalized) {
                 $employeeBatch = [];
                 $identBatch = [];
                 $beneBatch = [];
                 $allStaffIds = [];
 
                 // 1) Build the employee batch & collect staff_ids
-                foreach ($rows as $index => $row) {
+                foreach ($normalized as $index => $row) {
                     if (!$row->filter()->count()) {
                         Log::info('Skipping blank row', ['row_index' => $index]);
                         continue; // skip blank rows
@@ -193,6 +198,32 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         $dateOfBirth = null;
                     }
 
+                    // debug date of birth thai (Buddhist calendar)
+                    $raw = trim((string)($row['date_of_birth_th'] ?? ''));
+
+                    // default to null
+                    $dateOfBirthTh = null;
+
+                    // only parse when there's something other than empty or "-"
+                    if ($raw !== '' && $raw !== '-') {
+                        if (ctype_digit($raw)) {
+                            // Excel serial number
+                            $dt = ExcelDate::excelToDateTimeObject($raw);
+                        } else {
+                            // split into [day,month,year] or [month,year]
+                            $parts = explode('/', $raw);
+                            $day   = count($parts) === 3 ? intval($parts[0]) : 1;
+                            $month = count($parts) === 3 ? intval($parts[1]) : intval($parts[0]);
+                            $year  = intval($parts[count($parts) - 1]) - 543;  // Buddhist→Gregorian
+
+                            $dt = Carbon::create($year, $month, $day);
+                        }
+
+                        $dateOfBirthTh = $dt->format('Y-m-d');
+                    }
+
+
+
                     $employeeBatch[] = [
                         'staff_id'                  => $staffId,
                         'subsidiary'                => $row['org'] ?? null,
@@ -204,7 +235,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         'last_name_th'              => $row['last_name_th'] ?? null,
                         'gender'                    => $row['gender'] ?? null,
                         'date_of_birth'             => $dateOfBirth,
-                        'date_of_birth_th'          => $row['date_of_birth_th'] ?? null,
+                        'date_of_birth_th'          => $dateOfBirthTh,
                         'age'                       => $row['age'] ?? null,
                         'status'                    => $row['status'] ?? null,
                         'nationality'               => $row['nationality'] ?? null,
@@ -214,8 +245,8 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         'driver_license_number'     => $row['driver_license'] ?? null,
                         'bank_name'                 => $row['bank_name'] ?? null,
                         'bank_branch'               => $row['bank_branch'] ?? null,
-                        'bank_account_name'         => $row['bankacc_name'] ?? null,
-                        'bank_account_number'       => $row['bankacc_no'] ?? null,
+                        'bank_account_name'         => $row['bank_acc_name'] ?? null,
+                        'bank_account_number'       => $row['bank_acc_no'] ?? null,
                         'mobile_phone'              => $row['mobile_no'] ?? null,
                         'current_address'           => $row['current_address'] ?? null,
                         'permanent_address'         => $row['permanent_address'] ?? null,
@@ -267,7 +298,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
                 Log::info('Retrieved employee IDs', ['count' => count($employeeMap)]);
 
                 // 4) Build identifications & beneficiaries batches
-                foreach ($rows as $index => $row) {
+                foreach ($normalized as $index => $row) {
                     if (!isset($row['staff_id'])) {
                         continue;
                     }
@@ -377,15 +408,15 @@ class DevEmployeesImport extends DefaultValueBinder implements
             '*.status'        => 'nullable|string|max:20',
             '*.nationality'   => 'nullable|string|max:100',
             '*.religion'      => 'nullable|string|max:100',
-            '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport','Other'])],
+            '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport','CI','Borderpass','BurmeseID','Other'])],
             '*.id_no'         => 'nullable|string',
             '*.social_security_no' => 'nullable|string|max:50',
             '*.tax_no'        => 'nullable|string|max:50',
             '*.driver_license' => 'nullable|string|max:100',
             '*.bank_name'     => 'nullable|string|max:100',
             '*.bank_branch'   => 'nullable|string|max:100',
-            '*.bankacc_name'  => 'nullable|string|max:100',
-            '*.bankacc_no'    => 'nullable|string|max:50',
+            '*.bank_acc_name'  => 'nullable|string|max:100',
+            '*.bank_acc_no'    => 'nullable|string|max:50',
             '*.mobile_no'     => 'nullable|string|max:10',
             '*.current_address' => 'nullable|string',
             '*.permanent_address' => 'nullable|string',

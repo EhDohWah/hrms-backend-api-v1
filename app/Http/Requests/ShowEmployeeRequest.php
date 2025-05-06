@@ -22,7 +22,7 @@ class ShowEmployeeRequest extends FormRequest
     {
         return array_merge(
             $this->all(),                  // existing input
-            ['id' => $this->route('id')]   // add route parameter
+            ['staff_id' => $this->route('staff_id')]   // add route parameter
         );
     }
 
@@ -34,7 +34,7 @@ class ShowEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id' => 'required|integer|exists:employees,id',
+            'staff_id' => 'required|string|exists:employees,staff_id',
         ];
     }
 }

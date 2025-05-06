@@ -32,14 +32,6 @@ class EmployeeResource extends JsonResource
             'social_security_number' => $this->social_security_number,
             'tax_number' => $this->tax_number,
             'mobile_phone' => $this->mobile_phone,
-            'identification' => $this->employeeIdentification->map(function ($item) {
-                return [
-                    'id_type' => $item->id_type,
-                    'document_number' => $item->document_number,
-                    'issue_date' => $item->issue_date,
-                    'expiry_date' => $item->expiry_date,
-                ];
-            })     
         ];
     }
 }

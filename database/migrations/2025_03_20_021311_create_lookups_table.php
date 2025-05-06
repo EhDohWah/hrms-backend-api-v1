@@ -32,9 +32,9 @@ return new class extends Migration
             ['type' => 'subsidiary', 'value' => 'BHF', 'created_at' => now(), 'updated_at' => now()],
 
             // Employee status
-            ['type' => 'employee_status', 'value' => 'Expats', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_status', 'value' => 'Local ID', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_status', 'value' => 'Non Local ID', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_status', 'value' => 'Expats (Local)', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_status', 'value' => 'Local ID Staff', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_status', 'value' => 'Local non ID Staff', 'created_at' => now(), 'updated_at' => now()],
 
             // Nationality options
             ['type' => 'nationality', 'value' => 'Thai', 'created_at' => now(), 'updated_at' => now()],

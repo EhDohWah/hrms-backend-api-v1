@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('department_position_id')->nullable();
             $table->string('subsidiary', 5)->index();
             $table->string('staff_id', 50)->index();
+            $table->unique(['staff_id','subsidiary']);
             $table->string('initial_en', 5)->nullable();
             $table->string('initial_th', 5)->nullable();
             $table->string('first_name_en', 255)->nullable();

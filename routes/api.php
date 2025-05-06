@@ -54,7 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [EmployeeController::class, 'employeeDetails'])->middleware('permission:employee.read');
         Route::get('/filter', [EmployeeController::class, 'filterEmployees'])->middleware('permission:employee.read');
         Route::get('/site-records', [EmployeeController::class, 'getSiteRecords'])->middleware('permission:employee.read');
-        Route::get('/staff-id/{id}', [EmployeeController::class, 'show'])->middleware('permission:employee.read');
+        Route::get('/staff-id/{staff_id}', [EmployeeController::class, 'show'])->middleware('permission:employee.read');
         Route::post('/', [EmployeeController::class, 'store'])->middleware('permission:employee.create');
         Route::put('/{id}', [EmployeeController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [EmployeeController::class, 'destroy'])->middleware('permission:employee.delete');

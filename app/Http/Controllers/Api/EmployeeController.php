@@ -25,6 +25,7 @@ use App\Models\EmployeeGrantAllocation;
 use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
 use App\Imports\DevEmployeesImport;
+use App\Http\Requests\StoreEmployeeRequest;
 
 /**
  * @OA\Tag(
@@ -37,7 +38,7 @@ class EmployeeController extends Controller
 
     /**
      * @OA\Delete(
-     *     path="/employees/delete-selected",
+     *     path="/employees/delete-selected/{ids}",
      *     summary="Delete multiple employees by their IDs",
      *     description="Deletes multiple employees and their related records based on the provided IDs",
      *     operationId="deleteSelectedEmployees",
@@ -83,9 +84,12 @@ class EmployeeController extends Controller
      * @param FilterEmployeeRequest $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function deleteSelectedEmployees(FilterEmployeeRequest $request)
+    public function deleteSelectedEmployees(Request $request)
     {
-        $validated = $request->validated();
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer|exists:employees,id',
+        ]);
         $ids = $validated['ids'];
 
         try {
@@ -183,14 +187,14 @@ class EmployeeController extends Controller
     {
         $file = $request->file('file');
 
-        if (app()->environment('production')) {
-            Excel::queueImport(new EmployeesImport, $file);
+        // if (app()->environment('production')) {
+        //     Excel::queueImport(new EmployeesImport, $file);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Import queued; you'll get notified when it's done.",
-            ], 202);
-        }
+        //     return response()->json([
+        //         'success' => true,
+        //         'message' => "Import queued; you'll get notified when it's done.",
+        //     ], 202);
+        // }
 
         // ── Dev branch ────────────────────────────────────────────────────────
         $import = new DevEmployeesImport;
@@ -397,7 +401,7 @@ class EmployeeController extends Controller
         ])->with([
             'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
             'employment:id,employee_id,active,start_date'
-        ]);
+        ])->orderBy('created_at', 'desc');
 
         // 2) Apply filters if present
         if (!empty($validated['staff_id'])) {
@@ -455,7 +459,7 @@ class EmployeeController extends Controller
             'inactiveCount' => $allEmployees->filter(function($employee) {
                 return $employee->employment && $employee->employment->active === 0;
             })->count(),
-            'newJoinerCount' => $allEmployees->filter(function($employee) {
+            'newJoinerCount' => $allEmployees->filter(function($employee) use ($threeMonthsAgo, $now) {
                 if (!$employee->employment || !$employee->employment->start_date) return false;
                 $startDate = new \DateTime($employee->employment->start_date);
                 return $startDate >= $threeMonthsAgo && $startDate <= $now;
@@ -664,11 +668,9 @@ class EmployeeController extends Controller
      *         required=true,
      *         description="Employee data",
      *         @OA\JsonContent(
-     *             required={"staff_id","first_name_en","last_name_en","gender","date_of_birth","status"},
+     *             required={"staff_id","first_name_en","gender","date_of_birth","nationality","religion","marital_status","current_address","permanent_address","status"},
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
-     *             @OA\Property(property="user_id", type="integer", nullable=true, description="Associated user ID"),
-     *             @OA\Property(property="department_position_id", type="integer", description="Department position ID"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
      *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
      *             @OA\Property(property="first_name_en", type="string", example="John", description="Employee first name in English"),
@@ -679,56 +681,13 @@ class EmployeeController extends Controller
      *             @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01", description="Employee date of birth"),
      *             @OA\Property(property="date_of_birth_th", type="string", example="01/01/2533", description="Employee date of birth in Thai format"),
      *             @OA\Property(property="age", type="integer", example=33, description="Employee age"),
-     *             @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, example="Expats", description="Employee status"),
      *             @OA\Property(property="nationality", type="string", example="Thai", description="Employee nationality"),
      *             @OA\Property(property="religion", type="string", example="Buddhism", description="Employee religion"),
-     *             @OA\Property(property="social_security_number", type="string", example="SSN123456", description="Employee social security number"),
-     *             @OA\Property(property="tax_number", type="string", example="TAX123456", description="Employee tax number"),
-     *             @OA\Property(property="bank_name", type="string", example="Bangkok Bank", description="Employee bank name"),
-     *             @OA\Property(property="bank_branch", type="string", example="Silom", description="Employee bank branch"),
-     *             @OA\Property(property="bank_account_name", type="string", example="John Doe", description="Employee bank account name"),
-     *             @OA\Property(property="bank_account_number", type="string", example="1234567890", description="Employee bank account number"),
-     *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
-     *             @OA\Property(property="permanent_address", type="string", example="123 Main St, Bangkok", description="Employee permanent address"),
-     *             @OA\Property(property="current_address", type="string", example="456 Second St, Bangkok", description="Employee current address"),
-     *             @OA\Property(property="military_status", type="boolean", example=false, description="Employee military status"),
      *             @OA\Property(property="marital_status", type="string", example="Single", description="Employee marital status"),
-     *             @OA\Property(property="spouse_name", type="string", example="Jane Doe", description="Employee spouse name"),
-     *             @OA\Property(property="spouse_phone_number", type="string", example="0812345679", description="Employee spouse phone number"),
-     *             @OA\Property(property="emergency_contact_person_name", type="string", example="James Doe", description="Emergency contact name"),
-     *             @OA\Property(property="emergency_contact_person_relationship", type="string", example="Father", description="Emergency contact relationship"),
-     *             @OA\Property(property="emergency_contact_person_phone", type="string", example="0812345680", description="Emergency contact phone"),
-     *             @OA\Property(property="father_name", type="string", example="James Doe", description="Employee father name"),
-     *             @OA\Property(property="father_occupation", type="string", example="Engineer", description="Employee father occupation"),
-     *             @OA\Property(property="father_phone_number", type="string", example="0812345681", description="Employee father phone number"),
-     *             @OA\Property(property="mother_name", type="string", example="Mary Doe", description="Employee mother name"),
-     *             @OA\Property(property="mother_occupation", type="string", example="Teacher", description="Employee mother occupation"),
-     *             @OA\Property(property="mother_phone_number", type="string", example="0812345682", description="Employee mother phone number"),
-     *             @OA\Property(property="driver_license_number", type="string", example="DL123456", description="Employee driver license number"),
-     *             @OA\Property(property="remark", type="string", example="Additional notes", description="Additional remarks"),
-     *             @OA\Property(
-     *                 property="identifications",
-     *                 type="array",
-     *                 description="Employee identification documents",
-     *                 @OA\Items(
-     *                     type="object",
-     *                     @OA\Property(property="id_type", type="string", example="Passport", description="Type of identification"),
-     *                     @OA\Property(property="document_number", type="string", example="P123456", description="Document number"),
-     *                     @OA\Property(property="issue_date", type="string", format="date", example="2020-01-01", description="Issue date"),
-     *                     @OA\Property(property="expiry_date", type="string", format="date", example="2030-01-01", description="Expiry date")
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="beneficiaries",
-     *                 type="array",
-     *                 description="Employee beneficiaries",
-     *                 @OA\Items(
-     *                     type="object",
-     *                     @OA\Property(property="beneficiary_name", type="string", example="Jane Doe", description="Beneficiary name"),
-     *                     @OA\Property(property="beneficiary_relationship", type="string", example="Spouse", description="Relationship to employee"),
-     *                     @OA\Property(property="phone_number", type="string", example="0812345679", description="Beneficiary phone number")
-     *                 )
-     *             )
+     *             @OA\Property(property="current_address", type="string", example="456 Second St, Bangkok", description="Employee current address"),
+     *             @OA\Property(property="permanent_address", type="string", example="123 Main St, Bangkok", description="Employee permanent address"),
+     *             @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, example="Expats", description="Employee status"),
+     *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
      *         )
      *     ),
      *     @OA\Response(
@@ -747,8 +706,21 @@ class EmployeeController extends Controller
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="staff_id",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The staff id field is required.")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="first_name_en",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The first name en field is required.")
+     *                 )
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -757,165 +729,41 @@ class EmployeeController extends Controller
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Something went wrong"),
-     *             @OA\Property(property="error", type="string")
+     *             @OA\Property(property="message", type="string", example="Failed to create employee"),
+     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
      *         )
      *     )
      * )
      */
-    public function store(Request $request)
+    public function store(StoreEmployeeRequest $request)
     {
-        $validated = $request->validate([
-            'staff_id' => 'required|string|max:50|unique:employees',
-            'subsidiary' => 'nullable|string|in:SMRU,BHF',
-            'user_id' => 'nullable|integer|exists:users,id',
-            'department_position_id' => 'required|integer|exists:department_positions,id',
-            'initial_en' => 'nullable|string|max:10',
-            'initial_th' => 'nullable|string|max:10',
-            'first_name_en' => 'required|string|max:255',
-            'last_name_en' => 'nullable|string|max:255',
-            'first_name_th' => 'nullable|string|max:255',
-            'last_name_th' => 'nullable|string|max:255',
-            'gender' => 'required|string|max:10',
-            'date_of_birth' => 'required|date',
-            'date_of_birth_th' => 'nullable|string',
-            'age' => 'nullable|integer',
-            'status' => 'required|string|in:Expats,Local ID,Local non ID',
-            'nationality' => 'nullable|string|max:100',
-            'religion' => 'nullable|string|max:100',
-            'social_security_number' => 'nullable|string|max:50',
-            'tax_number' => 'nullable|string|max:50',
-            'bank_name' => 'nullable|string|max:100',
-            'bank_branch' => 'nullable|string|max:100',
-            'bank_account_name' => 'nullable|string|max:100',
-            'bank_account_number' => 'nullable|string|max:100',
-            'mobile_phone' => 'nullable|string|max:20',
-            'permanent_address' => 'nullable|string',
-            'current_address' => 'nullable|string',
-            'military_status' => 'nullable|boolean',
-            'marital_status' => 'nullable|string|max:20',
-            'spouse_name' => 'nullable|string|max:100',
-            'spouse_phone_number' => 'nullable|string|max:20',
-            'emergency_contact_person_name' => 'nullable|string|max:100',
-            'emergency_contact_person_relationship' => 'nullable|string|max:50',
-            'emergency_contact_person_phone' => 'nullable|string|max:20',
-            'father_name' => 'nullable|string|max:100',
-            'father_occupation' => 'nullable|string|max:100',
-            'father_phone_number' => 'nullable|string|max:20',
-            'mother_name' => 'nullable|string|max:100',
-            'mother_occupation' => 'nullable|string|max:100',
-            'mother_phone_number' => 'nullable|string|max:20',
-            'driver_license_number' => 'nullable|string|max:50',
-            'remark' => 'nullable|string',
-            'identifications' => 'nullable|array',
-            'identifications.*.id_type' => 'required|string',
-            'identifications.*.document_number' => 'required|string',
-            'identifications.*.issue_date' => 'nullable|date',
-            'identifications.*.expiry_date' => 'nullable|date',
-            'beneficiaries' => 'nullable|array',
-            'beneficiaries.*.beneficiary_name' => 'required|string',
-            'beneficiaries.*.beneficiary_relationship' => 'required|string',
-            'beneficiaries.*.phone_number' => 'nullable|string',
-        ]);
-
-        DB::beginTransaction();
-
         try {
-            // Create the employee
-            $employee = Employee::create([
-                'user_id' => $request->input('user_id'),
-                'department_position_id' => $request->input('department_position_id'),
-                'subsidiary' => $request->input('subsidiary', 'SMRU'),
-                'staff_id' => $request->input('staff_id'),
-                'initial_en' => $request->input('initial_en'),
-                'initial_th' => $request->input('initial_th'),
-                'first_name_en' => $request->input('first_name_en'),
-                'last_name_en' => $request->input('last_name_en'),
-                'first_name_th' => $request->input('first_name_th'),
-                'last_name_th' => $request->input('last_name_th'),
-                'gender' => $request->input('gender'),
-                'date_of_birth' => $request->input('date_of_birth'),
-                'date_of_birth_th' => $request->input('date_of_birth_th'),
-                'age' => $request->input('age'),
-                'status' => $request->input('status'),
-                'nationality' => $request->input('nationality'),
-                'religion' => $request->input('religion'),
-                'social_security_number' => $request->input('social_security_number'),
-                'tax_number' => $request->input('tax_number'),
-                'bank_name' => $request->input('bank_name'),
-                'bank_branch' => $request->input('bank_branch'),
-                'bank_account_name' => $request->input('bank_account_name'),
-                'bank_account_number' => $request->input('bank_account_number'),
-                'mobile_phone' => $request->input('mobile_phone'),
-                'permanent_address' => $request->input('permanent_address'),
-                'current_address' => $request->input('current_address'),
-                'military_status' => $request->input('military_status', false),
-                'marital_status' => $request->input('marital_status'),
-                'spouse_name' => $request->input('spouse_name'),
-                'spouse_phone_number' => $request->input('spouse_phone_number'),
-                'emergency_contact_person_name' => $request->input('emergency_contact_person_name'),
-                'emergency_contact_person_relationship' => $request->input('emergency_contact_person_relationship'),
-                'emergency_contact_person_phone' => $request->input('emergency_contact_person_phone'),
-                'father_name' => $request->input('father_name'),
-                'father_occupation' => $request->input('father_occupation'),
-                'father_phone_number' => $request->input('father_phone_number'),
-                'mother_name' => $request->input('mother_name'),
-                'mother_occupation' => $request->input('mother_occupation'),
-                'mother_phone_number' => $request->input('mother_phone_number'),
-                'driver_license_number' => $request->input('driver_license_number'),
-                'remark' => $request->input('remark'),
-                'created_by' => auth()->user()->name ?? 'system',
-                'updated_by' => auth()->user()->name ?? 'system',
-            ]);
-
-            // Create employee identifications if provided
-            if ($request->has('identifications')) {
-                foreach ($request->input('identifications') as $identData) {
-                    $employee->employeeIdentification()->create([
-                        'id_type' => $identData['id_type'],
-                        'document_number' => $identData['document_number'],
-                        'issue_date' => $identData['issue_date'] ?? null,
-                        'expiry_date' => $identData['expiry_date'] ?? null,
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                    ]);
-                }
-            }
-
-            // Create employee beneficiaries if provided
-            if ($request->has('beneficiaries')) {
-                foreach ($request->input('beneficiaries') as $beneData) {
-                    $employee->employeeBeneficiaries()->create([
-                        'beneficiary_name' => $beneData['beneficiary_name'],
-                        'beneficiary_relationship' => $beneData['beneficiary_relationship'],
-                        'phone_number' => $beneData['phone_number'] ?? null,
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                    ]);
-                }
-            }
-
-            DB::commit();
+            $validated = $request->validated();
+            $employee = Employee::create($validated);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employee created successfully',
-                'data' => $employee->load(['employeeIdentification', 'employeeBeneficiaries'])
+                'data'    => $employee,
             ], 201);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong',
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create employee',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Update an employee
+     * Update an employees
      *
      * @OA\Put(
      *     path="/employees/{id}",

@@ -50,6 +50,12 @@ class EmployeesImport extends DefaultValueBinder implements
     /** @var array Snapshot of the very first incoming row for debugging */
     protected $firstRowSnapshot = [];
 
+    /** Constructor */
+    public function __construct(string $importId)
+    {
+        $this->importId = $importId;
+    }
+
     /**
      * Force every incoming cell to be treated as text.
      */
@@ -95,9 +101,9 @@ class EmployeesImport extends DefaultValueBinder implements
             // 2) Normalize id_type
             $map = [
                 '10 years ID' => '10YearsID',
-                'Burmese ID'  => 'Other',
-                'CI'          => 'Other',
-                'Borderpass'  => 'Other',
+                'Burmese ID'  => 'BurmeseID',
+                'CI'          => 'CI',
+                'Borderpass'  => 'Borderpass',
                 'Thai ID'     => 'ThaiID',
                 'Passport'    => 'Passport',
                 'Other'       => 'Other',
@@ -217,8 +223,8 @@ class EmployeesImport extends DefaultValueBinder implements
                         'driver_license_number'     => $row['driver_license'] ?? null,
                         'bank_name'                 => $row['bank_name'] ?? null,
                         'bank_branch'               => $row['bank_branch'] ?? null,
-                        'bank_account_name'         => $row['bankacc_name'] ?? null,
-                        'bank_account_number'       => $row['bankacc_no'] ?? null,
+                        'bank_account_name'         => $row['bank_acc_name'] ?? null,
+                        'bank_account_number'       => $row['bank_acc_no'] ?? null,
                         'mobile_phone'              => $row['mobile_no'] ?? null,
                         'current_address'           => $row['current_address'] ?? null,
                         'permanent_address'         => $row['permanent_address'] ?? null,
@@ -381,7 +387,7 @@ class EmployeesImport extends DefaultValueBinder implements
             '*.status'        => 'nullable|string|max:20',
             '*.nationality'   => 'nullable|string|max:100',
             '*.religion'      => 'nullable|string|max:100',
-            '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport','Other'])],
+            '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport', 'CI', 'Borderpass', 'BurmeseID', 'Other'])],
             '*.id_no'         => 'nullable|string',
             '*.social_security_no' => 'nullable|string|max:50',
             '*.tax_no'        => 'nullable|string|max:50',

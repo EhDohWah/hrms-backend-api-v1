@@ -1493,7 +1493,7 @@
                 ]
             }
         },
-        "/employees/delete-selected": {
+        "/employees/delete-selected/{ids}": {
             "delete": {
                 "tags": [
                     "Employees"
@@ -2060,9 +2060,13 @@
                                 "required": [
                                     "staff_id",
                                     "first_name_en",
-                                    "last_name_en",
                                     "gender",
                                     "date_of_birth",
+                                    "nationality",
+                                    "religion",
+                                    "marital_status",
+                                    "current_address",
+                                    "permanent_address",
                                     "status"
                                 ],
                                 "properties": {
@@ -2079,15 +2083,6 @@
                                             "BHF"
                                         ],
                                         "example": "SMRU"
-                                    },
-                                    "user_id": {
-                                        "description": "Associated user ID",
-                                        "type": "integer",
-                                        "nullable": true
-                                    },
-                                    "department_position_id": {
-                                        "description": "Department position ID",
-                                        "type": "integer"
                                     },
                                     "initial_en": {
                                         "description": "English initial/title",
@@ -2140,16 +2135,6 @@
                                         "type": "integer",
                                         "example": 33
                                     },
-                                    "status": {
-                                        "description": "Employee status",
-                                        "type": "string",
-                                        "enum": [
-                                            "Expats",
-                                            "Local ID",
-                                            "Local non ID"
-                                        ],
-                                        "example": "Expats"
-                                    },
                                     "nationality": {
                                         "description": "Employee nationality",
                                         "type": "string",
@@ -2160,180 +2145,35 @@
                                         "type": "string",
                                         "example": "Buddhism"
                                     },
-                                    "social_security_number": {
-                                        "description": "Employee social security number",
+                                    "marital_status": {
+                                        "description": "Employee marital status",
                                         "type": "string",
-                                        "example": "SSN123456"
-                                    },
-                                    "tax_number": {
-                                        "description": "Employee tax number",
-                                        "type": "string",
-                                        "example": "TAX123456"
-                                    },
-                                    "bank_name": {
-                                        "description": "Employee bank name",
-                                        "type": "string",
-                                        "example": "Bangkok Bank"
-                                    },
-                                    "bank_branch": {
-                                        "description": "Employee bank branch",
-                                        "type": "string",
-                                        "example": "Silom"
-                                    },
-                                    "bank_account_name": {
-                                        "description": "Employee bank account name",
-                                        "type": "string",
-                                        "example": "John Doe"
-                                    },
-                                    "bank_account_number": {
-                                        "description": "Employee bank account number",
-                                        "type": "string",
-                                        "example": "1234567890"
-                                    },
-                                    "mobile_phone": {
-                                        "description": "Employee mobile phone",
-                                        "type": "string",
-                                        "example": "0812345678"
-                                    },
-                                    "permanent_address": {
-                                        "description": "Employee permanent address",
-                                        "type": "string",
-                                        "example": "123 Main St, Bangkok"
+                                        "example": "Single"
                                     },
                                     "current_address": {
                                         "description": "Employee current address",
                                         "type": "string",
                                         "example": "456 Second St, Bangkok"
                                     },
-                                    "military_status": {
-                                        "description": "Employee military status",
-                                        "type": "boolean",
-                                        "example": false
-                                    },
-                                    "marital_status": {
-                                        "description": "Employee marital status",
+                                    "permanent_address": {
+                                        "description": "Employee permanent address",
                                         "type": "string",
-                                        "example": "Single"
+                                        "example": "123 Main St, Bangkok"
                                     },
-                                    "spouse_name": {
-                                        "description": "Employee spouse name",
+                                    "status": {
+                                        "description": "Employee status",
                                         "type": "string",
-                                        "example": "Jane Doe"
+                                        "enum": [
+                                            "Expats",
+                                            "Local ID",
+                                            "Local non ID"
+                                        ],
+                                        "example": "Expats"
                                     },
-                                    "spouse_phone_number": {
-                                        "description": "Employee spouse phone number",
+                                    "mobile_phone": {
+                                        "description": "Employee mobile phone",
                                         "type": "string",
-                                        "example": "0812345679"
-                                    },
-                                    "emergency_contact_person_name": {
-                                        "description": "Emergency contact name",
-                                        "type": "string",
-                                        "example": "James Doe"
-                                    },
-                                    "emergency_contact_person_relationship": {
-                                        "description": "Emergency contact relationship",
-                                        "type": "string",
-                                        "example": "Father"
-                                    },
-                                    "emergency_contact_person_phone": {
-                                        "description": "Emergency contact phone",
-                                        "type": "string",
-                                        "example": "0812345680"
-                                    },
-                                    "father_name": {
-                                        "description": "Employee father name",
-                                        "type": "string",
-                                        "example": "James Doe"
-                                    },
-                                    "father_occupation": {
-                                        "description": "Employee father occupation",
-                                        "type": "string",
-                                        "example": "Engineer"
-                                    },
-                                    "father_phone_number": {
-                                        "description": "Employee father phone number",
-                                        "type": "string",
-                                        "example": "0812345681"
-                                    },
-                                    "mother_name": {
-                                        "description": "Employee mother name",
-                                        "type": "string",
-                                        "example": "Mary Doe"
-                                    },
-                                    "mother_occupation": {
-                                        "description": "Employee mother occupation",
-                                        "type": "string",
-                                        "example": "Teacher"
-                                    },
-                                    "mother_phone_number": {
-                                        "description": "Employee mother phone number",
-                                        "type": "string",
-                                        "example": "0812345682"
-                                    },
-                                    "driver_license_number": {
-                                        "description": "Employee driver license number",
-                                        "type": "string",
-                                        "example": "DL123456"
-                                    },
-                                    "remark": {
-                                        "description": "Additional remarks",
-                                        "type": "string",
-                                        "example": "Additional notes"
-                                    },
-                                    "identifications": {
-                                        "description": "Employee identification documents",
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "id_type": {
-                                                    "description": "Type of identification",
-                                                    "type": "string",
-                                                    "example": "Passport"
-                                                },
-                                                "document_number": {
-                                                    "description": "Document number",
-                                                    "type": "string",
-                                                    "example": "P123456"
-                                                },
-                                                "issue_date": {
-                                                    "description": "Issue date",
-                                                    "type": "string",
-                                                    "format": "date",
-                                                    "example": "2020-01-01"
-                                                },
-                                                "expiry_date": {
-                                                    "description": "Expiry date",
-                                                    "type": "string",
-                                                    "format": "date",
-                                                    "example": "2030-01-01"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "beneficiaries": {
-                                        "description": "Employee beneficiaries",
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "beneficiary_name": {
-                                                    "description": "Beneficiary name",
-                                                    "type": "string",
-                                                    "example": "Jane Doe"
-                                                },
-                                                "beneficiary_relationship": {
-                                                    "description": "Relationship to employee",
-                                                    "type": "string",
-                                                    "example": "Spouse"
-                                                },
-                                                "phone_number": {
-                                                    "description": "Beneficiary phone number",
-                                                    "type": "string",
-                                                    "example": "0812345679"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
+                                        "example": "0812345678"
                                     }
                                 },
                                 "type": "object"
@@ -2377,9 +2217,25 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Validation error"
+                                            "example": "Validation failed"
                                         },
                                         "errors": {
+                                            "properties": {
+                                                "staff_id": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The staff id field is required."
+                                                    }
+                                                },
+                                                "first_name_en": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The first name en field is required."
+                                                    }
+                                                }
+                                            },
                                             "type": "object"
                                         }
                                     },
@@ -2400,10 +2256,11 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Something went wrong"
+                                            "example": "Failed to create employee"
                                         },
                                         "error": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "example": "Internal server error occurred"
                                         }
                                     },
                                     "type": "object"
