@@ -1493,6 +1493,86 @@
                 ]
             }
         },
+        "/employees/tree-search": {
+            "get": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Get all employees for tree search",
+                "description": "Returns a list of all employees organized by subsidiary for tree-based search",
+                "operationId": "getEmployeesForTreeSearch",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employees retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "key": {
+                                                        "type": "string",
+                                                        "example": "subsidiary-SMRU"
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "SMRU"
+                                                    },
+                                                    "value": {
+                                                        "type": "string",
+                                                        "example": "subsidiary-SMRU"
+                                                    },
+                                                    "children": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "key": {
+                                                                    "type": "string",
+                                                                    "example": "employee-1"
+                                                                },
+                                                                "title": {
+                                                                    "type": "string",
+                                                                    "example": "EMP001 - John Doe"
+                                                                },
+                                                                "value": {
+                                                                    "type": "string",
+                                                                    "example": "employee-1"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/employees/delete-selected/{ids}": {
             "delete": {
                 "tags": [
@@ -2058,23 +2138,14 @@
                         "application/json": {
                             "schema": {
                                 "required": [
+                                    "subsidiary",
                                     "staff_id",
                                     "first_name_en",
                                     "gender",
                                     "date_of_birth",
-                                    "nationality",
-                                    "religion",
-                                    "marital_status",
-                                    "current_address",
-                                    "permanent_address",
                                     "status"
                                 ],
                                 "properties": {
-                                    "staff_id": {
-                                        "description": "Unique staff identifier",
-                                        "type": "string",
-                                        "example": "EMP001"
-                                    },
                                     "subsidiary": {
                                         "description": "Employee subsidiary",
                                         "type": "string",
@@ -2083,6 +2154,11 @@
                                             "BHF"
                                         ],
                                         "example": "SMRU"
+                                    },
+                                    "staff_id": {
+                                        "description": "Unique staff identifier",
+                                        "type": "string",
+                                        "example": "EMP001"
                                     },
                                     "initial_en": {
                                         "description": "English initial/title",
@@ -2117,7 +2193,7 @@
                                     "gender": {
                                         "description": "Employee gender",
                                         "type": "string",
-                                        "example": "male"
+                                        "example": "Male"
                                     },
                                     "date_of_birth": {
                                         "description": "Employee date of birth",
@@ -2135,40 +2211,15 @@
                                         "type": "integer",
                                         "example": 33
                                     },
-                                    "nationality": {
-                                        "description": "Employee nationality",
-                                        "type": "string",
-                                        "example": "Thai"
-                                    },
-                                    "religion": {
-                                        "description": "Employee religion",
-                                        "type": "string",
-                                        "example": "Buddhism"
-                                    },
-                                    "marital_status": {
-                                        "description": "Employee marital status",
-                                        "type": "string",
-                                        "example": "Single"
-                                    },
-                                    "current_address": {
-                                        "description": "Employee current address",
-                                        "type": "string",
-                                        "example": "456 Second St, Bangkok"
-                                    },
-                                    "permanent_address": {
-                                        "description": "Employee permanent address",
-                                        "type": "string",
-                                        "example": "123 Main St, Bangkok"
-                                    },
                                     "status": {
                                         "description": "Employee status",
                                         "type": "string",
                                         "enum": [
-                                            "Expats",
-                                            "Local ID",
-                                            "Local non ID"
+                                            "Expats (Local)",
+                                            "Local ID Staff",
+                                            "Local non ID Staff"
                                         ],
-                                        "example": "Expats"
+                                        "example": "Local ID Staff"
                                     },
                                     "mobile_phone": {
                                         "description": "Employee mobile phone",
@@ -3212,6 +3263,174 @@
                 ]
             }
         },
+        "/api/employee-education": {
+            "get": {
+                "tags": [
+                    "Employee Education"
+                ],
+                "summary": "Get list of employee education records",
+                "description": "Returns list of employee education records",
+                "operationId": "9a3a15d09e6647d7c16ee7dd7a9ea340",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/EmployeeEducation"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Employee Education"
+                ],
+                "summary": "Store new employee education record",
+                "description": "Stores a new employee education record and returns it",
+                "operationId": "08fcca6c11f3d5fde5ad6f8ede965d47",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeEducation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeEducation"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/employee-education/{id}": {
+            "get": {
+                "tags": [
+                    "Employee Education"
+                ],
+                "summary": "Get employee education record by ID",
+                "description": "Returns a single employee education record",
+                "operationId": "cd18114e09ce2c491e250c12b6019112",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee education ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeEducation"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Employee Education"
+                ],
+                "summary": "Update employee education record",
+                "description": "Updates an employee education record and returns it",
+                "operationId": "ed713f534ce5c549bcddfc672bd71806",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee education ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeEducation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeEducation"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Employee Education"
+                ],
+                "summary": "Delete employee education record",
+                "description": "Deletes an employee education record",
+                "operationId": "196bd5951032aa60f89683399a760919",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee education ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful operation"
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    }
+                }
+            }
+        },
         "/employee-grant-allocations": {
             "get": {
                 "tags": [
@@ -3691,6 +3910,174 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/employee-language": {
+            "get": {
+                "tags": [
+                    "Employee Language"
+                ],
+                "summary": "Get list of employee language records",
+                "description": "Returns list of employee language records",
+                "operationId": "e18afeb492f579405187d0fe701c3a92",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/EmployeeLanguage"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Employee Language"
+                ],
+                "summary": "Store new employee language record",
+                "description": "Stores a new employee language record and returns it",
+                "operationId": "4e2c0f65154b86db43bc45690fa5c3da",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeLanguage"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeLanguage"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/employee-language/{id}": {
+            "get": {
+                "tags": [
+                    "Employee Language"
+                ],
+                "summary": "Get employee language record by ID",
+                "description": "Returns a single employee language record",
+                "operationId": "05c68316fb5efeac3211a4f21c230912",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee language ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeLanguage"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Employee Language"
+                ],
+                "summary": "Update existing employee language record",
+                "description": "Updates an existing employee language record and returns it",
+                "operationId": "fd2b4e307fc7d17395a44c89047fb30d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee language ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EmployeeLanguage"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EmployeeLanguage"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Employee Language"
+                ],
+                "summary": "Delete employee language record",
+                "description": "Deletes an employee language record",
+                "operationId": "745fbb5b16f8a808b0885d9aeb0a5188",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Employee language ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful operation"
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    }
+                }
             }
         },
         "/trainings": {
@@ -4782,6 +5169,175 @@
                     },
                     "404": {
                         "description": "Employment not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/grants/{code}": {
+            "get": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get a specific grant with its items by grant code",
+                "description": "Returns a specific grant and its associated items by grant code.",
+                "operationId": "getGrantByCode",
+                "parameters": [
+                    {
+                        "name": "code",
+                        "in": "path",
+                        "description": "Grant code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant with items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "code": {
+                                                    "type": "string",
+                                                    "example": "GR-2023-001"
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Health Initiative Grant"
+                                                },
+                                                "subsidiary": {
+                                                    "type": "string",
+                                                    "example": "Main Branch"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Funding for health initiatives",
+                                                    "nullable": true
+                                                },
+                                                "end_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2023-12-31",
+                                                    "nullable": true
+                                                },
+                                                "grant_items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "grant_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "bg_line": {
+                                                                "type": "string",
+                                                                "example": "BL-123"
+                                                            },
+                                                            "grant_position": {
+                                                                "type": "string",
+                                                                "example": "Project Manager"
+                                                            },
+                                                            "grant_salary": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 75000
+                                                            },
+                                                            "grant_benefit": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 15000
+                                                            },
+                                                            "grant_level_of_effort": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 0.75
+                                                            },
+                                                            "grant_position_number": {
+                                                                "type": "string",
+                                                                "example": "POS-001"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grant"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -6122,6 +6678,224 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/inter-subsidiary-advances": {
+            "get": {
+                "tags": [
+                    "Inter-Subsidiary Advances"
+                ],
+                "summary": "Get all inter-subsidiary advances",
+                "operationId": "2549c0c47158428dcfcc69f4ca78da5a",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InterSubsidiaryAdvanceResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Inter-Subsidiary Advances"
+                ],
+                "summary": "Create a new inter-subsidiary advance",
+                "operationId": "0fb3e156cf6218593c81cd6a6f6b65ad",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreInterSubsidiaryAdvanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Advance recorded."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/InterSubsidiaryAdvanceResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/inter-subsidiary-advances/{id}": {
+            "get": {
+                "tags": [
+                    "Inter-Subsidiary Advances"
+                ],
+                "summary": "Get a specific inter-subsidiary advance",
+                "operationId": "f1c88662d7061b9efe36dc49a706fbe0",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the advance",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/InterSubsidiaryAdvanceResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Inter-Subsidiary Advances"
+                ],
+                "summary": "Update an inter-subsidiary advance",
+                "operationId": "bf8ecdfc76393b2a26b71e9d7196c92a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the advance",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateInterSubsidiaryAdvanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Advance updated."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/InterSubsidiaryAdvanceResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Inter-Subsidiary Advances"
+                ],
+                "summary": "Delete an inter-subsidiary advance",
+                "operationId": "047c4d2acaae574cbe5cdbe0bdc819d8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the advance",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Advance deleted."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
             }
         },
         "/interviews": {
@@ -9569,6 +10343,246 @@
                 ]
             }
         },
+        "/payroll-grant-allocations": {
+            "get": {
+                "tags": [
+                    "Payroll Grant Allocations"
+                ],
+                "summary": "Get all payroll grant allocations",
+                "operationId": "5bc2079909740a141c3bd37ddee63c0c",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PayrollGrantAllocationResource"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Payroll Grant Allocations"
+                ],
+                "summary": "Create a new payroll grant allocation",
+                "operationId": "a12df23fd405d6b8da2a17fd482e860b",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePayrollGrantAllocationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Allocation created."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PayrollGrantAllocationResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/payroll-grant-allocations/{id}": {
+            "get": {
+                "tags": [
+                    "Payroll Grant Allocations"
+                ],
+                "summary": "Get a specific payroll grant allocation",
+                "operationId": "f7c037cea79916b185f29f4d0886ca34",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PayrollGrantAllocationResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Payroll Grant Allocations"
+                ],
+                "summary": "Update a payroll grant allocation",
+                "operationId": "026b1e5ade1a1f519f32c2151baa1e8c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePayrollGrantAllocationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Allocation updated."
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PayrollGrantAllocationResource"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Payroll Grant Allocations"
+                ],
+                "summary": "Delete a payroll grant allocation",
+                "operationId": "20b96492fddc34ac35e0b6df7574be06",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Allocation deleted."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/reports/grants": {
             "get": {
                 "tags": [
@@ -10003,6 +11017,91 @@
                                         "error": {
                                             "type": "string",
                                             "example": "Failed to generate PDF"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/reports/interview-report/export-excel": {
+            "get": {
+                "tags": [
+                    "Interview Reports"
+                ],
+                "summary": "Export interview report as Excel",
+                "description": "Generates a downloadable Excel report of interviews within a specified date range",
+                "operationId": "exportInterviewReportExcel",
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "description": "Start date for the report (YYYY-MM-DD)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "description": "End date for the report (YYYY-MM-DD)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Excel file download",
+                        "content": {
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Failed to generate Excel"
                                         }
                                     },
                                     "type": "object"
@@ -11754,6 +12853,279 @@
     },
     "components": {
         "schemas": {
+            "StoreInterSubsidiaryAdvanceRequest": {
+                "title": "Store Inter Subsidiary Advance Request",
+                "description": "Request for creating a new inter-subsidiary advance",
+                "required": [
+                    "from_subsidiary",
+                    "to_subsidiary",
+                    "via_grant_id",
+                    "amount",
+                    "advance_date"
+                ],
+                "properties": {
+                    "from_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB1"
+                    },
+                    "to_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB2"
+                    },
+                    "via_grant_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10000
+                    },
+                    "advance_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-01-15"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "Advance for project expenses",
+                        "nullable": true
+                    },
+                    "settlement_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-06-15",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "StorePayrollGrantAllocationRequest": {
+                "title": "Store Payroll Grant Allocation Request",
+                "description": "Request for creating a new payroll grant allocation",
+                "required": [
+                    "payroll_id",
+                    "employee_grant_allocation_id",
+                    "loe_snapshot",
+                    "amount",
+                    "is_advance"
+                ],
+                "properties": {
+                    "payroll_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "employee_grant_allocation_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "loe_snapshot": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 50
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5000
+                    },
+                    "is_advance": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "Salary allocation for research project",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateInterSubsidiaryAdvanceRequest": {
+                "title": "Update Inter Subsidiary Advance Request",
+                "description": "Request for updating an inter-subsidiary advance",
+                "required": [
+                    "from_subsidiary",
+                    "to_subsidiary",
+                    "via_grant_id",
+                    "amount",
+                    "advance_date"
+                ],
+                "properties": {
+                    "from_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB1"
+                    },
+                    "to_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB2"
+                    },
+                    "via_grant_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10000
+                    },
+                    "advance_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-01-15"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "Advance for project expenses",
+                        "nullable": true
+                    },
+                    "settlement_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-06-15",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdatePayrollGrantAllocationRequest": {
+                "title": "Update Payroll Grant Allocation Request",
+                "description": "Request for updating a payroll grant allocation",
+                "required": [
+                    "payroll_id",
+                    "employee_grant_allocation_id",
+                    "loe_snapshot",
+                    "amount",
+                    "is_advance"
+                ],
+                "properties": {
+                    "payroll_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "employee_grant_allocation_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "loe_snapshot": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 50
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5000
+                    },
+                    "is_advance": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "Salary allocation for research project",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "InterSubsidiaryAdvanceResource": {
+                "title": "Inter Subsidiary Advance Resource",
+                "description": "Inter Subsidiary Advance resource representation",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "from_subsidiary": {
+                        "type": "string",
+                        "example": "SUB1"
+                    },
+                    "to_subsidiary": {
+                        "type": "string",
+                        "example": "SUB2"
+                    },
+                    "via_grant_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10000
+                    },
+                    "advance_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-01-15"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "example": "Advance for project expenses",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PayrollGrantAllocationResource": {
+                "title": "Payroll Grant Allocation Resource",
+                "description": "Payroll Grant Allocation resource representation",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "payroll_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "grant_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5000
+                    },
+                    "is_advance": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Salary allocation",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
             "DepartmentPosition": {
                 "title": "Department Position",
                 "description": "Department Position model",
@@ -12078,6 +13450,59 @@
                 },
                 "type": "object"
             },
+            "EmployeeEducation": {
+                "title": "Employee Education",
+                "description": "Employee Education model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "employee_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "school_name": {
+                        "type": "string",
+                        "example": "Harvard University"
+                    },
+                    "degree": {
+                        "type": "string",
+                        "example": "Bachelor of Science"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2018-09-01"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2022-06-30"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-01-01T00:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-01-01T00:00:00.000000Z"
+                    }
+                },
+                "type": "object"
+            },
             "EmployeeGrantAllocation": {
                 "required": [
                     "employee_id",
@@ -12121,6 +13546,49 @@
                     "updated_by": {
                         "type": "string",
                         "example": "admin"
+                    }
+                },
+                "type": "object"
+            },
+            "EmployeeLanguage": {
+                "title": "Employee Language",
+                "description": "Employee Language model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "employee_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "language": {
+                        "type": "string",
+                        "example": "English"
+                    },
+                    "proficiency_level": {
+                        "type": "string",
+                        "example": "Fluent"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-01-01T00:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-01-01T00:00:00.000000Z"
                     }
                 },
                 "type": "object"
@@ -12545,6 +14013,75 @@
                     },
                     "updated_by": {
                         "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "InterSubsidiaryAdvance": {
+                "title": "Inter Subsidiary Advance",
+                "description": "Inter Subsidiary Advance model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "from_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB1"
+                    },
+                    "to_subsidiary": {
+                        "type": "string",
+                        "maxLength": 5,
+                        "example": "SUB2"
+                    },
+                    "via_grant_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10000
+                    },
+                    "advance_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-01-15"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "Advance for project expenses",
+                        "nullable": true
+                    },
+                    "settlement_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-06-15",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "admin",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "admin",
                         "nullable": true
                     }
                 },
@@ -13025,6 +14562,116 @@
                 },
                 "type": "object"
             },
+            "PayrollGrantAllocation": {
+                "title": "Payroll Grant Allocation",
+                "description": "Payroll Grant Allocation model",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "payroll_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "employee_grant_allocation_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "loe_snapshot": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 50
+                    },
+                    "amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1000
+                    },
+                    "is_advance": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Salary allocation for research project",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "john.doe",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "jane.smith",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SubsidiaryHubFund": {
+                "title": "Subsidiary Hub Fund",
+                "description": "Subsidiary Hub Fund model",
+                "properties": {
+                    "id": {
+                        "description": "ID of the subsidiary hub fund",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "subsidiary": {
+                        "description": "Subsidiary code",
+                        "type": "string",
+                        "maxLength": 5
+                    },
+                    "hub_grant_id": {
+                        "description": "ID of the hub grant",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "created_at": {
+                        "description": "Creation timestamp",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "Last update timestamp",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "description": "User who created the record",
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "description": "User who last updated the record",
+                        "type": "string",
+                        "maxLength": 100,
+                        "nullable": true
+                    },
+                    "fillable": {
+                        "description": "Mass assignable attributes",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "TraditionalLeave": {
                 "properties": {
                     "id": {
@@ -13366,8 +15013,16 @@
             "description": "API Endpoints for Employee management"
         },
         {
+            "name": "Employee Education",
+            "description": "API Endpoints for Employee Education"
+        },
+        {
             "name": "EmployeeGrantAllocations",
             "description": "API Endpoints for Employee Grant Allocations"
+        },
+        {
+            "name": "Employee Language",
+            "description": "API Endpoints for Employee Language"
         },
         {
             "name": "Trainings",
@@ -13436,6 +15091,14 @@
         {
             "name": "Employee Children",
             "description": "Employee Children"
+        },
+        {
+            "name": "Inter-Subsidiary Advances",
+            "description": "Inter-Subsidiary Advances"
+        },
+        {
+            "name": "Payroll Grant Allocations",
+            "description": "Payroll Grant Allocations"
         }
     ]
 }

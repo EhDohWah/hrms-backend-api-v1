@@ -9,6 +9,8 @@ use App\Models\Interview;
 use PDF;
 use Carbon\Carbon;
 use OpenApi\Annotations as OA;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InterviewReportExport;
 
 /**
  * @OA\Tag(
@@ -101,5 +103,64 @@ class InterviewReportController extends Controller
                    ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                    ->header('Pragma', 'no-cache')
                    ->header('Expires', '0');
+    }
+    /**
+     * @OA\Get(
+     *     path="/reports/interview-report/export-excel",
+     *     summary="Export interview report as Excel",
+     *     description="Generates a downloadable Excel report of interviews within a specified date range",
+     *     operationId="exportInterviewReportExcel",
+     *     tags={"Interview Reports"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="start_date",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(type="string", format="date"),
+     *         description="Start date for the report (YYYY-MM-DD)"
+     *     ),
+     *     @OA\Parameter(
+     *         name="end_date",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(type="string", format="date"),
+     *         description="End date for the report (YYYY-MM-DD)"
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Excel file download",
+     *         @OA\MediaType(
+     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+     *             @OA\Schema(type="string", format="binary")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The given data was invalid"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="string", example="Failed to generate Excel")
+     *         )
+     *     )
+     * )
+     */
+    public function exportExcel(InterviewReportRequest $request)
+    {
+        $start = Carbon::parse($request->start_date)->startOfDay()->toDateString();
+        $end   = Carbon::parse($request->end_date)->endOfDay()->toDateString();
+
+        $fileName = 'interview_report_'.now()->format('YmdHis').'.xlsx';
+
+        return Excel::download(
+            new InterviewReportExport($start, $end),
+            $fileName
+        );
     }
 }

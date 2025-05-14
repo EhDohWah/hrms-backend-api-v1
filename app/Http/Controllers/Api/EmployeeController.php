@@ -37,6 +37,87 @@ class EmployeeController extends Controller
 {
 
     /**
+     * Get all employees for tree search
+     *
+     * @OA\Get(
+     *     path="/employees/tree-search",
+     *     summary="Get all employees for tree search",
+     *     description="Returns a list of all employees organized by subsidiary for tree-based search",
+     *     operationId="getEmployeesForTreeSearch",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="key", type="string", example="subsidiary-SMRU"),
+     *                 @OA\Property(property="title", type="string", example="SMRU"),
+     *                 @OA\Property(property="value", type="string", example="subsidiary-SMRU"),
+     *                 @OA\Property(property="children", type="array", @OA\Items(
+     *                     @OA\Property(property="key", type="string", example="employee-1"),
+     *                     @OA\Property(property="title", type="string", example="EMP001 - John Doe"),
+     *                     @OA\Property(property="value", type="string", example="employee-1")
+     *                 ))
+     *             ))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error"
+     *     )
+     * )
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getEmployeesForTreeSearch()
+    {
+        try {
+            $employees = Employee::select('id', 'subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'status')->get();
+
+            // Group employees by subsidiary
+            $grouped = $employees->groupBy('subsidiary');
+
+            // Map each subsidiary into a parent node with its employees as children
+            $treeData = $grouped->map(function($subsidiaryEmployees, $subsidiary) {
+                return [
+                    'key' => "subsidiary-{$subsidiary}",
+                    'title' => $subsidiary,
+                    'value' => "subsidiary-{$subsidiary}",
+                    'children' => $subsidiaryEmployees->map(function($emp) {
+                        $fullName = $emp->first_name_en;
+                        if ($emp->last_name_en && $emp->last_name_en !== '-') {
+                            $fullName .= ' ' . $emp->last_name_en;
+                        }
+
+                        return [
+                            'key' => "{$emp->id}",
+                            'title' => "{$emp->staff_id} - {$fullName}",
+                            'status' => $emp->status,
+                            'value' => "{$emp->id}"
+                        ];
+                    })->values()->toArray()
+                ];
+            })->values()->toArray();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employees retrieved successfully',
+                'data' => $treeData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employees',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * @OA\Delete(
      *     path="/employees/delete-selected/{ids}",
      *     summary="Delete multiple employees by their IDs",
@@ -220,7 +301,6 @@ class EmployeeController extends Controller
             'processed_employees' => count($processed),
         ], 200);
     }
-
 
     /**
      * Get all employees
@@ -655,7 +735,7 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Create a new employee
+     * Create a new employee with basic information
      *
      * @OA\Post(
      *     path="/employees",
@@ -668,25 +748,20 @@ class EmployeeController extends Controller
      *         required=true,
      *         description="Employee data",
      *         @OA\JsonContent(
-     *             required={"staff_id","first_name_en","gender","date_of_birth","nationality","religion","marital_status","current_address","permanent_address","status"},
-     *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
+     *             required={"subsidiary","staff_id","first_name_en","gender","date_of_birth","status"},
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
+     *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
      *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
      *             @OA\Property(property="first_name_en", type="string", example="John", description="Employee first name in English"),
      *             @OA\Property(property="last_name_en", type="string", example="Doe", description="Employee last name in English"),
      *             @OA\Property(property="first_name_th", type="string", example="จอห์น", description="Employee first name in Thai"),
      *             @OA\Property(property="last_name_th", type="string", example="โด", description="Employee last name in Thai"),
-     *             @OA\Property(property="gender", type="string", example="male", description="Employee gender"),
+     *             @OA\Property(property="gender", type="string", example="Male", description="Employee gender"),
      *             @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01", description="Employee date of birth"),
      *             @OA\Property(property="date_of_birth_th", type="string", example="01/01/2533", description="Employee date of birth in Thai format"),
      *             @OA\Property(property="age", type="integer", example=33, description="Employee age"),
-     *             @OA\Property(property="nationality", type="string", example="Thai", description="Employee nationality"),
-     *             @OA\Property(property="religion", type="string", example="Buddhism", description="Employee religion"),
-     *             @OA\Property(property="marital_status", type="string", example="Single", description="Employee marital status"),
-     *             @OA\Property(property="current_address", type="string", example="456 Second St, Bangkok", description="Employee current address"),
-     *             @OA\Property(property="permanent_address", type="string", example="123 Main St, Bangkok", description="Employee permanent address"),
-     *             @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, example="Expats", description="Employee status"),
+     *             @OA\Property(property="status", type="string", enum={"Expats (Local)", "Local ID Staff", "Local non ID Staff"}, example="Local ID Staff", description="Employee status"),
      *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
      *         )
      *     ),

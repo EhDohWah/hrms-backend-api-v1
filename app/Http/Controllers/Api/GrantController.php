@@ -24,6 +24,110 @@ use App\Models\EmployeeGrantAllocation;
  */
 class GrantController extends Controller
 {
+
+    /**
+     * @OA\Get(
+     *     path="/grants/{code}",
+     *     operationId="getGrantByCode",
+     *     summary="Get a specific grant with its items by grant code",
+     *     description="Returns a specific grant and its associated items by grant code.",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="code",
+     *         in="path",
+     *         required=true,
+     *         description="Grant code",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grant with items retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="code", type="string", example="GR-2023-001"),
+     *                 @OA\Property(property="name", type="string", example="Health Initiative Grant"),
+     *                 @OA\Property(property="subsidiary", type="string", example="Main Branch"),
+     *                 @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
+     *                 @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true),
+     *                 @OA\Property(
+     *                     property="grant_items",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="grant_id", type="integer", example=1),
+     *                         @OA\Property(property="bg_line", type="string", example="BL-123"),
+     *                         @OA\Property(property="grant_position", type="string", example="Project Manager"),
+     *                         @OA\Property(property="grant_salary", type="number", format="float", example=75000),
+     *                         @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
+     *                         @OA\Property(property="grant_level_of_effort", type="number", format="float", example=0.75),
+     *                         @OA\Property(property="grant_position_number", type="string", example="POS-001")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Grant not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Grant not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve grant"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function getGrantByCode($code)
+    {
+        try {
+            $grant = Grant::with([
+                'grantItems' => function($query) {
+                    $query->select('id', 'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
+                }
+            ])
+            ->where('code', $code)
+            ->first(['id', 'code', 'name', 'subsidiary', 'description', 'end_date']);
+
+            if (!$grant) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Grant not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant retrieved successfully',
+                'data' => $grant
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     /**
      * @OA\Post(
      *     path="/grants/upload",
@@ -1091,15 +1195,11 @@ class GrantController extends Controller
         }
     }
 
-
-
-
     /**
      *
      * Grant Position Section
      *
      */
-
 
     /**
      * @OA\Get(
@@ -1162,9 +1262,10 @@ class GrantController extends Controller
      */
     public function getGrantPositions(Request $request)
     {
+
         try {
             // Eager-load grantItems to minimize queries
-            $grants = Grant::with('grantItems.employeeGrantAllocations')->get();
+            $grants = Grant::with('grantItems.employeeGrantAllocations')->orderBy('created_at', 'desc')->get();
 
             // If no grants exist, return an empty result
             if ($grants->isEmpty()) {

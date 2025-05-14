@@ -25,6 +25,11 @@ use App\Http\Controllers\Api\EmployeeGrantAllocationController;
 use App\Http\Controllers\Api\JobOfferController;
 use App\Http\Controllers\Api\Reports\InterviewReportController;
 use App\Http\Controllers\Api\Reports\JobOfferReportController;
+use App\Http\Controllers\Api\EmployeeEducationController;
+use App\Http\Controllers\Api\EmployeeLanguageController;
+use App\Http\Controllers\Api\PayrollGrantAllocationController;
+use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
+
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -49,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Employees routes (use middleware permission:read employees)
     Route::prefix('employees')->group(function () {
+        Route::get('/tree-search', [EmployeeController::class, 'getEmployeesForTreeSearch'])->middleware('permission:employee.read');
         Route::post('/upload', [EmployeeController::class, 'uploadEmployeeData'])->middleware('permission:employee.import');
         Route::get('/', [EmployeeController::class, 'index'])->middleware('permission:employee.read');
         Route::get('/{id}', [EmployeeController::class, 'employeeDetails'])->middleware('permission:employee.read');
@@ -115,17 +121,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Grant routes (use middleware permission:read grants)
     Route::prefix('grants')->group(function () {
-        Route::get('/', [GrantController::class, 'index'])->name('grants.index')->middleware('permission:grant.read');
-        Route::get('/items', [GrantController::class, 'getGrantItems'])->name('grants.items.index')->middleware('permission:grant.read');
-        Route::post('/', [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
-        Route::get('/items/{id}', [GrantController::class, 'getGrantItem'])->name('grants.items.show')->middleware('permission:grant.read');
-        Route::post('/items', [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
-        Route::post('/upload', [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.import');
-        Route::delete('/{id}', [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grant.delete');
-        Route::delete('/items/{id}', [GrantController::class, 'deleteGrantItem'])->name('grants.items.destroy')->middleware('permission:grant.delete');
-        Route::put('/{id}', [GrantController::class, 'updateGrant'])->name('grants.update')->middleware('permission:grant.update');
-        Route::put('/items/{id}', [GrantController::class, 'updateGrantItem'])->name('grants.items.update')->middleware('permission:grant.update');
-        Route::get('/grant-positions', [GrantController::class, 'getGrantPositions'])->name('grants.grant-positions')->middleware('permission:grant.read');
+        // 1) Exact/static routes first:
+        Route::get('/',                      [GrantController::class, 'index'])->name('grants.index')->middleware('permission:grant.read');
+        Route::get('/items',                 [GrantController::class, 'getGrantItems'])->name('grants.items.index')->middleware('permission:grant.read');
+        Route::get('/items/{id}',            [GrantController::class, 'getGrantItem'])->name('grants.items.show')->middleware('permission:grant.read');
+        Route::get('/grant-positions',       [GrantController::class, 'getGrantPositions'])->name('grants.grant-positions')->middleware('permission:grant.read');
+        Route::post('/upload',               [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.import');
+        Route::post('/items',                [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
+        Route::post('/',                     [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
+
+        // 2) Wildcards and verbs on {id} last:
+        Route::get('/{id}',                  [GrantController::class, 'getGrantByCode'])->middleware('permission:grant.read');
+        Route::put('/{id}',                  [GrantController::class, 'updateGrant'])->name('grants.update')->middleware('permission:grant.update');
+        Route::delete('/{id}',               [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grant.delete');
+
+        // 3) And likewise for items:
+        Route::put('/items/{id}',            [GrantController::class, 'updateGrantItem'])->name('grants.items.update')->middleware('permission:grant.update');
+        Route::delete('/items/{id}',         [GrantController::class, 'deleteGrantItem'])->name('grants.items.destroy')->middleware('permission:grant.delete');
     });
 
     // Interview routes (use middleware permission:read interviews)
@@ -189,6 +201,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [PayrollController::class, 'destroy'])->middleware('permission:payroll.delete');
     });
 
+    // Inter-subsidiary advance routes (use middleware permission:read inter-subsidiary advances)
+    Route::prefix('inter-subsidiary-advances')->group(function () {
+        Route::get('/', [InterSubsidiaryAdvanceController::class, 'index'])->middleware('permission:payroll.read');
+        Route::post('/', [InterSubsidiaryAdvanceController::class, 'store'])->middleware('permission:payroll.create');
+        Route::get('/{id}', [InterSubsidiaryAdvanceController::class, 'show'])->middleware('permission:payroll.read');
+        Route::put('/{id}', [InterSubsidiaryAdvanceController::class, 'update'])->middleware('permission:payroll.update');
+        Route::delete('/{id}', [InterSubsidiaryAdvanceController::class, 'destroy'])->middleware('permission:payroll.delete');
+    });
+
+    // Payroll grant allocation routes (use middleware permission:read payroll grant allocations)
+    Route::prefix('payroll-grant-allocations')->group(function () {
+        Route::get('/', [PayrollGrantAllocationController::class, 'index'])->middleware('permission:payroll.read');
+        Route::post('/', [PayrollGrantAllocationController::class, 'store'])->middleware('permission:payroll.create');
+        Route::get('/{id}', [PayrollGrantAllocationController::class, 'show'])->middleware('permission:payroll.read');
+        Route::put('/{id}', [PayrollGrantAllocationController::class, 'update'])->middleware('permission:payroll.update');
+        Route::delete('/{id}', [PayrollGrantAllocationController::class, 'destroy'])->middleware('permission:payroll.delete');
+    });
+
     // Travel request routes (use middleware permission:read travel requests)
     Route::prefix('travel-requests')->group(function () {
         Route::get('/', [TravelRequestController::class, 'index'])->middleware('permission:travel_request.read');
@@ -248,7 +278,27 @@ Route::middleware('auth:sanctum')->group(function () {
     // Report routes
     Route::prefix('reports')->group(function () {
         Route::post('/interview-report/export-pdf', [InterviewReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+        Route::get('/interview-report/export-excel', [InterviewReportController::class, 'exportExcel'])->middleware('permission:reports.create');
         Route::post('/job-offer-report/export-pdf', [JobOfferReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+    });
+
+
+    // Employee education routes
+    Route::prefix('employee-education')->group(function () {
+        Route::get('/', [EmployeeEducationController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [EmployeeEducationController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [EmployeeEducationController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [EmployeeEducationController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [EmployeeEducationController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
+
+    // Employee language routes
+    Route::prefix('employee-language')->group(function () {
+        Route::get('/', [EmployeeLanguageController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [EmployeeLanguageController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [EmployeeLanguageController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [EmployeeLanguageController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [EmployeeLanguageController::class, 'destroy'])->middleware('permission:employee.delete');
     });
 });
 

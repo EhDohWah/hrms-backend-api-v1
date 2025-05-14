@@ -88,6 +88,31 @@ return new class extends Migration
             ['type' => 'employment_type', 'value' => 'part_time', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'employment_type', 'value' => 'contract', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'employment_type', 'value' => 'temporary', 'created_at' => now(), 'updated_at' => now()],
+
+            // Employee language options
+            ['type' => 'employee_language', 'value' => 'English', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_language', 'value' => 'Thai', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_language', 'value' => 'Burmese', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_language', 'value' => 'Karen', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_language', 'value' => 'French', 'created_at' => now(), 'updated_at' => now()],
+
+            // Employee education options
+            ['type' => 'employee_education', 'value' => 'Bachelor', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_education', 'value' => 'Master', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_education', 'value' => 'PhD', 'created_at' => now(), 'updated_at' => now()],
+
+            // Employee Initial in English (Mr., Mrs., Ms., Dr., etc.)
+            ['type' => 'employee_initial_en', 'value' => 'Mr.', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Mrs.', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Ms.', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Dr.', 'created_at' => now(), 'updated_at' => now()],
+
+            // คำนำหน้านามพนักงาน (นาย, นาง, นางสาว, ดร. ฯลฯ)
+            ['type' => 'employee_initial_th', 'value' => 'นาย',      'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'นาง',      'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'นางสาว',   'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'ดร.',      'created_at' => now(), 'updated_at' => now()],
+
         ]);
     }
 

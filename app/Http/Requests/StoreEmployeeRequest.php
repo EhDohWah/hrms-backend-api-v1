@@ -44,15 +44,16 @@ class StoreEmployeeRequest extends FormRequest
             'last_name_th' => 'nullable|string|max:255',
             'gender' => 'required|string|max:10',
             'date_of_birth' => 'required|date',
-            'age' => 'nullable|integer',
-            'nationality' => 'required|string|max:100',
-            'religion' => 'required|string|max:100',
-            'marital_status' => 'required|string|max:20',
-            'current_address' => 'required|string',
-            'permanent_address' => 'required|string',
             'date_of_birth_th' => 'nullable|string|max:10',
+            'age' => 'nullable|integer',
             'status' => 'required|string|in:Expats (Local),Local ID Staff,Local non ID Staff',
-            'mobile_phone' => 'nullable|string|max:20',
+
+            // 'nationality' => 'required|string|max:100',
+            // 'religion' => 'required|string|max:100',
+            // 'marital_status' => 'required|string|max:20',
+            // 'current_address' => 'required|string',
+            // 'mobile_phone' => 'nullable|string|max:20',
+            // 'permanent_address' => 'required|string',
 
         ];
     }

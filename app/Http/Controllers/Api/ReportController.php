@@ -23,6 +23,7 @@ class ReportController extends Controller
      *     path="/reports/grants",
      *     summary="Generate grant report",
      *     tags={"Reports"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Response(
      *         response=200,
      *         description="Grant report generated successfully",
@@ -57,6 +58,7 @@ class ReportController extends Controller
      *     path="/api/reports/payroll",
      *     summary="Generate payroll report",
      *     tags={"Reports"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="start_date",
      *         in="query",
@@ -105,6 +107,7 @@ class ReportController extends Controller
      *     path="/api/reports/staff-training",
      *     summary="Generate staff training report",
      *     tags={"Reports"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="employee_id",
      *         in="query",
@@ -194,6 +197,7 @@ class ReportController extends Controller
      *     path="/api/reports/leaves/individual",
      *     summary="Generate individual leave requests report",
      *     tags={"Reports"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="employee_id",
      *         in="query",
@@ -249,6 +253,7 @@ class ReportController extends Controller
      *     path="/api/reports/leaves/department",
      *     summary="Generate department leave requests report",
      *     tags={"Reports"},
+     *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="department_id",
      *         in="query",

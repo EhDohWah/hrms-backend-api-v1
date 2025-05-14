@@ -17,6 +17,27 @@ use OpenApi\Annotations as OA;
  */
 class PayrollController extends Controller
 {
+
+    public function getEmployeeEmploymentDetail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'staff_id' => 'required|exists:employees,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $employeeId = $request->input('staff_id');
+        $employee = Employee::find($employeeId);
+        return response()->json($employee);
+    }
+
+
     /**
      * @OA\Get(
      *     path="/payrolls",

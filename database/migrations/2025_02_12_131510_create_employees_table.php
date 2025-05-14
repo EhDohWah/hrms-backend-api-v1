@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('staff_id', 50)->index();
             $table->unique(['staff_id','subsidiary']);
             $table->string('initial_en', 5)->nullable();
-            $table->string('initial_th', 5)->nullable();
+            $table->string('initial_th', 20)->nullable();
             $table->string('first_name_en', 255)->nullable();
             $table->string('last_name_en', 255)->nullable();
             $table->string('first_name_th', 255)->nullable();
@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('date_of_birth_th', 10)->nullable();
             $table->integer('age')->nullable();
             $table->string('status', 20)->index();
-            $table->string('nationality', 100);
+            $table->string('nationality', 100)->nullable();
             $table->string('religion', 100)->nullable();
             $table->string('social_security_number', 50)->nullable();
             $table->string('tax_number', 50)->nullable();
