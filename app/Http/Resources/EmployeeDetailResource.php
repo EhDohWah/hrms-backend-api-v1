@@ -32,8 +32,6 @@ class EmployeeDetailResource extends JsonResource
             'last_name_th' => $this->last_name_th,
             'gender' => $this->gender,
             'date_of_birth' => $this->date_of_birth,
-            'date_of_birth_th' => $this->date_of_birth_th,
-            'age' => $this->age,
             'status' => $this->status,
             'nationality' => $this->nationality,
             'religion' => $this->religion,

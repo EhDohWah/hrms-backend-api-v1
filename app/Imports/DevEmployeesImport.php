@@ -235,8 +235,6 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         'last_name_th'              => $row['last_name_th'] ?? null,
                         'gender'                    => $row['gender'] ?? null,
                         'date_of_birth'             => $dateOfBirth,
-                        'date_of_birth_th'          => $dateOfBirthTh,
-                        'age'                       => $row['age'] ?? null,
                         'status'                    => $row['status'] ?? null,
                         'nationality'               => $row['nationality'] ?? null,
                         'religion'                  => $row['religion'] ?? null,

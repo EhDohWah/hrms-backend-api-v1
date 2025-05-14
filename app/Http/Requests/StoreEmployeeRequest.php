@@ -44,8 +44,6 @@ class StoreEmployeeRequest extends FormRequest
             'last_name_th' => 'nullable|string|max:255',
             'gender' => 'required|string|max:10',
             'date_of_birth' => 'required|date',
-            'date_of_birth_th' => 'nullable|string|max:10',
-            'age' => 'nullable|integer',
             'status' => 'required|string|in:Expats (Local),Local ID Staff,Local non ID Staff',
 
             // 'nationality' => 'required|string|max:100',

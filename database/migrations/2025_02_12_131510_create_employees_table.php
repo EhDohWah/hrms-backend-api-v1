@@ -26,8 +26,6 @@ return new class extends Migration
             $table->string('last_name_th', 255)->nullable();
             $table->string('gender', 10)->index();
             $table->date('date_of_birth')->index();
-            $table->string('date_of_birth_th', 10)->nullable();
-            $table->integer('age')->nullable();
             $table->string('status', 20)->index();
             $table->string('nationality', 100)->nullable();
             $table->string('religion', 100)->nullable();

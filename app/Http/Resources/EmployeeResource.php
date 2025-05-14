@@ -25,7 +25,6 @@ class EmployeeResource extends JsonResource
             'last_name_en' => $this->last_name_en,
             'gender' => $this->gender,
             'date_of_birth' => $this->date_of_birth,
-            'age' => $this->age,
             'status' => $this->status,
             'id_type' => $this->employeeIdentification ? $this->employeeIdentification->id_type : null,
             'id_number' => $this->employeeIdentification ? $this->employeeIdentification->id_number : null,
