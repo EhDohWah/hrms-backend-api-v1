@@ -109,6 +109,16 @@ class Employee extends Model
     ];
 
     /**
+     * Get the route key name for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'staff_id';
+    }
+
+    /**
      * Get the user associated with the employee
      */
     public function user()

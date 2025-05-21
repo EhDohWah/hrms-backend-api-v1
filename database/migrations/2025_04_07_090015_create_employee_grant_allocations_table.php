@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('employee_id');
             $table->unsignedBigInteger('grant_items_id');
-            $table->decimal('level_of_effort', 4, 2);
+            $table->decimal('level_of_effort', 5, 2);
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->boolean('active')->default(true);
@@ -25,6 +25,9 @@ return new class extends Migration
             // Foreign keys
             $table->foreign('employee_id')->references('id')->on('employees');
             $table->foreign('grant_items_id')->references('id')->on('grant_items');
+
+            // Add composite index for grant_items_id and active columns
+            $table->index(['grant_items_id', 'active'], 'alloc_item_active_idx');
         });
     }
 

@@ -34,7 +34,7 @@ class ShowEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'staff_id' => 'required|string|exists:employees,staff_id',
+            'staff_id' => 'required|digits:4|exists:employees,staff_id',
         ];
     }
 }

@@ -26,6 +26,7 @@ use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
 use App\Imports\DevEmployeesImport;
 use App\Http\Requests\StoreEmployeeRequest;
+use App\Http\Requests\UpdateEmployeeRequest;
 
 /**
  * @OA\Tag(
@@ -630,6 +631,8 @@ class EmployeeController extends Controller
      */
     public function show(ShowEmployeeRequest $request, string $staff_id)
     {
+
+
         // 1) base query: same columns + relations as your show()
             $query = Employee::select([
                 'id',
@@ -640,7 +643,6 @@ class EmployeeController extends Controller
                 'last_name_en',
                 'gender',
                 'date_of_birth',
-                'age',
                 'status',
                 'social_security_number',
                 'tax_number',
@@ -1349,6 +1351,75 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employee grant-item added successfully',
+            'data' => $employee
+        ]);
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/employees/{id}/basic-information",
+     *     summary="Update employee basic information",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Employee ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"subsidiary", "staff_id", "first_name_en", "gender", "date_of_birth", "status"},
+     *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}),
+     *             @OA\Property(property="staff_id", type="string", maxLength=50),
+     *             @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
+     *             @OA\Property(property="initial_th", type="string", maxLength=10, nullable=true),
+     *             @OA\Property(property="first_name_en", type="string", maxLength=255),
+     *             @OA\Property(property="last_name_en", type="string", maxLength=255, nullable=true),
+     *             @OA\Property(property="first_name_th", type="string", maxLength=255, nullable=true),
+     *             @OA\Property(property="last_name_th", type="string", maxLength=255, nullable=true),
+     *             @OA\Property(property="gender", type="string", maxLength=10),
+     *             @OA\Property(property="date_of_birth", type="string", format="date"),
+     *             @OA\Property(property="status", type="string", enum={"Expats (Local)", "Local ID Staff", "Local non ID Staff"})
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employee basic information updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee basic information updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 ref="#/components/schemas/Employee"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found"
+     *     )
+     * )
+     */
+    public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request)
+    {
+        // validate the request
+        $validated = $request->validated();
+
+        // update the employee
+        $employee = Employee::find($request->id);
+        $employee->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee basic information updated successfully',
             'data' => $employee
         ]);
     }

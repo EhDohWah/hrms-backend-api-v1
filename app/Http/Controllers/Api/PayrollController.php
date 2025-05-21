@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Payroll;
+use App\Models\Employee;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Annotations as OA;
 
@@ -17,11 +18,94 @@ use OpenApi\Annotations as OA;
  */
 class PayrollController extends Controller
 {
-
+    /**
+     * @OA\Get(
+     *     path="/payrolls/employee-employment",
+     *     summary="Get employee employment details",
+     *     description="Get employment details for a specific employee including employment info, work location, and grant allocations",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="employee_id",
+     *         in="query",
+     *         required=true,
+     *         description="Employee ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employee employment details retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee employment details retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(
+     *                     property="employment",
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(
+     *                         property="workLocation",
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="name", type="string", example="Main Office")
+     *                     )
+     *                 ),
+     *                 @OA\Property(
+     *                     property="employeeGrantAllocations",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(
+     *                             property="grantItemAllocation",
+     *                             type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(
+     *                                 property="grant",
+     *                                 type="object",
+     *                                 @OA\Property(property="id", type="integer", example=1),
+     *                                 @OA\Property(property="name", type="string", example="Annual Bonus")
+     *                             )
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="employee_id",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="The employee id field is required.")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Employee not found")
+     *         )
+     *     )
+     * )
+     */
     public function getEmployeeEmploymentDetail(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'staff_id' => 'required|exists:employees,id',
+            'employee_id' => 'required|exists:employees,id',
         ]);
 
         if ($validator->fails()) {
@@ -32,9 +116,28 @@ class PayrollController extends Controller
             ], 422);
         }
 
-        $employeeId = $request->input('staff_id');
-        $employee = Employee::find($employeeId);
-        return response()->json($employee);
+        $employeeId = $request->input('employee_id');
+        $employee = Employee::with([
+            'employment',
+            'employment.departmentPosition',
+            'employment.workLocation',
+            'employeeGrantAllocations',
+            'employeeGrantAllocations.grantItemAllocation',
+            'employeeGrantAllocations.grantItemAllocation.grant'
+        ])->find($employeeId);
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee employment details retrieved successfully',
+            'data' => $employee
+        ]);
     }
 
 

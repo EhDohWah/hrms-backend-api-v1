@@ -123,25 +123,25 @@ class Employment extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class, 'employee_id');
+        return $this->belongsTo(Employee::class);
     }
 
 
 
     public function departmentPosition()
     {
-        return $this->belongsTo(DepartmentPosition::class, 'department_position_id');
+        return $this->belongsTo(DepartmentPosition::class);
     }
 
 
     public function workLocation()
     {
-        return $this->belongsTo(WorkLocation::class, 'work_location_id');
+        return $this->belongsTo(WorkLocation::class);
     }
 
 
     public function grantAllocations()
     {
-        return $this->hasMany(EmploymentGrantAllocation::class, 'employment_id');
+        return $this->hasMany(EmploymentGrantAllocation::class);
     }
 }

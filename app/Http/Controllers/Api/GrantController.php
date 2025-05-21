@@ -415,7 +415,6 @@ class GrantController extends Controller
     }
 
 
-
     /**
      * @OA\Get(
      *     path="/grants/items/{id}",
@@ -798,13 +797,13 @@ class GrantController extends Controller
     {
         // validate the request
         $request->validate([
-            'grant_id' => 'required|exists:grants,id',
-            'bg_line' => 'required|string',
-            'grant_position' => 'nullable|string',
-            'grant_salary' => 'nullable|numeric',
-            'grant_benefit' => 'nullable|numeric',
-            'grant_level_of_effort' => 'nullable|numeric',
-            'grant_position_number' => 'nullable|string',
+            'grant_id'               => 'required|exists:grants,id',
+            'bg_line'                => 'required|string|max:50',
+            'grant_position'         => 'nullable|string|max:255',
+            'grant_salary'           => 'nullable|numeric|min:0',
+            'grant_benefit'          => 'nullable|numeric|min:0',
+            'grant_level_of_effort'  => 'nullable|numeric|between:0,1',
+            'grant_position_number'  => 'nullable|integer|min:0',
         ]);
 
         // Check for duplicates
@@ -1308,6 +1307,7 @@ class GrantController extends Controller
 
                     // Add this position's breakdown
                     $grantPositions[] = [
+                        'id'          => $item->id,
                         'position'    => $positionTitle,
                         'budget_line' => $budgetLine,
                         'manpower'    => $manpower,

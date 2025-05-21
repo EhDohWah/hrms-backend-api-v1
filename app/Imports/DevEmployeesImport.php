@@ -24,6 +24,10 @@ use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Settings;
+use PhpOffice\PhpSpreadsheet\Cached\Storage\CachedObjectStorageFactory;
+use Illuminate\Support\Facades\Cache;
+
 
 class DevEmployeesImport extends DefaultValueBinder implements
     ToCollection,
@@ -34,6 +38,15 @@ class DevEmployeesImport extends DefaultValueBinder implements
     SkipsOnFailure
 {
     use Importable;
+
+    public function __construct()
+    {
+        // 1) Grab Laravel's file‐based cache (PSR-16)
+        $psr16 = Cache::store('file');
+
+        // 2) Tell PhpSpreadsheet to use it for cell caching
+        Settings::setCache($psr16);
+    }
 
     /** @var array Rows successfully prepared for insert */
     protected $processedEmployees = [];
@@ -402,7 +415,6 @@ class DevEmployeesImport extends DefaultValueBinder implements
             '*.last_name_th'  => 'nullable|string|max:255',
             '*.gender'        => 'required|string|in:M,F',
             '*.date_of_birth' => 'required|date',
-            '*.date_of_birth_th' => 'nullable|string|max:10',
             '*.status'        => 'nullable|string|max:20',
             '*.nationality'   => 'nullable|string|max:100',
             '*.religion'      => 'nullable|string|max:100',
@@ -415,27 +427,27 @@ class DevEmployeesImport extends DefaultValueBinder implements
             '*.bank_branch'   => 'nullable|string|max:100',
             '*.bank_acc_name'  => 'nullable|string|max:100',
             '*.bank_acc_no'    => 'nullable|string|max:50',
-            '*.mobile_no'     => 'nullable|string|max:10',
+            '*.mobile_no'     => 'nullable|string|max:15',
             '*.current_address' => 'nullable|string',
             '*.permanent_address' => 'nullable|string',
             '*.marital_status' => 'nullable|string|max:50',
             '*.spouse_name'   => 'nullable|string|max:200',
-            '*.spouse_mobile_no' => 'nullable|string|max:10',
+            '*.spouse_mobile_no' => 'nullable|string|max:15',
             '*.emergency_name' => 'nullable|string|max:100',
             '*.relationship'  => 'nullable|string|max:100',
-            '*.emergency_mobile_no' => 'nullable|string|max:10',
+            '*.emergency_mobile_no' => 'nullable|string|max:15',
             '*.father_name'   => 'nullable|string|max:200',
             '*.father_occupation' => 'nullable|string|max:200',
-            '*.father_mobile_no' => 'nullable|string|max:10',
+            '*.father_mobile_no' => 'nullable|string|max:15',
             '*.mother_name'   => 'nullable|string|max:200',
             '*.mother_occupation' => 'nullable|string|max:200',
-            '*.mother_mobile_no' => 'nullable|string|max:10',
+            '*.mother_mobile_no' => 'nullable|string|max:15',
             '*.kin1_name'     => 'nullable|string|max:255',
             '*.kin1_relationship' => 'nullable|string|max:255',
-            '*.kin1_mobile'   => 'nullable|string|max:10',
+            '*.kin1_mobile'   => 'nullable|string|max:15',
             '*.kin2_name'     => 'nullable|string|max:255',
             '*.kin2_relationship' => 'nullable|string|max:255',
-            '*.kin2_mobile'   => 'nullable|string|max:10',
+            '*.kin2_mobile'   => 'nullable|string|max:15',
             '*.military_status' => 'nullable|string|max:50',
             '*.remark'        => 'nullable|string|max:255',
         ];

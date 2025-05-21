@@ -60,12 +60,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [EmployeeController::class, 'employeeDetails'])->middleware('permission:employee.read');
         Route::get('/filter', [EmployeeController::class, 'filterEmployees'])->middleware('permission:employee.read');
         Route::get('/site-records', [EmployeeController::class, 'getSiteRecords'])->middleware('permission:employee.read');
-        Route::get('/staff-id/{staff_id}', [EmployeeController::class, 'show'])->middleware('permission:employee.read');
+        Route::get('/staff-id/{staff_id}', [EmployeeController::class, 'show'])->where('staff_id', '[0-9]{4}')->middleware('permission:employee.read');
         Route::post('/', [EmployeeController::class, 'store'])->middleware('permission:employee.create');
         Route::put('/{id}', [EmployeeController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [EmployeeController::class, 'destroy'])->middleware('permission:employee.delete');
         Route::post('/{id}/profile-picture', [EmployeeController::class, 'uploadProfilePicture'])->middleware('permission:employee.update');
         Route::delete('/delete-selected/{ids}', [EmployeeController::class, 'deleteSelectedEmployees'])->middleware('permission:employee.delete');
+
+        Route::put('/{id}/basic-information', [EmployeeController::class, 'updateEmployeeBasicInformation'])->middleware('permission:employee.update');
     });
 
     // Employee grant allocation routes
@@ -195,11 +197,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Payroll routes (use middleware permission:read payrolls)
     Route::prefix('payrolls')->group(function () {
         Route::get('/', [PayrollController::class, 'index'])->middleware('permission:payroll.read');
+        Route::get('/employee-employment', [PayrollController::class, 'getEmployeeEmploymentDetail'])->middleware('permission:payroll.read');
         Route::get('/{id}', [PayrollController::class, 'show'])->middleware('permission:payroll.read');
         Route::post('/', [PayrollController::class, 'store'])->middleware('permission:payroll.create');
         Route::put('/{id}', [PayrollController::class, 'update'])->middleware('permission:payroll.update');
         Route::delete('/{id}', [PayrollController::class, 'destroy'])->middleware('permission:payroll.delete');
-    });
+        });
 
     // Inter-subsidiary advance routes (use middleware permission:read inter-subsidiary advances)
     Route::prefix('inter-subsidiary-advances')->group(function () {

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('employee_id')->index();
             $table->string('beneficiary_name', 255);
             $table->string('beneficiary_relationship', 255);
-            $table->string('phone_number', 10)->nullable();
+            $table->string('phone_number', 15)->nullable();
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
