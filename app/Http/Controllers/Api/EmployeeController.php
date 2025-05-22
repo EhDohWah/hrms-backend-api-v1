@@ -269,6 +269,14 @@ class EmployeeController extends Controller
     {
         $file = $request->file('file');
 
+            // Generate a unique import ID (for tracking/debugging)
+        $importId = uniqid('import_', true);
+        // or $importId = Str::uuid(); // (needs: use Illuminate\Support\Str;)
+
+        $import = new EmployeesImport($importId);
+
+        Excel::queueImport($import, $file); // for production
+
         // if (app()->environment('production')) {
         //     Excel::queueImport(new EmployeesImport, $file);
 
@@ -279,8 +287,9 @@ class EmployeeController extends Controller
         // }
 
         // ── Dev branch ────────────────────────────────────────────────────────
-        $import = new DevEmployeesImport;
-        Excel::import($import, $file);
+        // $import = new DevEmployeesImport;
+        // Excel::import($import, $file);
+
 
         // Now $import is defined, so you can safely gather debug info:
         $processed = $import->getProcessedEmployees();
@@ -288,19 +297,12 @@ class EmployeeController extends Controller
         $fails     = $import->getValidationFailures();
         $snapshot  = $import->getFirstRowSnapshot();
 
-        if (empty($processed)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No rows were imported – check your column headings & data.',
-                'debug'   => compact('snapshot','errors','fails'),
-            ], 422);
-        }
-
         return response()->json([
-            'success'             => true,
-            'message'             => 'Employee data upload completed',
-            'processed_employees' => count($processed),
-        ], 200);
+            'success' => true,
+            'message' => "Your file is being imported. You'll be notified when it's done.",
+            'import_id' => $importId
+        ], 202);
+
     }
 
     /**

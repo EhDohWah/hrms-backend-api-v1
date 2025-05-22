@@ -206,10 +206,6 @@ class DevEmployeesImport extends DefaultValueBinder implements
                                 $dt = \Carbon\Carbon::parse($row['date_of_birth']);
                             }
                             $dateOfBirth = $dt->format('Y-m-d');
-                            \Log::debug("Parsed date of birth", [
-                                'original' => $row['date_of_birth'],
-                                'parsed' => $dateOfBirth
-                            ]);
                         }
                     } catch (\Exception $e) {
                         \Log::warning("Failed to parse date of birth", [
@@ -219,6 +215,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         ]);
                         $dateOfBirth = null;
                     }
+
 
 
                     $employeeBatch[] = [
