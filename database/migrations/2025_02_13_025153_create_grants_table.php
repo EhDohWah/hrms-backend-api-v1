@@ -39,7 +39,7 @@ return new class extends Migration
             ],
             [
                 'code'         => 'B24002',
-                'name'         => 'General Fund (',
+                'name'         => 'General Fund',
                 'subsidiary'   => 'BHF',
                 'description'  => "BHF's hub grant",
                 'end_date'     => null,
