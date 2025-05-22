@@ -38,8 +38,8 @@ return new class extends Migration
                 'updated_by'   => 'system',
             ],
             [
-                'code'         => 'S22001',
-                'name'         => 'General Fund',
+                'code'         => 'B24002',
+                'name'         => 'General Fund (',
                 'subsidiary'   => 'BHF',
                 'description'  => "BHF's hub grant",
                 'end_date'     => null,
