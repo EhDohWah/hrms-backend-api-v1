@@ -241,6 +241,7 @@ class EmployeeGrantAllocationController extends Controller
                 'success' => true,
                 'message' => 'Grant item allocations retrieved successfully',
                 'grant_item' => $grantItem,
+                'employee_grant_allocation' => $employeeAllocations,
                 'grant_details' => $grantDetails,
                 'total_allocations' => $totalAllocations,
                 'employees' => $employees
