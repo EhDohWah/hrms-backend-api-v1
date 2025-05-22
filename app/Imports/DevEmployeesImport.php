@@ -27,6 +27,8 @@ use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Cached\Storage\CachedObjectStorageFactory;
 use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
+
 
 
 class DevEmployeesImport extends DefaultValueBinder implements
@@ -195,46 +197,28 @@ class DevEmployeesImport extends DefaultValueBinder implements
                     // Debug date parsing
                     $dateOfBirth = null;
                     try {
-                        if (isset($row['date_of_birth']) && !empty($row['date_of_birth'])) {
-                            $dateOfBirth = now()->parse($row['date_of_birth'])->format('Y-m-d');
-                            Log::debug("Parsed date of birth", [
+                        if (isset($row['date_of_birth']) && !empty($row['date_of_birth']) && $row['date_of_birth'] !== '-') {
+                            // If it's a pure Excel serial (all digits), convert it
+                            if (ctype_digit($row['date_of_birth'])) {
+                                $dt = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['date_of_birth']);
+                            } else {
+                                // Try parsing as standard date format
+                                $dt = \Carbon\Carbon::parse($row['date_of_birth']);
+                            }
+                            $dateOfBirth = $dt->format('Y-m-d');
+                            \Log::debug("Parsed date of birth", [
                                 'original' => $row['date_of_birth'],
                                 'parsed' => $dateOfBirth
                             ]);
                         }
                     } catch (\Exception $e) {
-                        Log::warning("Failed to parse date of birth", [
-                            'staff_id' => $staffId,
+                        \Log::warning("Failed to parse date of birth", [
+                            'staff_id' => $staffId ?? null,
                             'value' => $row['date_of_birth'] ?? 'null',
                             'error' => $e->getMessage()
                         ]);
                         $dateOfBirth = null;
                     }
-
-                    // debug date of birth thai (Buddhist calendar)
-                    $raw = trim((string)($row['date_of_birth_th'] ?? ''));
-
-                    // default to null
-                    $dateOfBirthTh = null;
-
-                    // only parse when there's something other than empty or "-"
-                    if ($raw !== '' && $raw !== '-') {
-                        if (ctype_digit($raw)) {
-                            // Excel serial number
-                            $dt = ExcelDate::excelToDateTimeObject($raw);
-                        } else {
-                            // split into [day,month,year] or [month,year]
-                            $parts = explode('/', $raw);
-                            $day   = count($parts) === 3 ? intval($parts[0]) : 1;
-                            $month = count($parts) === 3 ? intval($parts[1]) : intval($parts[0]);
-                            $year  = intval($parts[count($parts) - 1]) - 543;  // Buddhist→Gregorian
-
-                            $dt = Carbon::create($year, $month, $day);
-                        }
-
-                        $dateOfBirthTh = $dt->format('Y-m-d');
-                    }
-
 
 
                     $employeeBatch[] = [
@@ -405,17 +389,17 @@ class DevEmployeesImport extends DefaultValueBinder implements
     public function rules(): array
     {
         return [
-            '*.org'           => 'nullable|string|max:5',
+            '*.org'           => 'nullable|string|max:10',
             '*.staff_id'      => 'required|string|unique:employees,staff_id',
-            '*.initial'       => 'nullable|string|max:5',
+            '*.initial'       => 'nullable|string|max:10',
             '*.first_name'    => 'required|string|max:255',
             '*.last_name'     => 'nullable|string|max:255',
-            '*.initial_th'    => 'nullable|string|max:5',
+            '*.initial_th'    => 'nullable|string|max:20',
             '*.first_name_th' => 'nullable|string|max:255',
             '*.last_name_th'  => 'nullable|string|max:255',
             '*.gender'        => 'required|string|in:M,F',
             '*.date_of_birth' => 'required|date',
-            '*.status'        => 'nullable|string|max:20',
+            '*.status'        => 'nullable|string|max:50',
             '*.nationality'   => 'nullable|string|max:100',
             '*.religion'      => 'nullable|string|max:100',
             '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport','CI','Borderpass','BurmeseID','Other'])],
@@ -427,27 +411,27 @@ class DevEmployeesImport extends DefaultValueBinder implements
             '*.bank_branch'   => 'nullable|string|max:100',
             '*.bank_acc_name'  => 'nullable|string|max:100',
             '*.bank_acc_no'    => 'nullable|string|max:50',
-            '*.mobile_no'     => 'nullable|string|max:15',
+            '*.mobile_no'     => 'nullable|string|max:50',
             '*.current_address' => 'nullable|string',
             '*.permanent_address' => 'nullable|string',
             '*.marital_status' => 'nullable|string|max:50',
             '*.spouse_name'   => 'nullable|string|max:200',
-            '*.spouse_mobile_no' => 'nullable|string|max:15',
+            '*.spouse_mobile_no' => 'nullable|string|max:50',
             '*.emergency_name' => 'nullable|string|max:100',
             '*.relationship'  => 'nullable|string|max:100',
-            '*.emergency_mobile_no' => 'nullable|string|max:15',
+            '*.emergency_mobile_no' => 'nullable|string|max:50',
             '*.father_name'   => 'nullable|string|max:200',
             '*.father_occupation' => 'nullable|string|max:200',
-            '*.father_mobile_no' => 'nullable|string|max:15',
+            '*.father_mobile_no' => 'nullable|string|max:50',
             '*.mother_name'   => 'nullable|string|max:200',
             '*.mother_occupation' => 'nullable|string|max:200',
-            '*.mother_mobile_no' => 'nullable|string|max:15',
+            '*.mother_mobile_no' => 'nullable|string|max:50',
             '*.kin1_name'     => 'nullable|string|max:255',
             '*.kin1_relationship' => 'nullable|string|max:255',
-            '*.kin1_mobile'   => 'nullable|string|max:15',
+            '*.kin1_mobile'   => 'nullable|string|max:50',
             '*.kin2_name'     => 'nullable|string|max:255',
             '*.kin2_relationship' => 'nullable|string|max:255',
-            '*.kin2_mobile'   => 'nullable|string|max:15',
+            '*.kin2_mobile'   => 'nullable|string|max:50',
             '*.military_status' => 'nullable|string|max:50',
             '*.remark'        => 'nullable|string|max:255',
         ];
