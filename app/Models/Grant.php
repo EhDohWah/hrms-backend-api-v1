@@ -52,11 +52,6 @@ class Grant extends Model
         return $this->hasMany(SubsidiaryHubFund::class, 'hub_grant_id');
     }
 
-    public function payrollGrantAllocations()
-    {
-        return $this->hasMany(PayrollGrantAllocation::class, 'grant_id');
-    }
-
     public function interSubsidiaryAdvances()
     {
         return $this->hasMany(InterSubsidiaryAdvance::class, 'via_grant_id');

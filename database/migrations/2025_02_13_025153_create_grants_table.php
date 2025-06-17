@@ -24,31 +24,7 @@ return new class extends Migration
             $table->string('updated_by')->nullable();
         });
 
-          // Insert the two default “hub” grants
-          DB::table('grants')->insert([
-            [
-                'code'         => 'S0031',
-                'name'         => 'Other Fund',
-                'subsidiary'   => 'SMRU',
-                'description'  => "SMRU's hub grant",
-                'end_date'     => null,
-                'created_at'   => now(),
-                'updated_at'   => now(),
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-            ],
-            [
-                'code'         => 'B24002',
-                'name'         => 'General Fund',
-                'subsidiary'   => 'BHF',
-                'description'  => "BHF's hub grant",
-                'end_date'     => null,
-                'created_at'   => now(),
-                'updated_at'   => now(),
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-            ],
-        ]);
+        $this->insertDefaultGrants();
     }
 
     // create a function to insert the two default "hub" grants
@@ -79,25 +55,6 @@ return new class extends Migration
             'updated_by'   => 'system',
         ]);
 
-        // Insert default subsidiary hub funds
-        DB::table('subsidiary_hub_funds')->insert([
-            [
-                'subsidiary'   => 'SMRU',
-                'hub_grant_id' => $smruGrant,
-                'created_at'   => now(),
-                'updated_at'   => now(),
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-            ],
-            [
-                'subsidiary'   => 'BHF',
-                'hub_grant_id' => $bhfGrant,
-                'created_at'   => now(),
-                'updated_at'   => now(),
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-            ],
-        ]);
     }
 
 

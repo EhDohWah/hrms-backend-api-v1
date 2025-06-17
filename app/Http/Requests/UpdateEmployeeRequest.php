@@ -3,34 +3,28 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEmployeeRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true; // You can add policies here
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'subsidiary'  => ['required','string', Rule::in(['SMRU','BHF'])],
+            'subsidiary'  => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
             'staff_id'    => [
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('employees')      // table name
-                    ->where(fn($query) =>     // add a WHERE subsidiary = input('subsidiary')
+                Rule::unique('employees')
+                    ->where(fn($query) =>
                         $query->where('subsidiary', $this->input('subsidiary'))
-                    ),
+                    )
+                    ->ignore($this->route('employee')->id), // Cleanest way!
             ],
             'initial_en' => 'nullable|string|max:10',
             'initial_th' => 'nullable|string|max:10',

@@ -20,6 +20,8 @@ class EmployeeResource extends JsonResource
             'id' => $this->id,
             'subsidiary' => $this->subsidiary,
             'staff_id' => $this->staff_id,
+            'employee_identification' => $this->employeeIdentification,
+            'employment' => $this->employment,
             'initial_en' => $this->initial_en,
             'first_name_en' => $this->first_name_en,
             'last_name_en' => $this->last_name_en,

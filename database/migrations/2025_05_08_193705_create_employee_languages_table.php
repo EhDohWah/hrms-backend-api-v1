@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employee_id')->constrained('employees');
             $table->string('language');
-            $table->string('proficiency_level');
-            $table->string('created_by');
-            $table->string('updated_by');
+            $table->string('proficiency_level')->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
             $table->timestamps();
         });
     }

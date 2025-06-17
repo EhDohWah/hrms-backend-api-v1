@@ -15,6 +15,7 @@ use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Employee;
 use App\Models\EmployeeIdentification;
 use App\Models\EmployeeBeneficiary;
@@ -25,6 +26,11 @@ use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Notifications\ImportedCompletedNotification;
+use App\Models\User;
+use Maatwebsite\Excel\Events\AfterImport;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 
 class EmployeesImport extends DefaultValueBinder implements
     ToCollection,
@@ -33,22 +39,28 @@ class EmployeesImport extends DefaultValueBinder implements
     WithCustomValueBinder,
     SkipsEmptyRows,
     SkipsOnFailure,
-    ShouldQueue
+    ShouldQueue,
+    WithEvents
 {
-    use Importable;
+    use Importable, RegistersEventListeners;
 
-    protected $processedEmployees = [];
-    protected $errors = [];
-    protected $validationFailures = [];
-    protected $firstRowSnapshot = [];
-    protected $seenStaffIds = [];
+    public $userId;
+    public $importId;
     protected $existingStaffIds = [];
 
-    public function __construct(string $importId)
+    public function __construct(string $importId, int $userId)
     {
         $this->importId = $importId;
+        $this->userId = $userId;
         // Prefetch staff_ids from DB only once at start (for duplicate checking)
         $this->existingStaffIds = Employee::pluck('staff_id')->map('strval')->toArray();
+        
+        // Initialize cache keys for this import
+        Cache::put("import_{$this->importId}_errors", [], 3600); // 1 hour TTL
+        Cache::put("import_{$this->importId}_validation_failures", [], 3600);
+        Cache::put("import_{$this->importId}_processed_staff_ids", [], 3600);
+        Cache::put("import_{$this->importId}_seen_staff_ids", [], 3600);
+        Cache::put("import_{$this->importId}_processed_count", 0, 3600);
     }
 
     public function bindValue(Cell $cell, $value)
@@ -59,22 +71,32 @@ class EmployeesImport extends DefaultValueBinder implements
 
     public function onFailure(Failure ...$failures)
     {
+        $errors = Cache::get("import_{$this->importId}_errors", []);
+        $validationFailures = Cache::get("import_{$this->importId}_validation_failures", []);
+        
         foreach ($failures as $failure) {
-            $this->validationFailures[] = [
+            $validationFailure = [
                 'row'       => $failure->row(),
                 'attribute' => $failure->attribute(),
                 'errors'    => $failure->errors(),
                 'values'    => $failure->values(),
             ];
+            $validationFailures[] = $validationFailure;
+            
             $msg = "Row {$failure->row()} [{$failure->attribute()}]: "
                  . implode(', ', $failure->errors());
             Log::warning($msg, ['values' => $failure->values()]);
-            $this->errors[] = $msg;
+            $errors[] = $msg;
         }
+        
+        Cache::put("import_{$this->importId}_errors", $errors, 3600);
+        Cache::put("import_{$this->importId}_validation_failures", $validationFailures, 3600);
     }
 
     public function collection(Collection $rows)
     {
+        Log::info('Import chunk started', ['rows_in_chunk' => $rows->count(), 'import_id' => $this->importId]);
+
         $normalized = $rows->map(function($r) {
             if (!empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
                 try {
@@ -102,6 +124,8 @@ class EmployeesImport extends DefaultValueBinder implements
             return $r;
         });
 
+        Log::debug('Rows after normalization', ['normalized_count' => $normalized->count(), 'import_id' => $this->importId]);
+
         // Validate per-row fields except staff_id uniqueness
         $validator = Validator::make(
             $normalized->toArray(),
@@ -109,20 +133,22 @@ class EmployeesImport extends DefaultValueBinder implements
             $this->messages()
         );
         if ($validator->fails()) {
+            Log::error('Validation failed for chunk', ['errors' => $validator->errors()->all(), 'import_id' => $this->importId]);
             foreach ($validator->errors()->all() as $error) {
                 $this->onFailure(new Failure(0, '', [$error], []));
             }
             return;
         }
 
-        // Capture first row debug
-        if (empty($this->firstRowSnapshot) && $rows->count() > 0) {
+        // Capture first row debug (only once)
+        if (!Cache::has("import_{$this->importId}_first_row_snapshot") && $rows->count() > 0) {
             $first = $rows->first()->toArray();
-            $this->firstRowSnapshot = [
+            $firstRowSnapshot = [
                 'columns' => array_keys($first),
                 'values'  => $first,
             ];
-            Log::debug('First row snapshot for import debug', $this->firstRowSnapshot);
+            Cache::put("import_{$this->importId}_first_row_snapshot", $firstRowSnapshot, 3600);
+            Log::debug('First row snapshot for import debug', $firstRowSnapshot);
         }
 
         DB::disableQueryLog();
@@ -135,24 +161,29 @@ class EmployeesImport extends DefaultValueBinder implements
                 $identBatch = [];
                 $beneBatch = [];
                 $allStaffIds = [];
+                
+                // Get current seen staff IDs from cache
+                $seenStaffIds = Cache::get("import_{$this->importId}_seen_staff_ids", []);
+                $errors = Cache::get("import_{$this->importId}_errors", []);
 
                 foreach ($normalized as $index => $row) {
                     if (!$row->filter()->count()) {
+                        Log::debug('Skipping empty row', ['row_index' => $index, 'import_id' => $this->importId]);
                         continue;
                     }
 
                     $staffId = trim($row['staff_id'] ?? '');
                     if (!$staffId) {
-                        $this->errors[] = "Row {$index}: Missing staff_id";
+                        $errors[] = "Row {$index}: Missing staff_id";
                         continue;
                     }
 
                     // Check duplicates in same import file
-                    if (in_array($staffId, $this->seenStaffIds)) {
+                    if (in_array($staffId, $seenStaffIds)) {
                         $this->onFailure(new Failure($index+1, 'staff_id', ['Duplicate staff_id in import file'], $row->toArray()));
                         continue;
                     }
-                    $this->seenStaffIds[] = $staffId;
+                    $seenStaffIds[] = $staffId;
 
                     // Check existing in DB
                     if (in_array($staffId, $this->existingStaffIds)) {
@@ -219,18 +250,31 @@ class EmployeesImport extends DefaultValueBinder implements
                     ];
                 }
 
+                // Update cache with current chunk's seen staff IDs and errors
+                Cache::put("import_{$this->importId}_seen_staff_ids", $seenStaffIds, 3600);
+                Cache::put("import_{$this->importId}_errors", $errors, 3600);
+
                 if (count($employeeBatch)) {
                     Employee::insert($employeeBatch);
-                    $this->processedEmployees = array_merge(
-                        $this->processedEmployees,
-                        $employeeBatch
-                    );
+                    
+                    // Update processed count in cache
+                    $currentCount = Cache::get("import_{$this->importId}_processed_count", 0);
+                    Cache::put("import_{$this->importId}_processed_count", $currentCount + count($employeeBatch), 3600);
+                    
+                    // Store processed staff IDs in cache
+                    $processedStaffIds = Cache::get("import_{$this->importId}_processed_staff_ids", []);
+                    $processedStaffIds = array_merge($processedStaffIds, $allStaffIds);
+                    Cache::put("import_{$this->importId}_processed_staff_ids", $processedStaffIds, 3600);
+
+                    Log::info('Inserted employee batch', ['count' => count($employeeBatch), 'import_id' => $this->importId]);
                 }
 
                 // Fetch new IDs
                 $employeeMap = Employee::whereIn('staff_id', $allStaffIds)
                     ->pluck('id', 'staff_id')
                     ->toArray();
+
+                Log::debug('Fetched employee IDs for related data', ['count' => count($employeeMap), 'import_id' => $this->importId]);
 
                 // Build batches for related tables
                 foreach ($normalized as $index => $row) {
@@ -275,23 +319,31 @@ class EmployeesImport extends DefaultValueBinder implements
 
                 if (count($identBatch)) {
                     DB::table('employee_identifications')->insert($identBatch);
+                    Log::info('Inserted employee_identifications batch', ['count' => count($identBatch), 'import_id' => $this->importId]);
                 }
                 if (count($beneBatch)) {
                     DB::table('employee_beneficiaries')->insert($beneBatch);
+                    Log::info('Inserted employee_beneficiaries batch', ['count' => count($beneBatch), 'import_id' => $this->importId]);
                 }
             });
 
         } catch (\Exception $e) {
             $errorMessage = 'Error in ' . __METHOD__ . ' at line ' . $e->getLine() . ': ' . $e->getMessage();
-            $this->errors[] = $errorMessage;
+            $errors = Cache::get("import_{$this->importId}_errors", []);
+            $errors[] = $errorMessage;
+            Cache::put("import_{$this->importId}_errors", $errors, 3600);
+            
             Log::error('Employee import failed', [
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'import_id' => $this->importId
             ]);
         }
+
+        Log::info('Finished processing chunk', ['import_id' => $this->importId]);
     }
 
     // 🟢 Only use column-level validation (no unique:employees,staff_id here)
@@ -359,18 +411,62 @@ class EmployeesImport extends DefaultValueBinder implements
 
     public function getProcessedEmployees(): array
     {
-        return $this->processedEmployees;
+        return []; // No longer stored in memory
     }
+    
     public function getErrors(): array
     {
-        return $this->errors;
+        return Cache::get("import_{$this->importId}_errors", []);
     }
+    
     public function getValidationFailures(): array
     {
-        return $this->validationFailures;
+        return Cache::get("import_{$this->importId}_validation_failures", []);
     }
+    
     public function getFirstRowSnapshot(): array
     {
-        return $this->firstRowSnapshot;
+        return Cache::get("import_{$this->importId}_first_row_snapshot", []);
     }
+    
+    public function getProcessedEmployeeStaffIds(): array
+    {
+        return Cache::get("import_{$this->importId}_processed_staff_ids", []);
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterImport::class => function (AfterImport $event) {
+                \Log::info("After import: userId is {$this->userId}");
+                
+                // Get import results from cache
+                $errors = Cache::get("import_{$this->importId}_errors", []);
+                $processedCount = Cache::get("import_{$this->importId}_processed_count", 0);
+                $validationFailures = Cache::get("import_{$this->importId}_validation_failures", []);
+                
+                $message = "Employee import finished! Processed: {$processedCount} employees";
+                if (count($errors) > 0) {
+                    $message .= ", Errors: " . count($errors);
+                }
+                if (count($validationFailures) > 0) {
+                    $message .= ", Validation failures: " . count($validationFailures);
+                }
+                
+                $user = User::find($this->userId);
+                if ($user) {
+                    $user->notify(new ImportedCompletedNotification($message));
+                }
+                
+                // Clean up cache after notification (optional - cache will expire anyway)
+                Cache::forget("import_{$this->importId}_errors");
+                Cache::forget("import_{$this->importId}_validation_failures");
+                Cache::forget("import_{$this->importId}_processed_staff_ids");
+                Cache::forget("import_{$this->importId}_seen_staff_ids");
+                Cache::forget("import_{$this->importId}_processed_count");
+                Cache::forget("import_{$this->importId}_first_row_snapshot");
+            },
+        ];
+    }
+
 }

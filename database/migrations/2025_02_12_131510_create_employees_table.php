@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable();
-            $table->unsignedBigInteger('department_position_id')->nullable();
             $table->string('subsidiary', 10)->index();
             $table->string('staff_id', 50)->index();
             $table->unique(['staff_id','subsidiary']);
@@ -58,7 +57,6 @@ return new class extends Migration
             $table->string('updated_by', 100)->nullable();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('department_position_id')->references('id')->on('department_positions')->onDelete('cascade');
         });
     }
 

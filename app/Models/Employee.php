@@ -10,6 +10,7 @@ use App\Models\GrantPosition;
 use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
 use App\Models\EmployeeGrantAllocation;
+use App\Models\EmployeeLanguage;
 
 /**
  * @OA\Schema(
@@ -66,7 +67,6 @@ class Employee extends Model
     use HasFactory;
     protected $fillable = [
         'user_id',
-        'department_position_id',
         'subsidiary',
         'staff_id',
         'initial_en',
@@ -108,15 +108,7 @@ class Employee extends Model
         'updated_by'
     ];
 
-    /**
-     * Get the route key name for the model.
-     *
-     * @return string
-     */
-    public function getRouteKeyName()
-    {
-        return 'staff_id';
-    }
+   
 
     /**
      * Get the user associated with the employee
@@ -126,13 +118,7 @@ class Employee extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the department position associated with the employee
-     */
-    public function departmentPosition()
-    {
-        return $this->belongsTo(DepartmentPosition::class);
-    }
+
 
     /**
      * Get the employment record associated with the employee
@@ -172,6 +158,10 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeGrantAllocation::class, 'employee_id');
     }
-
+    
+    public function employeeLanguages()
+    {
+        return $this->hasMany(EmployeeLanguage::class);
+    }
 
 }

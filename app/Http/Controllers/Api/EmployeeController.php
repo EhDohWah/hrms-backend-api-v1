@@ -27,7 +27,10 @@ use App\Models\EmployeeIdentification;
 use App\Imports\DevEmployeesImport;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
-
+use App\Models\EmployeeLanguage;
+use App\Http\Requests\UpdateEmployeePersonalRequest;
+use App\Http\Requests\UpdateEmployeeBasicRequest;
+  
 /**
  * @OA\Tag(
  *     name="Employees",
@@ -268,12 +271,10 @@ class EmployeeController extends Controller
     public function uploadEmployeeData(UploadEmployeeImportRequest $request)
     {
         $file = $request->file('file');
-
-            // Generate a unique import ID (for tracking/debugging)
         $importId = uniqid('import_', true);
-        // or $importId = Str::uuid(); // (needs: use Illuminate\Support\Str;)
+        $userId = auth()->id();
 
-        $import = new EmployeesImport($importId);
+        $import = new \App\Imports\EmployeesImport($importId, $userId);
 
         Excel::queueImport($import, $file); // for production
 
@@ -1359,12 +1360,12 @@ class EmployeeController extends Controller
 
     /**
      * @OA\Put(
-     *     path="/employees/{id}/basic-information",
+     *     path="/employees/{employee}/basic-information",
      *     summary="Update employee basic information",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
-     *         name="id",
+     *         name="employee",
      *         in="path",
      *         required=true,
      *         description="Employee ID",
@@ -1410,20 +1411,164 @@ class EmployeeController extends Controller
      *     )
      * )
      */
-    public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request)
+    public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request, Employee $employee)
     {
-        // validate the request
-        $validated = $request->validated();
+        \Log::info('Employee injected by route model binding', ['employee' => $employee]);
+        
+        try {
+            // validate the request
+            $validated = $request->validated();
 
-        // update the employee
-        $employee = Employee::find($request->id);
-        $employee->update($validated);
+            // update the employee
+            $employee->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee basic information updated successfully',
-            'data' => $employee
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee basic information updated successfully',
+                'data' => $employee
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error updating employee basic information', [
+                'employee_id' => $employee->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee basic information',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
+
+    /**
+     * @OA\Put(
+     *     path="/employees/{employee}/personal-information",
+     *     summary="Update employee personal information",
+     *     description="Update the personal information of an employee, including identification and languages.",
+     *     operationId="updateEmployeePersonalInformation",
+     *     tags={"Employees"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="employee",
+     *         in="path",
+     *         required=true,
+     *         description="ID of the employee",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"employee_id", "mobile_phone", "nationality", "religion", "marital_status", "current_address", "permanent_address", "employee_identification"},
+     *             @OA\Property(property="employee_id", type="integer", example=1),
+     *             @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *             @OA\Property(property="mobile_phone", type="string", example="0812345678"),
+     *             @OA\Property(property="nationality", type="string", example="Thai"),
+     *             @OA\Property(property="social_security_number", type="string", example="1234567890"),
+     *             @OA\Property(property="tax_number", type="string", example="0987654321"),
+     *             @OA\Property(property="religion", type="string", example="Buddhism"),
+     *             @OA\Property(property="marital_status", type="string", example="Single"),
+     *             @OA\Property(
+     *                 property="languages",
+     *                 type="array",
+     *                 @OA\Items(type="string", example="English")
+     *             ),
+     *             @OA\Property(property="current_address", type="string", example="123 Main St"),
+     *             @OA\Property(property="permanent_address", type="string", example="456 Home St"),
+     *             @OA\Property(
+     *                 property="employee_identification",
+     *                 type="object",
+     *                 required={"id_type", "document_number"},
+     *                 @OA\Property(property="id_type", type="string", example="Passport"),
+     *                 @OA\Property(property="document_number", type="string", example="A12345678")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employee personal information updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee personal information updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 ref="#/components/schemas/Employee"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found"
+     *     )
+     * )
+     */
+    public function updateEmployeePersonalInformation(UpdateEmployeePersonalRequest $request, Employee $employee)
+    {
+        \Log::info('Employee injected by route model binding', ['employee' => $employee]);
+
+        \DB::beginTransaction();
+
+        try {
+            // Get only main Employee table fields (filter out relations)
+            $validated = $request->safe()->except(['employee_identification', 'languages']);
+
+            // Update Employee main table
+            $employee->update($validated);
+
+            // --------- Update Employee Identification (One-to-One) ---------
+            if ($request->has('employee_identification')) {
+                $identData = $request->input('employee_identification');
+                if ($employee->employeeIdentification) {
+                    $employee->employeeIdentification()->update($identData);
+                } else {
+                    $employee->employeeIdentification()->create($identData);
+                }
+            }
+
+            // --------- Update Employee Languages (Many) ---------
+            if ($request->has('languages')) {
+                $languages = $request->input('languages');
+                // Remove existing language records for this employee
+                $employee->employeeLanguages()->delete();
+
+                // Insert new language records
+                foreach ($languages as $lang) {
+                    $employee->employeeLanguages()->create([
+                        'language' => is_array($lang) ? ($lang['language'] ?? '') : $lang,
+                        'proficiency_level' => is_array($lang) ? ($lang['proficiency_level'] ?? null) : null,
+                        'created_by' => auth()->id() ?? 'system'
+                    ]);
+                }
+            }
+
+            \DB::commit();
+
+            // Reload employee with relations if needed for API response
+            $employee->load('employeeIdentification', 'employeeLanguages');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee personal information updated successfully',
+                'data' => $employee
+            ]);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error updating employee personal information', [
+                'employee_id' => $employee->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee personal information',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

@@ -3259,16 +3259,16 @@
                 ]
             }
         },
-        "/employees/{id}/basic-information": {
+        "/employees/{employee}/basic-information": {
             "put": {
                 "tags": [
                     "Employees"
                 ],
                 "summary": "Update employee basic information",
-                "operationId": "b87d93abef76fcf28605bdfa1dfa0332",
+                "operationId": "813e0c466f75c760cf2887530f25bd15",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": "employee",
                         "in": "path",
                         "description": "Employee ID",
                         "required": true,
@@ -3387,6 +3387,149 @@
                 "security": [
                     {
                         "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employees/{employee}/personal-information": {
+            "put": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Update employee personal information",
+                "description": "Update the personal information of an employee, including identification and languages.",
+                "operationId": "updateEmployeePersonalInformation",
+                "parameters": [
+                    {
+                        "name": "employee",
+                        "in": "path",
+                        "description": "ID of the employee",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "employee_id",
+                                    "mobile_phone",
+                                    "nationality",
+                                    "religion",
+                                    "marital_status",
+                                    "current_address",
+                                    "permanent_address",
+                                    "employee_identification"
+                                ],
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "staff_id": {
+                                        "type": "string",
+                                        "example": "EMP001"
+                                    },
+                                    "mobile_phone": {
+                                        "type": "string",
+                                        "example": "0812345678"
+                                    },
+                                    "nationality": {
+                                        "type": "string",
+                                        "example": "Thai"
+                                    },
+                                    "social_security_number": {
+                                        "type": "string",
+                                        "example": "1234567890"
+                                    },
+                                    "tax_number": {
+                                        "type": "string",
+                                        "example": "0987654321"
+                                    },
+                                    "religion": {
+                                        "type": "string",
+                                        "example": "Buddhism"
+                                    },
+                                    "marital_status": {
+                                        "type": "string",
+                                        "example": "Single"
+                                    },
+                                    "languages": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "example": "English"
+                                        }
+                                    },
+                                    "current_address": {
+                                        "type": "string",
+                                        "example": "123 Main St"
+                                    },
+                                    "permanent_address": {
+                                        "type": "string",
+                                        "example": "456 Home St"
+                                    },
+                                    "employee_identification": {
+                                        "required": [
+                                            "id_type",
+                                            "document_number"
+                                        ],
+                                        "properties": {
+                                            "id_type": {
+                                                "type": "string",
+                                                "example": "Passport"
+                                            },
+                                            "document_number": {
+                                                "type": "string",
+                                                "example": "A12345678"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employee personal information updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Employee personal information updated successfully"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Employee"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Employee not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
                     }
                 ]
             }
@@ -5381,10 +5524,6 @@
                                                                 "type": "integer",
                                                                 "example": 1
                                                             },
-                                                            "bg_line": {
-                                                                "type": "string",
-                                                                "example": "BL-123"
-                                                            },
                                                             "grant_position": {
                                                                 "type": "string",
                                                                 "example": "Project Manager"
@@ -5615,10 +5754,6 @@
                                                                 "grant_id": {
                                                                     "type": "integer",
                                                                     "example": 1
-                                                                },
-                                                                "bg_line": {
-                                                                    "type": "string",
-                                                                    "example": "BL-123"
                                                                 },
                                                                 "grant_position": {
                                                                     "type": "string",
@@ -5864,10 +5999,6 @@
                                                         "type": "string",
                                                         "example": "Health Initiative Grant"
                                                     },
-                                                    "bg_line": {
-                                                        "type": "string",
-                                                        "example": "BL-123"
-                                                    },
                                                     "grant_position": {
                                                         "type": "string",
                                                         "example": "Project Manager"
@@ -5954,19 +6085,13 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "grant_id",
-                                    "bg_line"
+                                    "grant_id"
                                 ],
                                 "properties": {
                                     "grant_id": {
                                         "description": "ID of the existing grant",
                                         "type": "integer",
                                         "example": 1
-                                    },
-                                    "bg_line": {
-                                        "description": "Budget line identifier",
-                                        "type": "string",
-                                        "example": "BL-123"
                                     },
                                     "grant_position": {
                                         "description": "Position title",
@@ -6025,10 +6150,6 @@
                                         },
                                         "errors": {
                                             "type": "object"
-                                        },
-                                        "error": {
-                                            "type": "string",
-                                            "example": "Duplicate item with this BG Line already exists for this grant"
                                         }
                                     },
                                     "type": "object"
@@ -6142,10 +6263,6 @@
                                                         }
                                                     },
                                                     "type": "object"
-                                                },
-                                                "bg_line": {
-                                                    "type": "string",
-                                                    "example": "BL-123"
                                                 },
                                                 "grant_position": {
                                                     "type": "string",
@@ -6350,10 +6467,6 @@
                                     "grant_id": {
                                         "type": "integer",
                                         "example": 1
-                                    },
-                                    "bg_line": {
-                                        "type": "string",
-                                        "example": "BG-123"
                                     },
                                     "grant_position": {
                                         "type": "string",
@@ -6719,10 +6832,6 @@
                                                                 "position": {
                                                                     "type": "string",
                                                                     "example": "Researcher"
-                                                                },
-                                                                "budget_line": {
-                                                                    "type": "string",
-                                                                    "example": "BL-123"
                                                                 },
                                                                 "manpower": {
                                                                     "type": "integer",
@@ -13802,19 +13911,28 @@
             "EmployeeGrantAllocation": {
                 "required": [
                     "employee_id",
-                    "grant_items_id",
+                    "grant_item_id",
+                    "employment_id",
+                    "bg_line",
                     "level_of_effort",
-                    "start_date",
-                    "active"
+                    "start_date"
                 ],
                 "properties": {
                     "employee_id": {
                         "type": "integer",
                         "example": 1
                     },
-                    "grant_items_id": {
+                    "grant_item_id": {
                         "type": "integer",
                         "example": 1
+                    },
+                    "employment_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "bg_line": {
+                        "type": "string",
+                        "example": "1"
                     },
                     "level_of_effort": {
                         "type": "number",
@@ -13830,10 +13948,6 @@
                         "type": "string",
                         "format": "date",
                         "example": "2024-12-31"
-                    },
-                    "active": {
-                        "type": "boolean",
-                        "example": true
                     },
                     "created_by": {
                         "type": "string",
@@ -13938,7 +14052,6 @@
                     "employee_id",
                     "employment_type",
                     "start_date",
-                    "department_position_id",
                     "work_location_id",
                     "position_salary"
                 ],
@@ -13964,9 +14077,8 @@
                         "format": "date",
                         "nullable": true
                     },
-                    "end_date": {
+                    "pay_method": {
                         "type": "string",
-                        "format": "date",
                         "nullable": true
                     },
                     "department_position_id": {
@@ -13986,11 +14098,6 @@
                     "probation_salary": {
                         "type": "number",
                         "format": "float",
-                        "nullable": true
-                    },
-                    "supervisor_id": {
-                        "type": "integer",
-                        "format": "int64",
                         "nullable": true
                     },
                     "employee_tax": {
@@ -14018,10 +14125,6 @@
                     "saving_fund": {
                         "type": "boolean",
                         "default": false
-                    },
-                    "social_security_id": {
-                        "type": "string",
-                        "nullable": true
                     },
                     "created_by": {
                         "type": "string",
@@ -14235,11 +14338,6 @@
                     "grant_id": {
                         "type": "integer",
                         "example": 1
-                    },
-                    "bg_line": {
-                        "type": "string",
-                        "example": "BL-123",
-                        "nullable": true
                     },
                     "grant_position": {
                         "type": "string",

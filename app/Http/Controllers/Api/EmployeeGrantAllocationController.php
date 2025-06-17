@@ -122,10 +122,10 @@ class EmployeeGrantAllocationController extends Controller
             $validated = $request->validated();
 
             // Get the grant item to check its position number
-            $grantItem = GrantItem::findOrFail($validated['grant_items_id']);
+            $grantItem = GrantItem::findOrFail($validated['grant_item_id']);
 
             // Count existing allocations for this grant
-            $existingAllocationsCount = EmployeeGrantAllocation::where('grant_items_id', $validated['grant_items_id'])
+            $existingAllocationsCount = EmployeeGrantAllocation::where('grant_item_id', $validated['grant_item_id'])
                 ->where('active', true)
                 ->count();
 
@@ -220,7 +220,7 @@ class EmployeeGrantAllocationController extends Controller
             $grantDetails = $grantItem->grant;
 
             // Get all employee allocations for this grant item
-            $employeeAllocations = EmployeeGrantAllocation::where('grant_items_id', $id)
+            $employeeAllocations = EmployeeGrantAllocation::where('grant_item_id', $id)
                 ->where('active', true)
                 ->with('employeeAllocation:id,staff_id,first_name_en,last_name_en')
                 ->get();

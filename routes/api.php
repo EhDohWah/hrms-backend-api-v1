@@ -34,6 +34,20 @@ use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
 
+// Notification routes
+// In routes/api.php
+Route::middleware('auth:sanctum')->get('/notifications', function (Request $request) {
+    return $request->user()->notifications()->take(20)->get();
+});
+
+// Mark all as read
+Route::middleware('auth:sanctum')->post('/notifications/mark-all-read', function (Request $request) {
+    $request->user()->unreadNotifications->markAsRead();
+    return response()->json(['success' => true]);
+});
+
+
+
 
 // Group routes that require authentication via Sanctum
 Route::middleware('auth:sanctum')->group(function () {
@@ -67,7 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/profile-picture', [EmployeeController::class, 'uploadProfilePicture'])->middleware('permission:employee.update');
         Route::delete('/delete-selected/{ids}', [EmployeeController::class, 'deleteSelectedEmployees'])->middleware('permission:employee.delete');
 
-        Route::put('/{id}/basic-information', [EmployeeController::class, 'updateEmployeeBasicInformation'])->middleware('permission:employee.update');
+        Route::put('/{employee}/basic-information', [EmployeeController::class, 'updateEmployeeBasicInformation'])->where('employee', '[0-9]+')->middleware('permission:employee.update');
+        Route::put('/{employee}/personal-information', [EmployeeController::class, 'updateEmployeePersonalInformation'])->where('employee', '[0-9]+')->middleware('permission:employee.update');
     });
 
     // Employee grant allocation routes

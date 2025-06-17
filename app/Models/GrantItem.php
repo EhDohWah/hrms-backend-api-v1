@@ -15,7 +15,6 @@ use OpenApi\Annotations as OA;
  *     title="Grant Item",
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="grant_id", type="integer", example=1),
- *     @OA\Property(property="bg_line", type="string", example="BL-123", nullable=true),
  *     @OA\Property(property="grant_position", type="string", example="Project Manager", nullable=true),
  *     @OA\Property(property="grant_salary", type="number", format="float", example=75000, nullable=true),
  *     @OA\Property(property="grant_benefit", type="number", format="float", example=15000, nullable=true),
@@ -38,7 +37,6 @@ class GrantItem extends Model
 
     protected $fillable = [
         'grant_id',
-        'bg_line',
         'grant_position',
         'grant_salary',
         'grant_benefit',
@@ -66,6 +64,8 @@ class GrantItem extends Model
 
     public function employeeGrantAllocations()
     {
-        return $this->hasMany(EmployeeGrantAllocation::class, 'grant_items_id');
+        return $this->hasMany(EmployeeGrantAllocation::class, 'grant_item_id');
     }
+
+ 
 }

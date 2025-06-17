@@ -61,7 +61,6 @@ class GrantController extends Controller
      *                     @OA\Items(
      *                         @OA\Property(property="id", type="integer", example=1),
      *                         @OA\Property(property="grant_id", type="integer", example=1),
-     *                         @OA\Property(property="bg_line", type="string", example="BL-123"),
      *                         @OA\Property(property="grant_position", type="string", example="Project Manager"),
      *                         @OA\Property(property="grant_salary", type="number", format="float", example=75000),
      *                         @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
@@ -100,7 +99,7 @@ class GrantController extends Controller
         try {
             $grant = Grant::with([
                 'grantItems' => function($query) {
-                    $query->select('id', 'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
+                    $query->select('id', 'grant_id', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
                 }
             ])
             ->where('code', $code)
@@ -274,7 +273,6 @@ class GrantController extends Controller
      *                         @OA\Items(
      *                             @OA\Property(property="id", type="integer", example=1),
      *                             @OA\Property(property="grant_id", type="integer", example=1),
-     *                             @OA\Property(property="bg_line", type="string", example="BL-123"),
      *                             @OA\Property(property="grant_position", type="string", example="Project Manager"),
      *                             @OA\Property(property="grant_salary", type="number", format="float", example=75000),
      *                             @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
@@ -309,12 +307,11 @@ class GrantController extends Controller
     {
         $grants = Grant::with([
                 'grantItems' => function($query) {
-                    $query->select('id', 'grant_id', 'bg_line', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
-                    // No need for position relationship now
+                    $query->select('id', 'grant_id', 'grant_position', 'grant_salary', 'grant_benefit', 'grant_level_of_effort', 'grant_position_number');
                 }
             ])
-            ->orderBy('created_at', 'desc') // Order by created_at in descending order to show latest grants first
-            ->get(['id', 'code', 'name', 'subsidiary', 'description', 'end_date']); // Select only necessary columns from the Grant table
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'code', 'name', 'subsidiary', 'description', 'end_date']);
 
         return response()->json([
             'success' => true,
@@ -347,7 +344,6 @@ class GrantController extends Controller
      *                     @OA\Property(property="grant_id", type="integer", example=1),
      *                     @OA\Property(property="grant_code", type="string", example="GR-2023-001"),
      *                     @OA\Property(property="grant_name", type="string", example="Health Initiative Grant"),
-     *                     @OA\Property(property="bg_line", type="string", example="BL-123"),
      *                     @OA\Property(property="grant_position", type="string", example="Project Manager"),
      *                     @OA\Property(property="grant_salary", type="number", format="float", example=75000),
      *                     @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
@@ -389,8 +385,7 @@ class GrantController extends Controller
                     'id' => $item->id,
                     'grant_id' => $item->grant_id,
                     'grant_code' => $item->grant->code,
-                    'grant_name' => $item->grant->name,
-                    'bg_line' => $item->bg_line,
+                    'grant_name' => $item->grant->name, 
                     'grant_position' => $item->grant_position,
                     'grant_salary' => $item->grant_salary,
                     'grant_benefit' => $item->grant_benefit,
@@ -448,8 +443,7 @@ class GrantController extends Controller
      *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
      *                     @OA\Property(property="description", type="string", example="Grant for health initiatives"),
      *                     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31")
-     *                 ),
-     *                 @OA\Property(property="bg_line", type="string", example="BL-123"),
+     *                 ), 
      *                 @OA\Property(property="grant_position", type="string", example="Project Manager"),
      *                 @OA\Property(property="grant_salary", type="number", format="float", example=75000),
      *                 @OA\Property(property="grant_benefit", type="number", format="float", example=15000),
@@ -571,20 +565,12 @@ class GrantController extends Controller
 
             for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
                 $row = $data[$i];
-                $bgLine = $row['A'] ?? null;
+
+                // Use column B as the first required field (grant_position) instead of bg_line
+                $grantPosition = $row['B'] ?? null;
 
                 // Skip empty rows or non-data rows
-                if (empty($bgLine)) {
-                    continue;
-                }
-
-                // Check for duplicates
-                $existingItem = GrantItem::where('grant_id', $grant->id)
-                    ->where('bg_line', $bgLine)
-                    ->exists();
-
-                if ($existingItem) {
-                    $errors[] = "Sheet '$sheetName': Duplicate item (BG Line: $bgLine) skipped";
+                if (empty($grantPosition)) {
                     continue;
                 }
 
@@ -592,7 +578,6 @@ class GrantController extends Controller
                 // Handle empty cells by explicitly setting them to null
                 $grantItems[] = [
                     'grant_id' => $grant->id,
-                    'bg_line' => $bgLine,
                     'grant_position' => isset($row['B']) && $row['B'] !== '' ? $row['B'] : null,
                     'grant_salary' => isset($row['C']) && $row['C'] !== '' ? $this->toFloat($row['C']) : null,
                     'grant_benefit' => isset($row['D']) && $row['D'] !== '' ? $this->toFloat($row['D']) : null,
@@ -751,9 +736,8 @@ class GrantController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"grant_id", "bg_line"},
+     *             required={"grant_id"},
      *             @OA\Property(property="grant_id", type="integer", example=1, description="ID of the existing grant"),
-     *             @OA\Property(property="bg_line", type="string", example="BL-123", description="Budget line identifier"),
      *             @OA\Property(property="grant_position", type="string", example="Project Manager", description="Position title"),
      *             @OA\Property(property="grant_salary", type="number", format="float", example=75000, description="Salary amount"),
      *             @OA\Property(property="grant_benefit", type="number", format="float", example=15000, description="Benefits amount"),
@@ -771,8 +755,7 @@ class GrantController extends Controller
      *         description="Validation error or duplicate item",
      *         @OA\JsonContent(
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object"),
-     *             @OA\Property(property="error", type="string", example="Duplicate item with this BG Line already exists for this grant")
+     *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
      *     @OA\Response(
@@ -798,25 +781,12 @@ class GrantController extends Controller
         // validate the request
         $request->validate([
             'grant_id'               => 'required|exists:grants,id',
-            'bg_line'                => 'required|string|max:50',
             'grant_position'         => 'nullable|string|max:255',
             'grant_salary'           => 'nullable|numeric|min:0',
             'grant_benefit'          => 'nullable|numeric|min:0',
             'grant_level_of_effort'  => 'nullable|numeric|between:0,1',
             'grant_position_number'  => 'nullable|integer|min:0',
         ]);
-
-        // Check for duplicates
-        $existingItem = GrantItem::where('grant_id', $request->grant_id)
-            ->where('bg_line', $request->bg_line)
-            ->exists();
-
-        if ($existingItem) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Duplicate item with this BG Line already exists for this grant'
-            ], 422);
-        }
 
         // Add user info
         $data = $request->all();
@@ -849,7 +819,6 @@ class GrantController extends Controller
      *         required=true,
      *         @OA\JsonContent(
      *             @OA\Property(property="grant_id", type="integer", example=1),
-     *             @OA\Property(property="bg_line", type="string", example="BG-123"),
      *             @OA\Property(property="grant_position", type="string", example="Project Manager"),
      *             @OA\Property(property="grant_salary", type="number", example=5000),
      *             @OA\Property(property="grant_benefit", type="number", example=1000),
@@ -891,33 +860,12 @@ class GrantController extends Controller
         // Validate the request
         $validated = $request->validate([
             'grant_id' => 'sometimes|required|exists:grants,id',
-            'bg_line' => 'sometimes|required|string',
             'grant_position' => 'nullable|string',
             'grant_salary' => 'nullable|numeric',
             'grant_benefit' => 'nullable|numeric',
             'grant_level_of_effort' => 'nullable|numeric|min:0|max:100',
             'grant_position_number' => 'nullable|string',
         ]);
-
-        // Check for duplicates if bg_line or grant_id is being changed
-        if (($request->has('bg_line') && $request->bg_line !== $grantItem->bg_line) ||
-            ($request->has('grant_id') && $request->grant_id !== $grantItem->grant_id)) {
-
-            $existingItem = GrantItem::where('grant_id', $request->grant_id ?? $grantItem->grant_id)
-                ->where('bg_line', $request->bg_line ?? $grantItem->bg_line)
-                ->where('id', '!=', $id)
-                ->exists();
-
-            if ($existingItem) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'The given data was invalid',
-                    'errors' => [
-                        'bg_line' => ['Duplicate item with this BG Line already exists for this grant']
-                    ]
-                ], 422);
-            }
-        }
 
         // Add user info
         $validated['updated_by'] = auth()->user()->name ?? 'system';
@@ -1194,11 +1142,102 @@ class GrantController extends Controller
         }
     }
 
-    /**
-     *
-     * Grant Position Section
-     *
-     */
+    
+    // /**
+    //  * @OA\Post(
+    //  *     path="/grants/position-slot/{grantItemId}/{budgetLine}",
+    //  *     operationId="createGrantPositionSlot",
+    //  *     summary="Create grant position slots for a grant item and budget line",
+    //  *     description="Creates position slots for a given grant item and budget line. The number of slots is determined by the grant_position_number of the grant item. The budgetLine can be a string or numeric value.",
+    //  *     tags={"Grants"},
+    //  *     security={{"bearerAuth":{}}},
+    //  *     @OA\Parameter(
+    //  *         name="grantItemId",
+    //  *         in="path",
+    //  *         required=true,
+    //  *         description="ID of the GrantItem",
+    //  *         @OA\Schema(type="integer")
+    //  *     ),
+    //  *     @OA\Parameter(
+    //  *         name="budgetLine",
+    //  *         in="path",
+    //  *         required=true,
+    //  *         description="Budget line identifier (can be string or numeric)",
+    //  *         @OA\Schema(type="string")
+    //  *     ),
+    //  *     @OA\Response(
+    //  *         response=201,
+    //  *         description="Grant position slots created successfully",
+    //  *         @OA\JsonContent(
+    //  *             @OA\Property(property="success", type="boolean", example=true),
+    //  *             @OA\Property(property="message", type="string", example="Grant position slots created successfully")
+    //  *         )
+    //  *     ),
+    //  *     @OA\Response(
+    //  *         response=404,
+    //  *         description="GrantItem not found"
+    //  *     ),
+    //  *     @OA\Response(
+    //  *         response=400,
+    //  *         description="Invalid input"
+    //  *     ),
+    //  *     @OA\Response(
+    //  *         response=500,
+    //  *         description="Server error"
+    //  *     )
+    //  * )
+    //  */
+    // public function createGrantPositionSlot(Request $request, $grantItemId, $budgetLine)
+    // {
+    //     // Validate grantItemId
+    //     if (!is_numeric($grantItemId)) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Invalid GrantItem ID'
+    //         ], 400);
+    //     }
+
+    //     $grantItem = GrantItem::find($grantItemId);
+
+    //     if (!$grantItem) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'GrantItem not found'
+    //         ], 404);
+    //     }
+
+    //     // grant_position_number must be present and >= 1
+    //     $numSlots = (int) $grantItem->grant_position_number;
+    //     if ($numSlots < 1) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'GrantItem grant_position_number must be at least 1'
+    //         ], 400);
+    //     }
+
+    //     try {
+    //         DB::transaction(function () use ($grantItem, $budgetLine, $numSlots) {
+    //             for ($i = 1; $i <= $numSlots; $i++) {
+    //                 GrantPositionSlot::create([
+    //                     'grant_item_id' => $grantItem->id,
+    //                     'slot_number' => $i,
+    //                     'created_by' => auth()->user()->name ?? 'system',
+    //                     // 'bg_line' => $budgetLine, // bg_line removed
+    //                 ]);
+    //             }
+    //         });
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Grant position slots created successfully'
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to create grant position slots: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     /**
      * @OA\Get(
@@ -1226,7 +1265,6 @@ class GrantController extends Controller
      *                         type="array",
      *                         @OA\Items(
      *                             @OA\Property(property="position", type="string", example="Researcher"),
-     *                             @OA\Property(property="budget_line", type="string", example="BL-123"),
      *                             @OA\Property(property="manpower", type="integer", example=3),
      *                             @OA\Property(property="recruited", type="integer", example=2),
      *                             @OA\Property(property="finding", type="integer", example=1)
@@ -1261,10 +1299,11 @@ class GrantController extends Controller
      */
     public function getGrantPositions(Request $request)
     {
-
         try {
             // Eager-load grantItems to minimize queries
-            $grants = Grant::with('grantItems.employeeGrantAllocations')->orderBy('created_at', 'desc')->get();
+            $grants = Grant::with([
+                'grantItems.employeeGrantAllocations'
+            ])->orderBy('created_at', 'desc')->get();
 
             // If no grants exist, return an empty result
             if ($grants->isEmpty()) {
@@ -1278,20 +1317,16 @@ class GrantController extends Controller
             $grantStats = [];
 
             foreach ($grants as $grant) {
-                $totalPositions      = 0;  // Sum of all position_number across this grant
-                $recruitedPositions  = 0;  // Sum of all currently hired employees
-                $openPositions       = 0;  // Positions still open = totalPositions - recruitedPositions
-                $grantPositions      = []; // Detailed breakdown of each position
+                $totalPositions      = 0;
+                $recruitedPositions  = 0;
+                $openPositions       = 0;
+                $grantPositions      = [];
 
-                // Loop through each grant item to build statistics
                 foreach ($grant->grantItems as $item) {
-                    // position_number is how many people can fill this role
-                    // grant_position (or position_title) is the name of the role
                     $positionTitle = $item->grant_position;
-                    $manpower      = $item->grant_position_number ?? 0; // Adjust based on your column name
-                    $budgetLine    = $item->bg_line; // Get budget line for each grant item
+                    $manpower      = (int)($item->grant_position_number ?? 0);
 
-                    // Count how many active allocations are linked to this grant item
+                    // Count active allocations for this grant item
                     $activeAllocations = $item->employeeGrantAllocations()
                         ->where('active', true)
                         ->where(function ($query) {
@@ -1300,23 +1335,19 @@ class GrantController extends Controller
                         })
                         ->count();
 
-                    // Update aggregates
                     $totalPositions     += $manpower;
                     $recruitedPositions += $activeAllocations;
                     $openPositions      += ($manpower - $activeAllocations);
 
-                    // Add this position's breakdown
                     $grantPositions[] = [
                         'id'          => $item->id,
                         'position'    => $positionTitle,
-                        'budget_line' => $budgetLine,
                         'manpower'    => $manpower,
                         'recruited'   => $activeAllocations,
                         'finding'     => $manpower - $activeAllocations,
                     ];
                 }
 
-                // Determine overall grant status
                 $status = 'Active';
                 if ($grant->end_date && $grant->end_date < now()) {
                     $status = 'Completed';
@@ -1326,7 +1357,6 @@ class GrantController extends Controller
                     $status = 'Pending';
                 }
 
-                // Build the grant statistics array
                 $grantStats[] = [
                     'grant_id'         => $grant->id,
                     'grant_code'       => $grant->code,

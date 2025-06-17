@@ -23,11 +23,15 @@ class EmployeeGrantAllocationRequest extends FormRequest
     {
         return [
             'employee_id' => 'required|exists:employees,id',
-            'grant_items_id' => 'required|exists:grant_items,id',
+            'grant_item_id' => 'required|exists:grant_items,id',
+            'bg_line' => 'nullable|string',
             'level_of_effort' => 'required|numeric|min:0|max:100',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'active' => 'boolean'
+            'active' => 'boolean',
+            'employment_id' => 'nullable|exists:employments,id',
+            'created_by' => 'nullable|string',
+            'updated_by' => 'nullable|string'
         ];
     }
 }

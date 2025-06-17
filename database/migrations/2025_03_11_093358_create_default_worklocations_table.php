@@ -15,23 +15,7 @@ return new class extends Migration
         // Insert default work locations
         DB::table('work_locations')->insert([
             [
-                'name' => 'MKT',
-                'type' => 'Site',
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'Migration',
-                'updated_by' => 'Migration'
-            ],
-            [
-                'name' => 'WPA',
-                'type' => 'Site',
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'Migration',
-                'updated_by' => 'Migration'
-            ],
-            [
-                'name' => 'MSL',
+                'name' => 'Expat',
                 'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -47,7 +31,7 @@ return new class extends Migration
                 'updated_by' => 'Migration'
             ],
             [
-                'name' => 'MRMTB',
+                'name' => 'WPA',
                 'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -55,7 +39,7 @@ return new class extends Migration
                 'updated_by' => 'Migration'
             ],
             [
-                'name' => 'KKTB',
+                'name' => 'KKH',
                 'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -63,24 +47,40 @@ return new class extends Migration
                 'updated_by' => 'Migration'
             ],
             [
-                'name' => 'Headquarters',
-                'type' => 'Office',
+                'name' => 'TB-MRM',
+                'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
                 'updated_by' => 'Migration'
             ],
             [
-                'name' => 'Field Office',
-                'type' => 'Office',
+                'name' => 'TB-KK',
+                'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
                 'updated_by' => 'Migration'
             ],
             [
-                'name' => 'Mobile Clinic',
-                'type' => 'Mobile',
+                'name' => 'MKT',
+                'type' => 'Site',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'created_by' => 'Migration',
+                'updated_by' => 'Migration'
+            ],
+            [
+                'name' => 'MSL',
+                'type' => 'Site',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'created_by' => 'Migration',
+                'updated_by' => 'Migration'
+            ],
+            [
+                'name' => 'Mutraw',
+                'type' => 'Site',
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
@@ -98,8 +98,8 @@ return new class extends Migration
         // Delete all default work locations created by this migration
         DB::table('work_locations')
             ->whereIn('name', [
-                'MKT', 'WPA', 'MSL', 'MRM', 'MRMTB', 'KKTB',
-                'Headquarters', 'Field Office', 'Mobile Clinic'
+                'Expat', 'MRM', 'WPA', 'KKH', 'TB-MRM', 'TB-KK',
+                'MKT', 'MSL', 'Mutraw'
             ])
             ->where('created_by', 'Migration')
             ->delete();

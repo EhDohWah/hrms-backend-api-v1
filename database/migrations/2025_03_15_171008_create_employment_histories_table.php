@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('employment_type'); // Required - type of employment
             $table->date('start_date'); // Required - when employment started
             $table->date('probation_end_date')->nullable(); // Optional - when probation ends
-            $table->date('end_date')->nullable(); // Optional - when employment ends (for contracts)
+            $table->string('pay_method')->nullable(); // Optional - pay method
             $table->unsignedBigInteger('department_position_id')->nullable(); // Required - department
             $table->unsignedBigInteger('work_location_id')->nullable(); // Required - work location
             $table->decimal('position_salary', 10, 2); // Required - regular salary

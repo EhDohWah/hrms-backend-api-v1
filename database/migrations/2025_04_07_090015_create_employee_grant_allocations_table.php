@@ -14,9 +14,12 @@ return new class extends Migration
         Schema::create('employee_grant_allocations', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('grant_items_id');
-            $table->decimal('level_of_effort', 5, 2);
-            $table->date('start_date');
+            // $table->unsignedBigInteger('grant_position_slot_id');
+            $table->unsignedBigInteger('grant_item_id');
+            $table->unsignedBigInteger('employment_id')->nullable();
+            $table->string('bg_line')->nullable();
+            $table->decimal('level_of_effort', 5, 2)->nullable();
+            $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
@@ -24,10 +27,12 @@ return new class extends Migration
             $table->string('updated_by')->nullable();
             // Foreign keys
             $table->foreign('employee_id')->references('id')->on('employees');
-            $table->foreign('grant_items_id')->references('id')->on('grant_items');
+            // $table->foreign('grant_position_slot_id')->references('id')->on('grant_position_slots');
+            $table->foreign('grant_item_id')->references('id')->on('grant_items');
+            $table->foreign('employment_id')->references('id')->on('employments');
 
-            // Add composite index for grant_items_id and active columns
-            $table->index(['grant_items_id', 'active'], 'alloc_item_active_idx');
+            // Add composite index for grant_position_slot_id and employment_id columns
+            $table->index(['grant_item_id', 'active'], 'alloc_item_active_idx'); 
         });
     }
 

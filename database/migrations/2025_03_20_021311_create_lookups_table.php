@@ -24,8 +24,8 @@ return new class extends Migration
         // Insert default lookup values
         DB::table('lookups')->insert([
             // Gender options
-            ['type' => 'gender', 'value' => 'Male', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'gender', 'value' => 'Female', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'gender', 'value' => 'M', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'gender', 'value' => 'F', 'created_at' => now(), 'updated_at' => now()],
 
             // Subsidiary options
             ['type' => 'subsidiary', 'value' => 'SMRU', 'created_at' => now(), 'updated_at' => now()],
@@ -43,34 +43,36 @@ return new class extends Migration
             ['type' => 'nationality', 'value' => 'French', 'created_at' => now(), 'updated_at' => now()],
 
             // Religion options
-            ['type' => 'religion', 'value' => 'Buddhism', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'religion', 'value' => 'Hinduism', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'religion', 'value' => 'Christianity', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'religion', 'value' => 'Buddhist', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'religion', 'value' => 'Hindu', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'religion', 'value' => 'Christian', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'religion', 'value' => 'Muslim', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'religion', 'value' => 'Other', 'created_at' => now(), 'updated_at' => now()],
 
             // Marital status options
             ['type' => 'marital_status', 'value' => 'Single', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'marital_status', 'value' => 'Married', 'created_at' => now(), 'updated_at' => now()],
 
             // Site options
-            ['type' => 'site', 'value' => 'MKT', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'WPA', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'MSL', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'Expat', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'site', 'value' => 'MRM', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'MRMTB', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'Headquarters', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'Field Office', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'site', 'value' => 'Mobile Clinic', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'WPA', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'KKH', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'TB-MRM', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'TB-KK', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'MKT', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'MSL', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'site', 'value' => 'Mutraw', 'created_at' => now(), 'updated_at' => now()],
 
             // User status options
             ['type' => 'user_status', 'value' => 'Active', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'user_status', 'value' => 'Inactive', 'created_at' => now(), 'updated_at' => now()],
 
             // Interview mode options
-            ['type' => 'interview_mode', 'value' => 'in-person', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'interview_mode', 'value' => 'virtual', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'interview_mode', 'value' => 'phone', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'interview_mode', 'value' => 'hybrid', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'interview_mode', 'value' => 'In-person', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'interview_mode', 'value' => 'Virtual', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'interview_mode', 'value' => 'Phone', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'interview_mode', 'value' => 'Hybrid', 'created_at' => now(), 'updated_at' => now()],
 
             // Interview status options
             ['type' => 'interview_status', 'value' => 'scheduled', 'created_at' => now(), 'updated_at' => now()],
@@ -82,12 +84,14 @@ return new class extends Migration
             ['type' => 'identification_types', 'value' => 'thai_id', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'identification_types', 'value' => '10years_id', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'identification_types', 'value' => 'other', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'Borderpass', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'CI', 'created_at' => now(), 'updated_at' => now()],
 
             // Employment type options
-            ['type' => 'employment_type', 'value' => 'full_time', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'part_time', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'contract', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'temporary', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employment_type', 'value' => 'Full-time', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employment_type', 'value' => 'Part-time', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employment_type', 'value' => 'Contract', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employment_type', 'value' => 'Temporary', 'created_at' => now(), 'updated_at' => now()],
 
             // Employee language options
             ['type' => 'employee_language', 'value' => 'English', 'created_at' => now(), 'updated_at' => now()],
@@ -102,16 +106,16 @@ return new class extends Migration
             ['type' => 'employee_education', 'value' => 'PhD', 'created_at' => now(), 'updated_at' => now()],
 
             // Employee Initial in English (Mr., Mrs., Ms., Dr., etc.)
-            ['type' => 'employee_initial_en', 'value' => 'Mr.', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_en', 'value' => 'Mrs.', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_en', 'value' => 'Ms.', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_en', 'value' => 'Dr.', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Mr', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Mrs', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Ms', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_en', 'value' => 'Dr', 'created_at' => now(), 'updated_at' => now()],
 
             // คำนำหน้านามพนักงาน (นาย, นาง, นางสาว, ดร. ฯลฯ)
             ['type' => 'employee_initial_th', 'value' => 'นาย',      'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_th', 'value' => 'นาง',      'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_th', 'value' => 'นางสาว',   'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employee_initial_th', 'value' => 'ดร.',      'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'นางสาว',      'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'นาง',   'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'employee_initial_th', 'value' => 'ดร',      'created_at' => now(), 'updated_at' => now()],
 
         ]);
     }
