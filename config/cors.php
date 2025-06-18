@@ -15,11 +15,26 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
+    'paths' => [
+        'api/*',
+        'login',
+        'logout',
+        'register',
+        'user',
+        'sanctum/csrf-cookie',
+        // Add more if you have custom endpoints
+    ],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // List all *specific* frontend origins here (no wildcard '*')
+    'allowed_origins' => [
+        'http://localhost:8080',                  // Local Vue dev
+        'http://127.0.0.1:8080',                  // Local fallback
+        'https://hrmsfe.netlify.app',             // Netlify production
+        // Add any preview branches if needed, eg:
+        // 'https://deploy-preview-123--hrmsfe.netlify.app'
+    ],
 
     'allowed_origins_patterns' => [],
 
@@ -29,8 +44,7 @@ return [
 
     'max_age' => 0,
 
+    // Essential for Sanctum, cookies, or any session auth
     'supports_credentials' => true,
-
-    'access-control-allow-credentials' => true,
 
 ];
