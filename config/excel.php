@@ -244,7 +244,7 @@ return [
         | Drivers: memory|illuminate|batch
         |
         */
-        'driver'      => 'memory',
+        'driver'      => 'batch',
 
         /*
         |--------------------------------------------------------------------------
@@ -257,7 +257,7 @@ return [
         |
         */
         'batch'       => [
-            'memory_limit' => 60000,
+            'memory_limit' => 20000,
         ],
 
         /*
@@ -375,6 +375,6 @@ return [
         | processed it.
         |
         */
-        'force_resync_remote' => null,
+        'force_resync_remote' => true,
     ],
 ];

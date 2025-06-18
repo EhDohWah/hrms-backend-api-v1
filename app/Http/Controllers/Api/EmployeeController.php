@@ -30,6 +30,7 @@ use App\Http\Requests\UpdateEmployeeRequest;
 use App\Models\EmployeeLanguage;
 use App\Http\Requests\UpdateEmployeePersonalRequest;
 use App\Http\Requests\UpdateEmployeeBasicRequest;
+use Illuminate\Support\Facades\Cache;
   
 /**
  * @OA\Tag(
@@ -276,34 +277,14 @@ class EmployeeController extends Controller
 
         $import = new \App\Imports\EmployeesImport($importId, $userId);
 
-        Excel::queueImport($import, $file); // for production
-
-        // if (app()->environment('production')) {
-        //     Excel::queueImport(new EmployeesImport, $file);
-
-        //     return response()->json([
-        //         'success' => true,
-        //         'message' => "Import queued; you'll get notified when it's done.",
-        //     ], 202);
-        // }
-
-        // ── Dev branch ────────────────────────────────────────────────────────
-        // $import = new DevEmployeesImport;
-        // Excel::import($import, $file);
-
-
-        // Now $import is defined, so you can safely gather debug info:
-        $processed = $import->getProcessedEmployees();
-        $errors    = $import->getErrors();
-        $fails     = $import->getValidationFailures();
-        $snapshot  = $import->getFirstRowSnapshot();
+        // Queue on dedicated import queue
+        Excel::queueImport($import, $file)->onQueue('import');
 
         return response()->json([
             'success' => true,
             'message' => "Your file is being imported. You'll be notified when it's done.",
             'import_id' => $importId
         ], 202);
-
     }
 
     /**
@@ -1570,5 +1551,23 @@ class EmployeeController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    // Add method to check import status
+    public function getImportStatus(string $importId)
+    {
+        $stats = Cache::get("import_{$importId}_stats");
+        
+        if (!$stats) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Import not found'
+            ], 404);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
     }
 }
