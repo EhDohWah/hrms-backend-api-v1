@@ -116,6 +116,9 @@ class EmployeesImport extends DefaultValueBinder implements
         // Normalize the row data
         $normalizedRow = $this->normalizeRowData($row);
         
+        // Log the normalized row
+        Log::info('Normalized row', ['row' => $normalizedRow]);
+
         // Validate the row
         if (!$this->validateRow($normalizedRow)) {
             return null;
@@ -153,15 +156,19 @@ class EmployeesImport extends DefaultValueBinder implements
             }
         }
 
-        // Map id_type text
+        // Map id_type text to match lookup values in the database
         $idTypeMap = [
-            '10 years ID' => '10YearsID',
-            'Burmese ID'  => 'BurmeseID',
-            'CI'          => 'CI',
-            'Borderpass'  => 'Borderpass',
-            'Thai ID'     => 'ThaiID',
-            'Passport'    => 'Passport',
-            'Other'       => 'Other',
+            'Certificate of Identity' => 'Certificate of Identity',
+            'Thai ID'                => 'Thai ID',
+            '10 years ID'            => '10 Years Card',
+            '10 Years Card'          => '10 Years Card',
+            'Passport'               => 'Passport',
+            'Burmese ID'             => 'Myanmar ID',
+            'Myanmar ID'             => 'Myanmar ID',
+            'CI'                     => 'Certificate of Identity',
+            'Borderpass'             => 'N/A',
+            'Other'                  => 'N/A',
+            'N/A'                    => 'N/A',
         ];
         
         if (!empty($row['id_type'])) {
@@ -441,7 +448,7 @@ class EmployeesImport extends DefaultValueBinder implements
 
     public function chunkSize(): int
     {
-        return 50; // Smaller chunks for better memory management
+        return 10; // Smaller chunks for better memory management
     }
 
     // Upsert configuration for handling duplicates

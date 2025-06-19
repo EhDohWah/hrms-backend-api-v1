@@ -37,10 +37,13 @@ return new class extends Migration
             ['type' => 'employee_status', 'value' => 'Local non ID Staff', 'created_at' => now(), 'updated_at' => now()],
 
             // Nationality options
-            ['type' => 'nationality', 'value' => 'Thai', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'American', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'Australian', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'nationality', 'value' => 'Burmese', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'nationality', 'value' => 'Karen', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'nationality', 'value' => 'French', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'N/A', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'Stateless', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'Taiwanese', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'nationality', 'value' => 'Thai', 'created_at' => now(), 'updated_at' => now()],
 
             // Religion options
             ['type' => 'religion', 'value' => 'Buddhist', 'created_at' => now(), 'updated_at' => now()],
@@ -80,12 +83,12 @@ return new class extends Migration
             ['type' => 'interview_status', 'value' => 'cancelled', 'created_at' => now(), 'updated_at' => now()],
 
             // Identification types options
-            ['type' => 'identification_types', 'value' => 'passport', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'identification_types', 'value' => 'thai_id', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'identification_types', 'value' => '10years_id', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'identification_types', 'value' => 'other', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'identification_types', 'value' => 'Borderpass', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'identification_types', 'value' => 'CI', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'Certificate of Identity', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'Thai ID', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => '10 Years Card', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'Passport', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'Myanmar ID', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'identification_types', 'value' => 'N/A', 'created_at' => now(), 'updated_at' => now()],
 
             // Employment type options
             ['type' => 'employment_type', 'value' => 'Full-time', 'created_at' => now(), 'updated_at' => now()],
