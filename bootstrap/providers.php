@@ -2,6 +2,7 @@
 
 return [
     App\Providers\AppServiceProvider::class,
-    Spatie\Permission\PermissionServiceProvider::class,
+    App\Providers\EventServiceProvider::class,
     Laravel\Sanctum\SanctumServiceProvider::class,
+    Spatie\Permission\PermissionServiceProvider::class,
 ];

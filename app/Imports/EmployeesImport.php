@@ -35,6 +35,8 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 use Illuminate\Support\Facades\Redis;
 use Maatwebsite\Excel\Events\ImportFailed;
+use App\Notifications\ImportFailedNotification;
+ 
 
 class EmployeesImport extends DefaultValueBinder implements
     ToModel,
@@ -468,19 +470,69 @@ class EmployeesImport extends DefaultValueBinder implements
     {
         return [
             ImportFailed::class  => function (ImportFailed $event) {
-                Log::error('Excel import failed', [
-                    'import_id' => $this->importId,
-                    'exception' => $event->getException()->getMessage(),
-                    'trace'     => $event->getException()->getTraceAsString(),
-                ]);
-                // Optionally notify user, update cache status, etc.
-                
+                $this->handleImportFailed();
             },
 
             AfterImport::class => function (AfterImport $event) {
                 $this->handleImportCompletion();
             },
         ];
+    }
+
+    /**
+     * Handle a job failure.
+     *
+     * @param  \Throwable  $exception
+     * @return void
+     */
+    public function failed(\Throwable $exception): void
+    {
+        // Log the error
+        Log::error('Import job failed', [
+            'import_id' => $this->importId ?? null,
+            'user_id' => $this->userId ?? null,
+            'exception' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+
+        // Send the failed notification
+        $user = \App\Models\User::find($this->userId ?? null);
+        if ($user) {
+            $user->notify(
+                new \App\Notifications\ImportFailedNotification(
+                    'Critical import failure (job failed): ' . $exception->getMessage(),
+                    $exception->getMessage(),
+                    $this->importId ?? null
+                )
+            );
+        }
+    }
+
+
+    protected function handleImportFailed(ImportFailed $event): void
+    {
+        $exception = $event->getException();
+        $errorMessage = 'Excel import failed';
+        $errorDetails = $exception->getMessage();
+        $trace = $exception->getTraceAsString();
+
+        $this->logError($errorMessage, [
+            'import_id' => $this->importId,
+            'exception' => $errorDetails,
+            'trace'     => $trace,
+        ]);
+
+        // Notify the user about the failure
+        $user = User::find($this->userId);
+        if ($user) {
+            $user->notify(
+                new \App\Notifications\ImportFailedNotification(
+                    $errorMessage,
+                    $errorDetails,
+                    $this->importId
+                )
+            );
+        }
     }
 
     protected function handleImportCompletion(): void
