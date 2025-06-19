@@ -34,6 +34,7 @@ use Maatwebsite\Excel\Events\AfterImport;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 use Illuminate\Support\Facades\Redis;
+use Maatwebsite\Excel\Events\ImportFailed;
 
 class EmployeesImport extends DefaultValueBinder implements
     ToModel,
@@ -179,7 +180,7 @@ class EmployeesImport extends DefaultValueBinder implements
             'first_name'    => 'required|string|max:255',
             'gender'        => 'required|string|in:M,F',
             'date_of_birth' => 'required|date',
-            'id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport', 'CI', 'Borderpass', 'BurmeseID', 'Other'])],
+            'id_type'       => 'nullable|string|max:50',
             // Add other validation rules as needed
         ]);
 
@@ -466,6 +467,16 @@ class EmployeesImport extends DefaultValueBinder implements
     public function registerEvents(): array
     {
         return [
+            ImportFailed::class  => function (ImportFailed $event) {
+                Log::error('Excel import failed', [
+                    'import_id' => $this->importId,
+                    'exception' => $event->getException()->getMessage(),
+                    'trace'     => $event->getException()->getTraceAsString(),
+                ]);
+                // Optionally notify user, update cache status, etc.
+                
+            },
+
             AfterImport::class => function (AfterImport $event) {
                 $this->handleImportCompletion();
             },
