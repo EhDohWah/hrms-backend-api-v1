@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Annotations as OA;
+use Illuminate\Support\Carbon; // Make sure to import Carbon
 
 /**
  * @OA\Schema(
@@ -34,6 +35,7 @@ use OpenApi\Annotations as OA;
 class Interview extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'candidate_name',
         'phone',
@@ -52,5 +54,33 @@ class Interview extends Model
         'updated_by'
     ];
 
+    // Mutator for interview_date (accepts ISO, SQL, etc.)
+    public function setInterviewDateAttribute($value)
+    {
+        if (empty($value)) {
+            $this->attributes['interview_date'] = null;
+        } else {
+            $this->attributes['interview_date'] = Carbon::parse($value)->format('Y-m-d');
+        }
+    }
 
+    // Mutator for start_time
+    public function setStartTimeAttribute($value)
+    {
+        if (empty($value)) {
+            $this->attributes['start_time'] = null;
+        } else {
+            $this->attributes['start_time'] = Carbon::parse($value)->format('H:i:s');
+        }
+    }
+
+    // Mutator for end_time
+    public function setEndTimeAttribute($value)
+    {
+        if (empty($value)) {
+            $this->attributes['end_time'] = null;
+        } else {
+            $this->attributes['end_time'] = Carbon::parse($value)->format('H:i:s');
+        }
+    }
 }
