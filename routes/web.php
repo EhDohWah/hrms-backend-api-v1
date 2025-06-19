@@ -7,6 +7,7 @@ use App\Events\MyTestEvent;
 Broadcast::routes(['middleware' => ['auth:api']]); // this is for web routes
 
 
+
 Route::get('/', function () {
     return view('welcome');
 });

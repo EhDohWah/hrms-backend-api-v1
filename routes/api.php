@@ -29,7 +29,9 @@ use App\Http\Controllers\Api\EmployeeEducationController;
 use App\Http\Controllers\Api\EmployeeLanguageController;
 use App\Http\Controllers\Api\PayrollGrantAllocationController;
 use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
+use Maatwebsite\Excel\Facades\Excel;
 
+Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);

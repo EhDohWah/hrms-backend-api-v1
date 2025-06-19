@@ -31,7 +31,8 @@ use App\Models\EmployeeLanguage;
 use App\Http\Requests\UpdateEmployeePersonalRequest;
 use App\Http\Requests\UpdateEmployeeBasicRequest;
 use Illuminate\Support\Facades\Cache;
-  
+use App\Exports\EmployeesExport;
+
 /**
  * @OA\Tag(
  *     name="Employees",
@@ -285,6 +286,12 @@ class EmployeeController extends Controller
             'message' => "Your file is being imported. You'll be notified when it's done.",
             'import_id' => $importId
         ], 202);
+    }
+
+
+    public function exportEmployees()
+    {
+        return Excel::download(new EmployeesExport, 'employees.xlsx');
     }
 
     /**
