@@ -13,16 +13,12 @@ return new class extends Migration
     {
         Schema::create('employee_trainings', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('training_id');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->foreignId('training_id')->constrained('trainings')->cascadeOnDelete();
             $table->string('status', 50);
             $table->timestamps(); // creates created_at and updated_at
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
-
-            // Foreign key constraint: employee_trainings.training_id references trainings.id
-            $table->foreign('employee_id')->references('id')->on('employees');
-            $table->foreign('training_id')->references('id')->on('trainings');
         });
     }
 

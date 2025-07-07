@@ -702,6 +702,474 @@
                 ]
             }
         },
+        "/budget-lines": {
+            "get": {
+                "tags": [
+                    "Budget Lines"
+                ],
+                "summary": "List all budget lines",
+                "description": "Retrieve a list of all budget lines ordered by budget line code",
+                "operationId": "bfc701ff8295d4e9e66a4ab69438cf13",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "budget_line_code": {
+                                                        "type": "string",
+                                                        "example": "BL001"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "example": "Description"
+                                                    },
+                                                    "created_by": {
+                                                        "type": "string",
+                                                        "example": "Admin User"
+                                                    },
+                                                    "updated_by": {
+                                                        "type": "string",
+                                                        "example": "Admin User"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Budget Lines"
+                ],
+                "summary": "Create a new budget line",
+                "description": "Create a new budget line with a unique budget line code",
+                "operationId": "d4db4f00853bbf7cfc935b57b469125d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "budget_line_code": {
+                                        "description": "Unique budget line code",
+                                        "type": "string",
+                                        "example": "BL001"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Budget line created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budget_line_code": {
+                                                    "type": "string",
+                                                    "example": "BL001"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Description"
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "budget_line_code": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The budget line code has already been taken."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/budget-lines/{id}": {
+            "get": {
+                "tags": [
+                    "Budget Lines"
+                ],
+                "summary": "Show a single budget line",
+                "description": "Retrieve details of a specific budget line by ID",
+                "operationId": "1dc461b9f8e0edceaf709d05fd33439c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Budget line ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budget_line_code": {
+                                                    "type": "string",
+                                                    "example": "BL001"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Description"
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Budget line not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No query results for model [App\\\\Models\\\\BudgetLine] 1"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Budget Lines"
+                ],
+                "summary": "Update a budget line",
+                "description": "Update an existing budget line's budget line code",
+                "operationId": "f800fc1ca3a02f88885e05a9cd9284c5",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Budget line ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "budget_line_code": {
+                                        "description": "Updated budget line code",
+                                        "type": "string",
+                                        "example": "BL001-UPDATED"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Budget line updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budget_line_code": {
+                                                    "type": "string",
+                                                    "example": "BL001-UPDATED"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Description"
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Budget line not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No query results for model [App\\\\Models\\\\BudgetLine] 1"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "budget_line_code": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "The budget line code has already been taken."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Budget Lines"
+                ],
+                "summary": "Delete a budget line",
+                "description": "Delete a specific budget line by ID",
+                "operationId": "da4ef1cd5ad13d58920e893a2832e604",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Budget line ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Budget line deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Budget line not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No query results for model [App\\\\Models\\\\BudgetLine] 1"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/department-positions": {
             "get": {
                 "tags": [
@@ -3710,6 +4178,24 @@
                 "summary": "Get all employee grant allocations",
                 "description": "Display a listing of the resource.",
                 "operationId": "bfcba0728f563864f5cc85dde6e24927",
+                "parameters": [
+                    {
+                        "name": "employee_id",
+                        "in": "query",
+                        "description": "Filter by employee ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "description": "Filter by active status",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -3771,15 +4257,71 @@
                 "tags": [
                     "EmployeeGrantAllocations"
                 ],
-                "summary": "Create a new employee grant allocation",
-                "description": "Store a newly created resource in storage.",
+                "summary": "Create multiple employee grant allocations",
+                "description": "Store multiple grant allocations for an employee.",
                 "operationId": "fc2fad0db2c951755c3e9863afaa5141",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                "required": [
+                                    "employee_id",
+                                    "employment_id",
+                                    "start_date",
+                                    "allocations"
+                                ],
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "employment_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-01"
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-12-31",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "allocations": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "grant_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant_items_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budgetline_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "level_of_effort": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 75.5
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
                             }
                         }
                     }
@@ -3797,10 +4339,14 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee grant allocation created successfully"
+                                            "example": "Employee grant allocations created successfully"
                                         },
                                         "data": {
-                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                            "type": "object"
+                                        },
+                                        "total_created": {
+                                            "type": "integer",
+                                            "example": 3
                                         }
                                     },
                                     "type": "object"
@@ -3843,7 +4389,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Failed to create employee grant allocation"
+                                            "example": "Failed to create employee grant allocations"
                                         },
                                         "error": {
                                             "type": "string"
@@ -3874,7 +4420,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Grant Item ID",
+                        "description": "Employee Grant Allocation ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -3894,23 +4440,10 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Grant item allocations retrieved successfully"
+                                            "example": "Employee grant allocation retrieved successfully"
                                         },
-                                        "grant_item": {
-                                            "type": "object"
-                                        },
-                                        "grant_details": {
-                                            "type": "object"
-                                        },
-                                        "total_allocations": {
-                                            "type": "integer",
-                                            "example": 3
-                                        },
-                                        "employees": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
+                                        "data": {
+                                            "$ref": "#/components/schemas/EmployeeGrantAllocation"
                                         }
                                     },
                                     "type": "object"
@@ -3930,30 +4463,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Grant item not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Failed to retrieve grant item allocations"
-                                        },
-                                        "error": {
-                                            "type": "string"
+                                            "example": "Employee grant allocation not found"
                                         }
                                     },
                                     "type": "object"
@@ -4021,70 +4531,10 @@
                         }
                     },
                     "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Employee grant allocation not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Resource not found"
                     },
                     "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Validation failed"
-                                        },
-                                        "errors": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Failed to update employee grant allocation"
-                                        },
-                                        "error": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Validation error"
                     }
                 },
                 "security": [
@@ -4133,41 +4583,148 @@
                         }
                     },
                     "404": {
-                        "description": "Resource not found",
+                        "description": "Resource not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employee-grant-allocations/employee/{employee_id}": {
+            "get": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Get all grant allocations for a specific employee",
+                "description": "Get all allocations for a specific employee.",
+                "operationId": "0de7ecc0d0faff7a240bf5ac2e79af37",
+                "parameters": [
+                    {
+                        "name": "employee_id",
+                        "in": "path",
+                        "description": "Employee ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "success": {
                                             "type": "boolean",
-                                            "example": false
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Employee grant allocation not found"
+                                            "example": "Employee grant allocations retrieved successfully"
+                                        },
+                                        "employee": {
+                                            "type": "object"
+                                        },
+                                        "total_allocations": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "total_effort": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 85.5
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/EmployeeGrantAllocation"
+                                            }
                                         }
                                     },
                                     "type": "object"
                                 }
                             }
                         }
-                    },
-                    "500": {
-                        "description": "Server error",
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employee-grant-allocations/bulk-deactivate": {
+            "post": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Deactivate multiple employee grant allocations",
+                "description": "Deactivate multiple allocations for an employee",
+                "operationId": "023bf1007002b5081614768e2866a3bd",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "allocation_ids"
+                                ],
+                                "properties": {
+                                    "allocation_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/employee-grant-allocations/grant-structure": {
+            "get": {
+                "tags": [
+                    "EmployeeGrantAllocations"
+                ],
+                "summary": "Get grant structure for UI dropdowns",
+                "description": "Get grant structure for UI dropdowns",
+                "operationId": "301d0e7782185ed7a5c38e067d25d872",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
                                         "success": {
                                             "type": "boolean",
-                                            "example": false
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Failed to delete employee grant allocation"
+                                            "example": "Grant structure retrieved successfully"
                                         },
-                                        "error": {
-                                            "type": "string"
+                                        "data": {
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -5449,7 +6006,7 @@
                 ]
             }
         },
-        "/grants/{code}": {
+        "/grants/by-code/{code}": {
             "get": {
                 "tags": [
                     "Grants"
@@ -5614,6 +6171,216 @@
                 ]
             }
         },
+        "/grants/by-id/{id}": {
+            "get": {
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get a specific grant with its items by grant ID",
+                "description": "Returns a specific grant and its associated items with position slots and budget lines by grant ID.",
+                "operationId": "getGrantById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Grant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant with items retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "code": {
+                                                    "type": "string",
+                                                    "example": "GR-2023-001"
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Health Initiative Grant"
+                                                },
+                                                "subsidiary": {
+                                                    "type": "string",
+                                                    "example": "Main Campus"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "example": "Funding for health initiatives",
+                                                    "nullable": true
+                                                },
+                                                "end_date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2023-12-31",
+                                                    "nullable": true
+                                                },
+                                                "grant_items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "grant_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "grant_code": {
+                                                                "type": "string",
+                                                                "example": "GR-2023-001"
+                                                            },
+                                                            "grant_name": {
+                                                                "type": "string",
+                                                                "example": "Health Initiative Grant"
+                                                            },
+                                                            "grant_position": {
+                                                                "type": "string",
+                                                                "example": "Project Manager"
+                                                            },
+                                                            "grant_salary": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 75000
+                                                            },
+                                                            "grant_benefit": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 15000
+                                                            },
+                                                            "grant_level_of_effort": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 0.75
+                                                            },
+                                                            "grant_position_number": {
+                                                                "type": "string",
+                                                                "example": "POS-001"
+                                                            },
+                                                            "position_slots": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "id": {
+                                                                            "type": "integer",
+                                                                            "example": 1
+                                                                        },
+                                                                        "grant_item_id": {
+                                                                            "type": "integer",
+                                                                            "example": 1
+                                                                        },
+                                                                        "slot_number": {
+                                                                            "type": "string",
+                                                                            "example": "SLOT-001"
+                                                                        },
+                                                                        "budget_line_id": {
+                                                                            "type": "integer",
+                                                                            "example": 1
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2024-06-25T15:38:59Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2024-06-25T15:38:59Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Grant not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Grant not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated - User not logged in or token expired"
+                    },
+                    "403": {
+                        "description": "Unauthorized - User does not have permission to access grants"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Failed to retrieve grant"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/grants/upload": {
             "post": {
                 "tags": [
@@ -5699,8 +6466,33 @@
                     "Grants"
                 ],
                 "summary": "List all grants with their items",
-                "description": "Returns a list of grants and their associated items.",
+                "description": "Returns a paginated list of grants and their associated items with position slots and budget lines.",
                 "operationId": "getGrants",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Number of items per page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "example": 10
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 1
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "List of grants with items retrieved successfully",
@@ -5708,9 +6500,9 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
                                         },
                                         "message": {
                                             "type": "string",
@@ -5731,6 +6523,10 @@
                                                     "name": {
                                                         "type": "string",
                                                         "example": "Health Initiative Grant"
+                                                    },
+                                                    "subsidiary": {
+                                                        "type": "string",
+                                                        "example": "Main Campus"
                                                     },
                                                     "description": {
                                                         "type": "string",
@@ -5755,6 +6551,14 @@
                                                                     "type": "integer",
                                                                     "example": 1
                                                                 },
+                                                                "grant_code": {
+                                                                    "type": "string",
+                                                                    "example": "GR-2023-001"
+                                                                },
+                                                                "grant_name": {
+                                                                    "type": "string",
+                                                                    "example": "Health Initiative Grant"
+                                                                },
                                                                 "grant_position": {
                                                                     "type": "string",
                                                                     "example": "Project Manager"
@@ -5777,18 +6581,65 @@
                                                                 "grant_position_number": {
                                                                     "type": "string",
                                                                     "example": "POS-001"
+                                                                },
+                                                                "position_slots": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "properties": {
+                                                                            "id": {
+                                                                                "type": "integer",
+                                                                                "example": 1
+                                                                            },
+                                                                            "grant_item_id": {
+                                                                                "type": "integer",
+                                                                                "example": 1
+                                                                            },
+                                                                            "slot_number": {
+                                                                                "type": "string",
+                                                                                "example": "SLOT-001"
+                                                                            },
+                                                                            "budget_line_id": {
+                                                                                "type": "integer",
+                                                                                "example": 1
+                                                                            }
+                                                                        },
+                                                                        "type": "object"
+                                                                    }
                                                                 }
                                                             },
                                                             "type": "object"
                                                         }
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2024-06-25T15:38:59Z"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2024-06-25T15:38:59Z"
                                                     }
                                                 },
                                                 "type": "object"
                                             }
                                         },
                                         "count": {
+                                            "description": "Total number of grants",
+                                            "type": "integer",
+                                            "example": 25
+                                        },
+                                        "current_page": {
                                             "type": "integer",
                                             "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 3
                                         }
                                     },
                                     "type": "object"
@@ -5808,6 +6659,10 @@
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Failed to retrieve grants"
@@ -6829,6 +7684,10 @@
                                                         "type": "array",
                                                         "items": {
                                                             "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 10
+                                                                },
                                                                 "position": {
                                                                     "type": "string",
                                                                     "example": "Researcher"
@@ -10985,6 +11844,522 @@
                 ]
             }
         },
+        "/position-slots": {
+            "get": {
+                "tags": [
+                    "Position Slots"
+                ],
+                "summary": "List all position slots",
+                "description": "Retrieve a list of all position slots, optionally filtered by grant item ID",
+                "operationId": "25bb3ca9739b47d132d1e1a7e14ae54a",
+                "parameters": [
+                    {
+                        "name": "grant_item_id",
+                        "in": "query",
+                        "description": "Filter by grant item ID",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "grant_item_id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "slot_number": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "budget_line_id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "created_by": {
+                                                        "type": "string",
+                                                        "example": "Admin User"
+                                                    },
+                                                    "updated_by": {
+                                                        "type": "string",
+                                                        "example": "Admin User"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "budgetLine": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "budget_line_code": {
+                                                                "type": "string",
+                                                                "example": "BL001"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Position Slots"
+                ],
+                "summary": "Create a new position slot",
+                "description": "Create a new position slot with existing or new budget line",
+                "operationId": "af3504478ae1ace9d35c831d2d5c0587",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "grant_item_id",
+                                    "slot_number"
+                                ],
+                                "properties": {
+                                    "grant_item_id": {
+                                        "description": "Grant item ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "slot_number": {
+                                        "description": "Slot number",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "budget_line_id": {
+                                        "description": "Existing budget line ID",
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "budget_line_code": {
+                                        "description": "Budget line code (creates new if not exists)",
+                                        "type": "string",
+                                        "example": "BL001",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Position slot created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant_item_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "slot_number": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budget_line_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Budget line is required"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error message"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/position-slots/{id}": {
+            "get": {
+                "tags": [
+                    "Position Slots"
+                ],
+                "summary": "Get a specific position slot",
+                "description": "Retrieve details of a specific position slot by ID",
+                "operationId": "2e18614461bb8d51eecf24a3e4bc1e87",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Position slot ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant_item_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "slot_number": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "budget_line_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "budgetLine": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "budget_line_code": {
+                                                            "type": "string",
+                                                            "example": "BL001"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position slot not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Position Slots"
+                ],
+                "summary": "Update a position slot",
+                "description": "Update a position slot with possible new budget line",
+                "operationId": "ff3b84bb26a5c036f165041c18badf01",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Position slot ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "slot_number": {
+                                        "description": "Slot number",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "budget_line_id": {
+                                        "description": "Existing budget line ID",
+                                        "type": "integer",
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "budget_line_code": {
+                                        "description": "Budget line code (creates new if not exists)",
+                                        "type": "string",
+                                        "example": "BL002",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Position slot updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "grant_item_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "slot_number": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "budget_line_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "created_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "updated_by": {
+                                                    "type": "string",
+                                                    "example": "Admin User"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position slot not found"
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error message"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Position Slots"
+                ],
+                "summary": "Delete a position slot",
+                "description": "Delete a specific position slot by ID",
+                "operationId": "cd3ffde4a6c3b5da029a676dbbc05df6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Position slot ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Position slot deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Position slot not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/reports/grants": {
             "get": {
                 "tags": [
@@ -13539,6 +14914,44 @@
                 },
                 "type": "object"
             },
+            "BudgetLine": {
+                "required": [
+                    "budget_line_code"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "budget_line_code": {
+                        "type": "string",
+                        "example": "BL001"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Description"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-06-25T15:38:59Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-06-25T15:38:59Z"
+                    }
+                },
+                "type": "object"
+            },
             "DepartmentPosition": {
                 "title": "Department Position",
                 "description": "Department Position model",
@@ -13911,28 +15324,27 @@
             "EmployeeGrantAllocation": {
                 "required": [
                     "employee_id",
-                    "grant_item_id",
+                    "position_slot_id",
                     "employment_id",
-                    "bg_line",
                     "level_of_effort",
                     "start_date"
                 ],
                 "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
                     "employee_id": {
                         "type": "integer",
                         "example": 1
                     },
-                    "grant_item_id": {
+                    "position_slot_id": {
                         "type": "integer",
                         "example": 1
                     },
                     "employment_id": {
                         "type": "integer",
                         "example": 1
-                    },
-                    "bg_line": {
-                        "type": "string",
-                        "example": "1"
                     },
                     "level_of_effort": {
                         "type": "number",
@@ -13947,7 +15359,12 @@
                     "end_date": {
                         "type": "string",
                         "format": "date",
-                        "example": "2024-12-31"
+                        "example": "2024-12-31",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
                     },
                     "created_by": {
                         "type": "string",
@@ -13956,6 +15373,14 @@
                     "updated_by": {
                         "type": "string",
                         "example": "admin"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "type": "object"
@@ -14357,8 +15782,8 @@
                         "nullable": true
                     },
                     "grant_level_of_effort": {
-                        "type": "string",
-                        "example": "0.75",
+                        "type": "integer",
+                        "example": 75,
                         "nullable": true
                     },
                     "grant_position_number": {
@@ -15020,6 +16445,55 @@
                 },
                 "type": "object"
             },
+            "PositionSlot": {
+                "title": "Position Slot",
+                "required": [
+                    "grant_item_id",
+                    "slot_number",
+                    "budget_line_id"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "grant_item_id": {
+                        "description": "Foreign key to grant items",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "slot_number": {
+                        "description": "Slot number, e.g., 1, 2, 3...",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "budget_line_id": {
+                        "description": "Foreign key to budget lines",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_by": {
+                        "type": "string",
+                        "example": "admin",
+                        "nullable": true
+                    },
+                    "updated_by": {
+                        "type": "string",
+                        "example": "admin",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "SubsidiaryHubFund": {
                 "title": "Subsidiary Hub Fund",
                 "description": "Subsidiary Hub Fund model",
@@ -15404,6 +16878,10 @@
             "description": "API Endpoints for user authentication"
         },
         {
+            "name": "Budget Lines",
+            "description": "Budget line management endpoints"
+        },
+        {
             "name": "Department Positions",
             "description": "API Endpoints for Department Position management"
         },
@@ -15458,6 +16936,10 @@
         {
             "name": "Payrolls",
             "description": "API Endpoints for managing payrolls"
+        },
+        {
+            "name": "Position Slots",
+            "description": "Position slot management endpoints"
         },
         {
             "name": "Reports",

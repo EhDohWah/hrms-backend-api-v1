@@ -5,20 +5,23 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EmployeeGrantAllocation;
+use App\Models\PositionSlot;
+use App\Models\GrantItem;
+use App\Models\Employee;
+use App\Models\Employment;
 use App\Http\Resources\EmployeeGrantAllocationResource;
 use App\Http\Requests\EmployeeGrantAllocationRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use App\Models\GrantItem;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Tag(
- *     name="EmployeeGrantAllocations",
+ *     name="EmployeeGrantAllocations", 
  *     description="API Endpoints for Employee Grant Allocations"
  * )
  */
-
 class EmployeeGrantAllocationController extends Controller
 {
     /**
@@ -29,6 +32,18 @@ class EmployeeGrantAllocationController extends Controller
      *     summary="Get all employee grant allocations",
      *     tags={"EmployeeGrantAllocations"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="employee_id",
+     *         in="query",
+     *         description="Filter by employee ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="active",
+     *         in="query", 
+     *         description="Filter by active status",
+     *         @OA\Schema(type="boolean")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
@@ -53,10 +68,26 @@ class EmployeeGrantAllocationController extends Controller
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $employeeGrantAllocations = EmployeeGrantAllocation::all();
+            $query = EmployeeGrantAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ]);
+
+            // Apply filters
+            if ($request->has('employee_id')) {
+                $query->where('employee_id', $request->employee_id);
+            }
+
+            if ($request->has('active')) {
+                $query->where('active', $request->boolean('active'));
+            }
+
+            $employeeGrantAllocations = $query->orderBy('created_at', 'desc')->get();
 
             return EmployeeGrantAllocationResource::collection($employeeGrantAllocations)
                 ->additional([
@@ -76,24 +107,40 @@ class EmployeeGrantAllocationController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store multiple grant allocations for an employee.
      *
      * @OA\Post(
      *     path="/employee-grant-allocations",
-     *     summary="Create a new employee grant allocation",
+     *     summary="Create multiple employee grant allocations",
      *     tags={"EmployeeGrantAllocations"},
      *     security={{"bearerAuth":{}}},
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeGrantAllocation")
+     *         @OA\JsonContent(
+     *             required={"employee_id", "employment_id", "start_date", "allocations"},
+     *             @OA\Property(property="employee_id", type="integer", example=1),
+     *             @OA\Property(property="employment_id", type="integer", example=1),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2024-01-01"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-31", nullable=true),
+     *             @OA\Property(
+     *                 property="allocations",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="position_slot_id", type="integer", example=1),
+     *                     @OA\Property(property="level_of_effort", type="number", format="float", example=75.5)
+     *                 )
+     *             )
+     *         )
      *     ),
      *     @OA\Response(
      *         response=201,
      *         description="Successful operation",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeGrantAllocation")
+     *             @OA\Property(property="message", type="string", example="Employee grant allocations created successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation")),
+     *             @OA\Property(property="total_created", type="integer", example=3),
+     *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
      *         )
      *     ),
      *     @OA\Response(
@@ -110,59 +157,164 @@ class EmployeeGrantAllocationController extends Controller
      *         description="Server error",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to create employee grant allocation"),
+     *             @OA\Property(property="message", type="string", example="Failed to create employee grant allocations"),
      *             @OA\Property(property="error", type="string")
      *         )
      *     )
      * )
      */
-    public function store(EmployeeGrantAllocationRequest $request)
+    public function store(Request $request)
     {
         try {
-            $validated = $request->validated();
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'employee_id' => 'required|exists:employees,id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'allocations' => 'required|array|min:1',
+                'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
+                'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+            ]);
 
-            // Get the grant item to check its position number
-            $grantItem = GrantItem::findOrFail($validated['grant_item_id']);
-
-            // Count existing allocations for this grant
-            $existingAllocationsCount = EmployeeGrantAllocation::where('grant_item_id', $validated['grant_item_id'])
-                ->where('active', true)
-                ->count();
-
-            // Check if we've reached the position limit for this grant
-            if ($existingAllocationsCount >= $grantItem->grant_position_number) {
+            if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot add more allocations. Grant position limit reached.'
-                ], 400);
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
-            $employeeGrantAllocation = EmployeeGrantAllocation::create($validated);
+            $validated = $validator->validated();
+            $currentUser = Auth::user()->name ?? 'system';
 
-            return (new EmployeeGrantAllocationResource($employeeGrantAllocation))
-                ->additional([
-                    'success' => true,
-                    'message' => 'Employee grant allocation created successfully'
-                ])
-                ->response()
-                ->setStatusCode(201);
+            // Validate that the total effort of all new allocations equals exactly 100%
+            $totalNewEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            if ($totalNewEffort != 100) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Total effort of all allocations must equal exactly 100%',
+                    'current_total' => $totalNewEffort
+                ], 422);
+            }
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+            // Check if employee already has any active allocations
+            $existingActiveAllocations = EmployeeGrantAllocation::where('employee_id', $validated['employee_id'])
+                ->where('active', true)
+                ->exists();
+
+            if ($existingActiveAllocations) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee already has active grant allocations. Please use the update endpoint to modify existing allocations or deactivate them first.'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $createdAllocations = [];
+            $errors = [];
+
+            foreach ($validated['allocations'] as $index => $allocationData) {
+                try {
+                    $positionSlotId = $allocationData['position_slot_id'];
+
+                    // Get the position slot with its grant item
+                    $positionSlot = PositionSlot::with('grantItem')->find($positionSlotId);
+                    if (!$positionSlot) {
+                        $errors[] = "Allocation #{$index}: Position slot not found";
+                        continue;
+                    }
+
+                    $grantItem = $positionSlot->grantItem;
+                    $grantPositionNumber = (int) $grantItem->grant_position_number;
+
+                    // Check position slot availability based on grant position number
+                    if ($grantPositionNumber > 0) {
+                        // Count current active allocations across all position slots for this grant item
+                        $currentAllocations = EmployeeGrantAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
+                            $query->where('grant_item_id', $grantItem->id);
+                        })
+                        ->where('active', true)
+                        ->count();
+
+                        // Check if we can accommodate one more allocation
+                        if ($currentAllocations >= $grantPositionNumber) {
+                            $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantPositionNumber} allocations. Currently allocated: {$currentAllocations}";
+                            continue;
+                        }
+                    }
+
+                    // Check if this exact allocation already exists
+                    $existingAllocation = EmployeeGrantAllocation::where([
+                        'employee_id' => $validated['employee_id'],
+                        'position_slot_id' => $positionSlotId,
+                        'active' => true
+                    ])->first();
+
+                    if ($existingAllocation) {
+                        $errors[] = "Allocation #{$index}: Already exists for this employee and position slot";
+                        continue;
+                    }
+
+                    // Create the allocation
+                    $allocation = EmployeeGrantAllocation::create([
+                        'employee_id' => $validated['employee_id'],
+                        'position_slot_id' => $positionSlotId,
+                        'level_of_effort' => $allocationData['level_of_effort'],
+                        'start_date' => $validated['start_date'],
+                        'end_date' => $validated['end_date'] ?? null,
+                        'created_by' => $currentUser,
+                        'updated_by' => $currentUser,
+                    ]);
+
+                    $createdAllocations[] = $allocation;
+
+                } catch (\Exception $e) {
+                    $errors[] = "Allocation #{$index}: " . $e->getMessage();
+                }
+            }
+
+            if (empty($createdAllocations) && !empty($errors)) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create any allocations',
+                    'errors' => $errors
+                ], 422);
+            }
+
+            DB::commit();
+
+            // Load the created allocations with relationships
+            $allocationsWithRelations = EmployeeGrantAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
+
+            $response = [
+                'success' => true,
+                'message' => 'Employee grant allocations created successfully',
+                'data' => EmployeeGrantAllocationResource::collection($allocationsWithRelations),
+                'total_created' => count($createdAllocations)
+            ];
+
+            if (!empty($errors)) {
+                $response['warnings'] = $errors;
+            }
+
+            return response()->json($response, 201);
+
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create employee grant allocation',
+                'message' => 'Failed to create employee grant allocations',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
-
-
 
     /**
      * Display the specified resource.
@@ -176,7 +328,7 @@ class EmployeeGrantAllocationController extends Controller
      *         name="id",
      *         in="path",
      *         required=true,
-     *         description="Grant Item ID",
+     *         description="Employee Grant Allocation ID",
      *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
@@ -184,11 +336,8 @@ class EmployeeGrantAllocationController extends Controller
      *         description="Successful operation",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Grant item allocations retrieved successfully"),
-     *             @OA\Property(property="grant_item", type="object"),
-     *             @OA\Property(property="grant_details", type="object"),
-     *             @OA\Property(property="total_allocations", type="integer", example=3),
-     *             @OA\Property(property="employees", type="array", @OA\Items(type="object"))
+     *             @OA\Property(property="message", type="string", example="Employee grant allocation retrieved successfully"),
+     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeGrantAllocation")
      *         )
      *     ),
      *     @OA\Response(
@@ -196,16 +345,7 @@ class EmployeeGrantAllocationController extends Controller
      *         description="Resource not found",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Grant item not found")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve grant item allocations"),
-     *             @OA\Property(property="error", type="string")
+     *             @OA\Property(property="message", type="string", example="Employee grant allocation not found")
      *         )
      *     )
      * )
@@ -213,58 +353,100 @@ class EmployeeGrantAllocationController extends Controller
     public function show($id)
     {
         try {
-            // Check if the grant item exists
-            $grantItem = GrantItem::with('grant')->findOrFail($id);
+            $allocation = EmployeeGrantAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ])->findOrFail($id);
 
-            // Get the grant details
-            $grantDetails = $grantItem->grant;
-
-            // Get all employee allocations for this grant item
-            $employeeAllocations = EmployeeGrantAllocation::where('grant_item_id', $id)
-                ->where('active', true)
-                ->with('employeeAllocation:id,staff_id,first_name_en,last_name_en')
-                ->get();
-
-            // Count total allocations for this grant item
-            $totalAllocations = $employeeAllocations->count();
-
-            // Extract employee data
-            $employees = $employeeAllocations->map(function($allocation) {
-                return $allocation->employeeAllocation;
-            });
-
-            // Get the first allocation to return as the primary data object
-            // If no allocations exist, we'll still return the grant item info
-            $primaryAllocation = $employeeAllocations->first();
-
-            $responseData = [
-                'success' => true,
-                'message' => 'Grant item allocations retrieved successfully',
-                'grant_item' => $grantItem,
-                'employee_grant_allocation' => $employeeAllocations,
-                'grant_details' => $grantDetails,
-                'total_allocations' => $totalAllocations,
-                'employees' => $employees
-            ];
-
-            if ($primaryAllocation) {
-                return (new EmployeeGrantAllocationResource($primaryAllocation))
-                    ->additional($responseData)
-                    ->response()
-                    ->setStatusCode(200);
-            } else {
-                return response()->json($responseData, 200);
-            }
+            return (new EmployeeGrantAllocationResource($allocation))
+                ->additional([
+                    'success' => true,
+                    'message' => 'Employee grant allocation retrieved successfully'
+                ])
+                ->response()
+                ->setStatusCode(200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Grant item not found'
+                'message' => 'Employee grant allocation not found'
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve grant item allocations',
+                'message' => 'Failed to retrieve employee grant allocation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all allocations for a specific employee.
+     *
+     * @OA\Get(
+     *     path="/employee-grant-allocations/employee/{employee_id}",
+     *     summary="Get all grant allocations for a specific employee",
+     *     tags={"EmployeeGrantAllocations"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="employee_id",
+     *         in="path",
+     *         required=true,
+     *         description="Employee ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee grant allocations retrieved successfully"),
+     *             @OA\Property(property="employee", type="object"),
+     *             @OA\Property(property="total_allocations", type="integer", example=3),
+     *             @OA\Property(property="total_effort", type="number", format="float", example=85.5),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation"))
+     *         )
+     *     )
+     * )
+     */
+    public function getEmployeeAllocations($employeeId)
+    {
+        try {
+            $employee = Employee::select('id', 'staff_id', 'first_name_en', 'last_name_en')
+                ->findOrFail($employeeId);
+
+            $allocations = EmployeeGrantAllocation::with([
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ])
+            ->where('employee_id', $employeeId)
+            ->where('active', true)
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+            $totalEffort = $allocations->sum('level_of_effort');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee grant allocations retrieved successfully',
+                'employee' => $employee,
+                'total_allocations' => $allocations->count(),
+                'total_effort' => $totalEffort,
+                'data' => EmployeeGrantAllocationResource::collection($allocations)
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employee grant allocations',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -300,40 +482,84 @@ class EmployeeGrantAllocationController extends Controller
      *     ),
      *     @OA\Response(
      *         response=404,
-     *         description="Resource not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation not found")
-     *         )
+     *         description="Resource not found"
      *     ),
      *     @OA\Response(
      *         response=422,
-     *         description="Validation error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to update employee grant allocation"),
-     *             @OA\Property(property="error", type="string")
-     *         )
+     *         description="Validation error"
      *     )
      * )
      */
-    public function update(EmployeeGrantAllocationRequest $request, $id)
+    public function update(Request $request, $id)
     {
         try {
-            $employeeGrantAllocation = EmployeeGrantAllocation::findOrFail($id);
-            $validated = $request->validated();
-            $employeeGrantAllocation->update($validated);
+            $allocation = EmployeeGrantAllocation::findOrFail($id);
 
-            return (new EmployeeGrantAllocationResource($employeeGrantAllocation))
+            $validator = Validator::make($request->all(), [
+                'level_of_effort' => 'sometimes|numeric|min:0|max:100',
+                'start_date' => 'sometimes|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'active' => 'sometimes|boolean',
+                'grant_id' => 'sometimes|exists:grants,id',
+                'grant_items_id' => 'sometimes|exists:grant_items,id',
+                'budgetline_id' => 'sometimes|exists:budget_lines,id',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            $currentUser = Auth::user()->name ?? 'system';
+
+            DB::beginTransaction();
+
+            // If grant-related fields are being updated, update the position slot
+            if (isset($validated['grant_items_id']) || isset($validated['budgetline_id'])) {
+                $grantItemsId = $validated['grant_items_id'] ?? $allocation->positionSlot->grant_item_id;
+                $budgetlineId = $validated['budgetline_id'] ?? $allocation->positionSlot->budget_line_id;
+
+                $positionSlot = $this->findOrCreatePositionSlot($grantItemsId, $budgetlineId, $currentUser);
+                $validated['position_slot_id'] = $positionSlot->id;
+
+                // Remove the UI fields from validated data
+                unset($validated['grant_items_id'], $validated['budgetline_id'], $validated['grant_id']);
+            }
+
+            // Validate total effort if level_of_effort is being updated
+            if (isset($validated['level_of_effort'])) {
+                $totalEffort = EmployeeGrantAllocation::where('employee_id', $allocation->employee_id)
+                    ->where('active', true)
+                    ->where('id', '!=', $id)
+                    ->sum('level_of_effort');
+
+                if (($totalEffort + $validated['level_of_effort']) > 100) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Total effort would exceed 100% for this employee'
+                    ], 422);
+                }
+            }
+
+            $validated['updated_by'] = $currentUser;
+            $allocation->update($validated);
+
+            DB::commit();
+
+            // Reload with relationships
+            $allocation->load([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ]);
+
+            return (new EmployeeGrantAllocationResource($allocation))
                 ->additional([
                     'success' => true,
                     'message' => 'Employee grant allocation updated successfully'
@@ -342,17 +568,13 @@ class EmployeeGrantAllocationController extends Controller
                 ->setStatusCode(200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Employee grant allocation not found'
             ], 404);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee grant allocation',
@@ -386,28 +608,15 @@ class EmployeeGrantAllocationController extends Controller
      *     ),
      *     @OA\Response(
      *         response=404,
-     *         description="Resource not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation not found")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to delete employee grant allocation"),
-     *             @OA\Property(property="error", type="string")
-     *         )
+     *         description="Resource not found"
      *     )
      * )
      */
     public function destroy($id)
     {
         try {
-            $employeeGrantAllocation = EmployeeGrantAllocation::findOrFail($id);
-            $employeeGrantAllocation->delete();
+            $allocation = EmployeeGrantAllocation::findOrFail($id);
+            $allocation->delete();
 
             return response()->json([
                 'success' => true,
@@ -423,6 +632,321 @@ class EmployeeGrantAllocationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete employee grant allocation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Deactivate multiple allocations for an employee
+     *
+     * @OA\Post(
+     *     path="/employee-grant-allocations/bulk-deactivate",
+     *     summary="Deactivate multiple employee grant allocations",
+     *     tags={"EmployeeGrantAllocations"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"allocation_ids"},
+     *             @OA\Property(property="allocation_ids", type="array", @OA\Items(type="integer"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation"
+     *     )
+     * )
+     */
+    public function bulkDeactivate(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'allocation_ids' => 'required|array|min:1',
+                'allocation_ids.*' => 'integer|exists:employee_grant_allocations,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $currentUser = Auth::user()->name ?? 'system';
+
+            $updatedCount = EmployeeGrantAllocation::whereIn('id', $request->allocation_ids)
+                ->update([
+                    'active' => false,
+                    'updated_by' => $currentUser
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee grant allocations deactivated successfully',
+                'deactivated_count' => $updatedCount
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to deactivate employee grant allocations',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Find or create a position slot for the given grant item and budget line combination
+     */
+    private function findOrCreatePositionSlot($grantItemId, $budgetLineId, $createdBy)
+    {
+        // First, try to find an existing position slot
+        $positionSlot = PositionSlot::where([
+            'grant_item_id' => $grantItemId,
+            'budget_line_id' => $budgetLineId
+        ])->first();
+
+        if ($positionSlot) {
+            return $positionSlot;
+        }
+
+        // If not found, create a new one
+        // Determine the next slot number for this grant item
+        $nextSlotNumber = PositionSlot::where('grant_item_id', $grantItemId)
+            ->max('slot_number') + 1;
+
+        if ($nextSlotNumber < 1) {
+            $nextSlotNumber = 1;
+        }
+
+        return PositionSlot::create([
+            'grant_item_id' => $grantItemId,
+            'slot_number' => $nextSlotNumber,
+            'budget_line_id' => $budgetLineId,
+            'created_by' => $createdBy,
+            'updated_by' => $createdBy
+        ]);
+    }
+
+    /**
+     * Get grant structure for UI dropdowns
+     *
+     * @OA\Get(
+     *     path="/employee-grant-allocations/grant-structure",
+     *     summary="Get grant structure for UI dropdowns",
+     *     tags={"EmployeeGrantAllocations"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant structure retrieved successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     )
+     * )
+     */
+    public function getGrantStructure()
+    {
+        try {
+            $grants = \App\Models\Grant::with([
+                'grantItems.positionSlots.budgetLine:id,budget_line_code,description'
+            ])->select('id', 'name', 'code')->get();
+
+            $structure = $grants->map(function ($grant) {
+                return [
+                    'id' => $grant->id,
+                    'name' => $grant->name,
+                    'code' => $grant->code,
+                    'grant_items' => $grant->grantItems->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'name' => $item->grant_position,
+                            'position_slots' => $item->positionSlots->map(function ($slot) {
+                                return [
+                                    'id' => $slot->id,
+                                    'slot_number' => $slot->slot_number,
+                                    'budget_line' => [
+                                        'id' => $slot->budgetLine->id,
+                                        'name' => $slot->budgetLine->budget_line_code,
+                                        'description' => $slot->budgetLine->description
+                                    ]
+                                ];
+                            })
+                        ];
+                    })
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant structure retrieved successfully',
+                'data' => $structure
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant structure',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update all allocations for an employee (replace existing)
+     *
+     * @OA\Put(
+     *     path="/employee-grant-allocations/employee/{employee_id}",
+     *     summary="Update all grant allocations for a specific employee",
+     *     tags={"EmployeeGrantAllocations"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="employee_id",
+     *         in="path",
+     *         required=true,
+     *         description="Employee ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"start_date", "allocations"},
+     *             @OA\Property(property="start_date", type="string", format="date", example="2024-01-01"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-31", nullable=true),
+     *             @OA\Property(
+     *                 property="allocations",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="position_slot_id", type="integer", example=1),
+     *                     @OA\Property(property="level_of_effort", type="number", format="float", example=75.5)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee grant allocations updated successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation")),
+     *             @OA\Property(property="total_created", type="integer", example=2)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Employee not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Total effort must equal 100%"),
+     *             @OA\Property(property="current_total", type="number", format="float", example=120.5)
+     *         )
+     *     )
+     * )
+     */
+    public function updateEmployeeAllocations(Request $request, $employeeId)
+    {
+        try {
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'allocations' => 'required|array|min:1',
+                'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
+                'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            $currentUser = Auth::user()->name ?? 'system';
+
+            // Verify employee exists
+            $employee = Employee::findOrFail($employeeId);
+
+            // Validate that total effort equals 100%
+            $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            if ($totalEffort != 100) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Total effort must equal 100%',
+                    'current_total' => $totalEffort
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // Deactivate all existing allocations for this employee
+            EmployeeGrantAllocation::where('employee_id', $employeeId)
+                ->where('active', true)
+                ->update([
+                    'active' => false,
+                    'updated_by' => $currentUser,
+                    'updated_at' => now()
+                ]);
+
+            // Create new allocations
+            $createdAllocations = [];
+            foreach ($validated['allocations'] as $allocationData) {
+                $allocation = EmployeeGrantAllocation::create([
+                    'employee_id' => $employeeId,
+                    'position_slot_id' => $allocationData['position_slot_id'],
+                    'level_of_effort' => $allocationData['level_of_effort'],
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'] ?? null,
+                    'created_by' => $currentUser,
+                    'updated_by' => $currentUser,
+                ]);
+
+                $createdAllocations[] = $allocation;
+            }
+
+            DB::commit();
+
+            // Load the created allocations with relationships
+            $allocationsWithRelations = EmployeeGrantAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'positionSlot.grantItem.grant:id,name,code',
+                'positionSlot.budgetLine:id,budget_line_code,description',
+                'employment:id,employment_type,start_date'
+            ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee grant allocations updated successfully',
+                'data' => EmployeeGrantAllocationResource::collection($allocationsWithRelations),
+                'total_created' => count($createdAllocations)
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found'
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee grant allocations',
                 'error' => $e->getMessage()
             ], 500);
         }

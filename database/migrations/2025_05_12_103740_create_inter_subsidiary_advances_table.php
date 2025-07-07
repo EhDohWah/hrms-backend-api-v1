@@ -13,9 +13,7 @@ return new class extends Migration
     {
         Schema::create('inter_subsidiary_advances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('payroll_grant_allocation_id')
-                  ->constrained('payroll_grant_allocations')
-                  ->cascadeOnDelete();
+            $table->foreignId('payroll_id')->constrained('payrolls');
             $table->string('from_subsidiary',5);
             $table->string('to_subsidiary',5);
             $table->foreignId('via_grant_id')

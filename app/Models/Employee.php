@@ -11,6 +11,11 @@ use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeIdentification;
 use App\Models\EmployeeGrantAllocation;
 use App\Models\EmployeeLanguage;
+use App\Models\EmployeeFundingAllocation;
+use App\Models\EmployeeEducation;
+use App\Models\EmployeeTraining;
+use App\Models\EmployeeChild;
+
 
 /**
  * @OA\Schema(
@@ -109,7 +114,6 @@ class Employee extends Model
     ];
 
    
-
     /**
      * Get the user associated with the employee
      */
@@ -117,8 +121,6 @@ class Employee extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-
 
     /**
      * Get the employment record associated with the employee
@@ -154,14 +156,30 @@ class Employee extends Model
         return $this->hasOne(EmployeeIdentification::class);
     }
 
-    public function employeeGrantAllocations()
+    public function employeeFundingAllocations() 
     {
-        return $this->hasMany(EmployeeGrantAllocation::class, 'employee_id');
+        return $this->hasMany(EmployeeFundingAllocation::class, 'employee_id');
     }
     
     public function employeeLanguages()
     {
         return $this->hasMany(EmployeeLanguage::class);
     }
+
+    public function employeeChildren()
+    {
+        return $this->hasMany(EmployeeChild::class);
+    }
+
+    public function employeeEducation()
+    {
+        return $this->hasMany(EmployeeEducation::class);
+    }
+
+    public function employeeTrainings()
+    {
+        return $this->hasMany(EmployeeTraining::class);
+    }
+
 
 }

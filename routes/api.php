@@ -30,6 +30,8 @@ use App\Http\Controllers\Api\EmployeeLanguageController;
 use App\Http\Controllers\Api\PayrollGrantAllocationController;
 use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Http\Controllers\Api\BudgetLineController;
+use App\Http\Controllers\Api\PositionSlotController;
 
 Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
 
@@ -66,6 +68,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [LookupController::class, 'update'])->middleware('permission:admin.update');
         Route::delete('/{id}', [LookupController::class, 'destroy'])->middleware('permission:admin.delete');
     });
+ 
+    // Budget line routes
+    Route::prefix('budget-lines')->group(function () {
+        Route::get('/', [BudgetLineController::class, 'index'])->middleware('permission:budget_line.read');
+        Route::post('/', [BudgetLineController::class, 'store'])->middleware('permission:budget_line.create');
+        Route::get('/{id}', [BudgetLineController::class, 'show'])->middleware('permission:budget_line.read');
+        Route::put('/{id}', [BudgetLineController::class, 'update'])->middleware('permission:budget_line.update');
+        Route::delete('/{id}', [BudgetLineController::class, 'destroy'])->middleware('permission:budget_line.delete');
+    });
+
+    // Position slot routes
+    Route::prefix('position-slots')->group(function () {
+        Route::get('/', [PositionSlotController::class, 'index'])->middleware('permission:position_slot.read');
+        Route::post('/', [PositionSlotController::class, 'store'])->middleware('permission:position_slot.create');
+        Route::get('/{id}', [PositionSlotController::class, 'show'])->middleware('permission:position_slot.read');
+        Route::put('/{id}', [PositionSlotController::class, 'update'])->middleware('permission:position_slot.update');
+        Route::delete('/{id}', [PositionSlotController::class, 'destroy'])->middleware('permission:position_slot.delete');
+    });
 
 
     // Employees routes (use middleware permission:read employees)
@@ -91,10 +111,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('employee-grant-allocations')->group(function () {
         Route::get('/', [EmployeeGrantAllocationController::class, 'index'])->middleware('permission:employee.read');
         Route::post('/', [EmployeeGrantAllocationController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/grant-structure', [EmployeeGrantAllocationController::class, 'getGrantStructure'])->middleware('permission:employee.read');
+        Route::post('/bulk-deactivate', [EmployeeGrantAllocationController::class, 'bulkDeactivate'])->middleware('permission:employee.update');
+        Route::get('/employee/{employee_id}', [EmployeeGrantAllocationController::class, 'getEmployeeAllocations'])->middleware('permission:employee.read');
         Route::get('/{id}', [EmployeeGrantAllocationController::class, 'show'])->middleware('permission:employee.read');
         Route::put('/{id}', [EmployeeGrantAllocationController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [EmployeeGrantAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+        Route::put('/employee/{employee_id}', [EmployeeGrantAllocationController::class, 'updateEmployeeAllocations'])->middleware('permission:employee.update');
     });
+
+
 
     // Employment routes
     Route::prefix('employments')->group(function () {
@@ -148,9 +174,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/upload',               [GrantController::class, 'upload'])->name('grants.upload')->middleware('permission:grant.import');
         Route::post('/items',                [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grant.create');
         Route::post('/',                     [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grant.create');
-
+        Route::get('/by-id/{id}',                  [GrantController::class, 'show'])->name('grants.show')->middleware('permission:grant.read');
         // 2) Wildcards and verbs on {id} last:
-        Route::get('/{id}',                  [GrantController::class, 'getGrantByCode'])->middleware('permission:grant.read');
+        Route::get('/by-code/{code}',                  [GrantController::class, 'getGrantByCode'])->middleware('permission:grant.read');
         Route::put('/{id}',                  [GrantController::class, 'updateGrant'])->name('grants.update')->middleware('permission:grant.update');
         Route::delete('/{id}',               [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grant.delete');
 

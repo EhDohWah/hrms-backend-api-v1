@@ -45,7 +45,7 @@ class Employment extends Model
         'employee_id',
         'employment_type',
         'start_date',
-        'probation_end_date',
+        'probation_pass_date',
         'pay_method',
         'department_position_id',
         'work_location_id',
@@ -124,7 +124,20 @@ class Employment extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function employeeFundingAllocations()
+    {
+        return $this->hasMany(EmployeeFundingAllocation::class, 'employment_id');
+    }
 
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class, 'employment_id');
+    }
+
+    public function employmentHistories()
+    {
+        return $this->hasMany(EmploymentHistory::class, 'employment_id');
+    }
 
     public function departmentPosition()
     {
@@ -138,8 +151,5 @@ class Employment extends Model
     }
 
 
-    public function grantAllocations()
-    {
-        return $this->hasMany(EmploymentGrantAllocation::class);
-    }
+    
 }

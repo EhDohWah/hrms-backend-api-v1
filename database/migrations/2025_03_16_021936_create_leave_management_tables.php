@@ -30,8 +30,8 @@ return new class extends Migration
         // Leave Requests
         Schema::create('leave_requests', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id'); // use unsignedBigInteger to match employees.id
-            $table->unsignedBigInteger('leave_type_id'); // use unsignedBigInteger to match leave_types.id
+            $table->foreignId('employee_id')->constrained('employees'); // use unsignedBigInteger to match employees.id
+            $table->foreignId('leave_type_id')->constrained('leave_types'); // use unsignedBigInteger to match leave_types.id
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->decimal('total_days', 18, 2)->nullable();
@@ -41,45 +41,25 @@ return new class extends Migration
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
-
-            $table->foreign('employee_id')
-                  ->references('id')
-                  ->on('employees')
-                  ->onDelete('cascade');
-
-            $table->foreign('leave_type_id')
-                  ->references('id')
-                  ->on('leave_types')
-                  ->onDelete('cascade');
         });
 
         // Leave Balances
         Schema::create('leave_balances', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id'); // match employees.id type
-            $table->unsignedBigInteger('leave_type_id'); // use unsignedBigInteger to match leave_types.id
+            $table->foreignId('employee_id')->constrained('employees'); // match employees.id type
+            $table->foreignId('leave_type_id')->constrained('leave_types'); // use unsignedBigInteger to match leave_types.id
             $table->decimal('remaining_days', 18, 2)->nullable();
             $table->year('year')->default(date('Y'));
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
-
-            $table->foreign('employee_id')
-                  ->references('id')
-                  ->on('employees')
-                  ->onDelete('cascade');
-
-            $table->foreign('leave_type_id')
-                  ->references('id')
-                  ->on('leave_types')
-                  ->onDelete('cascade');
         });
 
         // Leave Request Approvals
         Schema::create('leave_request_approvals', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('leave_request_id'); // use unsignedBigInteger to match leave_requests.id
+            $table->foreignId('leave_request_id')->constrained('leave_requests'); // use unsignedBigInteger to match leave_requests.id
             $table->string('approver_role', 100)->nullable();
             $table->string('approver_name', 200)->nullable();
             $table->string('approver_signature', 200)->nullable();
@@ -89,11 +69,6 @@ return new class extends Migration
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
-
-            $table->foreign('leave_request_id')
-                  ->references('id')
-                  ->on('leave_requests')
-                  ->onDelete('cascade');
         });
 
         // Traditional Leaves

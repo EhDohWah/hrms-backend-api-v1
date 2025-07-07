@@ -23,15 +23,40 @@ class EmployeeGrantAllocationRequest extends FormRequest
     {
         return [
             'employee_id' => 'required|exists:employees,id',
-            'grant_item_id' => 'required|exists:grant_items,id',
-            'bg_line' => 'nullable|string',
-            'level_of_effort' => 'required|numeric|min:0|max:100',
+            'employment_id' => 'nullable|exists:employments,id',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'active' => 'boolean',
-            'employment_id' => 'nullable|exists:employments,id',
-            'created_by' => 'nullable|string',
-            'updated_by' => 'nullable|string'
+            'allocations' => 'required|array|min:1',
+            'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
+            'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+        ];
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     *
+     * @return array
+     */
+    public function messages(): array
+    {
+        return [
+            'employee_id.required' => 'Employee is required.',
+            'employee_id.exists' => 'Selected employee does not exist.',
+            'employment_id.exists' => 'Selected employment does not exist.',
+            'start_date.required' => 'Start date is required.',
+            'start_date.date' => 'Start date must be a valid date.',
+            'end_date.date' => 'End date must be a valid date.',
+            'end_date.after_or_equal' => 'End date must be after or equal to start date.',
+            'allocations.required' => 'At least one allocation is required.',
+            'allocations.array' => 'Allocations must be an array.',
+            'allocations.min' => 'At least one allocation is required.',
+            'allocations.*.position_slot_id.required' => 'Position slot is required for each allocation.',
+            'allocations.*.position_slot_id.exists' => 'Selected position slot does not exist.',
+            'allocations.*.level_of_effort.required' => 'Level of effort is required for each allocation.',
+            'allocations.*.level_of_effort.numeric' => 'Level of effort must be a number.',
+            'allocations.*.level_of_effort.min' => 'Level of effort must be at least 0.',
+            'allocations.*.level_of_effort.max' => 'Level of effort cannot exceed 100.',
         ];
     }
 }

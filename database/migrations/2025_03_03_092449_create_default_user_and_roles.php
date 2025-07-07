@@ -41,6 +41,8 @@ return new class extends Migration
             'travel_request'     => $defaultActions,
             'leave_request'      => $defaultActions,
             'job_offer'          => $defaultActions,
+            'budget_line'        => $defaultActions,
+            'position_slot'      => $defaultActions,
         ];
 
         // Create each permission (if not exists)

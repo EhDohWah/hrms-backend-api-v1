@@ -13,17 +13,13 @@ return new class extends Migration
     {
         Schema::create('employee_beneficiaries', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id')->index();
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->string('beneficiary_name', 255);
             $table->string('beneficiary_relationship', 255);
             $table->string('phone_number', 15)->nullable();
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
-
-            $table->foreign('employee_id')
-                  ->references('id')->on('employees')
-                  ->onDelete('cascade');
         });
     }
 

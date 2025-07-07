@@ -25,36 +25,36 @@ return new class extends Migration
         });
 
         // insert the default grant items
-        $this->insertDefaultGrantItems();
+        //$this->insertDefaultGrantItems();
     }
 
-    // create a function to insert the default grant items
-    public function insertDefaultGrantItems()
-    {
-        // insert the default grant items
-        DB::table('grant_items')->insert([
-            [
-                'grant_id' => 1,
-                'grant_position' => "SMRU Staff",
-                'grant_salary' => null,
-                'grant_benefit' => null,
-                'grant_level_of_effort' => null,
-                'grant_position_number' => null,
-                'created_by' => 'system',
-                'updated_by' => 'system',
-            ],
-            [
-                'grant_id' => 2,
-                'grant_position' => "BHF Staff",
-                'grant_salary' => null,
-                'grant_benefit' => null,
-                'grant_level_of_effort' => null,
-                'grant_position_number' => null,
-                'created_by' => 'system',
-                'updated_by' => 'system',
-            ]
-        ]);
-    }
+    // // create a function to insert the default grant items
+    // public function insertDefaultGrantItems()
+    // {
+    //     // insert the default grant items
+    //     DB::table('grant_items')->insert([
+    //         [
+    //             'grant_id' => 1,
+    //             'grant_position' => "SMRU Staff",
+    //             'grant_salary' => null,
+    //             'grant_benefit' => null,
+    //             'grant_level_of_effort' => null,
+    //             'grant_position_number' => null,
+    //             'created_by' => 'system',
+    //             'updated_by' => 'system',
+    //         ],
+    //         [
+    //             'grant_id' => 2,
+    //             'grant_position' => "BHF Staff",
+    //             'grant_salary' => null,
+    //             'grant_benefit' => null,
+    //             'grant_level_of_effort' => null,
+    //             'grant_position_number' => null,
+    //             'created_by' => 'system',
+    //             'updated_by' => 'system',
+    //         ]
+    //     ]);
+    // }
 
     /**
      * Reverse the migrations.

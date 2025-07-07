@@ -702,8 +702,8 @@ class EmployeeController extends Controller
         $employee = Employee::with([
             'employment',
             'employeeGrantAllocations',
-            'employeeGrantAllocations.grantItemAllocation',
-            'employeeGrantAllocations.grantItemAllocation.grant',
+            'employeeGrantAllocations.positionSlot.grantItem',
+            'employeeGrantAllocations.positionSlot.grantItem.grant',
             'employment.workLocation',
             // 'employment.grantAllocations.grantItemAllocation',
             // 'employment.grantAllocations.grantItemAllocation.grant',

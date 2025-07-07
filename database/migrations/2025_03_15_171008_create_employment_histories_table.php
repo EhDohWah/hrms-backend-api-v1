@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('employment_histories', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employment_id'); // Required - links to employment record
-            $table->unsignedBigInteger('employee_id'); // Required - links to employee record
+            $table->foreignId('employment_id')->constrained('employments'); // Required - links to employment record
+            $table->foreignId('employee_id')->constrained('employees'); // Required - links to employee record
             $table->string('employment_type'); // Required - type of employment
             $table->date('start_date'); // Required - when employment started
             $table->date('probation_end_date')->nullable(); // Optional - when probation ends
             $table->string('pay_method')->nullable(); // Optional - pay method
-            $table->unsignedBigInteger('department_position_id')->nullable(); // Required - department
-            $table->unsignedBigInteger('work_location_id')->nullable(); // Required - work location
+            $table->foreignId('department_position_id')->nullable()->constrained('department_positions'); // Required - department
+            $table->foreignId('work_location_id')->nullable()->constrained('work_locations'); // Required - work location
             $table->decimal('position_salary', 10, 2); // Required - regular salary
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
             $table->decimal('employee_tax', 10, 2)->nullable(); // Optional - tax rate
@@ -32,12 +32,6 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
-
-            // Foreign keys
-            $table->foreign('employment_id')->references('id')->on('employments')->onDelete('cascade');
-            $table->foreign('employee_id')->references('id')->on('employees');
-            $table->foreign('work_location_id')->references('id')->on('work_locations');
-            $table->foreign('department_position_id')->references('id')->on('department_positions');
         });
     }
 

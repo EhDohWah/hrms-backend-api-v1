@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('payrolls', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id');
+            $table->foreignId('employment_id')->constrained('employments')->cascadeOnDelete();
+            $table->foreignId('employee_funding_allocation_id')->constrained('employee_funding_allocations')->cascadeOnDelete();
             $table->date('pay_period_date');
             $table->decimal('basic_salary', 18, 2);
             $table->decimal('salary_by_FTE', 18, 2);
@@ -37,9 +38,6 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
-
-            // Foreign key constraint: ensure that employee_id references the employees table.
-            $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
         });
     }
 

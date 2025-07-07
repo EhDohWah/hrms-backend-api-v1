@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('travel_requests', function (Blueprint $table) {
-            $table->increments('id');
-            $table->unsignedBigInteger('employee_id');
-            $table->unsignedBigInteger('department_position_id')->nullable();
+            $table->id();
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->foreignId('department_position_id')->nullable()->constrained('department_positions')->nullOnDelete();
             $table->string('destination', 200)->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
@@ -30,17 +30,6 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
-
-            // Foreign keys:
-            $table->foreign('department_position_id')
-                  ->references('id')
-                  ->on('department_positions')
-                  ->onDelete('no action');
-
-            $table->foreign('employee_id')
-                  ->references('id')
-                  ->on('employees')
-                  ->onDelete('no action');
         });
     }
 

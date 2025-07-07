@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('employee_identifications', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employee_id')->index();
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             // Possible id_type values: 'ThaiID', '10YearsID', 'Passport', 'Other'
             $table->string('id_type', 50);
             $table->string('document_number', 50);
@@ -23,9 +23,6 @@ return new class extends Migration
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
 
-            $table->foreign('employee_id')
-                  ->references('id')->on('employees')
-                  ->onDelete('cascade');
         });
     }
 
