@@ -14,60 +14,9 @@ use App\Http\Requests\EmployeeGrantAllocationRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use OpenApi\Annotations as OA;
 
-/**
- * @OA\Tag(
- *     name="EmployeeGrantAllocations", 
- *     description="API Endpoints for Employee Grant Allocations"
- * )
- */
 class EmployeeGrantAllocationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @OA\Get(
-     *     path="/employee-grant-allocations",
-     *     summary="Get all employee grant allocations",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="employee_id",
-     *         in="query",
-     *         description="Filter by employee ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Parameter(
-     *         name="active",
-     *         in="query", 
-     *         description="Filter by active status",
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocations retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve employee grant allocations"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
     public function index(Request $request)
     {
         try {
@@ -106,63 +55,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Store multiple grant allocations for an employee.
-     *
-     * @OA\Post(
-     *     path="/employee-grant-allocations",
-     *     summary="Create multiple employee grant allocations",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"employee_id", "employment_id", "start_date", "allocations"},
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="employment_id", type="integer", example=1),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2024-01-01"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-31", nullable=true),
-     *             @OA\Property(
-     *                 property="allocations",
-     *                 type="array",
-     *                 @OA\Items(
-     *                     @OA\Property(property="position_slot_id", type="integer", example=1),
-     *                     @OA\Property(property="level_of_effort", type="number", format="float", example=75.5)
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocations created successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation")),
-     *             @OA\Property(property="total_created", type="integer", example=3),
-     *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to create employee grant allocations"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
     public function store(Request $request)
     {
         try {
@@ -316,40 +208,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @OA\Get(
-     *     path="/employee-grant-allocations/{id}",
-     *     summary="Get an employee grant allocation by ID",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee Grant Allocation ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeGrantAllocation")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Resource not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation not found")
-     *         )
-     *     )
-     * )
-     */
     public function show($id)
     {
         try {
@@ -382,35 +240,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Get all allocations for a specific employee.
-     *
-     * @OA\Get(
-     *     path="/employee-grant-allocations/employee/{employee_id}",
-     *     summary="Get all grant allocations for a specific employee",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="employee_id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocations retrieved successfully"),
-     *             @OA\Property(property="employee", type="object"),
-     *             @OA\Property(property="total_allocations", type="integer", example=3),
-     *             @OA\Property(property="total_effort", type="number", format="float", example=85.5),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation"))
-     *         )
-     *     )
-     * )
-     */
     public function getEmployeeAllocations($employeeId)
     {
         try {
@@ -452,44 +281,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @OA\Put(
-     *     path="/employee-grant-allocations/{id}",
-     *     summary="Update an employee grant allocation by ID",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee Grant Allocation ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeGrantAllocation")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeGrantAllocation")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Resource not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
-     */
     public function update(Request $request, $id)
     {
         try {
@@ -583,35 +374,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @OA\Delete(
-     *     path="/employee-grant-allocations/{id}",
-     *     summary="Delete an employee grant allocation by ID",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee Grant Allocation ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocation deleted successfully")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Resource not found"
-     *     )
-     * )
-     */
     public function destroy($id)
     {
         try {
@@ -637,27 +399,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Deactivate multiple allocations for an employee
-     *
-     * @OA\Post(
-     *     path="/employee-grant-allocations/bulk-deactivate",
-     *     summary="Deactivate multiple employee grant allocations",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"allocation_ids"},
-     *             @OA\Property(property="allocation_ids", type="array", @OA\Items(type="integer"))
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation"
-     *     )
-     * )
-     */
     public function bulkDeactivate(Request $request)
     {
         try {
@@ -697,9 +438,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Find or create a position slot for the given grant item and budget line combination
-     */
     private function findOrCreatePositionSlot($grantItemId, $budgetLineId, $createdBy)
     {
         // First, try to find an existing position slot
@@ -730,25 +468,6 @@ class EmployeeGrantAllocationController extends Controller
         ]);
     }
 
-    /**
-     * Get grant structure for UI dropdowns
-     *
-     * @OA\Get(
-     *     path="/employee-grant-allocations/grant-structure",
-     *     summary="Get grant structure for UI dropdowns",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Grant structure retrieved successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     )
-     * )
-     */
     public function getGrantStructure()
     {
         try {
@@ -796,66 +515,6 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    /**
-     * Update all allocations for an employee (replace existing)
-     *
-     * @OA\Put(
-     *     path="/employee-grant-allocations/employee/{employee_id}",
-     *     summary="Update all grant allocations for a specific employee",
-     *     tags={"EmployeeGrantAllocations"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="employee_id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"start_date", "allocations"},
-     *             @OA\Property(property="start_date", type="string", format="date", example="2024-01-01"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-31", nullable=true),
-     *             @OA\Property(
-     *                 property="allocations",
-     *                 type="array",
-     *                 @OA\Items(
-     *                     @OA\Property(property="position_slot_id", type="integer", example=1),
-     *                     @OA\Property(property="level_of_effort", type="number", format="float", example=75.5)
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee grant allocations updated successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeGrantAllocation")),
-     *             @OA\Property(property="total_created", type="integer", example=2)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Total effort must equal 100%"),
-     *             @OA\Property(property="current_total", type="number", format="float", example=120.5)
-     *         )
-     *     )
-     * )
-     */
     public function updateEmployeeAllocations(Request $request, $employeeId)
     {
         try {

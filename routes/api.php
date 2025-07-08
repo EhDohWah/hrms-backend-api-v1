@@ -32,6 +32,9 @@ use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\PositionSlotController;
+use App\Http\Controllers\Api\EmployeeFundingAllocationController;
+use App\Http\Controllers\Api\OrgFundedAllocationController;
+
 
 Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
 
@@ -120,6 +123,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/employee/{employee_id}', [EmployeeGrantAllocationController::class, 'updateEmployeeAllocations'])->middleware('permission:employee.update');
     });
 
+    // Employee funding allocation routes
+    Route::prefix('employee-funding-allocations')->group(function () {
+        Route::get('/', [EmployeeFundingAllocationController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [EmployeeFundingAllocationController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [EmployeeFundingAllocationController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [EmployeeFundingAllocationController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [EmployeeFundingAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
+
+    // Org funded allocation routes
+    Route::prefix('org-funded-allocations')->group(function () {
+        Route::get('/', [OrgFundedAllocationController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [OrgFundedAllocationController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [OrgFundedAllocationController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [OrgFundedAllocationController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [OrgFundedAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
 
 
     // Employment routes

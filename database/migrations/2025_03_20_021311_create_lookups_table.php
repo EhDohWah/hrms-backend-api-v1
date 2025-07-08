@@ -120,6 +120,10 @@ return new class extends Migration
             ['type' => 'employee_initial_th', 'value' => 'นาง',   'created_at' => now(), 'updated_at' => now()],
             ['type' => 'employee_initial_th', 'value' => 'ดร',      'created_at' => now(), 'updated_at' => now()],
 
+            // Pay method options
+            ['type' => 'pay_method', 'value' => 'Transferred to bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'pay_method', 'value' => 'Cash cheque', 'created_at' => now(), 'updated_at' => now()],
+
         ]);
     }
 

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('employee_funding_allocations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees');
-            $table->foreignId('employment_id')->constrained('employments');
+            $table->foreignId('employment_id')->nullable()->constrained('employments');
             $table->foreignId('org_funded_id')->nullable()->constrained('org_funded_allocations');
             $table->foreignId('position_slot_id')->nullable()->constrained('position_slots');
             $table->decimal('level_of_effort', 4, 2);

@@ -701,14 +701,16 @@ class EmployeeController extends Controller
     {
         $employee = Employee::with([
             'employment',
-            'employeeGrantAllocations',
-            'employeeGrantAllocations.positionSlot.grantItem',
-            'employeeGrantAllocations.positionSlot.grantItem.grant',
+            'employeeFundingAllocations',
+            'employeeFundingAllocations.positionSlot.grantItem',
+            'employeeFundingAllocations.positionSlot.grantItem.grant',
             'employment.workLocation',
             // 'employment.grantAllocations.grantItemAllocation',
             // 'employment.grantAllocations.grantItemAllocation.grant',
             'employeeBeneficiaries',
-            'employeeIdentification'
+            'employeeIdentification',
+            'employeeChildren',
+            'employeeLanguages',
         ])->find($id);
 
         if (!$employee) {

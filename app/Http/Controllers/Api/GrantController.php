@@ -21,6 +21,9 @@ use App\Models\BudgetLine;
 use App\Http\Resources\GrantResource;
 use App\Http\Resources\PositionSlotResource;
 use App\Http\Resources\BudgetLineResource;
+use Illuminate\Support\Facades\Schema;
+use App\Models\EmployeeFundingAllocation;
+ 
 
 /**
  * @OA\Tag(
@@ -1475,7 +1478,7 @@ class GrantController extends Controller
      *     path="/grants/grant-positions",
      *     operationId="getGrantStatistics",
      *     summary="Get grant statistics with position recruitment status",
-     *     description="Retrieves statistics for all grants including position recruitment status",
+     *     description="Retrieves statistics for all grants including position recruitment status using new funding allocation schema",
      *     tags={"Grants"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(
@@ -1510,14 +1513,8 @@ class GrantController extends Controller
      *             )
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated - User not logged in or token expired"
-     *     ),
-     *     @OA\Response(
-     *         response=403,
-     *         description="Unauthorized - User does not have permission to access grant statistics"
-     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Unauthorized"),
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
@@ -1532,9 +1529,9 @@ class GrantController extends Controller
     public function getGrantPositions(Request $request)
     {
         try {
-            // Eager-load grantItems -> positionSlots -> employeeGrantAllocations
+            // Eager-load grantItems -> positionSlots
             $grants = \App\Models\Grant::with([
-                'grantItems.positionSlots.employeeGrantAllocations'
+                'grantItems.positionSlots'
             ])->orderBy('created_at', 'desc')->get();
 
             if ($grants->isEmpty()) {
@@ -1548,10 +1545,10 @@ class GrantController extends Controller
             $grantStats = [];
 
             foreach ($grants as $grant) {
-                $totalPositions      = 0;
-                $recruitedPositions  = 0;
-                $openPositions       = 0;
-                $grantPositions      = [];
+                $totalPositions     = 0;
+                $recruitedPositions = 0;
+                $openPositions      = 0;
+                $grantPositions     = [];
 
                 foreach ($grant->grantItems as $item) {
                     $positionTitle = $item->grant_position;
@@ -1560,14 +1557,22 @@ class GrantController extends Controller
                     // For each position slot under this grant item
                     $slotAllocations = 0;
                     foreach ($item->positionSlots as $slot) {
-                        // Only count allocations that are active (and within date range)
-                        $activeAllocations = $slot->employeeGrantAllocations
-                            ->where('active', true)
-                            ->filter(function($allocation) {
-                                return is_null($allocation->end_date) || $allocation->end_date > now();
-                            })->count();
+                        // Count active "grant" allocations for this slot
+                        $allocationQuery = \App\Models\EmployeeFundingAllocation::query()
+                            ->where('position_slot_id', $slot->id)
+                            ->where('allocation_type', 'grant');
 
-                        $slotAllocations += $activeAllocations;
+                        // If 'active' column exists, filter on it. Otherwise, use end_date logic.
+                        if (Schema::hasColumn('employee_funding_allocations', 'active')) {
+                            $allocationQuery->where('active', true);
+                        } else {
+                            $allocationQuery->where(function($q) {
+                                $q->whereNull('end_date')->orWhere('end_date', '>', now());
+                            });
+                        }
+
+                        $activeAllocations = $allocationQuery->count();
+                        $slotAllocations  += $activeAllocations;
                     }
 
                     $totalPositions     += $manpower;

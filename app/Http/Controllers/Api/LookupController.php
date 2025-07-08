@@ -56,7 +56,8 @@ class LookupController extends Controller
             'gender', 'subsidiary', 'employee_status', 'nationality',
             'religion', 'marital_status', 'site', 'user_status',
             'interview_mode', 'interview_status', 'identification_types',
-            'employment_type', 'employee_language', 'employee_education', 'employee_initial_en', 'employee_initial_th'
+            'employment_type', 'employee_language', 'employee_education', 'employee_initial_en', 'employee_initial_th', 
+            'pay_method'
         ];
 
         $result = [];
