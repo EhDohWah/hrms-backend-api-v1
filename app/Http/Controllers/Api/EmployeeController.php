@@ -704,6 +704,8 @@ class EmployeeController extends Controller
             'employeeFundingAllocations',
             'employeeFundingAllocations.positionSlot.grantItem',
             'employeeFundingAllocations.positionSlot.grantItem.grant',
+            'employeeFundingAllocations.orgFunded.grant',
+            'employeeFundingAllocations.orgFunded.departmentPosition',
             'employment.workLocation',
             // 'employment.grantAllocations.grantItemAllocation',
             // 'employment.grantAllocations.grantItemAllocation.grant',

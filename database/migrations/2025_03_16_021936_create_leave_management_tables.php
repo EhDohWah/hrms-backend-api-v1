@@ -91,11 +91,11 @@ return new class extends Migration
      */
     public function down()
     {
-        // Drop tables in reverse order to avoid foreign key conflicts
-        Schema::dropIfExists('traditional_leaves');
-        Schema::dropIfExists('leave_request_approvals');
-        Schema::dropIfExists('leave_balances');
-        Schema::dropIfExists('leave_requests');
-        Schema::dropIfExists('leave_types');
+        // Drop in this order:
+        Schema::dropIfExists('leave_request_approvals'); // depends on leave_requests
+        Schema::dropIfExists('leave_balances');          // depends on leave_types
+        Schema::dropIfExists('leave_requests');          // depends on leave_types
+        Schema::dropIfExists('traditional_leaves');      // no dependencies
+        Schema::dropIfExists('leave_types');             // root table
     }
 };

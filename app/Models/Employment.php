@@ -4,47 +4,51 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Employee;
-use App\Models\EmploymentType;
 use App\Models\DepartmentPosition;
 use App\Models\WorkLocation;
 use App\Models\EmploymentHistory;
-use App\Models\EmploymentGrantAllocation;
+use App\Models\EmployeeFundingAllocation;
+use App\Models\Payroll;
 
 /**
  * @OA\Schema(
- *     schema="Employment",
- *     required={"employee_id", "employment_type", "start_date", "work_location_id", "position_salary"},
- *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
- *     @OA\Property(property="employee_id", type="integer", format="int64"),
- *     @OA\Property(property="employment_type", type="string"),
- *     @OA\Property(property="start_date", type="string", format="date"),
- *     @OA\Property(property="probation_end_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="pay_method", type="string", nullable=true),
- *     @OA\Property(property="department_position_id", type="integer", format="int64", nullable=true),
- *     @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
- *     @OA\Property(property="position_salary", type="number", format="float"),
- *     @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
- *     @OA\Property(property="employee_tax", type="number", format="float", nullable=true),
- *     @OA\Property(property="fte", type="number", format="float", nullable=true),
- *     @OA\Property(property="active", type="boolean", default=true),
- *     @OA\Property(property="health_welfare", type="boolean", default=false),
- *     @OA\Property(property="pvd", type="boolean", default=false),
- *     @OA\Property(property="saving_fund", type="boolean", default=false),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
- *     @OA\Property(property="updated_at", type="string", format="date-time", readOnly=true)
+ *   schema="Employment",
+ *   required={"employee_id","employment_type","start_date","work_location_id","position_salary"},
+ *   @OA\Property(property="id", type="integer", format="int64", readOnly=true),
+ *   @OA\Property(property="employee_id", type="integer", format="int64"),
+ *   @OA\Property(property="employment_type", type="string"),
+ *   @OA\Property(property="start_date", type="string", format="date"),
+ *   @OA\Property(property="end_date", type="string", format="date", nullable=true),
+ *   @OA\Property(property="probation_pass_date", type="string", format="date", nullable=true),
+ *   @OA\Property(property="pay_method", type="string", nullable=true),
+ *   @OA\Property(property="department_position_id", type="integer", format="int64", nullable=true),
+ *   @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
+ *   @OA\Property(property="position_salary", type="number", format="float"),
+ *   @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
+ *   @OA\Property(property="employee_tax", type="number", format="float", nullable=true),
+ *   @OA\Property(property="fte", type="number", format="float", nullable=true),
+ *   @OA\Property(property="active", type="boolean", default=true),
+ *   @OA\Property(property="health_welfare", type="boolean", default=false),
+ *   @OA\Property(property="pvd", type="boolean", default=false),
+ *   @OA\Property(property="saving_fund", type="boolean", default=false),
+ *   @OA\Property(property="created_by", type="string", nullable=true),
+ *   @OA\Property(property="updated_by", type="string", nullable=true),
+ *   @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
+ *   @OA\Property(property="updated_at", type="string", format="date-time", readOnly=true)
  * )
  */
 class Employment extends Model
 {
     use HasFactory;
 
+    /** Mass-assignable attributes */
     protected $fillable = [
         'employee_id',
         'employment_type',
         'start_date',
+        'end_date',
         'probation_pass_date',
         'pay_method',
         'department_position_id',
@@ -58,67 +62,160 @@ class Employment extends Model
         'pvd',
         'saving_fund',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
-    protected static function boot()
+    /** Attribute casting for type safety */
+    protected $casts = [
+        'start_date'         => 'date:Y-m-d',
+        'end_date'           => 'date:Y-m-d',
+        'probation_pass_date'=> 'date:Y-m-d',
+        'position_salary'    => 'decimal:2',
+        'probation_salary'   => 'decimal:2',
+        'employee_tax'       => 'decimal:2',
+        'fte'                => 'decimal:2',
+        'active'             => 'boolean',
+        'health_welfare'     => 'boolean',
+        'pvd'                => 'boolean',
+        'saving_fund'        => 'boolean',
+    ];
+
+    /**
+     * Wire up audit-trail events using Laravel's `booted()` hook
+     */
+    protected static function booted(): void
     {
-        parent::boot();
-        // When a new Employment record is created:
-        static::created(function ($employment) {
-            // Create a history record with all the employment attributes
-            EmploymentHistory::create([
-                'employment_id' => $employment->id,
-                'employee_id' => $employment->employee_id,
-                'employment_type' => $employment->employment_type,
-                'start_date' => $employment->start_date,
-                'probation_end_date' => $employment->probation_end_date,
-                'pay_method' => $employment->pay_method,
-                'department_position_id' => $employment->department_position_id,
-                'work_location_id' => $employment->work_location_id,
-                'position_salary' => $employment->position_salary,
-                'probation_salary' => $employment->probation_salary,
-                'employee_tax' => $employment->employee_tax,
-                'fte' => $employment->fte,
-                'active' => $employment->active,
-                'health_welfare' => $employment->health_welfare,
-                'pvd' => $employment->pvd,
-                'saving_fund' => $employment->saving_fund,
-                'created_by' => $employment->created_by,
-                'updated_by' => $employment->updated_by,
-                'change_type' => 'created',
-                'change_date' => now(),
-            ]);
+        // Initial creation
+        static::created(function(self $employment): void {
+            $employment->createHistoryRecord(
+                type:   'created',
+                reason: 'Initial employment record'
+            );
         });
 
-        // When an existing Employment record is updated:
-        static::updated(function ($employment) {
-            EmploymentHistory::create([
-                'employment_id' => $employment->id,
-                'employee_id' => $employment->employee_id,
-                'employment_type' => $employment->employment_type,
-                'start_date' => $employment->start_date,
-                'probation_end_date' => $employment->probation_end_date,
-                'pay_method' => $employment->pay_method,
-                'department_position_id' => $employment->department_position_id,
-                'work_location_id' => $employment->work_location_id,
-                'position_salary' => $employment->position_salary,
-                'probation_salary' => $employment->probation_salary,
-                'employee_tax' => $employment->employee_tax,
-                'fte' => $employment->fte,
-                'active' => $employment->active,
-                'health_welfare' => $employment->health_welfare,
-                'pvd' => $employment->pvd,
-                'saving_fund' => $employment->saving_fund,
-                'created_by' => $employment->created_by,
-                'updated_by' => $employment->updated_by,
-                'change_type' => 'updated',
-                'change_date' => now(),
-            ]);
+        // Subsequent updates
+        static::updated(function(self $employment): void {
+            $changes  = collect($employment->getChanges())->except('updated_at')->all();
+            $original = collect($employment->getOriginal())
+                        ->only(array_keys($changes))
+                        ->all();
+
+            if (count($changes) > 0) {
+                $employment->createHistoryRecord(
+                    type:           'updated',
+                    reason:         $employment->generateChangeReason($changes),
+                    changesMade:    $changes,
+                    previousValues: $original
+                );
+            }
         });
     }
 
+    /**
+     * Centralized history-record creation
+     */
+    protected function createHistoryRecord(
+        string $type,
+        string $reason,
+        array  $changesMade    = [],
+        array  $previousValues = []
+    ): void {
+        EmploymentHistory::create([
+            'employment_id'        => $this->id,
+            'employee_id'          => $this->employee_id,
+            'employment_type'      => $this->employment_type,
+            'start_date'           => $this->start_date,
+            'probation_end_date'   => $this->probation_pass_date,
+            'pay_method'           => $this->pay_method,
+            'department_position_id' => $this->department_position_id,
+            'work_location_id'     => $this->work_location_id,
+            'position_salary'      => $this->position_salary,
+            'probation_salary'     => $this->probation_salary,
+            'employee_tax'         => $this->employee_tax,
+            'fte'                  => $this->fte,
+            'active'               => $this->active,
+            'health_welfare'       => $this->health_welfare,
+            'pvd'                  => $this->pvd,
+            'saving_fund'          => $this->saving_fund,
+            'change_date'          => now(),
+            'change_reason'        => $reason,
+            'changed_by_user'      => Auth::user()?->name ?? $this->updated_by ?? 'system',
+            'changes_made'         => $changesMade ?: null,
+            'previous_values'      => $previousValues ?: null,
+            'notes'                => null,
+            'created_by'           => $this->created_by,
+            'updated_by'           => $this->updated_by,
+        ]);
+    }
 
+    /**
+     * Human-readable summary of what changed
+     */
+    private function generateChangeReason(array $changes): string
+    {
+        $fieldMap = [
+            'position_salary'       => 'Salary adjustment',
+            'department_position_id'=> 'Position change',
+            'work_location_id'      => 'Location change',
+            'employment_type'       => 'Employment type change',
+            'probation_pass_date'   => 'Probation period update',
+            'pay_method'            => 'Payment method change',
+            'fte'                   => 'FTE adjustment',
+            'employee_tax'          => 'Tax rate adjustment',
+            'health_welfare'        => 'Health welfare benefit change',
+            'pvd'                   => 'PVD benefit change',
+            'saving_fund'           => 'Saving fund benefit change',
+            'active'                => fn($value) => $value ? 'Employment reactivated' : 'Employment deactivated',
+        ];
+
+        $descriptions = collect($changes)
+            ->keys()
+            ->map(function($field) use ($fieldMap, $changes) {
+                $mapper = $fieldMap[$field] ?? null;
+                if (is_callable($mapper)) {
+                    return $mapper($changes[$field]);
+                }
+                return $mapper;
+            })
+            ->filter()
+            ->take(3) // Limit to first 3 changes for readability
+            ->implode(', ');
+
+        return $descriptions ?: 'Employment details updated';
+    }
+
+    /**
+     * Create a manual history entry with custom reason and notes
+     */
+    public function addHistoryEntry(string $reason, ?string $notes = null, ?string $changedBy = null): EmploymentHistory
+    {
+        return EmploymentHistory::create([
+            'employment_id'        => $this->id,
+            'employee_id'          => $this->employee_id,
+            'employment_type'      => $this->employment_type,
+            'start_date'           => $this->start_date,
+            'probation_end_date'   => $this->probation_pass_date,
+            'pay_method'           => $this->pay_method,
+            'department_position_id' => $this->department_position_id,
+            'work_location_id'     => $this->work_location_id,
+            'position_salary'      => $this->position_salary,
+            'probation_salary'     => $this->probation_salary,
+            'employee_tax'         => $this->employee_tax,
+            'fte'                  => $this->fte,
+            'active'               => $this->active,
+            'health_welfare'       => $this->health_welfare,
+            'pvd'                  => $this->pvd,
+            'saving_fund'          => $this->saving_fund,
+            'change_date'          => now(),
+            'change_reason'        => $reason,
+            'changed_by_user'      => $changedBy ?? Auth::user()?->name ?? 'Manual Entry',
+            'notes'                => $notes,
+            'created_by'           => $this->created_by,
+            'updated_by'           => $this->updated_by,
+        ]);
+    }
+
+    // — Relationships —
     public function employee()
     {
         return $this->belongsTo(Employee::class);
@@ -144,12 +241,52 @@ class Employment extends Model
         return $this->belongsTo(DepartmentPosition::class);
     }
 
-
     public function workLocation()
     {
         return $this->belongsTo(WorkLocation::class);
     }
 
+    // — Query Scopes —
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
 
-    
+    public function scopeInactive($query)
+    {
+        return $query->where('active', false);
+    }
+
+    public function scopeByEmploymentType($query, string $type)
+    {
+        return $query->where('employment_type', $type);
+    }
+
+    public function scopeByDepartment($query, int $departmentPositionId)
+    {
+        return $query->where('department_position_id', $departmentPositionId);
+    }
+
+    // — Accessors —
+    public function getFullEmploymentTypeAttribute(): string
+    {
+        $types = [
+            'Full-time' => 'Full-time Employee',
+            'Part-time' => 'Part-time Employee', 
+            'Contract' => 'Contract Employee',
+            'Temporary' => 'Temporary Employee'
+        ];
+        
+        return $types[$this->employment_type] ?? $this->employment_type;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->active === true;
+    }
+
+    public function getFormattedSalaryAttribute(): string
+    {
+        return number_format($this->position_salary, 2);
+    }
 }

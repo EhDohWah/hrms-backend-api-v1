@@ -62,6 +62,7 @@ class OrgFundedAllocationController extends Controller
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
      *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
      *             @OA\Property(property="description", type="string", description="Optional description"),
+     *             @OA\Property(property="org_funded_salary", type="number", format="decimal", description="Optional organization funded salary"),
      *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active", default=true)
      *         )
      *     ),
@@ -81,6 +82,7 @@ class OrgFundedAllocationController extends Controller
             'grant_id' => 'required|exists:grants,id',
             'department_position_id' => 'required|exists:department_positions,id',
             'description' => 'nullable|string|max:255',
+            'org_funded_salary' => 'nullable|numeric|min:0',
             'active' => 'boolean',
         ]);
 
@@ -143,6 +145,7 @@ class OrgFundedAllocationController extends Controller
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
      *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
      *             @OA\Property(property="description", type="string", description="Optional description"),
+     *             @OA\Property(property="org_funded_salary", type="number", format="decimal", description="Optional organization funded salary"),
      *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active")
      *         )
      *     ),
@@ -165,7 +168,8 @@ class OrgFundedAllocationController extends Controller
             'grant_id' => 'sometimes|exists:grants,id',
             'department_position_id' => 'sometimes|exists:department_positions,id',
             'description' => 'nullable|string|max:255',
-            'active' => 'boolean',
+            'org_funded_salary' => 'nullable|numeric|min:0',
+            'active' => 'boolean', 
         ]);
 
         $allocation->update([

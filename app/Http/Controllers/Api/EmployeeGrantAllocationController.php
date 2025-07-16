@@ -484,6 +484,9 @@ class EmployeeGrantAllocationController extends Controller
                         return [
                             'id' => $item->id,
                             'name' => $item->grant_position,
+                            'grant_salary' => $item->grant_salary,
+                            'grant_benefit' => $item->grant_benefit,
+                            'grant_level_of_effort' => $item->grant_level_of_effort,
                             'position_slots' => $item->positionSlots->map(function ($slot) {
                                 return [
                                     'id' => $slot->id,

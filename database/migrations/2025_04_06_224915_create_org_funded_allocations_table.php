@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('grant_id')->constrained('grants')->cascadeOnDelete();
             $table->foreignId('department_position_id')->constrained('department_positions')->cascadeOnDelete();
             $table->string('description')->nullable();
+            $table->decimal('org_funded_salary', 15, 2)->nullable(); 
             $table->boolean('active')->default(true);
             $table->timestamps();
 

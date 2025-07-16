@@ -49,7 +49,7 @@ class EmploymentController extends Controller
     {
         try {
             // Optionally, additional relationships (e.g. employee, grantAllocations) can be loaded if needed.
-            $employments = Employment::with(['employee', 'departmentPosition', 'workLocation'])->get();
+            $employments = Employment::with(['employee', 'departmentPosition', 'workLocation', 'employeeFundingAllocations'])->get();
 
             return response()->json([
                 'success' => true,
@@ -163,6 +163,7 @@ class EmploymentController extends Controller
                 'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
                 'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
                 'allocations.*.org_funded_id' => 'nullable|integer', // Frontend sends this but we'll ignore it
+                'allocations.*.org_funded_salary' => 'nullable|numeric|min:0',
                 'allocations.*.grant_id' => 'nullable|exists:grants,id', // For org_funded, we need the grant_id
                 'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
             ]);
@@ -291,8 +292,9 @@ class EmploymentController extends Controller
                         $orgFundedAllocation = OrgFundedAllocation::create([
                             'grant_id' => $allocationData['grant_id'],
                             'department_position_id' => $employment->department_position_id,
-                            'description' => 'Auto-created for employment ID: ' . $employment->id,
+                            'description' => 'Aut o-created for employment ID: ' . $employment->id,
                             'active' => true,
+                            'org_funded_salary' => $allocationData['org_funded_salary'],
                             'created_by' => $currentUser,
                             'updated_by' => $currentUser,
                         ]);
@@ -346,8 +348,8 @@ class EmploymentController extends Controller
             // Load the created records with their relationships
             $employmentWithRelations = Employment::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'departmentPosition:id,department_name_en,position_name_en',
-                'workLocation:id,location_name_en'
+                'departmentPosition:id,department,position',
+                'workLocation:id,name'
             ])->find($employment->id);
 
             $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
@@ -356,12 +358,12 @@ class EmploymentController extends Controller
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
                 'orgFunded.grant:id,name,code',
-                'orgFunded.departmentPosition:id,department_name_en,position_name_en'
+                'orgFunded.departmentPosition:id,department,position'
             ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
             $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
                 'grant:id,name,code',
-                'departmentPosition:id,department_name_en,position_name_en'
+                'departmentPosition:id,department,position'
             ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
             // ============================================================================
@@ -469,7 +471,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="employment_type", type="string", example="Full-Time"),
      *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
-     *             @OA\Property(property="probation_end_date", type="string", format="date", example="2025-04-15", nullable=true),
+     *             @OA\Property(property="probation_pass_date", type="string", format="date", example="2025-04-15", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", example="2024-01-15", nullable=true),
      *             @OA\Property(property="department_position_id", type="integer", example=1),
      *             @OA\Property(property="work_location_id", type="integer", example=1),
@@ -503,7 +505,7 @@ class EmploymentController extends Controller
             'employee_id'            => 'exists:employees,id',
             'employment_type'        => 'string',
             'start_date'             => 'date',
-            'probation_end_date'     => 'nullable|date',
+            'probation_pass_date'     => 'nullable|date',
             'end_date'               => 'nullable|date',
             'department_position_id' => 'exists:department_positions,id',
             'work_location_id'       => 'exists:work_locations,id',
