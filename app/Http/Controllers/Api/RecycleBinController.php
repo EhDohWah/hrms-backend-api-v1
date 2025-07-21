@@ -303,7 +303,7 @@ class RecycleBinController extends Controller
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to permanently delete record: Record not found")
      *         )
-     *     ) 
+     *     )
      * )
      */
     public function permanentDelete($deletedRecordId): JsonResponse

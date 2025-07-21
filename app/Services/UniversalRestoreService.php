@@ -42,17 +42,26 @@ class UniversalRestoreService
             throw new Exception("Model class {$modelClass} does not exist");
         }
 
+
+        \Log::info('Restoring model', ['modelClass' => $modelClass, 'originalId' => $originalId, 'type' => gettype($originalId)]); 
+
         // Find the deleted record using model class and original ID
-        // For SQL Server, use JSON_VALUE instead of JSON_EXTRACT
+        // Try multiple approaches to handle different data types
         $deletedRecord = DeletedModel::where('model', $modelClass)
-            ->where(function($query) use ($originalId) {
+            ->where(function ($query) use ($originalId) {
+                // For SQL Server, use JSON_VALUE instead of JSON_EXTRACT
                 $query->whereRaw("JSON_VALUE([values], '$.id') = ?", [$originalId])
-                      ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(string)$originalId]);
+                    // Try as string if it's numeric
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(string)$originalId])
+                    // Try as integer if it's a string number
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(int)$originalId]);
             })
             ->first();
 
         if (!$deletedRecord) {
-            throw new Exception("No deleted record found for {$modelClass} with ID {$originalId}");
+            throw new Exception(
+                "No deleted record found for {$modelClass} with ID {$originalId}. Deleted record: " . json_encode($deletedRecord) . ". Type: " . gettype($originalId)
+            );
         }
 
         // Use the model class dynamically with Spatie's restore method

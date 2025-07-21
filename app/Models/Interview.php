@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Annotations as OA;
-use Illuminate\Support\Carbon; // Make sure to import Carbon
+use Illuminate\Support\Carbon;
 use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
 use Illuminate\Support\Facades\DB;
 
@@ -57,53 +57,24 @@ class Interview extends Model
     ];
 
     /**
-     * Override the restore method to handle SQL Server IDENTITY columns
+     * Hook called before restoring a deleted model.
+     * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
      */
-    public static function restore(string $deletionKey): static
+    public static function beforeRestoringModel($deletedModel): void
     {
-        $deletedModel = app(config('deleted-models.model'))->where('key', $deletionKey)->firstOrFail();
-        
-        $modelData = $deletedModel->values;
-        $originalId = $modelData['id'] ?? null;
-        
-        // Remove the ID from the data so SQL Server can auto-generate it
-        unset($modelData['id']);
-        
-        DB::beginTransaction();
-        
-        try {
-            // Enable IDENTITY_INSERT for this table
-            if ($originalId) {
-                DB::statement("SET IDENTITY_INSERT interviews ON");
-                
-                // Create with the original ID
-                $restored = static::create(array_merge($modelData, ['id' => $originalId]));
-                
-                // Disable IDENTITY_INSERT
-                DB::statement("SET IDENTITY_INSERT interviews OFF");
-            } else {
-                // Create without ID (let SQL Server auto-generate)
-                $restored = static::create($modelData);
-            }
-            
-            // Delete the record from deleted_models
-            $deletedModel->delete();
-            
-            DB::commit();
-            
-            return $restored;
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            // Make sure IDENTITY_INSERT is turned off even if there's an error
-            try {
-                DB::statement("SET IDENTITY_INSERT interviews OFF");
-            } catch (\Exception $cleanupException) {
-                // Ignore cleanup errors
-            }
-            
-            throw $e;
+        if (DB::getDriverName() === 'sqlsrv') {
+            DB::unprepared('SET IDENTITY_INSERT interviews ON');
+        }
+    }
+
+    /**
+     * Hook called after restoring a deleted model.
+     * Disables IDENTITY_INSERT for SQL Server to return to normal operation.
+     */
+    public static function afterRestoringModel(Model $restoredModel, $deletedModel): void
+    {
+        if (DB::getDriverName() === 'sqlsrv') {
+            DB::unprepared('SET IDENTITY_INSERT interviews OFF');
         }
     }
 
