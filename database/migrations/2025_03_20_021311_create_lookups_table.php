@@ -124,6 +124,20 @@ return new class extends Migration
             ['type' => 'pay_method', 'value' => 'Transferred to bank', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'pay_method', 'value' => 'Cash cheque', 'created_at' => now(), 'updated_at' => now()],
 
+            // Section Department options
+            ['type' => 'section_department', 'value' => 'Training', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Procurement & Stores', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Data', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Malaria Invitro', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Entomology', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Research', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Clinical', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'M&E', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Security', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Transportation', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Ultrasound', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'section_department', 'value' => 'Delivery', 'created_at' => now(), 'updated_at' => now()],
+
         ]);
     }
 

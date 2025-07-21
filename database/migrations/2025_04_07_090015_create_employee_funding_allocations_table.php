@@ -19,6 +19,8 @@ return new class extends Migration
             $table->foreignId('position_slot_id')->nullable()->constrained('position_slots');
             $table->decimal('level_of_effort', 4, 2);
             $table->string('allocation_type', 20); // e.g., 'grant', 'org_funded'
+            $table->decimal('allocation_percentage', 15, 2)->nullable();
+            $table->decimal('allocated_amount', 15, 2)->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->string('created_by', 100)->nullable();

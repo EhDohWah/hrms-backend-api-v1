@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\PositionSlotController;
 use App\Http\Controllers\Api\EmployeeFundingAllocationController;
 use App\Http\Controllers\Api\OrgFundedAllocationController;
+use App\Http\Controllers\Api\RecycleBinController;
 
 
 Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
@@ -365,6 +366,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [EmployeeLanguageController::class, 'show'])->middleware('permission:employee.read');
         Route::put('/{id}', [EmployeeLanguageController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [EmployeeLanguageController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
+
+     Route::prefix('recycle-bin')->group(function () {
+        Route::get('/', [RecycleBinController::class, 'index']);
+        Route::get('/stats', [RecycleBinController::class, 'stats']);
+        Route::post('/restore', [RecycleBinController::class, 'restore']);
+        Route::post('/bulk-restore', [RecycleBinController::class, 'bulkRestore']);
+        Route::delete('/{deletedRecordId}', [RecycleBinController::class, 'permanentDelete']);
     });
 });
 

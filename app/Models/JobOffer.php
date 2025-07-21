@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Schema(
@@ -26,7 +28,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  */
 class JobOffer extends Model
 {
-    use HasFactory;
+    use HasFactory, KeepsDeletedModels;
 
     /**
      * The attributes that are mass assignable.
@@ -54,4 +56,55 @@ class JobOffer extends Model
         'date' => 'date',
         'acceptance_deadline' => 'date',
     ];
+
+    /**
+     * Override the restore method to handle SQL Server IDENTITY columns
+     */
+    public static function restore(string $deletionKey): static
+    {
+        $deletedModel = app(config('deleted-models.model'))->where('key', $deletionKey)->firstOrFail();
+        
+        $modelData = $deletedModel->values;
+        $originalId = $modelData['id'] ?? null;
+        
+        // Remove the ID from the data so SQL Server can auto-generate it
+        unset($modelData['id']);
+        
+        DB::beginTransaction();
+        
+        try {
+            // Enable IDENTITY_INSERT for this table
+            if ($originalId) {
+                DB::statement("SET IDENTITY_INSERT job_offers ON");
+                
+                // Create with the original ID
+                $restored = static::create(array_merge($modelData, ['id' => $originalId]));
+                
+                // Disable IDENTITY_INSERT
+                DB::statement("SET IDENTITY_INSERT job_offers OFF");
+            } else {
+                // Create without ID (let SQL Server auto-generate)
+                $restored = static::create($modelData);
+            }
+            
+            // Delete the record from deleted_models
+            $deletedModel->delete();
+            
+            DB::commit();
+            
+            return $restored;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            // Make sure IDENTITY_INSERT is turned off even if there's an error
+            try {
+                DB::statement("SET IDENTITY_INSERT job_offers OFF");
+            } catch (\Exception $cleanupException) {
+                // Ignore cleanup errors
+            }
+            
+            throw $e;
+        }
+    }
 }
