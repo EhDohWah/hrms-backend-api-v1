@@ -56,55 +56,58 @@ class Interview extends Model
         'updated_by'
     ];
 
-    /**
-     * Hook called before restoring a deleted model.
-     * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
-     */
-    public static function beforeRestoringModel($deletedModel): void
-    {
-        if (DB::getDriverName() === 'sqlsrv') {
-            DB::unprepared('SET IDENTITY_INSERT interviews ON');
-        }
-    }
 
-    /**
-     * Hook called after restoring a deleted model.
-     * Disables IDENTITY_INSERT for SQL Server to return to normal operation.
-     */
-    public static function afterRestoringModel(Model $restoredModel, $deletedModel): void
-    {
-        if (DB::getDriverName() === 'sqlsrv') {
-            DB::unprepared('SET IDENTITY_INSERT interviews OFF');
-        }
-    }
 
-    // Mutator for interview_date (accepts ISO, SQL, etc.)
-    public function setInterviewDateAttribute($value)
-    {
-        if (empty($value)) {
-            $this->attributes['interview_date'] = null;
-        } else {
-            $this->attributes['interview_date'] = Carbon::parse($value)->format('Y-m-d');
-        }
-    }
+    // Below code is for SQL Server only, to allow explicit ID insertion.
+    // /**
+    //  * Hook called before restoring a deleted model.
+    //  * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
+    //  */
+    // public static function beforeRestoringModel($deletedModel): void
+    // {
+    //     if (DB::getDriverName() === 'sqlsrv') {
+    //         DB::unprepared('SET IDENTITY_INSERT interviews ON');
+    //     }
+    // }
 
-    // Mutator for start_time
-    public function setStartTimeAttribute($value)
-    {
-        if (empty($value)) {
-            $this->attributes['start_time'] = null;
-        } else {
-            $this->attributes['start_time'] = Carbon::parse($value)->format('H:i:s');
-        }
-    }
+    // /**
+    //  * Hook called after restoring a deleted model.
+    //  * Disables IDENTITY_INSERT for SQL Server to return to normal operation.
+    //  */
+    // public static function afterRestoringModel(Model $restoredModel, $deletedModel): void
+    // {
+    //     if (DB::getDriverName() === 'sqlsrv') {
+    //         DB::unprepared('SET IDENTITY_INSERT interviews OFF');
+    //     }
+    // }
 
-    // Mutator for end_time
-    public function setEndTimeAttribute($value)
-    {
-        if (empty($value)) {
-            $this->attributes['end_time'] = null;
-        } else {
-            $this->attributes['end_time'] = Carbon::parse($value)->format('H:i:s');
-        }
-    }
+    // // Mutator for interview_date (accepts ISO, SQL, etc.)
+    // public function setInterviewDateAttribute($value)
+    // {
+    //     if (empty($value)) {
+    //         $this->attributes['interview_date'] = null;
+    //     } else {
+    //         $this->attributes['interview_date'] = Carbon::parse($value)->format('Y-m-d');
+    //     }
+    // }
+
+    // // Mutator for start_time
+    // public function setStartTimeAttribute($value)
+    // {
+    //     if (empty($value)) {
+    //         $this->attributes['start_time'] = null;
+    //     } else {
+    //         $this->attributes['start_time'] = Carbon::parse($value)->format('H:i:s');
+    //     }
+    // }
+
+    // // Mutator for end_time
+    // public function setEndTimeAttribute($value)
+    // {
+    //     if (empty($value)) {
+    //         $this->attributes['end_time'] = null;
+    //     } else {
+    //         $this->attributes['end_time'] = Carbon::parse($value)->format('H:i:s');
+    //     }
+    // }
 }
