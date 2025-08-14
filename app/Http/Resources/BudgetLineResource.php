@@ -17,10 +17,12 @@ class BudgetLineResource extends JsonResource
         return [
             'id'               => $this->id,
             'budget_line_code' => $this->budget_line_code,
+            'description'      => $this->description,
             'created_by'       => $this->created_by,
             'updated_by'       => $this->updated_by,
             'created_at'       => $this->created_at,
             'updated_at'       => $this->updated_at,
+            //'position_slots'   => \App\Http\Resources\PositionSlotResource::collection($this->whenLoaded('positionSlots')),
         ];
     }
 }

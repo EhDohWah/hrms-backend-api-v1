@@ -181,5 +181,123 @@ class Employee extends Model
         return $this->hasMany(EmployeeTraining::class);
     }
 
+    // Query optimization scopes
+    public function scopeForPagination($query)
+    {
+        return $query->select([
+            'employees.id',
+            'employees.subsidiary',
+            'employees.staff_id',
+            'employees.initial_en',
+            'employees.first_name_en',
+            'employees.last_name_en',
+            'employees.gender',
+            'employees.date_of_birth',
+            'employees.status',
+            'employees.social_security_number',
+            'employees.tax_number',
+            'employees.mobile_phone',
+            'employees.created_at',
+            'employees.updated_at'
+        ]);
+    }
+
+    public function scopeWithOptimizedRelations($query)
+    {
+        return $query->with([
+            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
+            'employment:id,employee_id,start_date,end_date'
+        ]);
+    }
+
+    public function scopeBySubsidiary($query, $subsidiaries)
+    {
+        if (is_string($subsidiaries)) {
+            $subsidiaries = explode(',', $subsidiaries);
+        }
+        return $query->whereIn('subsidiary', array_filter($subsidiaries));
+    }
+
+    public function scopeByStatus($query, $statuses)
+    {
+        if (is_string($statuses)) {
+            $statuses = explode(',', $statuses);
+        }
+        return $query->whereIn('status', array_filter($statuses));
+    }
+
+    public function scopeByGender($query, $genders)
+    {
+        if (is_string($genders)) {
+            $genders = explode(',', $genders);
+        }
+        return $query->whereIn('gender', array_filter($genders));
+    }
+
+    public function scopeByAge($query, $age)
+    {
+        if (is_numeric($age)) {
+            $birthYear = now()->year - $age;
+            return $query->whereYear('date_of_birth', $birthYear);
+        }
+        return $query;
+    }
+
+    public function scopeByIdType($query, $idTypes)
+    {
+        if (is_string($idTypes)) {
+            $idTypes = explode(',', $idTypes);
+        }
+        return $query->whereHas('employeeIdentification', function($q) use ($idTypes) {
+            $q->whereIn('id_type', array_filter($idTypes));
+        });
+    }
+
+    // Computed attributes
+    public function getAgeAttribute()
+    {
+        if (!$this->date_of_birth) return null;
+        return now()->diffInYears($this->date_of_birth);
+    }
+
+    public function getIdTypeAttribute()
+    {
+        return $this->employeeIdentification?->id_type;
+    }
+
+    // Helper methods for statistics
+    public static function getStatistics(): array 
+    {
+        return Cache::remember('employee_statistics', 300, function() {
+            $now = now();
+            $threeMonthsAgo = $now->copy()->subMonths(3);
+
+            // Use SQL aggregation instead of loading ALL employees into memory
+            return [
+                'totalEmployees' => Employee::count(),
+                'activeCount' => DB::table('employments')
+                    ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->where(function($q) use ($now) {
+                        $q->whereNull('employments.end_date')
+                        ->orWhere('employments.end_date', '>', $now);
+                    })
+                    ->count(),
+                'inactiveCount' => DB::table('employments')
+                    ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->whereNotNull('employments.end_date')
+                    ->where('employments.end_date', '<=', $now)
+                    ->count(),
+                'newJoinerCount' => DB::table('employments')
+                    ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->whereBetween('employments.start_date', [$threeMonthsAgo, $now])
+                    ->count(),
+                'subsidiaryCount' => [
+                    'SMRU_count' => Employee::where('subsidiary', 'SMRU')->count(),
+                    'BHF_count' => Employee::where('subsidiary', 'BHF')->count()
+                ]
+            ];
+        });
+    }
+
 
 }

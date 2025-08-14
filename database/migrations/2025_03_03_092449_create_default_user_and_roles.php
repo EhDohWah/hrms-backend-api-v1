@@ -43,6 +43,7 @@ return new class extends Migration
             'job_offer'          => $defaultActions,
             'budget_line'        => $defaultActions,
             'position_slot'      => $defaultActions,
+            'tax'                => $defaultActions,
         ];
 
         // Create each permission (if not exists)

@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('work_location_id')->nullable()->constrained('work_locations'); // Required - work location
             $table->decimal('position_salary', 10, 2); // Required - regular salary
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
-            $table->decimal('employee_tax', 10, 2)->nullable(); // Optional - tax rate
+
             $table->decimal('fte', 10, 2)->nullable(); // Optional - full-time equivalent
             $table->boolean('active')->default(true); // Required - employment status
             $table->boolean('health_welfare')->default(false); // Required - health benefits flag

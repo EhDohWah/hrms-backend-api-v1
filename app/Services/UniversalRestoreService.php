@@ -50,7 +50,14 @@ class UniversalRestoreService
 
         // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit
         $deletedRecord = DeletedModel::where('model', $modelClass)
-            ->whereJsonContains('values->id', $originalId)
+            ->where(function ($query) use ($originalId) {
+                // For SQL Server, use JSON_VALUE instead of JSON_EXTRACT
+                $query->whereRaw("JSON_VALUE([values], '$.id') = ?", [$originalId])
+                    // Try as string if it's numeric
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(string)$originalId])
+                    // Try as integer if it's a string number
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(int)$originalId]);
+            })
             ->first();
 
         if (!$deletedRecord) {
@@ -60,16 +67,9 @@ class UniversalRestoreService
         }
 
 
-        // This is for MySQL only 
+         // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit ------> This is for MySQL <-----
         // $deletedRecord = DeletedModel::where('model', $modelClass)
-        //     ->where(function ($query) use ($originalId) {
-        //         // For MySQL, use JSON_EXTRACT or shorthand syntax
-        //         $query->whereRaw("JSON_EXTRACT(values, '$.id') = ?", [$originalId])
-        //             // Try as string if it's numeric
-        //             ->orWhereRaw("JSON_EXTRACT(values, '$.id') = ?", [(string)$originalId])
-        //             // Try as integer if it's a string number
-        //             ->orWhereRaw("JSON_EXTRACT(values, '$.id') = ?", [(int)$originalId]);
-        //     })
+        //     ->whereJsonContains('values->id', $originalId)
         //     ->first();
 
         // if (!$deletedRecord) {

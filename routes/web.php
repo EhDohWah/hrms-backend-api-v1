@@ -1,10 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Broadcast;
 use App\Events\MyTestEvent;
-
-Broadcast::routes(['middleware' => ['auth:api']]); // this is for web routes
 
 
 

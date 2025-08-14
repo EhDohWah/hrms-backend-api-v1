@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Payroll;
 use App\Models\Employee;
+use App\Services\TaxCalculationService;
+use App\Http\Resources\PayrollCalculationResource;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Annotations as OA;
 
@@ -569,6 +571,354 @@ class PayrollController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete payroll',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/payrolls/calculate",
+     *     summary="Calculate payroll with automated tax calculations",
+     *     description="Calculate complete payroll including automated tax calculations, deductions, and social security",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"employee_id", "gross_salary", "pay_period_date"},
+     *             @OA\Property(property="employee_id", type="integer", example=1),
+     *             @OA\Property(property="gross_salary", type="number", example=50000),
+     *             @OA\Property(property="pay_period_date", type="string", format="date", example="2025-01-31"),
+     *             @OA\Property(property="tax_year", type="integer", example=2025),
+     *             @OA\Property(
+     *                 property="additional_income",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="type", type="string", example="bonus"),
+     *                     @OA\Property(property="amount", type="number", example=5000),
+     *                     @OA\Property(property="description", type="string", example="Performance bonus")
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="additional_deductions",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="type", type="string", example="loan"),
+     *                     @OA\Property(property="amount", type="number", example=2000),
+     *                     @OA\Property(property="description", type="string", example="Company loan repayment")
+     *                 )
+     *             ),
+     *             @OA\Property(property="save_payroll", type="boolean", example=false, description="Whether to save the calculated payroll")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Payroll calculated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Payroll calculated successfully"),
+     *             @OA\Property(property="data", ref="#/components/schemas/PayrollCalculation")
+     *         )
+     *     )
+     * )
+     */
+    public function calculatePayroll(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'employee_id' => 'required|exists:employees,id',
+                'gross_salary' => 'required|numeric|min:0',
+                'pay_period_date' => 'required|date',
+                'tax_year' => 'nullable|integer|min:2000|max:2100',
+                'additional_income' => 'nullable|array',
+                'additional_income.*.type' => 'required_with:additional_income|string',
+                'additional_income.*.amount' => 'required_with:additional_income|numeric|min:0',
+                'additional_income.*.description' => 'nullable|string',
+                'additional_deductions' => 'nullable|array',
+                'additional_deductions.*.type' => 'required_with:additional_deductions|string',
+                'additional_deductions.*.amount' => 'required_with:additional_deductions|numeric|min:0',
+                'additional_deductions.*.description' => 'nullable|string',
+                'save_payroll' => 'boolean'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Initialize tax calculation service
+            $taxYear = $request->get('tax_year', date('Y'));
+            $taxService = new TaxCalculationService($taxYear);
+
+            // Calculate payroll
+            $payrollData = $taxService->calculatePayroll(
+                $request->employee_id,
+                $request->gross_salary,
+                $request->get('additional_income', []),
+                $request->get('additional_deductions', [])
+            );
+
+            // Add pay period date to the calculation
+            $payrollData['pay_period_date'] = $request->pay_period_date;
+
+            // Save payroll if requested
+            if ($request->boolean('save_payroll', false)) {
+                $employee = Employee::with('employment')->findOrFail($request->employee_id);
+                
+                $savedPayroll = Payroll::create([
+                    'employment_id' => $employee->employment->id,
+                    'employee_funding_allocation_id' => $employee->employeeFundingAllocations()->first()?->id,
+                    'gross_salary' => $payrollData['gross_salary'],
+                    'gross_salary_by_FTE' => $payrollData['gross_salary'], // Assuming same for now
+                    'compensation_refund' => 0, // Can be added as additional income
+                    'thirteen_month_salary' => $payrollData['gross_salary'] / 12, // 1/12 of annual
+                    'thirteen_month_salary_accured' => $payrollData['gross_salary'] / 12,
+                    'pvd' => $payrollData['deductions']['provident_fund'],
+                    'saving_fund' => 0, // Can be added as additional deduction
+                    'employer_social_security' => $payrollData['social_security']['employer_contribution'],
+                    'employee_social_security' => $payrollData['social_security']['employee_contribution'],
+                    'employer_health_welfare' => 0, // Can be configured
+                    'employee_health_welfare' => 0, // Can be configured
+                    'tax' => $payrollData['income_tax'],
+                    'net_salary' => $payrollData['net_salary'],
+                    'total_salary' => $payrollData['gross_salary'],
+                    'total_pvd' => $payrollData['deductions']['provident_fund'],
+                    'total_saving_fund' => 0,
+                    'salary_bonus' => array_sum(array_column($request->get('additional_income', []), 'amount')),
+                    'total_income' => $payrollData['total_income'],
+                    'employer_contribution' => $payrollData['social_security']['employer_contribution'],
+                    'total_deduction' => $payrollData['income_tax'] + $payrollData['social_security']['employee_contribution'],
+                    'pay_period_date' => $request->pay_period_date,
+                    'notes' => 'Automatically calculated using tax system'
+                ]);
+
+                $payrollData['saved_payroll_id'] = $savedPayroll->id;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll calculated successfully',
+                'data' => new PayrollCalculationResource($payrollData)
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to calculate payroll',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/payrolls/bulk-calculate",
+     *     summary="Calculate payroll for multiple employees",
+     *     description="Calculate payroll for multiple employees with automated tax calculations",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"employees", "pay_period_date"},
+     *             @OA\Property(property="pay_period_date", type="string", format="date", example="2025-01-31"),
+     *             @OA\Property(property="tax_year", type="integer", example=2025),
+     *             @OA\Property(
+     *                 property="employees",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="employee_id", type="integer", example=1),
+     *                     @OA\Property(property="gross_salary", type="number", example=50000),
+     *                     @OA\Property(property="additional_income", type="array", @OA\Items(type="object")),
+     *                     @OA\Property(property="additional_deductions", type="array", @OA\Items(type="object"))
+     *                 )
+     *             ),
+     *             @OA\Property(property="save_payrolls", type="boolean", example=false)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Bulk payroll calculation completed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Bulk payroll calculation completed"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     )
+     * )
+     */
+    public function bulkCalculatePayroll(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'pay_period_date' => 'required|date',
+                'tax_year' => 'nullable|integer|min:2000|max:2100',
+                'employees' => 'required|array|min:1',
+                'employees.*.employee_id' => 'required|exists:employees,id',
+                'employees.*.gross_salary' => 'required|numeric|min:0',
+                'employees.*.additional_income' => 'nullable|array',
+                'employees.*.additional_deductions' => 'nullable|array',
+                'save_payrolls' => 'boolean'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $taxYear = $request->get('tax_year', date('Y'));
+            $taxService = new TaxCalculationService($taxYear);
+            $results = [];
+            $savedPayrolls = [];
+            $errors = [];
+
+            foreach ($request->employees as $employeeData) {
+                try {
+                    $payrollData = $taxService->calculatePayroll(
+                        $employeeData['employee_id'],
+                        $employeeData['gross_salary'],
+                        $employeeData['additional_income'] ?? [],
+                        $employeeData['additional_deductions'] ?? []
+                    );
+
+                    $payrollData['pay_period_date'] = $request->pay_period_date;
+                    $results[] = [
+                        'employee_id' => $employeeData['employee_id'],
+                        'calculation' => new PayrollCalculationResource($payrollData)
+                    ];
+
+                    // Save if requested
+                    if ($request->boolean('save_payrolls', false)) {
+                        $employee = Employee::with('employment')->findOrFail($employeeData['employee_id']);
+                        
+                        $savedPayroll = Payroll::create([
+                            'employment_id' => $employee->employment->id,
+                            'employee_funding_allocation_id' => $employee->employeeFundingAllocations()->first()?->id,
+                            'gross_salary' => $payrollData['gross_salary'],
+                            'gross_salary_by_FTE' => $payrollData['gross_salary'],
+                            'compensation_refund' => 0,
+                            'thirteen_month_salary' => $payrollData['gross_salary'] / 12,
+                            'thirteen_month_salary_accured' => $payrollData['gross_salary'] / 12,
+                            'pvd' => $payrollData['deductions']['provident_fund'],
+                            'saving_fund' => 0,
+                            'employer_social_security' => $payrollData['social_security']['employer_contribution'],
+                            'employee_social_security' => $payrollData['social_security']['employee_contribution'],
+                            'employer_health_welfare' => 0,
+                            'employee_health_welfare' => 0,
+                            'tax' => $payrollData['income_tax'],
+                            'net_salary' => $payrollData['net_salary'],
+                            'total_salary' => $payrollData['gross_salary'],
+                            'total_pvd' => $payrollData['deductions']['provident_fund'],
+                            'total_saving_fund' => 0,
+                            'salary_bonus' => array_sum(array_column($employeeData['additional_income'] ?? [], 'amount')),
+                            'total_income' => $payrollData['total_income'],
+                            'employer_contribution' => $payrollData['social_security']['employer_contribution'],
+                            'total_deduction' => $payrollData['income_tax'] + $payrollData['social_security']['employee_contribution'],
+                            'pay_period_date' => $request->pay_period_date,
+                            'notes' => 'Bulk calculated using tax system'
+                        ]);
+
+                        $savedPayrolls[] = $savedPayroll->id;
+                    }
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'employee_id' => $employeeData['employee_id'],
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bulk payroll calculation completed',
+                'data' => [
+                    'successful_calculations' => count($results),
+                    'errors' => count($errors),
+                    'calculations' => $results,
+                    'error_details' => $errors,
+                    'saved_payroll_ids' => $savedPayrolls
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process bulk payroll calculation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/payrolls/tax-summary/{id}",
+     *     summary="Get tax summary for a payroll",
+     *     description="Get detailed tax calculation summary for a specific payroll",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Payroll ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Tax summary retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Tax summary retrieved successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     )
+     * )
+     */
+    public function getTaxSummary(string $id)
+    {
+        try {
+            $payroll = Payroll::with(['employment.employee'])->findOrFail($id);
+            $employee = $payroll->employment->employee;
+            
+            $taxYear = date('Y', strtotime($payroll->pay_period_date));
+            $taxService = new TaxCalculationService($taxYear);
+
+            // Recalculate to get detailed breakdown
+            $calculation = $taxService->calculatePayroll(
+                $employee->id,
+                floatval($payroll->gross_salary),
+                [], // No additional income data stored
+                []  // No additional deductions data stored
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tax summary retrieved successfully',
+                'data' => [
+                    'payroll_id' => $payroll->id,
+                    'employee' => [
+                        'id' => $employee->id,
+                        'name' => $employee->first_name_en . ' ' . $employee->last_name_en,
+                        'staff_id' => $employee->staff_id
+                    ],
+                    'pay_period' => $payroll->pay_period_date,
+                    'tax_calculation' => new PayrollCalculationResource($calculation)
+                ]
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payroll not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve tax summary',
                 'error' => $e->getMessage()
             ], 500);
         }

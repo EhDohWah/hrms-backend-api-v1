@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -22,6 +23,10 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
+
+            // Composite indexes for optimized filtering & sorting
+            $table->index(['subsidiary', 'code'], 'idx_grants_subsidiary_code');
+            $table->index(['subsidiary', 'end_date', 'id'], 'idx_grants_subsidiary_end_date_id');
         });
 
         $this->insertDefaultGrants();

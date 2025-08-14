@@ -295,77 +295,84 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Get all employees
+     * Get all employees with advanced filtering and sorting
      *
      * @OA\Get(
      *     path="/employees",
-     *     summary="Get all employees",
-     *     description="Returns a list of all employees with related data and statistics",
+     *     summary="Get all employees with advanced filtering and sorting",
+     *     description="Returns a paginated list of employees with comprehensive filtering, sorting capabilities and statistics",
      *     operationId="getEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=1, minimum=1)
+     *     ),
+     *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
-     *         required=true,
      *         description="Number of items per page",
-     *         @OA\Schema(type="integer", minimum=1)
+     *         required=false,
+     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
      *     @OA\Parameter(
-     *         name="staff_id",
+     *         name="filter_subsidiary",
      *         in="query",
+     *         description="Filter by subsidiary (comma-separated for multiple values)",
      *         required=false,
-     *         description="Filter by staff ID",
-     *         @OA\Schema(type="string", maxLength=50)
+     *         @OA\Schema(type="string", example="SMRU,BHF")
      *     ),
      *     @OA\Parameter(
-     *         name="status",
+     *         name="filter_status",
      *         in="query",
+     *         description="Filter by employee status (comma-separated for multiple values)",
      *         required=false,
-     *         description="Filter by employee status",
-     *         @OA\Schema(type="string", enum={"Expats", "Local ID", "Local non ID"})
+     *         @OA\Schema(type="string", example="Expats,Local ID")
      *     ),
      *     @OA\Parameter(
-     *         name="subsidiary",
+     *         name="filter_gender",
      *         in="query",
+     *         description="Filter by gender (comma-separated for multiple values)",
      *         required=false,
-     *         description="Filter by subsidiary",
-     *         @OA\Schema(type="string", enum={"SMRU", "BHF"})
+     *         @OA\Schema(type="string", example="Male,Female")
      *     ),
      *     @OA\Parameter(
-     *         name="gender",
+     *         name="filter_age",
      *         in="query",
-     *         required=false,
-     *         description="Filter by gender",
-     *         @OA\Schema(type="string", enum={"Male", "Female"})
-     *     ),
-     *     @OA\Parameter(
-     *         name="date_of_birth",
-     *         in="query",
-     *         required=false,
-     *         description="Filter by date of birth",
-     *         @OA\Schema(type="string", format="date")
-     *     ),
-     *     @OA\Parameter(
-     *         name="age",
-     *         in="query",
-     *         required=false,
      *         description="Filter by age",
-     *         @OA\Schema(type="integer")
+     *         required=false,
+     *         @OA\Schema(type="integer", example=30)
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter_id_type",
+     *         in="query",
+     *         description="Filter by identification type (comma-separated for multiple values)",
+     *         required=false,
+     *         @OA\Schema(type="string", example="Passport,ThaiID")
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter_staff_id",
+     *         in="query",
+     *         description="Filter by staff ID (partial match)",
+     *         required=false,
+     *         @OA\Schema(type="string", example="EMP")
      *     ),
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
+     *         description="Sort by field",
      *         required=false,
-     *         description="Field to sort by",
-     *         @OA\Schema(type="string", enum={"subsidiary", "staff_id", "initials", "first_name_en", "last_name_en", "gender", "date_of_birth", "age", "status", "id_type", "id_number", "social_security_number", "tax_number", "mobile_phone"})
+     *         @OA\Schema(type="string", enum={"subsidiary", "staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status", "age", "id_type"}, example="first_name_en")
      *     ),
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
+     *         description="Sort order (asc or desc)",
      *         required=false,
-     *         description="Sort direction",
-     *         @OA\Schema(type="string", enum={"asc", "desc"})
+     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -377,33 +384,7 @@ class EmployeeController extends Controller
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
-     *                 @OA\Items(
-     *                     type="object",
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
-     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                     @OA\Property(property="initial_en", type="string", example="Mr."),
-     *                     @OA\Property(property="first_name_en", type="string", example="John"),
-     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                     @OA\Property(property="gender", type="string", example="Male"),
-     *                     @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01"),
-     *                     @OA\Property(property="status", type="string", example="Local ID"),
-     *                     @OA\Property(property="id_type", type="string", example="Passport"),
-     *                     @OA\Property(property="id_number", type="string", example="AB123456"),
-     *                     @OA\Property(property="social_security_number", type="string", example="1234567890"),
-     *                     @OA\Property(property="tax_number", type="string", example="TAX123456"),
-     *                     @OA\Property(property="mobile_phone", type="string", example="+66812345678"),
-     *                     @OA\Property(
-     *                         property="identification",
-     *                         type="array",
-     *                         @OA\Items(
-     *                             type="object",
-     *                             @OA\Property(property="id_type", type="string", example="Passport"),
-     *                             @OA\Property(property="document_number", type="string", example="AB123456"),
-     *                             @OA\Property(property="issue_date", type="string", format="date", example="2018-01-01"),
-     *                             @OA\Property(property="expiry_date", type="string", format="date", example="2028-01-01")
-     *                         )
-     *                     )
-     *                 )
+     *                 @OA\Items(ref="#/components/schemas/Employee")
      *             ),
      *             @OA\Property(
      *                 property="statistics",
@@ -420,14 +401,26 @@ class EmployeeController extends Controller
      *                 )
      *             ),
      *             @OA\Property(
-     *                 property="links",
+     *                 property="pagination",
      *                 type="object",
-     *                 example={"first": "http://example.com/api/employees?page=1", "last": "http://example.com/api/employees?page=5", "prev": null, "next": "http://example.com/api/employees?page=2"}
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=450),
+     *                 @OA\Property(property="last_page", type="integer", example=45),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="to", type="integer", example=10),
+     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
      *             ),
      *             @OA\Property(
-     *                 property="meta",
+     *                 property="filters",
      *                 type="object",
-     *                 example={"current_page": 1, "from": 1, "last_page": 5, "path": "http://example.com/api/employees", "per_page": 100, "to": 100, "total": 450}
+     *                 @OA\Property(property="applied_filters", type="object",
+     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"}),
+     *                     @OA\Property(property="status", type="array", @OA\Items(type="string"), example={"Expats"}),
+     *                     @OA\Property(property="gender", type="array", @OA\Items(type="string"), example={"Male"}),
+     *                     @OA\Property(property="age", type="integer", example=30),
+     *                     @OA\Property(property="id_type", type="array", @OA\Items(type="string"), example={"Passport"})
+     *                 )
      *             )
      *         )
      *     ),
@@ -436,117 +429,143 @@ class EmployeeController extends Controller
      *         description="Validation error",
      *         @OA\JsonContent(
      *             type="object",
+     *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(
-     *                 property="errors",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="per_page",
-     *                     type="array",
-     *                     @OA\Items(type="string", example="The per page must be at least 100.")
-     *                 )
-     *             )
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve employees"),
+     *             @OA\Property(property="error", type="string")
      *         )
      *     )
      * )
      */
-    public function index(FilterEmployeeRequest $request)
+    public function index(Request $request)
     {
-        $validated = $request->validated();
+        try {
+            // Validate incoming parameters - matching GrantController exactly
+            $validated = $request->validate([
+                'page'                => 'integer|min:1',
+                'per_page'            => 'integer|min:1|max:100',
+                'filter_subsidiary'   => 'string|nullable',
+                'filter_status'       => 'string|nullable',
+                'filter_gender'       => 'string|nullable',
+                'filter_age'          => 'integer|nullable',
+                'filter_id_type'      => 'string|nullable',
+                'filter_staff_id'     => 'string|nullable',
+                'sort_by'             => 'string|nullable|in:subsidiary,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
+                'sort_order'          => 'string|nullable|in:asc,desc',
+            ]);
 
-        // 1) Start the query
-        $q = Employee::select([
-            'id',
-            'subsidiary',
-            'staff_id',
-            'initial_en',
-            'first_name_en',
-            'last_name_en',
-            'gender',
-            'date_of_birth',
-            'status',
-            'social_security_number',
-            'tax_number',
-            'mobile_phone'
-        ])->with([
-            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-            'employment:id,employee_id,active,start_date'
-        ])->orderBy('created_at', 'desc');
+            // Determine page size
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
 
-        // 2) Apply filters if present
-        if (!empty($validated['staff_id'])) {
-            $q->where('staff_id', 'like', '%'.$validated['staff_id'].'%');
+            // Build query using model scopes for optimization
+            $query = Employee::forPagination()
+                ->withOptimizedRelations();
+
+            // Apply filters if provided
+            if (!empty($validated['filter_subsidiary'])) {
+                $query->bySubsidiary($validated['filter_subsidiary']);
+            }
+
+            if (!empty($validated['filter_status'])) {
+                $query->byStatus($validated['filter_status']);
+            }
+
+            if (!empty($validated['filter_gender'])) {
+                $query->byGender($validated['filter_gender']);
+            }
+
+            if (!empty($validated['filter_age'])) {
+                $query->byAge($validated['filter_age']);
+            }
+
+            if (!empty($validated['filter_id_type'])) {
+                $query->byIdType($validated['filter_id_type']);
+            }
+
+            if (!empty($validated['filter_staff_id'])) {
+                $query->where('staff_id', 'like', '%' . $validated['filter_staff_id'] . '%');
+            }
+
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'created_at';
+            $sortOrder = $validated['sort_order'] ?? 'desc';
+            
+            // Validate sort field and apply sorting
+            if (in_array($sortBy, ['subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
+                $query->orderBy('employees.' . $sortBy, $sortOrder);
+            } elseif ($sortBy === 'age') {
+                // Sort by age means sort by date_of_birth in reverse order
+                $query->orderBy('employees.date_of_birth', $sortOrder === 'asc' ? 'desc' : 'asc');
+            } elseif ($sortBy === 'id_type') {
+                // Sort by id_type from relationship - need to specify table aliases to avoid ambiguous column names
+                $query->leftJoin('employee_identifications as ei', 'employees.id', '=', 'ei.employee_id')
+                      ->orderBy('ei.id_type', $sortOrder);
+            } else {
+                $query->orderBy('employees.created_at', 'desc');
+            }
+
+            // Execute pagination
+            $employees = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Build applied filters array
+            $appliedFilters = [];
+            if (!empty($validated['filter_subsidiary'])) {
+                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            }
+            if (!empty($validated['filter_status'])) {
+                $appliedFilters['status'] = explode(',', $validated['filter_status']);
+            }
+            if (!empty($validated['filter_gender'])) {
+                $appliedFilters['gender'] = explode(',', $validated['filter_gender']);
+            }
+            if (!empty($validated['filter_age'])) {
+                $appliedFilters['age'] = $validated['filter_age'];
+            }
+            if (!empty($validated['filter_id_type'])) {
+                $appliedFilters['id_type'] = explode(',', $validated['filter_id_type']);
+            }
+            if (!empty($validated['filter_staff_id'])) {
+                $appliedFilters['staff_id'] = $validated['filter_staff_id'];
+            }
+
+            // Calculate statistics using the model's static method
+            $statistics = Employee::getStatistics();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employees retrieved successfully',
+                'data'    => EmployeeResource::collection($employees->items()),
+                'statistics' => $statistics,
+                'pagination' => [
+                    'current_page'   => $employees->currentPage(),
+                    'per_page'       => $employees->perPage(),
+                    'total'          => $employees->total(),
+                    'last_page'      => $employees->lastPage(),
+                    'from'           => $employees->firstItem(),
+                    'to'             => $employees->lastItem(),
+                    'has_more_pages' => $employees->hasMorePages(),
+                ],
+                'filters' => [
+                    'applied_filters' => $appliedFilters,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employees',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        if (!empty($validated['status'])) {
-            $q->where('status', $validated['status']);
-        }
-        if (!empty($validated['subsidiary'])) {
-            $q->where('subsidiary', $validated['subsidiary']);
-        }
-
-        if (!empty($validated['gender'])) {
-            $q->where('gender', $validated['gender']);
-        }
-
-        if (!empty($validated['date_of_birth'])) {
-            $q->where('date_of_birth', $validated['date_of_birth']);
-        }
-
-        if (!empty($validated['age'])) {
-            $q->where('age', $validated['age']);
-        }
-
-        if (!empty($validated['status'])) {
-            $q->where('status', $validated['status']);
-        }
-
-        // 3) Apply sorting if present
-        if (!empty($validated['sort_by'])) {
-            $dir = $validated['sort_order'] ?? 'asc';
-            $q->orderBy($validated['sort_by'], $dir);
-        }
-
-        if (!empty($validated['id_type'])) {
-            $q->whereHas('employeeIdentification', function($query) use ($validated) {
-                $query->where('id_type', $validated['id_type']);
-            });
-        }
-
-        // 4) Paginate
-        $employees = $q->paginate($validated['per_page']);
-
-        // 5) Calculate statistics
-        $allEmployees = Employee::with('employment:id,employee_id,active,start_date')->get();
-
-        $now = now();
-        $threeMonthsAgo = now()->subMonths(3);
-
-        $statistics = [
-            'totalEmployees' => $allEmployees->count(),
-            'activeCount' => $allEmployees->filter(function($employee) {
-                return $employee->employment && $employee->employment->active === 1;
-            })->count(),
-            'inactiveCount' => $allEmployees->filter(function($employee) {
-                return $employee->employment && $employee->employment->active === 0;
-            })->count(),
-            'newJoinerCount' => $allEmployees->filter(function($employee) use ($threeMonthsAgo, $now) {
-                if (!$employee->employment || !$employee->employment->start_date) return false;
-                $startDate = new \DateTime($employee->employment->start_date);
-                return $startDate >= $threeMonthsAgo && $startDate <= $now;
-            })->count(),
-            'subsidiaryCount' => [
-                'SMRU_count' => $allEmployees->where('subsidiary', 'SMRU')->count(),
-                'BHF_count' => $allEmployees->where('subsidiary', 'BHF')->count()
-            ]
-        ];
-
-        // 6) Return wrapped in your Resource/Collection with statistics
-        return (new EmployeeCollection($employees))
-                ->additional([
-                    'success' => true,
-                    'message' => 'Employees retrieved successfully',
-                    'statistics' => $statistics
-                ]);
     }
 
     /**
@@ -624,25 +643,25 @@ class EmployeeController extends Controller
     {
 
 
-        // 1) base query: same columns + relations as your show()
-            $query = Employee::select([
-                'id',
-                'subsidiary',
-                'staff_id',
-                'initial_en',
-                'first_name_en',
-                'last_name_en',
-                'gender',
-                'date_of_birth',
-                'status',
-                'social_security_number',
-                'tax_number',
-                'mobile_phone',
-            ])
-            ->with([
-                'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-                'employment:id,employee_id,active,start_date',
-            ]);
+        // 1) base query: Remove 'active' from employment selection
+        $query = Employee::select([
+            'id',
+            'subsidiary',
+            'staff_id',
+            'initial_en',
+            'first_name_en',
+            'last_name_en',
+            'gender',
+            'date_of_birth',
+            'status',
+            'social_security_number',
+            'tax_number',
+            'mobile_phone',
+        ])
+        ->with([
+            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
+            'employment:id,employee_id,start_date,end_date', // Removed 'active', added 'end_date'
+        ]);
 
         // 2) exact match on staff_id
         $employees = $query->where('staff_id', $staff_id)->get();

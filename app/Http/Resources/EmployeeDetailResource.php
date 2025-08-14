@@ -69,7 +69,7 @@ class EmployeeDetailResource extends JsonResource
                     'end_date' => $this->employment->end_date,
                     'position_salary' => $this->employment->position_salary,
                     'probation_salary' => $this->employment->probation_salary,
-                    'employee_tax' => $this->employment->employee_tax,
+
                     'fte' => $this->employment->fte,
                     'active' => $this->employment->active,
                     'health_welfare' => $this->employment->health_welfare,

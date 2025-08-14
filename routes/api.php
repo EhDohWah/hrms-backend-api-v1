@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\TravelRequestApprovalController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\EmployeeTrainingController;
 use App\Http\Controllers\Api\EmployeeChildrenController;
+use App\Http\Controllers\Api\EmployeeBeneficiaryController;
 use App\Http\Controllers\Api\EmployeeGrantAllocationController;
 use App\Http\Controllers\Api\JobOfferController;
 use App\Http\Controllers\Api\Reports\InterviewReportController;
@@ -29,13 +30,12 @@ use App\Http\Controllers\Api\EmployeeEducationController;
 use App\Http\Controllers\Api\EmployeeLanguageController;
 use App\Http\Controllers\Api\PayrollGrantAllocationController;
 use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\PositionSlotController;
 use App\Http\Controllers\Api\EmployeeFundingAllocationController;
 use App\Http\Controllers\Api\OrgFundedAllocationController;
 use App\Http\Controllers\Api\RecycleBinController;
-
+use App\Http\Controllers\Api\NotificationController;
 
 Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
 
@@ -43,16 +43,7 @@ Route::get('/export-employees', [EmployeeController::class, 'exportEmployees']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Notification routes
-// In routes/api.php
-Route::middleware('auth:sanctum')->get('/notifications', function (Request $request) {
-    return $request->user()->notifications()->take(20)->get();
-});
 
-// Mark all as read
-Route::middleware('auth:sanctum')->post('/notifications/mark-all-read', function (Request $request) {
-    $request->user()->unreadNotifications->markAsRead();
-    return response()->json(['success' => true]);
-});
 
 
 
@@ -63,6 +54,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     // Refresh token route – available only if the user is still authenticated
     Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+
+
+    // Notification routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    });
 
     // Lookups routes
     Route::prefix('lookups')->group(function () {
@@ -76,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Budget line routes
     Route::prefix('budget-lines')->group(function () {
         Route::get('/', [BudgetLineController::class, 'index'])->middleware('permission:budget_line.read');
+        Route::get('/by-code/{code}', [BudgetLineController::class, 'getBudgetLineByCode'])->middleware('permission:budget_line.read');
         Route::post('/', [BudgetLineController::class, 'store'])->middleware('permission:budget_line.create');
         Route::get('/{id}', [BudgetLineController::class, 'show'])->middleware('permission:budget_line.read');
         Route::put('/{id}', [BudgetLineController::class, 'update'])->middleware('permission:budget_line.update');
@@ -131,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [EmployeeFundingAllocationController::class, 'show'])->middleware('permission:employee.read');
         Route::put('/{id}', [EmployeeFundingAllocationController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [EmployeeFundingAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+        Route::get('/by-grant-item/{grantItemId}', [EmployeeFundingAllocationController::class, 'getByGrantItem'])->middleware('permission:employee.read');
     });
 
     // Org funded allocation routes
@@ -140,12 +140,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [OrgFundedAllocationController::class, 'show'])->middleware('permission:employee.read');
         Route::put('/{id}', [OrgFundedAllocationController::class, 'update'])->middleware('permission:employee.update');
         Route::delete('/{id}', [OrgFundedAllocationController::class, 'destroy'])->middleware('permission:employee.delete');
+        
     });
 
 
     // Employment routes
     Route::prefix('employments')->group(function () {
         Route::get('/', [EmploymentController::class, 'index'])->middleware('permission:employment.read');
+        Route::get('/search/staff-id/{staffId}', [EmploymentController::class, 'searchByStaffId'])->middleware('permission:employment.read');
         Route::get('/{id}', [EmploymentController::class, 'show'])->middleware('permission:employment.read');
         Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment.create');
         Route::put('/{id}', [EmploymentController::class, 'update'])->middleware('permission:employment.update');
@@ -209,6 +211,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Interview routes (use middleware permission:read interviews)
     Route::prefix('interviews')->group(function () {
         Route::get('/', [InterviewController::class, 'index'])->middleware('permission:interview.read');
+        Route::get('/by-candidate/{candidateName}', [InterviewController::class, 'getByCandidateName'])->middleware('permission:interview.read');
         Route::post('/', [InterviewController::class, 'store'])->middleware('permission:interview.create');
         Route::get('/{id}', [InterviewController::class, 'show'])->middleware('permission:interview.read');
         Route::put('/{id}', [InterviewController::class, 'update'])->middleware('permission:interview.update');
@@ -266,6 +269,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [PayrollController::class, 'store'])->middleware('permission:payroll.create');
         Route::put('/{id}', [PayrollController::class, 'update'])->middleware('permission:payroll.update');
         Route::delete('/{id}', [PayrollController::class, 'destroy'])->middleware('permission:payroll.delete');
+        
+        // New automated tax calculation routes
+        Route::post('/calculate', [PayrollController::class, 'calculatePayroll'])->middleware('permission:payroll.read');
+        Route::post('/bulk-calculate', [PayrollController::class, 'bulkCalculatePayroll'])->middleware('permission:payroll.create');
+        Route::get('/tax-summary/{id}', [PayrollController::class, 'getTaxSummary'])->middleware('permission:payroll.read');
         });
 
     // Inter-subsidiary advance routes (use middleware permission:read inter-subsidiary advances)
@@ -331,11 +339,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [EmployeeChildrenController::class, 'destroy'])->middleware('permission:children.delete');
     });
 
+    // Employee beneficiary routes
+    Route::prefix('employee-beneficiaries')->group(function () {
+        Route::get('/', [EmployeeBeneficiaryController::class, 'index'])->middleware('permission:employee.read');
+        Route::post('/', [EmployeeBeneficiaryController::class, 'store'])->middleware('permission:employee.create');
+        Route::get('/{id}', [EmployeeBeneficiaryController::class, 'show'])->middleware('permission:employee.read');
+        Route::put('/{id}', [EmployeeBeneficiaryController::class, 'update'])->middleware('permission:employee.update');
+        Route::delete('/{id}', [EmployeeBeneficiaryController::class, 'destroy'])->middleware('permission:employee.delete');
+    });
+
 
     // Job offer routes
     Route::prefix('job-offers')->group(function () {
         Route::get('/', [JobOfferController::class, 'index'])->middleware('permission:job_offer.read');
         Route::post('/', [JobOfferController::class, 'store'])->middleware('permission:job_offer.create');
+        Route::get('/by-candidate/{candidateName}', [JobOfferController::class, 'getByCandidateName'])->middleware('permission:job_offer.read');
         Route::get('/{id}', [JobOfferController::class, 'show'])->middleware('permission:job_offer.read');
         Route::put('/{id}', [JobOfferController::class, 'update'])->middleware('permission:job_offer.update');
         Route::delete('/{id}', [JobOfferController::class, 'destroy'])->middleware('permission:job_offer.delete');
@@ -375,6 +393,36 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bulk-restore', [RecycleBinController::class, 'bulkRestore']);
         Route::delete('/{deletedRecordId}', [RecycleBinController::class, 'permanentDelete']);
     });
+
+    // Tax Bracket routes (admin and payroll permissions)
+    Route::prefix('tax-brackets')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\TaxBracketController::class, 'index'])->middleware('permission:tax.read');
+        Route::post('/', [App\Http\Controllers\Api\TaxBracketController::class, 'store'])->middleware('permission:tax.create');
+        Route::get('/{id}', [App\Http\Controllers\Api\TaxBracketController::class, 'show'])->middleware('permission:tax.read');
+        Route::put('/{id}', [App\Http\Controllers\Api\TaxBracketController::class, 'update'])->middleware('permission:tax.update');
+        Route::delete('/{id}', [App\Http\Controllers\Api\TaxBracketController::class, 'destroy'])->middleware('permission:tax.delete');
+        Route::get('/calculate/{income}', [App\Http\Controllers\Api\TaxBracketController::class, 'calculateTax'])->middleware('permission:tax.read');
+    });
+
+    // // Tax Setting routes (admin and payroll permissions)
+    // Route::prefix('tax-settings')->group(function () {
+    //     Route::get('/', [App\Http\Controllers\Api\TaxSettingController::class, 'index'])->middleware('permission:tax.read');
+    //     Route::post('/', [App\Http\Controllers\Api\TaxSettingController::class, 'store'])->middleware('permission:tax.create');
+    //     Route::get('/{id}', [App\Http\Controllers\Api\TaxSettingController::class, 'show'])->middleware('permission:tax.read');
+    //     Route::put('/{id}', [App\Http\Controllers\Api\TaxSettingController::class, 'update'])->middleware('permission:tax.update');
+    //     Route::delete('/{id}', [App\Http\Controllers\Api\TaxSettingController::class, 'destroy'])->middleware('permission:tax.delete');
+    //     Route::get('/by-year/{year}', [App\Http\Controllers\Api\TaxSettingController::class, 'getByYear'])->middleware('permission:tax.read');
+    //     Route::get('/value/{key}', [App\Http\Controllers\Api\TaxSettingController::class, 'getValue'])->middleware('permission:tax.read');
+    //     Route::post('/bulk-update', [App\Http\Controllers\Api\TaxSettingController::class, 'bulkUpdate'])->middleware('permission:tax.update');
+    // });
+
+    // // Tax Calculation routes (payroll permissions)
+    // Route::prefix('tax-calculations')->group(function () {
+    //     Route::post('/payroll', [App\Http\Controllers\Api\TaxCalculationController::class, 'calculatePayroll'])->middleware('permission:payroll.read');
+    //     Route::post('/income-tax', [App\Http\Controllers\Api\TaxCalculationController::class, 'calculateIncomeTax'])->middleware('permission:payroll.read');
+    //     Route::post('/annual-summary', [App\Http\Controllers\Api\TaxCalculationController::class, 'calculateAnnualSummary'])->middleware('permission:payroll.read');
+    //     Route::post('/validate-inputs', [App\Http\Controllers\Api\TaxCalculationController::class, 'validateInputs'])->middleware('permission:payroll.read');
+    // });
 });
 
 

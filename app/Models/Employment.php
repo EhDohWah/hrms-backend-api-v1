@@ -27,9 +27,8 @@ use App\Models\Payroll;
  *   @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
  *   @OA\Property(property="position_salary", type="number", format="float"),
  *   @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
- *   @OA\Property(property="employee_tax", type="number", format="float", nullable=true),
+
  *   @OA\Property(property="fte", type="number", format="float", nullable=true),
- *   @OA\Property(property="active", type="boolean", default=true),
  *   @OA\Property(property="health_welfare", type="boolean", default=false),
  *   @OA\Property(property="pvd", type="boolean", default=false),
  *   @OA\Property(property="saving_fund", type="boolean", default=false),
@@ -55,9 +54,7 @@ class Employment extends Model
         'work_location_id',
         'position_salary',
         'probation_salary',
-        'employee_tax',
         'fte',
-        'active',
         'health_welfare',
         'pvd',
         'saving_fund',
@@ -72,9 +69,7 @@ class Employment extends Model
         'probation_pass_date'=> 'date:Y-m-d',
         'position_salary'    => 'decimal:2',
         'probation_salary'   => 'decimal:2',
-        'employee_tax'       => 'decimal:2',
         'fte'                => 'decimal:2',
-        'active'             => 'boolean',
         'health_welfare'     => 'boolean',
         'pvd'                => 'boolean',
         'saving_fund'        => 'boolean',
@@ -131,9 +126,8 @@ class Employment extends Model
             'work_location_id'     => $this->work_location_id,
             'position_salary'      => $this->position_salary,
             'probation_salary'     => $this->probation_salary,
-            'employee_tax'         => $this->employee_tax,
+
             'fte'                  => $this->fte,
-            'active'               => $this->active,
             'health_welfare'       => $this->health_welfare,
             'pvd'                  => $this->pvd,
             'saving_fund'          => $this->saving_fund,
@@ -161,11 +155,10 @@ class Employment extends Model
             'probation_pass_date'   => 'Probation period update',
             'pay_method'            => 'Payment method change',
             'fte'                   => 'FTE adjustment',
-            'employee_tax'          => 'Tax rate adjustment',
+
             'health_welfare'        => 'Health welfare benefit change',
             'pvd'                   => 'PVD benefit change',
             'saving_fund'           => 'Saving fund benefit change',
-            'active'                => fn($value) => $value ? 'Employment reactivated' : 'Employment deactivated',
         ];
 
         $descriptions = collect($changes)
@@ -200,9 +193,8 @@ class Employment extends Model
             'work_location_id'     => $this->work_location_id,
             'position_salary'      => $this->position_salary,
             'probation_salary'     => $this->probation_salary,
-            'employee_tax'         => $this->employee_tax,
+
             'fte'                  => $this->fte,
-            'active'               => $this->active,
             'health_welfare'       => $this->health_welfare,
             'pvd'                  => $this->pvd,
             'saving_fund'          => $this->saving_fund,
@@ -247,15 +239,6 @@ class Employment extends Model
     }
 
     // — Query Scopes —
-    public function scopeActive($query)
-    {
-        return $query->where('active', true);
-    }
-
-    public function scopeInactive($query)
-    {
-        return $query->where('active', false);
-    }
 
     public function scopeByEmploymentType($query, string $type)
     {
@@ -282,7 +265,8 @@ class Employment extends Model
 
     public function getIsActiveAttribute(): bool
     {
-        return $this->active === true;
+        return $this->start_date && 
+               (!$this->end_date || $this->end_date > now());
     }
 
     public function getFormattedSalaryAttribute(): string

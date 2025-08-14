@@ -29,7 +29,7 @@ use App\Models\GrantItem;
  *     @OA\Property(property="position_salary", type="number", format="float"),
  *     @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
  *     @OA\Property(property="supervisor_id", type="integer", format="int64", nullable=true),
- *     @OA\Property(property="employee_tax", type="number", format="float", nullable=true),
+
  *     @OA\Property(property="fte", type="number", format="float", nullable=true),
  *     @OA\Property(property="active", type="boolean", default=true),
  *     @OA\Property(property="health_welfare", type="boolean", default=false),
@@ -57,7 +57,6 @@ class EmploymentHistory extends Model
         'work_location_id',
         'position_salary',
         'probation_salary',
-        'employee_tax',
         'fte',
         'active',
         'health_welfare',

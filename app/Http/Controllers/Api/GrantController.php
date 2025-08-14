@@ -23,6 +23,11 @@ use App\Http\Resources\PositionSlotResource;
 use App\Http\Resources\BudgetLineResource;
 use Illuminate\Support\Facades\Schema;
 use App\Models\EmployeeFundingAllocation;
+use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\AllowedSort;
+use Illuminate\Support\Facades\Log;
+
  
 
 /**
@@ -399,14 +404,22 @@ class GrantController extends Controller
         }
     }
 
+
     /**
      * @OA\Get(
      *     path="/grants",
      *     operationId="getGrants",
-     *     summary="List all grants with their items",
-     *     description="Returns a paginated list of grants and their associated items with position slots and budget lines.",
+     *     summary="List all grants with pagination and filtering",
+     *     description="Returns a paginated list of grants with their associated items. Supports filtering by subsidiary and sorting by name/code with standard Laravel pagination parameters (page, per_page).",
      *     tags={"Grants"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=1, minimum=1)
+     *     ),
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
@@ -415,11 +428,25 @@ class GrantController extends Controller
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
      *     @OA\Parameter(
-     *         name="page",
+     *         name="filter_subsidiary",
      *         in="query",
-     *         description="Page number",
+     *         description="Filter grants by subsidiary (comma-separated for multiple values)",
      *         required=false,
-     *         @OA\Schema(type="integer", example=1, minimum=1)
+     *         @OA\Schema(type="string", example="SMRU,BHF")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_by",
+     *         in="query",
+     *         description="Sort by field (name or code)",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"name", "code"}, example="name")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_order",
+     *         in="query",
+     *         description="Sort order (asc or desc)",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -466,10 +493,33 @@ class GrantController extends Controller
      *                     @OA\Property(property="updated_at", type="string", format="date-time", example="2024-06-25T15:38:59Z")
      *                 )
      *             ),
-     *             @OA\Property(property="count", type="integer", example=25, description="Total number of grants"),
-     *             @OA\Property(property="current_page", type="integer", example=1),
-     *             @OA\Property(property="per_page", type="integer", example=10),
-     *             @OA\Property(property="last_page", type="integer", example=3)
+     *             @OA\Property(
+     *                 property="pagination",
+     *                 type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=25),
+     *                 @OA\Property(property="last_page", type="integer", example=3),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="to", type="integer", example=10),
+     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
+     *             ),
+     *             @OA\Property(
+     *                 property="filters",
+     *                 type="object",
+     *                 @OA\Property(property="applied_filters", type="object",
+     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"})
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error - Invalid parameters provided",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     ),
      *     @OA\Response(
@@ -493,52 +543,75 @@ class GrantController extends Controller
      */
     public function index(Request $request)
     {
-        // Use paginate for scalability (adjust per-page as appropriate for your UI/UX)
-        $perPage = $request->get('per_page', 10);
+        try {
+            // Validate incoming parameters
+            $validated = $request->validate([
+                'page'             => 'integer|min:1',
+                'per_page'         => 'integer|min:1|max:100',
+                'filter_subsidiary'=> 'string|nullable',
+                'sort_by'          => 'string|nullable|in:name,code',
+                'sort_order'       => 'string|nullable|in:asc,desc',
+            ]);
 
-        $grants = Grant::with([
-                'grantItems' => function ($q) {
-                    $q->select(
-                        'id',
-                        'grant_id',
-                        'grant_position',
-                        'grant_salary',
-                        'grant_benefit',
-                        'grant_level_of_effort',
-                        'grant_position_number',
-                        'created_at',
-                        'updated_at'
-                    )->with([
-                        'positionSlots' => function ($slotQ) {
-                            $slotQ->select(
-                                'id',
-                                'grant_item_id',
-                                'slot_number',
-                                'budget_line_id',
-                                'created_at',
-                                'updated_at'
-                            )->with([
-                                'budgetLine:id,budget_line_code,created_by,updated_by,created_at,updated_at'
-                            ]);
-                        }
-                    ]);
-                }
-            ])
-            ->select(
-                'id', 'code', 'name', 'subsidiary', 'description', 'end_date', 'created_at', 'updated_at'
-            )
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            // Determine page size
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Grants retrieved successfully',
-            'data'    => GrantResource::collection($grants->items()),
-            'count'   => $grants->total(),
-            'current_page' => $grants->currentPage(),
-            'per_page'     => $grants->perPage(),
-            'last_page'    => $grants->lastPage(),
-        ]);
+            // Build query using model scopes for optimization
+            $query = Grant::forPagination()
+                ->withItemsCount()
+                ->withOptimizedItems();
+
+            // Apply subsidiary filter if provided
+            if (!empty($validated['filter_subsidiary'])) {
+                $query->bySubsidiary($validated['filter_subsidiary']);
+            }
+
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'created_at';
+            $sortOrder = $validated['sort_order'] ?? 'desc';
+            
+            // Validate sort field and apply sorting
+            if (in_array($sortBy, ['name', 'code'])) {
+                $query->orderBy($sortBy, $sortOrder);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+
+            // Execute pagination
+            $grants = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Build applied filters array
+            $appliedFilters = [];
+            if (!empty($validated['filter_subsidiary'])) {
+                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grants retrieved successfully',
+                'data'    => GrantResource::collection($grants->items()),
+                'pagination' => [
+                    'current_page'   => $grants->currentPage(),
+                    'per_page'       => $grants->perPage(),
+                    'total'          => $grants->total(),
+                    'last_page'      => $grants->lastPage(),
+                    'from'           => $grants->firstItem(),
+                    'to'             => $grants->lastItem(),
+                    'has_more_pages' => $grants->hasMorePages(),
+                ],
+                'filters' => [
+                    'applied_filters' => $appliedFilters,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grants',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 

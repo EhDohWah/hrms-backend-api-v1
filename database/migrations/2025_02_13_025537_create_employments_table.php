@@ -19,13 +19,11 @@ return new class extends Migration
             $table->date('probation_pass_date')->nullable(); // Optional - when probation ends
             $table->date('start_date'); // Required - when employment started
             $table->date('end_date')->nullable(); // Optional - when employment ends (for contracts)
-            $table->boolean('active')->default(true); // Required - employment status
-            
             $table->foreignId('department_position_id')->nullable()->constrained('department_positions')->nullOnDelete(); // Required - department
             $table->foreignId('work_location_id')->nullable()->constrained('work_locations')->nullOnDelete(); // Required - work location
             $table->decimal('position_salary', 10, 2); // Required - regular salary
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
-            $table->decimal('employee_tax', 10, 2)->nullable(); // Optional - tax rate
+
             $table->decimal('fte', 10, 2)->nullable(); // Optional - full-time equivalent
             $table->boolean('health_welfare')->default(false); // Required - health benefits flag
             $table->boolean('pvd')->default(false); // Required - provident fund flag

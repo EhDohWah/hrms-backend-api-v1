@@ -24,24 +24,113 @@ class JobOfferController extends Controller
      *
      * @OA\Get(
      *     path="/job-offers",
-     *     summary="Get all job offers",
-     *     description="Returns a list of all job offers",
      *     operationId="getJobOffers",
+     *     summary="List all job offers with pagination and filtering",
+     *     description="Returns a paginated list of job offers. Supports filtering by position and status, sorting by various fields with standard Laravel pagination parameters (page, per_page).",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=1, minimum=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Number of items per page",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter_position",
+     *         in="query",
+     *         description="Filter job offers by position name (comma-separated for multiple values)",
+     *         required=false,
+     *         @OA\Schema(type="string", example="Manager,Developer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter_status",
+     *         in="query",
+     *         description="Filter job offers by acceptance status (comma-separated for multiple values)",
+     *         required=false,
+     *         @OA\Schema(type="string", example="Pending,Accepted")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_by",
+     *         in="query",
+     *         description="Sort by field",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"job_offer_id", "candidate_name", "position_name", "date", "status"}, example="candidate_name")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_order",
+     *         in="query",
+     *         description="Sort order (asc or desc)",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
+     *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Successful operation",
+     *         description="List of job offers retrieved successfully",
      *         @OA\JsonContent(
-     *             type="object",
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offers retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
-     *                 @OA\Items(ref="#/components/schemas/JobOffer")
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="custom_offer_id", type="string", example="JO-2024-001"),
+     *                     @OA\Property(property="date", type="string", format="date", example="2024-01-15"),
+     *                     @OA\Property(property="candidate_name", type="string", example="John Doe"),
+     *                     @OA\Property(property="position_name", type="string", example="Software Developer"),
+     *                     @OA\Property(property="salary_detail", type="string", example="$75,000 per annum"),
+     *                     @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30"),
+     *                     @OA\Property(property="acceptance_status", type="string", example="Pending"),
+     *                     @OA\Property(property="note", type="string", example="Additional benefits included"),
+     *                     @OA\Property(property="created_at", type="string", format="date-time", example="2024-01-15T10:00:00Z"),
+     *                     @OA\Property(property="updated_at", type="string", format="date-time", example="2024-01-15T10:00:00Z")
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="pagination",
+     *                 type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=25),
+     *                 @OA\Property(property="last_page", type="integer", example=3),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="to", type="integer", example=10),
+     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
+     *             ),
+     *             @OA\Property(
+     *                 property="filters",
+     *                 type="object",
+     *                 @OA\Property(property="applied_filters", type="object",
+     *                     @OA\Property(property="position", type="array", @OA\Items(type="string"), example={"Manager"}),
+     *                     @OA\Property(property="status", type="array", @OA\Items(type="string"), example={"Pending"})
+     *                 )
      *             )
      *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error - Invalid parameters provided",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access job offers"
      *     ),
      *     @OA\Response(
      *         response=500,
@@ -49,19 +138,96 @@ class JobOfferController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve job offers"),
-     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
+     *             @OA\Property(property="error", type="string")
      *         )
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
-        $jobOffers = JobOffer::all();
-        return response()->json([
-            'success' => true,
-            'message' => 'Job offers retrieved successfully',
-            'data' => JobOfferResource::collection($jobOffers)
-        ]);
+        try {
+            // Validate incoming parameters
+            $validated = $request->validate([
+                'page'             => 'integer|min:1',
+                'per_page'         => 'integer|min:1|max:100',
+                'filter_position'  => 'string|nullable',
+                'filter_status'    => 'string|nullable',
+                'sort_by'          => 'string|nullable|in:job_offer_id,candidate_name,position_name,date,status',
+                'sort_order'       => 'string|nullable|in:asc,desc',
+            ]);
+
+            // Determine page size
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
+
+            // Build query
+            $query = JobOffer::query();
+
+            // Apply position filter if provided
+            if (!empty($validated['filter_position'])) {
+                $positions = explode(',', $validated['filter_position']);
+                $query->whereIn('position_name', array_map('trim', $positions));
+            }
+
+            // Apply status filter if provided
+            if (!empty($validated['filter_status'])) {
+                $statuses = explode(',', $validated['filter_status']);
+                $query->whereIn('acceptance_status', array_map('trim', $statuses));
+            }
+
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'created_at';
+            $sortOrder = $validated['sort_order'] ?? 'desc';
+            
+            // Map sort_by values to actual column names
+            $sortMapping = [
+                'job_offer_id' => 'id',
+                'candidate_name' => 'candidate_name',
+                'position_name' => 'position_name',
+                'date' => 'date',
+                'status' => 'acceptance_status'
+            ];
+            
+            $sortColumn = $sortMapping[$sortBy] ?? 'created_at';
+            $query->orderBy($sortColumn, $sortOrder);
+
+            // Execute pagination
+            $jobOffers = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Build applied filters array
+            $appliedFilters = [];
+            if (!empty($validated['filter_position'])) {
+                $appliedFilters['position'] = explode(',', $validated['filter_position']);
+            }
+            if (!empty($validated['filter_status'])) {
+                $appliedFilters['status'] = explode(',', $validated['filter_status']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offers retrieved successfully',
+                'data'    => JobOfferResource::collection($jobOffers->items()),
+                'pagination' => [
+                    'current_page'   => $jobOffers->currentPage(),
+                    'per_page'       => $jobOffers->perPage(),
+                    'total'          => $jobOffers->total(),
+                    'last_page'      => $jobOffers->lastPage(),
+                    'from'           => $jobOffers->firstItem(),
+                    'to'             => $jobOffers->lastItem(),
+                    'has_more_pages' => $jobOffers->hasMorePages(),
+                ],
+                'filters' => [
+                    'applied_filters' => $appliedFilters,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve job offers',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -404,6 +570,105 @@ class JobOfferController extends Controller
                    ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                    ->header('Pragma', 'no-cache')
                    ->header('Expires', '0');
+    }
+
+    /**
+     * Get job offer by candidate name.
+     *
+     * @OA\Get(
+     *     path="/job-offers/by-candidate/{candidateName}",
+     *     operationId="getJobOfferByCandidateName",
+     *     summary="Get a job offer by candidate name",
+     *     description="Returns a job offer based on the candidate's name. Finds the first matching job offer for the specified candidate.",
+     *     tags={"Job Offers"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="candidateName",
+     *         in="path",
+     *         required=true,
+     *         description="Name of the candidate",
+     *         @OA\Schema(type="string", example="John Doe")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Job offer retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Job offer retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="custom_offer_id", type="string", example="JO-2024-001"),
+     *                 @OA\Property(property="date", type="string", format="date", example="2024-01-15"),
+     *                 @OA\Property(property="candidate_name", type="string", example="John Doe"),
+     *                 @OA\Property(property="position_name", type="string", example="Software Developer"),
+     *                 @OA\Property(property="salary_detail", type="string", example="$75,000 per annum"),
+     *                 @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30"),
+     *                 @OA\Property(property="acceptance_status", type="string", example="Pending"),
+     *                 @OA\Property(property="note", type="string", example="Additional benefits included"),
+     *                 @OA\Property(property="created_by", type="string", example="admin"),
+     *                 @OA\Property(property="updated_by", type="string", example="admin"),
+     *                 @OA\Property(property="created_at", type="string", format="date-time", example="2024-01-15T10:00:00Z"),
+     *                 @OA\Property(property="updated_at", type="string", format="date-time", example="2024-01-15T10:00:00Z")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Job offer not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Job offer not found for candidate: John Doe")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access job offers"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to retrieve job offer"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function getByCandidateName($candidateName)
+    {
+        try {
+            // Decode URL-encoded candidate name
+            $candidateName = urldecode($candidateName);
+            
+            $jobOffer = JobOffer::where('candidate_name', 'LIKE', '%' . $candidateName . '%')
+                ->first();
+
+            if (!$jobOffer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job offer not found for candidate: ' . $candidateName
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offer retrieved successfully',
+                'data' => new JobOfferResource($jobOffer)
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve job offer',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     function formatDateWithSuperscript($date)

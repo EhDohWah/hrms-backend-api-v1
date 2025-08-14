@@ -33,4 +33,10 @@ class DepartmentPosition extends Model
         'created_by',
         'updated_by'
     ];
+
+    // — Accessors —
+    public function getFullTitleAttribute(): string
+    {
+        return trim($this->department . ' - ' . $this->position);
+    }
 }

@@ -14,8 +14,6 @@ use Illuminate\Database\Eloquent\Model;
  *     @OA\Property(property="grant_id", type="integer", description="Grant ID"),
  *     @OA\Property(property="department_position_id", type="integer", description="Department position ID"),
  *     @OA\Property(property="description", type="string", description="Allocation description"),
- *     @OA\Property(property="org_funded_salary", type="number", format="decimal", description="Organization funded salary"),
- *     @OA\Property(property="active", type="boolean", description="Whether the allocation is active"),
  *     @OA\Property(property="created_by", type="string", description="User who created the record"),
  *     @OA\Property(property="updated_by", type="string", description="User who last updated the record"),
  *     @OA\Property(property="created_at", type="string", format="date-time", description="Creation timestamp"),
@@ -30,8 +28,6 @@ class OrgFundedAllocation extends Model
         'grant_id',
         'department_position_id',
         'description',
-        'org_funded_salary',
-        'active',
         'created_by',
         'updated_by',
     ];

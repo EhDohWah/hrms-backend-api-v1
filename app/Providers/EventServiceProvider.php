@@ -4,13 +4,13 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobFailed;
-use App\Listeners\NotifyUserOfFailedJob;
+use App\Listeners\NotifyOnImportFailed;
 
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
         JobFailed::class => [
-            NotifyUserOfFailedJob::class,
+            NotifyOnImportFailed::class,
         ],
     ];
 

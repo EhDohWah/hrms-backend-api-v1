@@ -36,6 +36,7 @@ class JobOffer extends Model
      * @var array
      */
     protected $fillable = [
+        'custom_offer_id',
         'date',
         'candidate_name',
         'position_name',
