@@ -4,8 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Employee;
-use App\Models\EmployeeIdentification;
 
 class EmployeeResource extends JsonResource
 {

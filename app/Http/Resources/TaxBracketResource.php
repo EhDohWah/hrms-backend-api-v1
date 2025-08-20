@@ -27,11 +27,11 @@ class TaxBracketResource extends JsonResource
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Computed attributes
             'income_range' => $this->income_range,
             'formatted_rate' => $this->formatted_rate,
-            
+
             // Conditional attributes
             'can_edit' => $this->when($request->user()?->can('tax.update'), true),
             'can_delete' => $this->when($request->user()?->can('tax.delete'), true),

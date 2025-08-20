@@ -44,7 +44,7 @@ class JobOfferFactory extends Factory
             'Technical Writer',
             'Product Manager',
             'Scrum Master',
-            'Solutions Architect'
+            'Solutions Architect',
         ];
 
         $statuses = [
@@ -53,7 +53,7 @@ class JobOfferFactory extends Factory
             'Declined',
             'Expired',
             'Withdrawn',
-            'Under Review'
+            'Under Review',
         ];
 
         $salaryRanges = [
@@ -64,7 +64,7 @@ class JobOfferFactory extends Factory
             '$80,000 - $100,000 per annum',
             '$90,000 - $120,000 per annum',
             '$100,000 - $130,000 per annum',
-            '$110,000 - $150,000 per annum'
+            '$110,000 - $150,000 per annum',
         ];
 
         $offerDate = $this->faker->dateTimeBetween('-6 months', 'now');
@@ -95,7 +95,7 @@ class JobOfferFactory extends Factory
         $subsidiaries = ['SMRU', 'BHF', 'MORU', 'SHOKLO'];
         $subsidiary = $this->faker->randomElement($subsidiaries);
         $counter = $this->faker->numberBetween(1, 9999);
-        
+
         return sprintf('%s%s%s-%s-%04d', $year, $month, $day, $subsidiary, $counter);
     }
 
@@ -140,14 +140,14 @@ class JobOfferFactory extends Factory
             'Senior Project Manager',
             'Senior Data Analyst',
             'Senior UI/UX Designer',
-            'Solutions Architect'
+            'Solutions Architect',
         ];
 
         $seniorSalaries = [
             '$90,000 - $120,000 per annum',
             '$100,000 - $130,000 per annum',
             '$110,000 - $150,000 per annum',
-            '$120,000 - $160,000 per annum'
+            '$120,000 - $160,000 per annum',
         ];
 
         return $this->state(fn (array $attributes) => [

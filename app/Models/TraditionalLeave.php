@@ -9,6 +9,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="TraditionalLeave",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="name", type="string"),
  *     @OA\Property(property="description", type="string"),
@@ -17,7 +18,6 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="updated_by", type="string", nullable=true)
  * )
  */
-
 class TraditionalLeave extends Model
 {
     //

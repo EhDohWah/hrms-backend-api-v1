@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Models\Payroll;
-use App\Models\LeaveType;
-use App\Models\Lookup;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
 /**
@@ -24,15 +22,19 @@ class ReportController extends Controller
      *     summary="Generate grant report",
      *     tags={"Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Grant report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -49,7 +51,7 @@ class ReportController extends Controller
         // Implementation for grant report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 
@@ -59,29 +61,37 @@ class ReportController extends Controller
      *     summary="Generate payroll report",
      *     tags={"Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="start_date",
      *         in="query",
      *         description="Start date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="end_date",
      *         in="query",
      *         description="End date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Payroll report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -98,7 +108,7 @@ class ReportController extends Controller
         // Implementation for payroll report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 
@@ -108,29 +118,37 @@ class ReportController extends Controller
      *     summary="Generate staff training report",
      *     tags={"Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="employee_id",
      *         in="query",
      *         description="Filter by employee ID",
      *         required=false,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="department_id",
      *         in="query",
      *         description="Filter by department ID",
      *         required=false,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Staff training report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -147,7 +165,7 @@ class ReportController extends Controller
         // Implementation for staff training report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 
@@ -156,22 +174,28 @@ class ReportController extends Controller
      *     path="/api/reports/total-grant-budget",
      *     summary="Generate total grant and budget report",
      *     tags={"Reports"},
+     *
      *     @OA\Parameter(
      *         name="year",
      *         in="query",
      *         description="Filter by year",
      *         required=false,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Total grant and budget report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -188,7 +212,7 @@ class ReportController extends Controller
         // Implementation for total grant and budget report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 
@@ -198,36 +222,46 @@ class ReportController extends Controller
      *     summary="Generate individual leave requests report",
      *     tags={"Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="employee_id",
      *         in="query",
      *         description="Employee ID",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="start_date",
      *         in="query",
      *         description="Start date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="end_date",
      *         in="query",
      *         description="End date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Individual leave requests report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -244,7 +278,7 @@ class ReportController extends Controller
         // Implementation for individual leave requests report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 
@@ -254,36 +288,46 @@ class ReportController extends Controller
      *     summary="Generate department leave requests report",
      *     tags={"Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="department_id",
      *         in="query",
      *         description="Department ID",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="start_date",
      *         in="query",
      *         description="Start date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="end_date",
      *         in="query",
      *         description="End date for report period",
      *         required=false,
+     *
      *         @OA\Schema(type="string", format="date")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Department leave requests report generated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -300,7 +344,7 @@ class ReportController extends Controller
         // Implementation for department leave requests report generation
         return response()->json([
             'success' => true,
-            'data' => []
+            'data' => [],
         ]);
     }
 }

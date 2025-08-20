@@ -3,19 +3,21 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Queue\SerializesModels;
 
 class EmployeeImportCompleted implements ShouldBroadcast
 {
     use InteractsWithSockets, SerializesModels;
 
     public $importId;
+
     public $userId;
+
     public $summary;
+
     public $errors;
 
     public function __construct($importId, $userId, $summary = [], $errors = [])

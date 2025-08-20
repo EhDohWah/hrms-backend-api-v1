@@ -3,28 +3,23 @@
 namespace App\Imports;
 
 use App\Models\Employee;
-use App\Models\EmployeeBeneficiary;
-use App\Models\EmployeeIdentification;
 use App\Models\User;
 use App\Notifications\ImportedCompletedNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Collection;
-use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Concerns\{
-    ToCollection,
-    WithHeadingRow,
-    WithChunkReading,
-    WithCustomValueBinder,
-    SkipsEmptyRows
-};
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Events\AfterImport;
 use Maatwebsite\Excel\Validators\Failure;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
@@ -32,20 +27,14 @@ use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class EmployeesImport extends DefaultValueBinder implements
-    ToCollection,
-    WithHeadingRow,
-    WithChunkReading,
-    WithCustomValueBinder,
-    SkipsEmptyRows,
-    SkipsOnFailure,
-    ShouldQueue,
-    WithEvents
+class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithEvents, WithHeadingRow
 {
     use Importable, RegistersEventListeners;
 
     public $userId;
+
     public $importId;
+
     protected $existingStaffIds = [];
 
     public function __construct(string $importId, int $userId)
@@ -66,6 +55,7 @@ class EmployeesImport extends DefaultValueBinder implements
     public function bindValue(Cell $cell, $value)
     {
         $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
         return true;
     }
 
@@ -84,7 +74,7 @@ class EmployeesImport extends DefaultValueBinder implements
             $validationFailures[] = $validationFailure;
 
             $msg = "Row {$failure->row()} [{$failure->attribute()}]: "
-                . implode(', ', $failure->errors());
+                .implode(', ', $failure->errors());
             Log::warning($msg, ['values' => $failure->values()]);
             $errors[] = $msg;
         }
@@ -98,7 +88,7 @@ class EmployeesImport extends DefaultValueBinder implements
         Log::info('Import chunk started', ['rows_in_chunk' => $rows->count(), 'import_id' => $this->importId]);
 
         $normalized = $rows->map(function ($r) {
-            if (!empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
+            if (! empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
                 try {
                     $r['date_of_birth'] =
                         ExcelDate::excelToDateTimeObject($r['date_of_birth'])
@@ -117,11 +107,12 @@ class EmployeesImport extends DefaultValueBinder implements
                 'Passport' => 'Passport',
                 'Other' => 'Other',
             ];
-            if (!empty($r['id_type'])) {
+            if (! empty($r['id_type'])) {
                 $r['id_type'] = $map[$r['id_type']] ?? 'Other';
             }
 
             unset($r['age']);  // drop formula
+
             return $r;
         });
 
@@ -138,11 +129,12 @@ class EmployeesImport extends DefaultValueBinder implements
             foreach ($validator->errors()->all() as $error) {
                 $this->onFailure(new Failure(0, '', [$error], []));
             }
+
             return;
         }
 
         // Capture first row debug (only once)
-        if (!Cache::has("import_{$this->importId}_first_row_snapshot") && $rows->count() > 0) {
+        if (! Cache::has("import_{$this->importId}_first_row_snapshot") && $rows->count() > 0) {
             $first = $rows->first()->toArray();
             $firstRowSnapshot = [
                 'columns' => array_keys($first),
@@ -168,20 +160,23 @@ class EmployeesImport extends DefaultValueBinder implements
                 $errors = Cache::get("import_{$this->importId}_errors", []);
 
                 foreach ($normalized as $index => $row) {
-                    if (!$row->filter()->count()) {
+                    if (! $row->filter()->count()) {
                         Log::debug('Skipping empty row', ['row_index' => $index, 'import_id' => $this->importId]);
+
                         continue;
                     }
 
                     $staffId = trim($row['staff_id'] ?? '');
-                    if (!$staffId) {
+                    if (! $staffId) {
                         $errors[] = "Row {$index}: Missing staff_id";
+
                         continue;
                     }
 
                     // Check duplicates in same import file
                     if (in_array($staffId, $seenStaffIds)) {
                         $this->onFailure(new Failure($index + 1, 'staff_id', ['Duplicate staff_id in import file'], $row->toArray()));
+
                         continue;
                     }
                     $seenStaffIds[] = $staffId;
@@ -189,6 +184,7 @@ class EmployeesImport extends DefaultValueBinder implements
                     // Check existing in DB
                     if (in_array($staffId, $this->existingStaffIds)) {
                         $this->onFailure(new Failure($index + 1, 'staff_id', ['Staff_id already exists in database'], $row->toArray()));
+
                         continue;
                     }
 
@@ -197,14 +193,14 @@ class EmployeesImport extends DefaultValueBinder implements
                     // Parse date
                     $dateOfBirth = null;
                     try {
-                        if (isset($row['date_of_birth']) && !empty($row['date_of_birth'])) {
+                        if (isset($row['date_of_birth']) && ! empty($row['date_of_birth'])) {
                             $dateOfBirth = \Carbon\Carbon::parse($row['date_of_birth'])->format('Y-m-d');
                         }
                     } catch (\Exception $e) {
                         Log::warning('Failed to parse date of birth', [
                             'staff_id' => $staffId,
                             'value' => $row['date_of_birth'] ?? 'null',
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
 
@@ -279,14 +275,16 @@ class EmployeesImport extends DefaultValueBinder implements
 
                 // Build batches for related tables
                 foreach ($normalized as $index => $row) {
-                    if (!isset($row['staff_id']))
+                    if (! isset($row['staff_id'])) {
                         continue;
+                    }
                     $staffId = trim($row['staff_id']);
-                    if (!isset($employeeMap[$staffId]))
+                    if (! isset($employeeMap[$staffId])) {
                         continue;
+                    }
                     $empId = $employeeMap[$staffId];
 
-                    if (!empty($row['id_type']) && !empty($row['id_no'])) {
+                    if (! empty($row['id_type']) && ! empty($row['id_no'])) {
                         $identBatch[] = [
                             'employee_id' => $empId,
                             'id_type' => $row['id_type'],
@@ -298,7 +296,7 @@ class EmployeesImport extends DefaultValueBinder implements
                         ];
                     }
 
-                    if (!empty($row['kin1_name'])) {
+                    if (! empty($row['kin1_name'])) {
                         $beneBatch[] = [
                             'employee_id' => $empId,
                             'beneficiary_name' => $row['kin1_name'],
@@ -308,7 +306,7 @@ class EmployeesImport extends DefaultValueBinder implements
                             'updated_at' => now(),
                         ];
                     }
-                    if (!empty($row['kin2_name'])) {
+                    if (! empty($row['kin2_name'])) {
                         $beneBatch[] = [
                             'employee_id' => $empId,
                             'beneficiary_name' => $row['kin2_name'],
@@ -330,7 +328,7 @@ class EmployeesImport extends DefaultValueBinder implements
                 }
             });
         } catch (\Exception $e) {
-            $errorMessage = 'Error in ' . __METHOD__ . ' at line ' . $e->getLine() . ': ' . $e->getMessage();
+            $errorMessage = 'Error in '.__METHOD__.' at line '.$e->getLine().': '.$e->getMessage();
             $errors = Cache::get("import_{$this->importId}_errors", []);
             $errors[] = $errorMessage;
             Cache::put("import_{$this->importId}_errors", $errors, 3600);
@@ -341,7 +339,7 @@ class EmployeesImport extends DefaultValueBinder implements
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'import_id' => $this->importId
+                'import_id' => $this->importId,
             ]);
         }
 
@@ -452,10 +450,10 @@ class EmployeesImport extends DefaultValueBinder implements
 
                 $message = "Employee import finished! Processed: {$processedCount} employees";
                 if (count($errors) > 0) {
-                    $message .= ', Errors: ' . count($errors);
+                    $message .= ', Errors: '.count($errors);
                 }
                 if (count($validationFailures) > 0) {
-                    $message .= ', Validation failures: ' . count($validationFailures);
+                    $message .= ', Validation failures: '.count($validationFailures);
                 }
 
                 $user = User::find($this->userId);

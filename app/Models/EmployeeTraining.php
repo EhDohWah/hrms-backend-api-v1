@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  *     schema="EmployeeTraining",
  *     title="Employee Training",
  *     description="Employee Training model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="Employee Training ID"),
  *     @OA\Property(property="employee_id", type="integer", format="int64", description="Employee ID"),
  *     @OA\Property(property="training_id", type="integer", format="int64", description="Training ID"),
@@ -28,7 +29,7 @@ class EmployeeTraining extends Model
         'training_id',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     // Relationship: Each employee training belongs to a training

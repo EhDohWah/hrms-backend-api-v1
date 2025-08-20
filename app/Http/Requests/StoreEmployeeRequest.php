@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+
 class StoreEmployeeRequest extends FormRequest
 {
     /**
@@ -11,7 +12,7 @@ class StoreEmployeeRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true ;
+        return true;
     }
 
     /**
@@ -23,18 +24,17 @@ class StoreEmployeeRequest extends FormRequest
     {
         return [
             // make sure 'subsidiary' is validated before you rely on it in the Rule
-            'subsidiary'  => ['required','string', Rule::in(['SMRU','BHF'])],
+            'subsidiary' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
 
-            'staff_id'    => [
+            'staff_id' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('employees')      // table name
-                    ->where(fn($query) =>     // add a WHERE subsidiary = input('subsidiary')
+                    ->where(fn ($query) =>     // add a WHERE subsidiary = input('subsidiary')
                         $query->where('subsidiary', $this->input('subsidiary'))
                     ),
             ],
-
 
             'initial_en' => 'nullable|string|max:10',
             'initial_th' => 'nullable|string|max:10',

@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
-use App\Models\TravelRequest;
 
 /**
  * @OA\Schema(
  *     schema="TravelRequestApproval",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="travel_request_id", type="integer"),
  *     @OA\Property(property="approver_role", type="string", nullable=true),
@@ -33,7 +33,7 @@ class TravelRequestApproval extends Model
         'approval_date',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function travelRequest()

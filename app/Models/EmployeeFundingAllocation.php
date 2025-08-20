@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeFundingAllocation",
  *     title="Employee Funding Allocation",
  *     description="Employee Funding Allocation model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employment_id", type="integer", format="int64", example=1),

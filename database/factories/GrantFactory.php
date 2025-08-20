@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Grant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Grant>
@@ -110,7 +109,7 @@ class GrantFactory extends Factory
 
         $donorPrefixes = [
             'NIH', 'WHO', 'USAID', 'BMGF', 'NIHR', 'MRC', 'RCUK', 'EU',
-            'NSF', 'CDC', 'DFID', 'PEPFAR', 'GAVI', 'UNITAID', 'WELLCOME'
+            'NSF', 'CDC', 'DFID', 'PEPFAR', 'GAVI', 'UNITAID', 'WELLCOME',
         ];
 
         // Select subsidiary
@@ -144,9 +143,9 @@ class GrantFactory extends Factory
 
         // Add some variation to names and descriptions
         $locationSuffix = $this->faker->randomElement($subsidiaryData['locations']);
-        $enhancedName = $grantName . ' - ' . $locationSuffix;
-        
-        $enhancedDescription = $grantDescription . ' ' . 
+        $enhancedName = $grantName.' - '.$locationSuffix;
+
+        $enhancedDescription = $grantDescription.' '.
             $this->faker->randomElement([
                 'This initiative aims to strengthen local capacity and improve health outcomes.',
                 'The program focuses on sustainable development and community engagement.',
@@ -157,10 +156,10 @@ class GrantFactory extends Factory
 
         // Determine created_by and updated_by
         $systemUsers = [
-            'admin', 'system', 'grant_manager', 'finance_officer', 
-            'program_director', 'research_coordinator', 'operations_manager'
+            'admin', 'system', 'grant_manager', 'finance_officer',
+            'program_director', 'research_coordinator', 'operations_manager',
         ];
-        
+
         $createdBy = $this->faker->randomElement($systemUsers);
         $updatedBy = $this->faker->boolean(70) ? $createdBy : $this->faker->randomElement($systemUsers);
 
@@ -181,10 +180,10 @@ class GrantFactory extends Factory
     public function active(): static
     {
         return $this->state(function (array $attributes) {
-            $endDate = $this->faker->boolean(40) 
-                ? null 
+            $endDate = $this->faker->boolean(40)
+                ? null
                 : $this->faker->dateTimeBetween('+1 month', '+2 years')->format('Y-m-d');
-            
+
             return [
                 'end_date' => $endDate,
             ];
@@ -233,9 +232,9 @@ class GrantFactory extends Factory
             ];
 
             return [
-                'name' => $this->faker->randomElement($researchNames) . ' - ' . 
+                'name' => $this->faker->randomElement($researchNames).' - '.
                          $this->faker->randomElement(['Phase I', 'Phase II', 'Phase III', 'Pilot Study', 'Main Study']),
-                'description' => 'Advanced research initiative focusing on evidence-based interventions and sustainable health outcomes. ' .
+                'description' => 'Advanced research initiative focusing on evidence-based interventions and sustainable health outcomes. '.
                                'This multi-year program involves community engagement, capacity building, and knowledge translation.',
                 'end_date' => $this->faker->dateTimeBetween('+6 months', '+4 years')->format('Y-m-d'),
             ];
@@ -272,7 +271,7 @@ class GrantFactory extends Factory
         return $this->state(function (array $attributes) use ($subsidiary) {
             $subsidiaryPrefixes = [
                 'SMRU' => 'S',
-                'BHF' => 'B', 
+                'BHF' => 'B',
                 'MORU' => 'M',
                 'OUCRU' => 'O',
             ];
@@ -280,7 +279,7 @@ class GrantFactory extends Factory
             $prefix = $subsidiaryPrefixes[$subsidiary] ?? 'G';
             $year = $this->faker->numberBetween(2020, 2026);
             $number = $this->faker->numberBetween(1000, 9999);
-            
+
             return [
                 'subsidiary' => $subsidiary,
                 'code' => "{$prefix}{$year}-{$this->faker->randomElement(['NIH', 'WHO', 'USAID'])}-{$number}",
@@ -298,7 +297,7 @@ class GrantFactory extends Factory
                 'end_date' => null,
                 'name' => $this->faker->randomElement([
                     'Institutional Core Fund',
-                    'General Operations Grant', 
+                    'General Operations Grant',
                     'Hub Maintenance Fund',
                     'Administrative Support Grant',
                     'Permanent Operations Fund',

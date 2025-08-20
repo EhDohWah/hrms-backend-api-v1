@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\TaxBracket;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTaxBracketRequest extends FormRequest
 {
@@ -30,7 +30,7 @@ class UpdateTaxBracketRequest extends FormRequest
             'effective_year' => 'sometimes|required|integer|min:2000|max:2100',
             'description' => 'nullable|string|max:255',
             'is_active' => 'boolean',
-            'updated_by' => 'nullable|string|max:100'
+            'updated_by' => 'nullable|string|max:100',
         ];
     }
 
@@ -68,7 +68,7 @@ class UpdateTaxBracketRequest extends FormRequest
             // Check for duplicate bracket order if updating order or year
             if ($this->has('bracket_order') || $this->has('effective_year')) {
                 $taxBracket = TaxBracket::findOrFail($this->route('id'));
-                
+
                 $bracketOrder = $this->bracket_order ?? $taxBracket->bracket_order;
                 $effectiveYear = $this->effective_year ?? $taxBracket->effective_year;
 
@@ -89,7 +89,7 @@ class UpdateTaxBracketRequest extends FormRequest
             if ($this->has('bracket_order') && $this->bracket_order > 1) {
                 $taxBracket = TaxBracket::findOrFail($this->route('id'));
                 $effectiveYear = $this->effective_year ?? $taxBracket->effective_year;
-                
+
                 $previousBracket = TaxBracket::where('effective_year', $effectiveYear)
                     ->where('bracket_order', $this->bracket_order - 1)
                     ->where('id', '!=', $this->route('id'))
@@ -97,7 +97,7 @@ class UpdateTaxBracketRequest extends FormRequest
 
                 if ($previousBracket && $previousBracket->max_income) {
                     $minIncome = $this->min_income ?? $taxBracket->min_income;
-                    
+
                     if ($minIncome <= $previousBracket->max_income) {
                         $validator->errors()->add(
                             'min_income',

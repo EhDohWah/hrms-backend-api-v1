@@ -61,7 +61,7 @@ class EmployeeDetailResource extends JsonResource
             'remark' => $this->remark,
 
             // — Employment & Position —
-            'employment' => $this->whenLoaded('employment', function() {
+            'employment' => $this->whenLoaded('employment', function () {
                 return [
                     'employment_type' => $this->employment->employment_type,
                     'start_date' => $this->employment->start_date,
@@ -75,7 +75,7 @@ class EmployeeDetailResource extends JsonResource
                     'health_welfare' => $this->employment->health_welfare,
                     'pvd' => $this->employment->pvd,
                     'saving_fund' => $this->employment->saving_fund,
-                    'department_position' => $this->whenLoaded('employment.departmentPosition', function() {
+                    'department_position' => $this->whenLoaded('employment.departmentPosition', function () {
                         return [
                             'id' => $this->employment->departmentPosition->id,
                             'department' => $this->employment->departmentPosition->department,
@@ -83,7 +83,7 @@ class EmployeeDetailResource extends JsonResource
                             'report_to' => $this->employment->departmentPosition->report_to,
                         ];
                     }),
-                    'work_location' => $this->whenLoaded('employment.workLocation', function() {
+                    'work_location' => $this->whenLoaded('employment.workLocation', function () {
                         return [
                             'id' => $this->employment->workLocation->id,
                             'name' => $this->employment->workLocation->name,
@@ -94,18 +94,18 @@ class EmployeeDetailResource extends JsonResource
             }),
 
             // — Grant Allocations —
-            'grant_allocations' => $this->whenLoaded('employeeGrantAllocations', function() {
-                return $this->employeeGrantAllocations->map(function($allocation) {
+            'grant_allocations' => $this->whenLoaded('employeeGrantAllocations', function () {
+                return $this->employeeGrantAllocations->map(function ($allocation) {
                     return [
                         'id' => $allocation->id,
                         'level_of_effort' => $allocation->level_of_effort,
                         'start_date' => $allocation->start_date,
                         'end_date' => $allocation->end_date,
                         'active' => $allocation->active,
-                        'grant_item' => $this->whenLoaded('employeeGrantAllocations.grantItemAllocation', function() use ($allocation) {
+                        'grant_item' => $this->whenLoaded('employeeGrantAllocations.grantItemAllocation', function () use ($allocation) {
                             return [
                                 'id' => $allocation->grantItemAllocation->id,
-                                'grant' => $this->whenLoaded('employeeGrantAllocations.grantItemAllocation.grant', function() use ($allocation) {
+                                'grant' => $this->whenLoaded('employeeGrantAllocations.grantItemAllocation.grant', function () use ($allocation) {
                                     return [
                                         'id' => $allocation->grantItemAllocation->grant->id,
                                         'name' => $allocation->grantItemAllocation->grant->name,
@@ -118,8 +118,8 @@ class EmployeeDetailResource extends JsonResource
             }),
 
             // — Beneficiaries —
-            'beneficiaries' => $this->whenLoaded('employeeBeneficiaries', function() {
-                return $this->employeeBeneficiaries->map(function($beneficiary) {
+            'beneficiaries' => $this->whenLoaded('employeeBeneficiaries', function () {
+                return $this->employeeBeneficiaries->map(function ($beneficiary) {
                     return [
                         'id' => $beneficiary->id,
                         'beneficiary_name' => $beneficiary->beneficiary_name,
@@ -130,8 +130,8 @@ class EmployeeDetailResource extends JsonResource
             }),
 
             // — Identifications —
-            'identifications' => $this->whenLoaded('employeeIdentification', function() {
-                return $this->employeeIdentification->map(function($identification) {
+            'identifications' => $this->whenLoaded('employeeIdentification', function () {
+                return $this->employeeIdentification->map(function ($identification) {
                     return [
                         'id' => $identification->id,
                         'id_type' => $identification->id_type,

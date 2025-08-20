@@ -1,13 +1,11 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 use App\Models\User;
-
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 return new class extends Migration
 {
@@ -22,44 +20,44 @@ return new class extends Migration
         // Define default actions and modules
         $defaultActions = ['create', 'read', 'update', 'delete', 'import', 'export'];
         $modules = [
-            'admin'              => $defaultActions,
-            'user'               => $defaultActions,
-            'grant'              => $defaultActions,
-            'interview'          => $defaultActions,
-            'employee'           => $defaultActions,
-            'employment'         => $defaultActions,
+            'admin' => $defaultActions,
+            'user' => $defaultActions,
+            'grant' => $defaultActions,
+            'interview' => $defaultActions,
+            'employee' => $defaultActions,
+            'employment' => $defaultActions,
             'employment_history' => $defaultActions,
-            'children'           => $defaultActions,
-            'questionnaire'      => $defaultActions,
-            'language'           => $defaultActions,
-            'reference'          => $defaultActions,
-            'education'          => $defaultActions,
-            'payroll'            => $defaultActions,
-            'attendance'         => $defaultActions,
-            'training'           => $defaultActions,
-            'reports'            => $defaultActions,
-            'travel_request'     => $defaultActions,
-            'leave_request'      => $defaultActions,
-            'job_offer'          => $defaultActions,
-            'budget_line'        => $defaultActions,
-            'position_slot'      => $defaultActions,
-            'tax'                => $defaultActions,
+            'children' => $defaultActions,
+            'questionnaire' => $defaultActions,
+            'language' => $defaultActions,
+            'reference' => $defaultActions,
+            'education' => $defaultActions,
+            'payroll' => $defaultActions,
+            'attendance' => $defaultActions,
+            'training' => $defaultActions,
+            'reports' => $defaultActions,
+            'travel_request' => $defaultActions,
+            'leave_request' => $defaultActions,
+            'job_offer' => $defaultActions,
+            'budget_line' => $defaultActions,
+            'position_slot' => $defaultActions,
+            'tax' => $defaultActions,
         ];
 
         // Create each permission (if not exists)
         foreach ($modules as $module => $actions) {
             foreach ($actions as $action) {
                 Permission::firstOrCreate([
-                    'name' => "{$module}.{$action}"
+                    'name' => "{$module}.{$action}",
                 ]);
             }
         }
 
         // Create roles
-        $adminRole       = Role::firstOrCreate(['name' => 'admin']);
-        $hrManagerRole   = Role::firstOrCreate(['name' => 'hr-manager']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $hrManagerRole = Role::firstOrCreate(['name' => 'hr-manager']);
         $hrAssistantRole = Role::firstOrCreate(['name' => 'hr-assistant']);
-        $employeeRole    = Role::firstOrCreate(['name' => 'employee']);
+        $employeeRole = Role::firstOrCreate(['name' => 'employee']);
 
         // Full access for Admin, HR Manager, and HR Assistant
         $fullPermissions = Permission::all();
@@ -84,15 +82,15 @@ return new class extends Migration
 
         // Create a default admin user if not already exists
         $defaultAdminEmail = 'admin@hrms.com';
-        if (!User::where('email', $defaultAdminEmail)->exists()) {
+        if (! User::where('email', $defaultAdminEmail)->exists()) {
             $adminUser = User::create([
-                'name'         => 'Admin User',
-                'email'        => $defaultAdminEmail,
-                'password'     => Hash::make('password'), // Change this to a secure password for production
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-                'last_login_at'=> null,
-                'status'       => 'active',
+                'name' => 'Admin User',
+                'email' => $defaultAdminEmail,
+                'password' => Hash::make('password'), // Change this to a secure password for production
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'last_login_at' => null,
+                'status' => 'active',
             ]);
             $adminUser->assignRole($adminRole);
             $adminUser->syncPermissions($fullPermissions);
@@ -100,15 +98,15 @@ return new class extends Migration
 
         // Create a default hr manager user if not already exists
         $defaultHrManagerEmail = 'hrmanager@hrms.com';
-        if (!User::where('email', $defaultHrManagerEmail)->exists()) {
+        if (! User::where('email', $defaultHrManagerEmail)->exists()) {
             $hrManagerUser = User::create([
-                'name'         => 'HR Manager User',
-                'email'        => $defaultHrManagerEmail,
-                'password'     => Hash::make('password'), // Change this to a secure password for production
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-                'last_login_at'=> null,
-                'status'       => 'active',
+                'name' => 'HR Manager User',
+                'email' => $defaultHrManagerEmail,
+                'password' => Hash::make('password'), // Change this to a secure password for production
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'last_login_at' => null,
+                'status' => 'active',
             ]);
             $hrManagerUser->assignRole($hrManagerRole);
             $hrManagerUser->syncPermissions($fullPermissions);
@@ -116,15 +114,15 @@ return new class extends Migration
 
         // Create a default hr assistant user if not already exists
         $defaultHrAssistantEmail = 'hrassistant@hrms.com';
-        if (!User::where('email', $defaultHrAssistantEmail)->exists()) {
+        if (! User::where('email', $defaultHrAssistantEmail)->exists()) {
             $hrAssistantUser = User::create([
-                'name'         => 'HR Assistant User',
-                'email'        => $defaultHrAssistantEmail,
-                'password'     => Hash::make('password'), // Change this to a secure password for production
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-                'last_login_at'=> null,
-                'status'       => 'active',
+                'name' => 'HR Assistant User',
+                'email' => $defaultHrAssistantEmail,
+                'password' => Hash::make('password'), // Change this to a secure password for production
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'last_login_at' => null,
+                'status' => 'active',
             ]);
             $hrAssistantUser->assignRole($hrAssistantRole);
             $hrAssistantUser->syncPermissions($fullPermissions);
@@ -132,15 +130,15 @@ return new class extends Migration
 
         // Create a default employee user if not already exists
         $defaultEmployeeEmail = 'employee@hrms.com';
-        if (!User::where('email', $defaultEmployeeEmail)->exists()) {
+        if (! User::where('email', $defaultEmployeeEmail)->exists()) {
             $employeeUser = User::create([
-                'name'         => 'Employee User',
-                'email'        => $defaultEmployeeEmail,
-                'password'     => Hash::make('password'), // Change this to a secure password for production
-                'created_by'   => 'system',
-                'updated_by'   => 'system',
-                'last_login_at'=> null,
-                'status'       => 'active',
+                'name' => 'Employee User',
+                'email' => $defaultEmployeeEmail,
+                'password' => Hash::make('password'), // Change this to a secure password for production
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'last_login_at' => null,
+                'status' => 'active',
             ]);
             $employeeUser->assignRole($employeeRole);
             $employeeUser->syncPermissions($employeePermissions);

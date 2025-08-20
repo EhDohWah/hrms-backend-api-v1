@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     type="object",
  *     title="Position Slot",
  *     required={"grant_item_id", "slot_number", "budget_line_id"},
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="grant_item_id", type="integer", example=1, description="Foreign key to grant items"),
  *     @OA\Property(property="slot_number", type="integer", example=1, description="Slot number, e.g., 1, 2, 3..."),

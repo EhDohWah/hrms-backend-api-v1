@@ -4,16 +4,15 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Support\Facades\Log;
 
 class ImportedCompletedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    #public $importId;
+    // public $importId;
     public $message;
 
     /**
@@ -21,7 +20,7 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
      */
     public function __construct($message)
     {
-        //$this->importId = $importId;
+        // $this->importId = $importId;
         $this->message = $message;
     }
 
@@ -41,8 +40,8 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-                    ->line('Import completed successfully')
-                    ->action('View Import', url('/imports'));
+            ->line('Import completed successfully')
+            ->action('View Import', url('/imports'));
     }
 
     /**
@@ -74,7 +73,7 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
         return [
             'type' => 'import_completed',
             'message' => $this->message,
-            //'import_id' => $this->importId,
+            // 'import_id' => $this->importId,
             'finished_at' => now()->toDateTimeString(),
         ];
     }

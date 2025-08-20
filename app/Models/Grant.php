@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +13,7 @@ use OpenApi\Annotations as OA;
  *     schema="Grant",
  *     title="Grant",
  *     description="Grant model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="Research Grant 2023"),
  *     @OA\Property(property="code", type="string", example="RG-2023-001"),
@@ -27,6 +28,7 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(
  *         property="grant_items",
  *         type="array",
+ *
  *         @OA\Items(ref="#/components/schemas/GrantItem")
  *     )
  * )
@@ -36,11 +38,11 @@ class Grant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code','name','subsidiary','description','end_date','created_by','updated_by',
+        'code', 'name', 'subsidiary', 'description', 'end_date', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
-        'end_date'   => 'date',
+        'end_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -66,62 +68,68 @@ class Grant extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('end_date')
-              ->orWhere('end_date','>',DB::raw('GETDATE()'));
+                ->orWhere('end_date', '>', DB::raw('GETDATE()'));
         });
     }
 
     public function scopeExpired($query)
     {
-        return $query->whereNotNull('end_date')->where('end_date','<',DB::raw('GETDATE()'));
+        return $query->whereNotNull('end_date')->where('end_date', '<', DB::raw('GETDATE()'));
     }
 
     public function scopeEndingSoon($query)
     {
         return $query->whereNotNull('end_date')
-                    ->where('end_date','>',DB::raw('GETDATE()'))
-                    ->where('end_date','<=',DB::raw('DATEADD(day,30,GETDATE())'));
+            ->where('end_date', '>', DB::raw('GETDATE()'))
+            ->where('end_date', '<=', DB::raw('DATEADD(day,30,GETDATE())'));
     }
 
-    public function scopeSearch($query,$term)
+    public function scopeSearch($query, $term)
     {
-        if (!$term) return $query;
+        if (! $term) {
+            return $query;
+        }
+
         return $query->where(function ($q) use ($term) {
-            $q->where('code','LIKE',"%{$term}%")
-              ->orWhere('name','LIKE',"%{$term}%")
-              ->orWhere('description','LIKE',"%{$term}%")
-              ->orWhere('subsidiary','LIKE',"%{$term}%");
+            $q->where('code', 'LIKE', "%{$term}%")
+                ->orWhere('name', 'LIKE', "%{$term}%")
+                ->orWhere('description', 'LIKE', "%{$term}%")
+                ->orWhere('subsidiary', 'LIKE', "%{$term}%");
         });
     }
 
-    public function scopeBySubsidiary($query,$subsidiaries)
+    public function scopeBySubsidiary($query, $subsidiaries)
     {
         if (is_string($subsidiaries)) {
-            $subsidiaries = explode(',',$subsidiaries);
+            $subsidiaries = explode(',', $subsidiaries);
         }
+
         return $query->whereIn('subsidiary', array_filter($subsidiaries));
     }
 
-    public function scopeByCodes($query,$codes)
+    public function scopeByCodes($query, $codes)
     {
         if (is_string($codes)) {
-            $codes = explode(',',$codes);
+            $codes = explode(',', $codes);
         }
+
         return $query->whereIn('code', array_filter($codes));
     }
 
-    public function scopeDateRange($query,$startDate=null,$endDate=null)
+    public function scopeDateRange($query, $startDate = null, $endDate = null)
     {
         if ($startDate && $endDate) {
-            return $query->whereBetween('end_date',[$startDate,$endDate]);
+            return $query->whereBetween('end_date', [$startDate, $endDate]);
         } elseif ($startDate) {
-            return $query->where('end_date','>=',$startDate);
+            return $query->where('end_date', '>=', $startDate);
         } elseif ($endDate) {
-            return $query->where('end_date','<=',$endDate);
+            return $query->where('end_date', '<=', $endDate);
         }
+
         return $query;
     }
 
-    public function scopeHasItems($query,$hasItems=true)
+    public function scopeHasItems($query, $hasItems = true)
     {
         return $hasItems ? $query->has('grantItems') : $query->doesntHave('grantItems');
     }
@@ -141,31 +149,43 @@ class Grant extends Model
         if (is_string($dates)) {
             $dates = explode(',', $dates);
         }
+
         return $query->whereBetween('end_date', is_array($dates) ? $dates : [$dates]);
     }
 
     // Computed attributes
     public function getStatusAttribute(): string
     {
-        if (!$this->end_date) return 'Active';
+        if (! $this->end_date) {
+            return 'Active';
+        }
         $endDate = Carbon::parse($this->end_date);
-        $now     = Carbon::now();
-        if ($endDate->isPast()) return 'Expired';
-        if ($endDate->diffInDays($now) <= 30) return 'Ending Soon';
+        $now = Carbon::now();
+        if ($endDate->isPast()) {
+            return 'Expired';
+        }
+        if ($endDate->diffInDays($now) <= 30) {
+            return 'Ending Soon';
+        }
+
         return 'Active';
     }
 
     public function getDaysUntilExpirationAttribute(): ?int
     {
-        if (!$this->end_date) return null;
+        if (! $this->end_date) {
+            return null;
+        }
         $endDate = Carbon::parse($this->end_date);
-        $now     = Carbon::now();
+        $now = Carbon::now();
+
         return $endDate->isPast() ? 0 : $endDate->diffInDays($now);
     }
 
     public function getIsExpiringSoonAttribute(): bool
     {
         $days = $this->days_until_expiration;
+
         return $days !== null && $days > 0 && $days <= 30;
     }
 
@@ -180,17 +200,17 @@ class Grant extends Model
         return self::select('subsidiary')
             ->distinct()
             ->whereNotNull('subsidiary')
-            ->where('subsidiary','!=','')
+            ->where('subsidiary', '!=', '')
             ->orderBy('subsidiary')
             ->pluck('subsidiary');
     }
 
-    public static function getUniqueCodes($limit=200)
+    public static function getUniqueCodes($limit = 200)
     {
         return self::select('code')
             ->distinct()
             ->whereNotNull('code')
-            ->where('code','!=','')
+            ->where('code', '!=', '')
             ->orderBy('code')
             ->limit($limit)
             ->pluck('code');
@@ -200,9 +220,9 @@ class Grant extends Model
     public static function getStatistics(): array
     {
         return [
-            'total'       => self::count(),
-            'active'      => self::active()->count(),
-            'expired'     => self::expired()->count(),
+            'total' => self::count(),
+            'active' => self::active()->count(),
+            'expired' => self::expired()->count(),
             'ending_soon' => self::endingSoon()->count(),
             'by_subsidiary' => self::select('subsidiary')
                 ->selectRaw('COUNT(*) as count')
@@ -210,7 +230,7 @@ class Grant extends Model
                 ->groupBy('subsidiary')
                 ->orderBy('subsidiary')
                 ->get()
-                ->pluck('count','subsidiary')
+                ->pluck('count', 'subsidiary')
                 ->toArray(),
         ];
     }
@@ -218,7 +238,7 @@ class Grant extends Model
     // Query optimization scopes
     public function scopeForPagination($query)
     {
-        return $query->select(['id','code','name','subsidiary','description','end_date','created_at','updated_at','created_by','updated_by']);
+        return $query->select(['id', 'code', 'name', 'subsidiary', 'description', 'end_date', 'created_at', 'updated_at', 'created_by', 'updated_by']);
     }
 
     public function scopeWithItemsCount($query)

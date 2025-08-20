@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class PaginationMonitor
@@ -34,7 +34,7 @@ class PaginationMonitor
         // Log slow queries if enabled
         if (config('pagination.monitoring.log_slow_queries', true)) {
             $threshold = config('pagination.monitoring.slow_query_threshold', 2000);
-            
+
             if ($executionTime > $threshold) {
                 Log::warning('Slow pagination query detected', [
                     'url' => $request->fullUrl(),
@@ -54,8 +54,8 @@ class PaginationMonitor
         }
 
         // Add performance headers to response
-        $response->headers->set('X-Pagination-Time', round($executionTime, 2) . 'ms');
-        $response->headers->set('X-Pagination-Memory', round($memoryUsage / 1024 / 1024, 2) . 'MB');
+        $response->headers->set('X-Pagination-Time', round($executionTime, 2).'ms');
+        $response->headers->set('X-Pagination-Memory', round($memoryUsage / 1024 / 1024, 2).'MB');
 
         return $response;
     }
@@ -82,7 +82,7 @@ class PaginationMonitor
     {
         $date = now()->format('Y-m-d');
         $hour = now()->format('H');
-        
+
         // Track daily metrics
         $dailyKey = "pagination_metrics:daily:{$date}";
         $dailyMetrics = Cache::get($dailyKey, [

@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="BudgetLine",
  *     type="object",
  *     required={"budget_line_code"},
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="budget_line_code", type="string", example="BL001"),
  *     @OA\Property(property="description", type="string", example="Description"),

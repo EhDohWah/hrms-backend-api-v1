@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     title="Update Payroll Grant Allocation Request",
  *     description="Request for updating a payroll grant allocation",
  *     required={"payroll_id", "employee_grant_allocation_id", "loe_snapshot", "amount", "is_advance"},
+ *
  *     @OA\Property(property="payroll_id", type="integer", example=1),
  *     @OA\Property(property="employee_grant_allocation_id", type="integer", example=1),
  *     @OA\Property(property="loe_snapshot", type="number", format="float", example=50.00),

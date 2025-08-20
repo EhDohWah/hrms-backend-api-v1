@@ -23,11 +23,14 @@ class OrgFundedAllocationController extends Controller
      *     summary="Get list of organization funded allocations",
      *     description="Returns paginated list of organization funded allocations with related grant and department position data",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/OrgFundedAllocation")),
      *             @OA\Property(property="current_page", type="integer"),
      *             @OA\Property(property="last_page", type="integer"),
@@ -35,6 +38,7 @@ class OrgFundedAllocationController extends Controller
      *             @OA\Property(property="total", type="integer")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
@@ -55,10 +59,13 @@ class OrgFundedAllocationController extends Controller
      *     summary="Create a new organization funded allocation",
      *     description="Creates a new organization funded allocation",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"grant_id", "department_position_id"},
+     *
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
      *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
      *             @OA\Property(property="description", type="string", description="Optional description"),
@@ -66,11 +73,14 @@ class OrgFundedAllocationController extends Controller
      *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active", default=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Allocation created successfully",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/OrgFundedAllocation")
      *     ),
+     *
      *     @OA\Response(response=400, description="Bad request"),
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=422, description="Validation error")
@@ -88,7 +98,7 @@ class OrgFundedAllocationController extends Controller
 
         $allocation = OrgFundedAllocation::create([
             ...$validated,
-            'created_by' => $request->user()->name ?? 'system'
+            'created_by' => $request->user()->name ?? 'system',
         ]);
 
         return response()->json($allocation, Response::HTTP_CREATED);
@@ -102,18 +112,23 @@ class OrgFundedAllocationController extends Controller
      *     summary="Get organization funded allocation by ID",
      *     description="Returns a single organization funded allocation with related data",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the organization funded allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/OrgFundedAllocation")
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=404, description="Allocation not found")
      * )
@@ -121,6 +136,7 @@ class OrgFundedAllocationController extends Controller
     public function show($id)
     {
         $allocation = OrgFundedAllocation::with(['grant', 'departmentPosition'])->findOrFail($id);
+
         return response()->json($allocation);
     }
 
@@ -132,16 +148,21 @@ class OrgFundedAllocationController extends Controller
      *     summary="Update organization funded allocation",
      *     description="Updates an existing organization funded allocation",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the organization funded allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
      *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
      *             @OA\Property(property="description", type="string", description="Optional description"),
@@ -149,11 +170,14 @@ class OrgFundedAllocationController extends Controller
      *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Allocation updated successfully",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/OrgFundedAllocation")
      *     ),
+     *
      *     @OA\Response(response=400, description="Bad request"),
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=404, description="Allocation not found"),
@@ -169,12 +193,12 @@ class OrgFundedAllocationController extends Controller
             'department_position_id' => 'sometimes|exists:department_positions,id',
             'description' => 'nullable|string|max:255',
             'org_funded_salary' => 'nullable|numeric|min:0',
-            'active' => 'boolean', 
+            'active' => 'boolean',
         ]);
 
         $allocation->update([
             ...$validated,
-            'updated_by' => $request->user()->name ?? 'system'
+            'updated_by' => $request->user()->name ?? 'system',
         ]);
 
         return response()->json($allocation);
@@ -188,13 +212,16 @@ class OrgFundedAllocationController extends Controller
      *     summary="Delete organization funded allocation",
      *     description="Deletes an organization funded allocation",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the organization funded allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=204,
      *         description="Allocation deleted successfully"

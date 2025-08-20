@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="InterSubsidiaryAdvance",
  *     title="Inter Subsidiary Advance",
  *     description="Inter Subsidiary Advance model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="payroll_grant_allocation_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="from_subsidiary", type="string", maxLength=5, example="SUB1"),

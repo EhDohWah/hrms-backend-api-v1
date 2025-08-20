@@ -15,18 +15,19 @@ return new class extends Migration
             $table->id();
             $table->string('setting_key', 50);
             $table->decimal('setting_value', 15, 2);
-            $table->string('setting_type', 30); // 'DEDUCTION', 'RATE', 'LIMIT'
+            $table->string('setting_type', 30); // 'ALLOWANCE', 'DEDUCTION', 'RATE', 'LIMIT'
             $table->string('description')->nullable();
             $table->integer('effective_year');
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_selected')->default(true); // Global toggle control
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
             $table->timestamps();
-            
+
             // Indexes
             $table->index('setting_key');
             $table->index(['setting_type', 'effective_year']);
-            $table->index(['effective_year', 'is_active']);
+            $table->index(['effective_year', 'is_selected']); // Updated index
+            $table->index(['is_selected', 'effective_year']); // New index for selected queries
             $table->unique(['setting_key', 'effective_year']);
         });
     }

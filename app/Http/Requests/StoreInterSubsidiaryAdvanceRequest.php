@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     title="Store Inter Subsidiary Advance Request",
  *     description="Request for creating a new inter-subsidiary advance",
  *     required={"payroll_grant_allocation_id", "from_subsidiary", "to_subsidiary", "via_grant_id", "amount", "advance_date"},
+ *
  *     @OA\Property(property="payroll_grant_allocation_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="from_subsidiary", type="string", maxLength=5, example="SUB1"),
  *     @OA\Property(property="to_subsidiary", type="string", maxLength=5, example="SUB2"),

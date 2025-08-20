@@ -6,15 +6,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
-use App\Models\Employee;
+use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @OA\Schema(
  *     schema="User",
  *     title="User",
  *     description="User model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="John Doe"),
  *     @OA\Property(property="email", type="string", format="email", example="john@example.com"),
@@ -29,11 +29,14 @@ use App\Models\Employee;
  *     @OA\Property(
  *         property="roles",
  *         type="array",
+ *
  *         @OA\Items(type="string", example="admin")
  *     ),
+ *
  *     @OA\Property(
  *         property="permissions",
  *         type="array",
+ *
  *         @OA\Items(type="string", example="user.read")
  *     )
  * )
@@ -41,7 +44,7 @@ use App\Models\Employee;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -57,7 +60,7 @@ class User extends Authenticatable
         'last_login_ip',
         'profile_picture',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -70,15 +73,13 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-
-     /**
+    /**
      * Get the employee record associated with the user.
      */
     public function employee()
     {
         return $this->hasOne(Employee::class, 'user_id');
     }
-
 
     /**
      * Get the attributes that should be cast.

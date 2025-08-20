@@ -14,14 +14,14 @@ class InterviewFactory extends Factory
         $startTime = $this->faker->time('H:i:s', '18:00:00');
         $startDateTime = \DateTime::createFromFormat('H:i:s', $startTime);
         $endDateTime = clone $startDateTime;
-        $endDateTime->add(new \DateInterval('PT' . $this->faker->numberBetween(30, 120) . 'M'));
+        $endDateTime->add(new \DateInterval('PT'.$this->faker->numberBetween(30, 120).'M'));
 
         return [
             'candidate_name' => $this->faker->name(),
             'phone' => $this->faker->optional(0.8)->phoneNumber(),
             'job_position' => $this->faker->randomElement([
                 'Software Engineer', 'Project Manager', 'Data Scientist', 'HR Specialist',
-                'Marketing Manager', 'Sales Representative', 'Accountant', 'UI/UX Designer'
+                'Marketing Manager', 'Sales Representative', 'Accountant', 'UI/UX Designer',
             ]),
             'interviewer_name' => $this->faker->optional(0.9)->name(),
             'interview_date' => $this->faker->dateTimeBetween('-3 months', '+1 month')->format('Y-m-d'),
@@ -37,4 +37,4 @@ class InterviewFactory extends Factory
             'updated_by' => $this->faker->optional(0.4)->name(),
         ];
     }
-} 
+}

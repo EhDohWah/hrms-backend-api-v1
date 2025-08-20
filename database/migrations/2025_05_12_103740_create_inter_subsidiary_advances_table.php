@@ -14,17 +14,17 @@ return new class extends Migration
         Schema::create('inter_subsidiary_advances', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payroll_id')->constrained('payrolls');
-            $table->string('from_subsidiary',5);
-            $table->string('to_subsidiary',5);
+            $table->string('from_subsidiary', 5);
+            $table->string('to_subsidiary', 5);
             $table->foreignId('via_grant_id')
-                  ->constrained('grants');
-            $table->decimal('amount',18,2);
+                ->constrained('grants');
+            $table->decimal('amount', 18, 2);
             $table->date('advance_date');
-            $table->string('notes',255)->nullable();
+            $table->string('notes', 255)->nullable();
             $table->date('settlement_date')->nullable();
             $table->timestamps();
-            $table->string('created_by',100)->nullable();
-            $table->string('updated_by',100)->nullable();
+            $table->string('created_by', 100)->nullable();
+            $table->string('updated_by', 100)->nullable();
         });
     }
 

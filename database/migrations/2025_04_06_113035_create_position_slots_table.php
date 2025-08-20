@@ -28,7 +28,7 @@ return new class extends Migration
             // Optionally track auditing
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
-            
+
         });
     }
 

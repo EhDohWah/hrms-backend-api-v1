@@ -3,10 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Employee;
-use App\Observers\EmployeeObserver;
-use Illuminate\Support\ServiceProvider;
 use App\Models\JobOffer;
+use App\Observers\EmployeeObserver;
 use App\Observers\JobOfferObserver;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

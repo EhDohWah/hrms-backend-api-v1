@@ -25,7 +25,7 @@ return new class extends Migration
         });
 
         // insert the default grant items
-        //$this->insertDefaultGrantItems();
+        // $this->insertDefaultGrantItems();
     }
 
     // // create a function to insert the default grant items

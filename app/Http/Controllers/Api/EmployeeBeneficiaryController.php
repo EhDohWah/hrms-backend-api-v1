@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\EmployeeBeneficiary;
 use App\Http\Resources\EmployeeBeneficiaryResource;
+use App\Models\EmployeeBeneficiary;
+use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
 /**
@@ -24,10 +24,13 @@ class EmployeeBeneficiaryController extends Controller
      *     summary="Get all employee beneficiaries",
      *     tags={"Employee Beneficiaries"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeBeneficiary")),
      *             @OA\Property(property="message", type="string", example="Employee beneficiaries retrieved successfully")
@@ -40,10 +43,11 @@ class EmployeeBeneficiaryController extends Controller
     public function index()
     {
         $employeeBeneficiaries = EmployeeBeneficiary::with('employee')->get();
+
         return response()->json([
             'status' => 'success',
             'data' => EmployeeBeneficiaryResource::collection($employeeBeneficiaries),
-            'message' => 'Employee beneficiaries retrieved successfully'
+            'message' => 'Employee beneficiaries retrieved successfully',
         ], 200);
     }
 
@@ -55,9 +59,12 @@ class EmployeeBeneficiaryController extends Controller
      *     summary="Create a new employee beneficiary",
      *     tags={"Employee Beneficiaries"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="beneficiary_name", type="string", example="John Doe"),
      *             @OA\Property(property="beneficiary_relationship", type="string", example="spouse"),
@@ -66,19 +73,25 @@ class EmployeeBeneficiaryController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Employee beneficiary created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary created successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="error"),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -86,7 +99,6 @@ class EmployeeBeneficiaryController extends Controller
      *     )
      * )
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -97,7 +109,7 @@ class EmployeeBeneficiaryController extends Controller
             'beneficiary_relationship' => 'required|string|max:100',
             'phone_number' => 'nullable|string|max:20',
             'created_by' => 'nullable|string|max:100',
-            'updated_by' => 'nullable|string|max:100'
+            'updated_by' => 'nullable|string|max:100',
         ]);
 
         $employeeBeneficiary = EmployeeBeneficiary::create($validatedData);
@@ -106,7 +118,7 @@ class EmployeeBeneficiaryController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => new EmployeeBeneficiaryResource($employeeBeneficiary),
-            'message' => 'Employee beneficiary created successfully'
+            'message' => 'Employee beneficiary created successfully',
         ], 201);
     }
 
@@ -118,26 +130,34 @@ class EmployeeBeneficiaryController extends Controller
      *     summary="Get employee beneficiary by ID",
      *     tags={"Employee Beneficiaries"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee beneficiary ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary retrieved successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee beneficiary not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="error"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
      *         )
@@ -150,10 +170,11 @@ class EmployeeBeneficiaryController extends Controller
     public function show($id)
     {
         $employeeBeneficiary = EmployeeBeneficiary::with('employee')->findOrFail($id);
+
         return response()->json([
             'status' => 'success',
             'data' => new EmployeeBeneficiaryResource($employeeBeneficiary),
-            'message' => 'Employee beneficiary retrieved successfully'
+            'message' => 'Employee beneficiary retrieved successfully',
         ], 200);
     }
 
@@ -165,16 +186,21 @@ class EmployeeBeneficiaryController extends Controller
      *     summary="Update an employee beneficiary",
      *     tags={"Employee Beneficiaries"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee beneficiary ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="beneficiary_name", type="string", example="John Doe"),
      *             @OA\Property(property="beneficiary_relationship", type="string", example="spouse"),
@@ -183,27 +209,36 @@ class EmployeeBeneficiaryController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee beneficiary updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary updated successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee beneficiary not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="error"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="error"),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -211,7 +246,6 @@ class EmployeeBeneficiaryController extends Controller
      *     )
      * )
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -225,7 +259,7 @@ class EmployeeBeneficiaryController extends Controller
             'beneficiary_relationship' => 'sometimes|required|string|max:100',
             'phone_number' => 'sometimes|nullable|string|max:20',
             'created_by' => 'sometimes|nullable|string|max:100',
-            'updated_by' => 'sometimes|nullable|string|max:100'
+            'updated_by' => 'sometimes|nullable|string|max:100',
         ]);
 
         $employeeBeneficiary->update($validatedData);
@@ -234,7 +268,7 @@ class EmployeeBeneficiaryController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => new EmployeeBeneficiaryResource($employeeBeneficiary),
-            'message' => 'Employee beneficiary updated successfully'
+            'message' => 'Employee beneficiary updated successfully',
         ], 200);
     }
 
@@ -246,25 +280,33 @@ class EmployeeBeneficiaryController extends Controller
      *     summary="Delete an employee beneficiary",
      *     tags={"Employee Beneficiaries"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee beneficiary ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee beneficiary deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee beneficiary not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="status", type="string", example="error"),
      *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
      *         )
@@ -278,9 +320,10 @@ class EmployeeBeneficiaryController extends Controller
     {
         $employeeBeneficiary = EmployeeBeneficiary::findOrFail($id);
         $employeeBeneficiary->delete();
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Employee beneficiary deleted successfully'
+            'message' => 'Employee beneficiary deleted successfully',
         ], 200);
     }
-} 
+}

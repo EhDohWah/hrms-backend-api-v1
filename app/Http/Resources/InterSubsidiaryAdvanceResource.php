@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     schema="InterSubsidiaryAdvanceResource",
  *     title="Inter Subsidiary Advance Resource",
  *     description="Inter Subsidiary Advance resource representation",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="from_subsidiary", type="string", example="SUB1"),
  *     @OA\Property(property="to_subsidiary", type="string", example="SUB2"),

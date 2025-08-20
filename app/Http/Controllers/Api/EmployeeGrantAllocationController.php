@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Resources\EmployeeGrantAllocationResource;
+use App\Models\Employee;
 use App\Models\EmployeeGrantAllocation;
 use App\Models\PositionSlot;
-use App\Models\GrantItem;
-use App\Models\Employee;
-use App\Models\Employment;
-use App\Http\Resources\EmployeeGrantAllocationResource;
-use App\Http\Requests\EmployeeGrantAllocationRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +21,7 @@ class EmployeeGrantAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ]);
 
             // Apply filters
@@ -41,7 +38,7 @@ class EmployeeGrantAllocationController extends Controller
             return EmployeeGrantAllocationResource::collection($employeeGrantAllocations)
                 ->additional([
                     'success' => true,
-                    'message' => 'Employee grant allocations retrieved successfully'
+                    'message' => 'Employee grant allocations retrieved successfully',
                 ])
                 ->response()
                 ->setStatusCode(200);
@@ -50,7 +47,7 @@ class EmployeeGrantAllocationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employee grant allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -72,7 +69,7 @@ class EmployeeGrantAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -85,7 +82,7 @@ class EmployeeGrantAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Total effort of all allocations must equal exactly 100%',
-                    'current_total' => $totalNewEffort
+                    'current_total' => $totalNewEffort,
                 ], 422);
             }
 
@@ -97,7 +94,7 @@ class EmployeeGrantAllocationController extends Controller
             if ($existingActiveAllocations) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employee already has active grant allocations. Please use the update endpoint to modify existing allocations or deactivate them first.'
+                    'message' => 'Employee already has active grant allocations. Please use the update endpoint to modify existing allocations or deactivate them first.',
                 ], 422);
             }
 
@@ -112,8 +109,9 @@ class EmployeeGrantAllocationController extends Controller
 
                     // Get the position slot with its grant item
                     $positionSlot = PositionSlot::with('grantItem')->find($positionSlotId);
-                    if (!$positionSlot) {
+                    if (! $positionSlot) {
                         $errors[] = "Allocation #{$index}: Position slot not found";
+
                         continue;
                     }
 
@@ -126,12 +124,13 @@ class EmployeeGrantAllocationController extends Controller
                         $currentAllocations = EmployeeGrantAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
                             $query->where('grant_item_id', $grantItem->id);
                         })
-                        ->where('active', true)
-                        ->count();
+                            ->where('active', true)
+                            ->count();
 
                         // Check if we can accommodate one more allocation
                         if ($currentAllocations >= $grantPositionNumber) {
                             $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantPositionNumber} allocations. Currently allocated: {$currentAllocations}";
+
                             continue;
                         }
                     }
@@ -140,11 +139,12 @@ class EmployeeGrantAllocationController extends Controller
                     $existingAllocation = EmployeeGrantAllocation::where([
                         'employee_id' => $validated['employee_id'],
                         'position_slot_id' => $positionSlotId,
-                        'active' => true
+                        'active' => true,
                     ])->first();
 
                     if ($existingAllocation) {
                         $errors[] = "Allocation #{$index}: Already exists for this employee and position slot";
+
                         continue;
                     }
 
@@ -162,16 +162,17 @@ class EmployeeGrantAllocationController extends Controller
                     $createdAllocations[] = $allocation;
 
                 } catch (\Exception $e) {
-                    $errors[] = "Allocation #{$index}: " . $e->getMessage();
+                    $errors[] = "Allocation #{$index}: ".$e->getMessage();
                 }
             }
 
-            if (empty($createdAllocations) && !empty($errors)) {
+            if (empty($createdAllocations) && ! empty($errors)) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to create any allocations',
-                    'errors' => $errors
+                    'errors' => $errors,
                 ], 422);
             }
 
@@ -182,17 +183,17 @@ class EmployeeGrantAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
             $response = [
                 'success' => true,
                 'message' => 'Employee grant allocations created successfully',
                 'data' => EmployeeGrantAllocationResource::collection($allocationsWithRelations),
-                'total_created' => count($createdAllocations)
+                'total_created' => count($createdAllocations),
             ];
 
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $response['warnings'] = $errors;
             }
 
@@ -200,10 +201,11 @@ class EmployeeGrantAllocationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee grant allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -215,13 +217,13 @@ class EmployeeGrantAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ])->findOrFail($id);
 
             return (new EmployeeGrantAllocationResource($allocation))
                 ->additional([
                     'success' => true,
-                    'message' => 'Employee grant allocation retrieved successfully'
+                    'message' => 'Employee grant allocation retrieved successfully',
                 ])
                 ->response()
                 ->setStatusCode(200);
@@ -229,13 +231,13 @@ class EmployeeGrantAllocationController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee grant allocation not found'
+                'message' => 'Employee grant allocation not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employee grant allocation',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -249,12 +251,12 @@ class EmployeeGrantAllocationController extends Controller
             $allocations = EmployeeGrantAllocation::with([
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ])
-            ->where('employee_id', $employeeId)
-            ->where('active', true)
-            ->orderBy('start_date', 'desc')
-            ->get();
+                ->where('employee_id', $employeeId)
+                ->where('active', true)
+                ->orderBy('start_date', 'desc')
+                ->get();
 
             $totalEffort = $allocations->sum('level_of_effort');
 
@@ -264,19 +266,19 @@ class EmployeeGrantAllocationController extends Controller
                 'employee' => $employee,
                 'total_allocations' => $allocations->count(),
                 'total_effort' => $totalEffort,
-                'data' => EmployeeGrantAllocationResource::collection($allocations)
+                'data' => EmployeeGrantAllocationResource::collection($allocations),
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employee grant allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -300,7 +302,7 @@ class EmployeeGrantAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -330,9 +332,10 @@ class EmployeeGrantAllocationController extends Controller
 
                 if (($totalEffort + $validated['level_of_effort']) > 100) {
                     DB::rollBack();
+
                     return response()->json([
                         'success' => false,
-                        'message' => 'Total effort would exceed 100% for this employee'
+                        'message' => 'Total effort would exceed 100% for this employee',
                     ], 422);
                 }
             }
@@ -347,29 +350,31 @@ class EmployeeGrantAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ]);
 
             return (new EmployeeGrantAllocationResource($allocation))
                 ->additional([
                     'success' => true,
-                    'message' => 'Employee grant allocation updated successfully'
+                    'message' => 'Employee grant allocation updated successfully',
                 ])
                 ->response()
                 ->setStatusCode(200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Employee grant allocation not found'
+                'message' => 'Employee grant allocation not found',
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee grant allocation',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -382,19 +387,19 @@ class EmployeeGrantAllocationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Employee grant allocation deleted successfully'
+                'message' => 'Employee grant allocation deleted successfully',
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee grant allocation not found'
+                'message' => 'Employee grant allocation not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete employee grant allocation',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -404,14 +409,14 @@ class EmployeeGrantAllocationController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'allocation_ids' => 'required|array|min:1',
-                'allocation_ids.*' => 'integer|exists:employee_grant_allocations,id'
+                'allocation_ids.*' => 'integer|exists:employee_grant_allocations,id',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -420,20 +425,20 @@ class EmployeeGrantAllocationController extends Controller
             $updatedCount = EmployeeGrantAllocation::whereIn('id', $request->allocation_ids)
                 ->update([
                     'active' => false,
-                    'updated_by' => $currentUser
+                    'updated_by' => $currentUser,
                 ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employee grant allocations deactivated successfully',
-                'deactivated_count' => $updatedCount
+                'deactivated_count' => $updatedCount,
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to deactivate employee grant allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -443,7 +448,7 @@ class EmployeeGrantAllocationController extends Controller
         // First, try to find an existing position slot
         $positionSlot = PositionSlot::where([
             'grant_item_id' => $grantItemId,
-            'budget_line_id' => $budgetLineId
+            'budget_line_id' => $budgetLineId,
         ])->first();
 
         if ($positionSlot) {
@@ -464,7 +469,7 @@ class EmployeeGrantAllocationController extends Controller
             'slot_number' => $nextSlotNumber,
             'budget_line_id' => $budgetLineId,
             'created_by' => $createdBy,
-            'updated_by' => $createdBy
+            'updated_by' => $createdBy,
         ]);
     }
 
@@ -472,7 +477,7 @@ class EmployeeGrantAllocationController extends Controller
     {
         try {
             $grants = \App\Models\Grant::with([
-                'grantItems.positionSlots.budgetLine:id,budget_line_code,description'
+                'grantItems.positionSlots.budgetLine:id,budget_line_code,description',
             ])->select('id', 'name', 'code')->get();
 
             $structure = $grants->map(function ($grant) {
@@ -494,26 +499,26 @@ class EmployeeGrantAllocationController extends Controller
                                     'budget_line' => [
                                         'id' => $slot->budgetLine->id,
                                         'name' => $slot->budgetLine->budget_line_code,
-                                        'description' => $slot->budgetLine->description
-                                    ]
+                                        'description' => $slot->budgetLine->description,
+                                    ],
                                 ];
-                            })
+                            }),
                         ];
-                    })
+                    }),
                 ];
             });
 
             return response()->json([
                 'success' => true,
                 'message' => 'Grant structure retrieved successfully',
-                'data' => $structure
+                'data' => $structure,
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve grant structure',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -534,7 +539,7 @@ class EmployeeGrantAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -550,7 +555,7 @@ class EmployeeGrantAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Total effort must equal 100%',
-                    'current_total' => $totalEffort
+                    'current_total' => $totalEffort,
                 ], 422);
             }
 
@@ -562,7 +567,7 @@ class EmployeeGrantAllocationController extends Controller
                 ->update([
                     'active' => false,
                     'updated_by' => $currentUser,
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]);
 
             // Create new allocations
@@ -588,28 +593,30 @@ class EmployeeGrantAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'employment:id,employment_type,start_date'
+                'employment:id,employment_type,start_date',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employee grant allocations updated successfully',
                 'data' => EmployeeGrantAllocationResource::collection($allocationsWithRelations),
-                'total_created' => count($createdAllocations)
+                'total_created' => count($createdAllocations),
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee grant allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

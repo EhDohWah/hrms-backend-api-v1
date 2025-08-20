@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * These indexes are critical for optimizing the EmploymentController performance
      * Reduces query time from 4+ seconds to under 400ms
      */
@@ -18,20 +18,20 @@ return new class extends Migration
         Schema::table('employments', function (Blueprint $table) {
             // Index for employee relationship queries
             $table->index('employee_id', 'idx_employments_employee_id');
-            
+
             // Index for date-based queries and sorting
             $table->index('start_date', 'idx_employments_start_date');
             $table->index('end_date', 'idx_employments_end_date');
-            
+
             // Index for work location filtering
             $table->index('work_location_id', 'idx_employments_work_location_id');
-            
+
             // Index for department position filtering
             $table->index('department_position_id', 'idx_employments_department_position_id');
-            
+
             // Index for employment type filtering
             $table->index('employment_type', 'idx_employments_employment_type');
-            
+
             // Composite index for active employment queries
             $table->index(['start_date', 'end_date'], 'idx_employments_active_period');
         });
@@ -39,15 +39,15 @@ return new class extends Migration
         // Add indexes to employees table
         Schema::table('employees', function (Blueprint $table) {
             // Index for staff_id searches and sorting
-            if (!Schema::hasIndex('employees', 'idx_employees_staff_id')) {
+            if (! Schema::hasIndex('employees', 'idx_employees_staff_id')) {
                 $table->index('staff_id', 'idx_employees_staff_id');
             }
-            
+
             // Index for subsidiary filtering
-            if (!Schema::hasIndex('employees', 'idx_employees_subsidiary')) {
+            if (! Schema::hasIndex('employees', 'idx_employees_subsidiary')) {
                 $table->index('subsidiary', 'idx_employees_subsidiary');
             }
-            
+
             // Composite index for name sorting
             $table->index(['first_name_en', 'last_name_en'], 'idx_employees_full_name');
         });
@@ -55,13 +55,13 @@ return new class extends Migration
         // Add indexes to employee_funding_allocations table
         Schema::table('employee_funding_allocations', function (Blueprint $table) {
             // Index for employment relationship queries
-            if (!Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_id')) {
+            if (! Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_id')) {
                 $table->index('employment_id', 'idx_efa_employment_id');
             }
-            
+
             // Index for allocation type filtering
             $table->index('allocation_type', 'idx_efa_allocation_type');
-            
+
             // Composite index for employment + type queries
             $table->index(['employment_id', 'allocation_type'], 'idx_efa_employment_type');
         });
@@ -69,7 +69,7 @@ return new class extends Migration
         // Add indexes to work_locations table if needed
         Schema::table('work_locations', function (Blueprint $table) {
             // Index for name searches
-            if (!Schema::hasIndex('work_locations', 'idx_work_locations_name')) {
+            if (! Schema::hasIndex('work_locations', 'idx_work_locations_name')) {
                 $table->index('name', 'idx_work_locations_name');
             }
         });
@@ -78,7 +78,7 @@ return new class extends Migration
         Schema::table('department_positions', function (Blueprint $table) {
             // Index for department filtering
             $table->index('department', 'idx_department_positions_department');
-            
+
             // Index for position filtering
             $table->index('position', 'idx_department_positions_position');
         });

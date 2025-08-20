@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\JobOffer;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class JobOfferSeeder extends Seeder
@@ -14,7 +13,7 @@ class JobOfferSeeder extends Seeder
     public function run(): void
     {
         // Create 100 job offers with a mix of different states
-        
+
         // 40 pending job offers
         JobOffer::factory()
             ->count(40)

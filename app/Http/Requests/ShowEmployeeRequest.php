@@ -14,7 +14,6 @@ class ShowEmployeeRequest extends FormRequest
         return true;
     }
 
-
     /**
      * Include the route {id} in the data to be validated.
      */

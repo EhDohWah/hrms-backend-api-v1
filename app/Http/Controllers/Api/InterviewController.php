@@ -24,59 +24,76 @@ class InterviewController extends Controller
      *     description="Returns a paginated list of interviews. Supports filtering by job_position and hired_status, sorting by candidate_name, job_position, or interview_date with standard Laravel pagination parameters (page, per_page).",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Page number for pagination",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Number of items per page",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_job_position",
      *         in="query",
      *         description="Filter interviews by job position (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Software Engineer,Project Manager")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_hired_status",
      *         in="query",
      *         description="Filter interviews by hired status (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="hired,rejected")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
      *         description="Sort by field (candidate_name, job_position, or interview_date)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"candidate_name", "job_position", "interview_date"}, example="candidate_name")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
      *         description="Sort order (asc or desc)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Interviews retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interviews retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/Interview")
      *             ),
+     *
      *             @OA\Property(
      *                 property="pagination",
      *                 type="object",
@@ -98,15 +115,19 @@ class InterviewController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error - Invalid parameters provided",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -118,7 +139,9 @@ class InterviewController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve interviews"),
      *             @OA\Property(property="error", type="string")
@@ -131,12 +154,12 @@ class InterviewController extends Controller
         try {
             // Validate incoming parameters
             $validated = $request->validate([
-                'page'                  => 'integer|min:1',
-                'per_page'              => 'integer|min:1|max:100',
-                'filter_job_position'   => 'string|nullable',
-                'filter_hired_status'   => 'string|nullable',
-                'sort_by'               => 'string|nullable|in:candidate_name,job_position,interview_date',
-                'sort_order'            => 'string|nullable|in:asc,desc',
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_job_position' => 'string|nullable',
+                'filter_hired_status' => 'string|nullable',
+                'sort_by' => 'string|nullable|in:candidate_name,job_position,interview_date',
+                'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
             // Determine page size
@@ -147,13 +170,13 @@ class InterviewController extends Controller
             $query = Interview::query();
 
             // Apply job position filter if provided
-            if (!empty($validated['filter_job_position'])) {
+            if (! empty($validated['filter_job_position'])) {
                 $jobPositions = explode(',', $validated['filter_job_position']);
                 $query->whereIn('job_position', $jobPositions);
             }
 
             // Apply hired status filter if provided
-            if (!empty($validated['filter_hired_status'])) {
+            if (! empty($validated['filter_hired_status'])) {
                 $hiredStatuses = explode(',', $validated['filter_hired_status']);
                 $query->whereIn('hired_status', $hiredStatuses);
             }
@@ -161,7 +184,7 @@ class InterviewController extends Controller
             // Apply sorting
             $sortBy = $validated['sort_by'] ?? 'created_at';
             $sortOrder = $validated['sort_order'] ?? 'desc';
-            
+
             // Validate sort field and apply sorting
             if (in_array($sortBy, ['candidate_name', 'job_position', 'interview_date'])) {
                 $query->orderBy($sortBy, $sortOrder);
@@ -174,24 +197,24 @@ class InterviewController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (!empty($validated['filter_job_position'])) {
+            if (! empty($validated['filter_job_position'])) {
                 $appliedFilters['job_position'] = explode(',', $validated['filter_job_position']);
             }
-            if (!empty($validated['filter_hired_status'])) {
+            if (! empty($validated['filter_hired_status'])) {
                 $appliedFilters['hired_status'] = explode(',', $validated['filter_hired_status']);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Interviews retrieved successfully',
-                'data'    => InterviewResource::collection($interviews->items()),
+                'data' => InterviewResource::collection($interviews->items()),
                 'pagination' => [
-                    'current_page'   => $interviews->currentPage(),
-                    'per_page'       => $interviews->perPage(),
-                    'total'          => $interviews->total(),
-                    'last_page'      => $interviews->lastPage(),
-                    'from'           => $interviews->firstItem(),
-                    'to'             => $interviews->lastItem(),
+                    'current_page' => $interviews->currentPage(),
+                    'per_page' => $interviews->perPage(),
+                    'total' => $interviews->total(),
+                    'last_page' => $interviews->lastPage(),
+                    'from' => $interviews->firstItem(),
+                    'to' => $interviews->lastItem(),
                     'has_more_pages' => $interviews->hasMorePages(),
                 ],
                 'filters' => [
@@ -203,7 +226,7 @@ class InterviewController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve interviews',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -215,23 +238,31 @@ class InterviewController extends Controller
      *     description="Create a new interview record",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/Interview")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Interview created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Interview")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(
@@ -240,20 +271,26 @@ class InterviewController extends Controller
      *                 @OA\Property(
      *                     property="candidate_name",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The candidate name field is required.")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="job_position",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The job position field is required.")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to create interview"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -270,7 +307,7 @@ class InterviewController extends Controller
             return (new InterviewResource($interview))
                 ->additional([
                     'success' => true,
-                    'message' => 'Interview created successfully'
+                    'message' => 'Interview created successfully',
                 ])
                 ->response()
                 ->setStatusCode(201);
@@ -279,13 +316,13 @@ class InterviewController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create interview',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -297,34 +334,45 @@ class InterviewController extends Controller
      *     description="Get details of a specific interview",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Interview ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Interview retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Interview")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Interview not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Interview not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve interview"),
      *             @OA\Property(property="error", type="string")
@@ -340,7 +388,7 @@ class InterviewController extends Controller
             return (new InterviewResource($interview))
                 ->additional([
                     'success' => true,
-                    'message' => 'Interview retrieved successfully'
+                    'message' => 'Interview retrieved successfully',
                 ])
                 ->response()
                 ->setStatusCode(200);
@@ -348,13 +396,13 @@ class InterviewController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Interview not found'
+                'message' => 'Interview not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve interview',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -366,38 +414,51 @@ class InterviewController extends Controller
      *     description="Update an existing interview record",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Interview ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/Interview")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Interview updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Interview")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Interview not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Interview not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(
@@ -406,25 +467,33 @@ class InterviewController extends Controller
      *                 @OA\Property(
      *                     property="candidate_name",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The candidate name field is required.")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="job_position",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The job position field is required.")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="end_time",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The end time must be a time after start time.")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to update interview"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -442,7 +511,7 @@ class InterviewController extends Controller
             return (new InterviewResource($interview))
                 ->additional([
                     'success' => true,
-                    'message' => 'Interview updated successfully'
+                    'message' => 'Interview updated successfully',
                 ])
                 ->response()
                 ->setStatusCode(200);
@@ -450,19 +519,19 @@ class InterviewController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Interview not found'
+                'message' => 'Interview not found',
             ], 404);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update interview',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -474,33 +543,44 @@ class InterviewController extends Controller
      *     description="Delete an existing interview record",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Interview ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Interview deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Interview not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Interview not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to delete interview"),
      *             @OA\Property(property="error", type="string")
@@ -516,19 +596,19 @@ class InterviewController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Interview deleted successfully'
+                'message' => 'Interview deleted successfully',
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Interview not found'
+                'message' => 'Interview not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete interview',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -541,30 +621,39 @@ class InterviewController extends Controller
      *     description="Returns a specific interview by candidate name (case-insensitive match).",
      *     tags={"Interviews"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="candidateName",
      *         in="path",
      *         required=true,
      *         description="Candidate name",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Interview retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Interview retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Interview")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Interview not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Interview not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated"
@@ -572,7 +661,9 @@ class InterviewController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve interview"),
      *             @OA\Property(property="error", type="string")
@@ -586,24 +677,24 @@ class InterviewController extends Controller
             $interview = Interview::whereRaw('LOWER(candidate_name) = ?', [strtolower($candidateName)])
                 ->first();
 
-            if (!$interview) {
+            if (! $interview) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Interview not found'
+                    'message' => 'Interview not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Interview retrieved successfully',
-                'data' => new InterviewResource($interview)
+                'data' => new InterviewResource($interview),
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve interview',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

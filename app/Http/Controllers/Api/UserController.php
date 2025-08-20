@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Permission;
 
 /**
  * @OA\Tag(
@@ -20,7 +19,6 @@ use Illuminate\Validation\Rule;
  */
 class UserController extends Controller
 {
-
     /**
      * Update user profile picture.
      *
@@ -29,12 +27,16 @@ class UserController extends Controller
      *     summary="Update user profile picture",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 required={"profile_picture"},
+     *
      *                 @OA\Property(
      *                     property="profile_picture",
      *                     type="string",
@@ -44,14 +46,18 @@ class UserController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Profile picture updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Profile picture updated successfully"),
      *             @OA\Property(property="profile_picture", type="string", example="profile_pictures/image.jpg")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -83,8 +89,8 @@ class UserController extends Controller
             'message' => 'Profile picture updated successfully',
             'data' => [
                 'profile_picture' => $path,
-                'url' => Storage::disk('public')->url($path)
-            ]
+                'url' => Storage::disk('public')->url($path),
+            ],
         ], 200);
     }
 
@@ -96,21 +102,28 @@ class UserController extends Controller
      *     summary="Update user name",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"name"},
+     *
      *             @OA\Property(property="name", type="string", example="John Doe")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Username updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Username updated successfully"),
      *             @OA\Property(property="name", type="string", example="John Doe")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -131,12 +144,12 @@ class UserController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Username updated successfully',
-                'name' => $user->name
+                'name' => $user->name,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update username: ' . $e->getMessage()
+                'message' => 'Failed to update username: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -149,21 +162,28 @@ class UserController extends Controller
      *     summary="Update user email",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"email"},
+     *
      *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Email updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Email updated successfully"),
      *             @OA\Property(property="email", type="string", example="john@example.com")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -189,12 +209,12 @@ class UserController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Email updated successfully',
-                'email' => $user->email
+                'email' => $user->email,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update email: ' . $e->getMessage()
+                'message' => 'Failed to update email: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -207,22 +227,29 @@ class UserController extends Controller
      *     summary="Update user password",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"current_password", "new_password", "confirm_password"},
+     *
      *             @OA\Property(property="current_password", type="string", format="password", example="current123"),
      *             @OA\Property(property="new_password", type="string", format="password", example="new123"),
      *             @OA\Property(property="confirm_password", type="string", format="password", example="new123")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Password updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Password updated successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Current password is incorrect"
@@ -246,10 +273,10 @@ class UserController extends Controller
         $user = Auth::user();
 
         // Check if current password is correct
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Current password is incorrect'
+                'message' => 'Current password is incorrect',
             ], 400);
         }
 
@@ -260,17 +287,17 @@ class UserController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password updated successfully'
+                'message' => 'Password updated successfully',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update password: ' . $e->getMessage()
+                'message' => 'Failed to update password: '.$e->getMessage(),
             ], 500);
         }
     }
 
-     /**
+    /**
      * Get the authenticated user with roles and permissions.
      *
      * @OA\Get(
@@ -280,12 +307,15 @@ class UserController extends Controller
      *     operationId="getUser",
      *     tags={"Users"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="User details retrieved successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
      *             required={"id", "name", "email", "roles", "permissions"},
+     *
      *             @OA\Property(
      *                 property="id",
      *                 type="integer",
@@ -316,16 +346,19 @@ class UserController extends Controller
      *                 property="roles",
      *                 type="array",
      *                 description="List of roles assigned to the user",
+     *
      *                 @OA\Items(
      *                     type="string",
      *                     example="Admin",
      *                     description="A role name"
      *                 )
      *             ),
+     *
      *             @OA\Property(
      *                 property="permissions",
      *                 type="array",
      *                 description="List of permissions granted to the user",
+     *
      *                 @OA\Items(
      *                     type="string",
      *                     example="user.read",
@@ -334,11 +367,14 @@ class UserController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated - The request does not have valid authentication credentials",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(
      *                 property="message",
      *                 type="string",
@@ -356,12 +392,8 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-
     /**
      * Assigns default permissions to a user based on their role.
-     *
-     * @param  \App\Models\User  $user
-     * @param  string            $role
      */
     private function assignDefaultPermissions(User $user, string $role)
     {

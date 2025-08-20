@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('budget_lines', function (Blueprint $table) {
             $table->id();
-            $table->string('budget_line_code',10)->unique();
-            $table->string('description',255)->nullable();
+            $table->string('budget_line_code', 10)->unique();
+            $table->string('description', 255)->nullable();
             $table->timestamps();
-            $table->string('created_by',100)->nullable();
-            $table->string('updated_by',100)->nullable();            
+            $table->string('created_by', 100)->nullable();
+            $table->string('updated_by', 100)->nullable();
         });
     }
 

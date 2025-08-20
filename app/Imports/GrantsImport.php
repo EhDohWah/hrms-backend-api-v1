@@ -7,9 +7,6 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 
 class GrantsImport implements ToCollection
 {
-    /**
-    * @param Collection $collection
-    */
     public function collection(Collection $collection)
     {
         //

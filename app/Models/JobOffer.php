@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
 
 /**
  * @OA\Schema(
  *     schema="JobOffer",
  *     title="Job Offer",
  *     description="Job Offer model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="Job offer ID"),
  *     @OA\Property(property="date", type="string", format="date", description="Offer date"),
  *     @OA\Property(property="candidate_name", type="string", description="Name of the candidate"),
@@ -45,7 +46,7 @@ class JobOffer extends Model
         'acceptance_status',
         'note',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -64,47 +65,47 @@ class JobOffer extends Model
     public static function restore(string $deletionKey): static
     {
         $deletedModel = app(config('deleted-models.model'))->where('key', $deletionKey)->firstOrFail();
-        
+
         $modelData = $deletedModel->values;
         $originalId = $modelData['id'] ?? null;
-        
+
         // Remove the ID from the data so SQL Server can auto-generate it
         unset($modelData['id']);
-        
+
         DB::beginTransaction();
-        
+
         try {
             // Enable IDENTITY_INSERT for this table
             if ($originalId) {
-                DB::statement("SET IDENTITY_INSERT job_offers ON");
-                
+                DB::statement('SET IDENTITY_INSERT job_offers ON');
+
                 // Create with the original ID
                 $restored = static::create(array_merge($modelData, ['id' => $originalId]));
-                
+
                 // Disable IDENTITY_INSERT
-                DB::statement("SET IDENTITY_INSERT job_offers OFF");
+                DB::statement('SET IDENTITY_INSERT job_offers OFF');
             } else {
                 // Create without ID (let SQL Server auto-generate)
                 $restored = static::create($modelData);
             }
-            
+
             // Delete the record from deleted_models
             $deletedModel->delete();
-            
+
             DB::commit();
-            
+
             return $restored;
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             // Make sure IDENTITY_INSERT is turned off even if there's an error
             try {
-                DB::statement("SET IDENTITY_INSERT job_offers OFF");
+                DB::statement('SET IDENTITY_INSERT job_offers OFF');
             } catch (\Exception $cleanupException) {
                 // Ignore cleanup errors
             }
-            
+
             throw $e;
         }
     }

@@ -22,8 +22,8 @@ return [
         'register',
         'user',
         'sanctum/csrf-cookie',
-        'broadcasting/auth'
-        
+        'broadcasting/auth',
+
         // Add more if you have custom endpoints
     ],
 

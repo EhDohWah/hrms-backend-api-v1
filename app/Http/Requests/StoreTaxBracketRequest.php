@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\TaxBracket;
+use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTaxBracketRequest extends FormRequest
 {
@@ -30,7 +30,7 @@ class StoreTaxBracketRequest extends FormRequest
             'effective_year' => 'required|integer|min:2000|max:2100',
             'description' => 'nullable|string|max:255',
             'is_active' => 'boolean',
-            'created_by' => 'nullable|string|max:100'
+            'created_by' => 'nullable|string|max:100',
         ];
     }
 

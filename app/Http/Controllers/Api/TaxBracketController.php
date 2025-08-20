@@ -23,28 +23,37 @@ class TaxBracketController extends Controller
      *     description="Get a list of all tax brackets with optional filtering by year",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="year",
      *         in="query",
      *         description="Filter by effective year",
+     *
      *         @OA\Schema(type="integer", example=2025)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="active_only",
      *         in="query",
      *         description="Show only active brackets",
+     *
      *         @OA\Schema(type="boolean", default=true)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax brackets retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax brackets retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
+     *
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="min_income", type="number", example=0),
      *                     @OA\Property(property="max_income", type="number", example=150000),
@@ -65,19 +74,19 @@ class TaxBracketController extends Controller
     {
         try {
             $query = TaxBracket::query();
-            
+
             // Filter by year if provided
             if ($request->has('year')) {
                 $query->forYear($request->year);
             }
-            
+
             // Filter by active status
             if ($request->boolean('active_only', true)) {
                 $query->active();
             }
-            
+
             $taxBrackets = $query->ordered()->get();
-            
+
             // Add calculated attributes
             $taxBrackets->each(function ($bracket) {
                 $bracket->append(['income_range', 'formatted_rate']);
@@ -86,13 +95,13 @@ class TaxBracketController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tax brackets retrieved successfully',
-                'data' => $taxBrackets
+                'data' => $taxBrackets,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve tax brackets',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -104,10 +113,13 @@ class TaxBracketController extends Controller
      *     description="Create a new tax bracket",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"min_income", "tax_rate", "bracket_order", "effective_year"},
+     *
      *             @OA\Property(property="min_income", type="number", example=150001),
      *             @OA\Property(property="max_income", type="number", example=300000, nullable=true),
      *             @OA\Property(property="tax_rate", type="number", example=5),
@@ -117,19 +129,25 @@ class TaxBracketController extends Controller
      *             @OA\Property(property="is_active", type="boolean", example=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Tax bracket created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax bracket created successfully"),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(property="errors", type="object")
@@ -148,14 +166,14 @@ class TaxBracketController extends Controller
                 'effective_year' => 'required|integer|min:2000|max:2100',
                 'description' => 'nullable|string|max:255',
                 'is_active' => 'boolean',
-                'created_by' => 'nullable|string|max:100'
+                'created_by' => 'nullable|string|max:100',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -167,7 +185,7 @@ class TaxBracketController extends Controller
             if ($existingBracket) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'A tax bracket with this order already exists for the specified year'
+                    'message' => 'A tax bracket with this order already exists for the specified year',
                 ], 422);
             }
 
@@ -176,13 +194,13 @@ class TaxBracketController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tax bracket created successfully',
-                'data' => $taxBracket
+                'data' => $taxBracket,
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create tax bracket',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -194,26 +212,34 @@ class TaxBracketController extends Controller
      *     description="Get details of a specific tax bracket by ID",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Tax bracket ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax bracket retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax bracket retrieved successfully"),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Tax bracket not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Tax bracket not found")
      *         )
@@ -229,18 +255,18 @@ class TaxBracketController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tax bracket retrieved successfully',
-                'data' => $taxBracket
+                'data' => $taxBracket,
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tax bracket not found'
+                'message' => 'Tax bracket not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve tax bracket',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -252,16 +278,21 @@ class TaxBracketController extends Controller
      *     description="Update an existing tax bracket",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Tax bracket ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="min_income", type="number", example=150001),
      *             @OA\Property(property="max_income", type="number", example=300000, nullable=true),
      *             @OA\Property(property="tax_rate", type="number", example=5),
@@ -272,27 +303,36 @@ class TaxBracketController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin@example.com")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax bracket updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax bracket updated successfully"),
      *             @OA\Property(property="data", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Tax bracket not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Tax bracket not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(property="errors", type="object")
@@ -311,14 +351,14 @@ class TaxBracketController extends Controller
                 'effective_year' => 'sometimes|required|integer|min:2000|max:2100',
                 'description' => 'nullable|string|max:255',
                 'is_active' => 'boolean',
-                'updated_by' => 'nullable|string|max:100'
+                'updated_by' => 'nullable|string|max:100',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -337,7 +377,7 @@ class TaxBracketController extends Controller
                 if ($existingBracket) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'A tax bracket with this order already exists for the specified year'
+                        'message' => 'A tax bracket with this order already exists for the specified year',
                     ], 422);
                 }
             }
@@ -347,18 +387,18 @@ class TaxBracketController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tax bracket updated successfully',
-                'data' => $taxBracket
+                'data' => $taxBracket,
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tax bracket not found'
+                'message' => 'Tax bracket not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update tax bracket',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -370,25 +410,33 @@ class TaxBracketController extends Controller
      *     description="Delete a specific tax bracket",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Tax bracket ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax bracket deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax bracket deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Tax bracket not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Tax bracket not found")
      *         )
@@ -403,18 +451,18 @@ class TaxBracketController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Tax bracket deleted successfully'
+                'message' => 'Tax bracket deleted successfully',
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tax bracket not found'
+                'message' => 'Tax bracket not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete tax bracket',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -426,23 +474,30 @@ class TaxBracketController extends Controller
      *     description="Calculate the tax amount for a given income using current tax brackets",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="income",
      *         in="path",
      *         required=true,
      *         description="Annual income amount",
+     *
      *         @OA\Schema(type="number")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="year",
      *         in="query",
      *         description="Tax year (defaults to current year)",
+     *
      *         @OA\Schema(type="integer", example=2025)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax calculation completed successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax calculated successfully"),
      *             @OA\Property(
@@ -466,7 +521,7 @@ class TaxBracketController extends Controller
             if ($taxBrackets->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No tax brackets found for the specified year'
+                    'message' => 'No tax brackets found for the specified year',
                 ], 404);
             }
 
@@ -492,7 +547,7 @@ class TaxBracketController extends Controller
                         'bracket' => $bracket->income_range,
                         'rate' => $bracket->formatted_rate,
                         'taxable_amount' => $taxableInBracket,
-                        'tax_amount' => $taxInBracket
+                        'tax_amount' => $taxInBracket,
                     ];
 
                     $remainingIncome -= $taxableInBracket;
@@ -510,14 +565,14 @@ class TaxBracketController extends Controller
                     'net_income' => $income - $totalTax,
                     'effective_rate' => round($effectiveRate, 2),
                     'breakdown' => $breakdown,
-                    'tax_year' => $year
-                ]
+                    'tax_year' => $year,
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to calculate tax',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

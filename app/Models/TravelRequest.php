@@ -3,9 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Employee;
-use App\Models\DepartmentPosition;
-use App\Models\TravelRequestApproval;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="TravelRequest",
  *     title="Travel Request",
  *     description="Travel Request model",
+ *
  *     @OA\Property(property="id", type="integer", format="int32", example=1),
  *     @OA\Property(property="employee_id", type="integer", example=1),
  *     @OA\Property(property="department_position_id", type="integer", example=1, nullable=true),
@@ -54,7 +52,7 @@ class TravelRequest extends Model
         'remarks',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     // Relationships:

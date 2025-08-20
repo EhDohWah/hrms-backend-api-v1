@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @OA\Schema(
@@ -11,6 +11,7 @@ use Carbon\Carbon;
  *     type="object",
  *     title="Deleted Model",
  *     description="Model representing deleted records stored in the recycle bin",
+ *
  *     @OA\Property(
  *         property="id",
  *         type="integer",
@@ -80,15 +81,15 @@ use Carbon\Carbon;
 class DeletedModel extends Model
 {
     protected $table = 'deleted_models';
-    
+
     protected $fillable = [
         'key',
-        'model', 
-        'values'
+        'model',
+        'values',
     ];
 
     protected $casts = [
-        'values' => 'array'
+        'values' => 'array',
     ];
 
     /**
@@ -138,11 +139,12 @@ class DeletedModel extends Model
      */
     public function restoreRecord()
     {
-        if (!$this->modelClassExists()) {
+        if (! $this->modelClassExists()) {
             throw new \Exception("Model class {$this->model} no longer exists");
         }
 
         $modelClass = $this->model;
+
         return $modelClass::restore($this->key);
     }
 

@@ -2,42 +2,28 @@
 
 namespace App\Imports;
 
+use App\Models\Employee;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Validators\Failure;
-use Maatwebsite\Excel\Concerns\{
-    ToCollection,
-    WithHeadingRow,
-    WithChunkReading,
-    WithCustomValueBinder,
-    SkipsEmptyRows
-};
-use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Employee;
-use App\Models\EmployeeIdentification;
-use App\Models\EmployeeBeneficiary;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Validators\Failure;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\Settings;
-use PhpOffice\PhpSpreadsheet\Cached\Storage\CachedObjectStorageFactory;
-use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-
-
-class DevEmployeesImport extends DefaultValueBinder implements
-    ToCollection,
-    WithHeadingRow,
-    WithChunkReading,
-    WithCustomValueBinder,
-    SkipsEmptyRows,
-    SkipsOnFailure
+class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithHeadingRow
 {
     use Importable;
 
@@ -68,7 +54,8 @@ class DevEmployeesImport extends DefaultValueBinder implements
     public function bindValue(Cell $cell, $value)
     {
         // cast to string and bind explicitly as string
-        $cell->setValueExplicit((string)$value, DataType::TYPE_STRING);
+        $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
         return true;
     }
 
@@ -76,13 +63,13 @@ class DevEmployeesImport extends DefaultValueBinder implements
     {
         foreach ($failures as $failure) {
             $this->validationFailures[] = [
-                'row'       => $failure->row(),
+                'row' => $failure->row(),
                 'attribute' => $failure->attribute(),
-                'errors'    => $failure->errors(),
-                'values'    => $failure->values(),
+                'errors' => $failure->errors(),
+                'values' => $failure->values(),
             ];
             $msg = "Row {$failure->row()} [{$failure->attribute()}]: "
-                 . implode(', ', $failure->errors());
+                 .implode(', ', $failure->errors());
             Log::warning($msg, ['values' => $failure->values()]);
             $this->errors[] = $msg;
         }
@@ -94,39 +81,39 @@ class DevEmployeesImport extends DefaultValueBinder implements
     public function collection(Collection $rows)
     {
         // 1) Normalize all the row values *before* you run the Validator
-        $normalized = $rows->map(function($r) {
+        $normalized = $rows->map(function ($r) {
             // 1) Excel serial → Y‑m‑d
-            if (!empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
+            if (! empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
                 try {
                     $r['date_of_birth'] =
                         ExcelDate::excelToDateTimeObject($r['date_of_birth'])
-                                ->format('Y-m-d');
-                } catch (\Exception $e) {}
+                            ->format('Y-m-d');
+                } catch (\Exception $e) {
+                }
             }
 
             // 2) Normalize id_type
             $map = [
                 '10 years ID' => '10YearsID',
-                'Burmese ID'  => 'BurmeseID',
-                'CI'          => 'CI',
-                'Borderpass'  => 'Borderpass',
-                'Thai ID'     => 'ThaiID',
-                'Passport'    => 'Passport',
-                'Other'       => 'Other',
+                'Burmese ID' => 'BurmeseID',
+                'CI' => 'CI',
+                'Borderpass' => 'Borderpass',
+                'Thai ID' => 'ThaiID',
+                'Passport' => 'Passport',
+                'Other' => 'Other',
             ];
-            if (!empty($r['id_type'])) {
+            if (! empty($r['id_type'])) {
                 $r['id_type'] = $map[$r['id_type']] ?? 'Other';
             }
 
             // 3) Cast Excel's =YEARFRAC(K2,TODAY()) result into an integer age
-        $rawAge = trim((string)($r['age'] ?? ''));
-        $r['age'] = is_numeric($rawAge)
-            ? (int) floor($rawAge)
-            : null;
+            $rawAge = trim((string) ($r['age'] ?? ''));
+            $r['age'] = is_numeric($rawAge)
+                ? (int) floor($rawAge)
+                : null;
 
-        return $r;
+            return $r;
         });
-
 
         // 3) now run your validator *against* $normalized
         $validator = Validator::make(
@@ -139,6 +126,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
             foreach ($validator->errors()->all() as $error) {
                 $this->onFailure(new Failure(0, '', [$error], []));
             }
+
             return;
         }
 
@@ -147,7 +135,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
             $first = $rows->first()->toArray();
             $this->firstRowSnapshot = [
                 'columns' => array_keys($first),
-                'values'  => $first,
+                'values' => $first,
             ];
             Log::debug('First row snapshot for import debug', $this->firstRowSnapshot);
         }
@@ -159,7 +147,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
             // Log the start of import process
             Log::info('Starting employee import process', ['rows_count' => $rows->count()]);
 
-            DB::transaction(function() use ($normalized) {
+            DB::transaction(function () use ($normalized) {
                 $employeeBatch = [];
                 $identBatch = [];
                 $beneBatch = [];
@@ -167,8 +155,9 @@ class DevEmployeesImport extends DefaultValueBinder implements
 
                 // 1) Build the employee batch & collect staff_ids
                 foreach ($normalized as $index => $row) {
-                    if (!$row->filter()->count()) {
+                    if (! $row->filter()->count()) {
                         Log::info('Skipping blank row', ['row_index' => $index]);
+
                         continue; // skip blank rows
                     }
 
@@ -178,16 +167,17 @@ class DevEmployeesImport extends DefaultValueBinder implements
                             $debugMessage = "Found array value in column: {$key}";
                             Log::debug($debugMessage, [
                                 'value' => $value,
-                                'row' => $row->toArray()
+                                'row' => $row->toArray(),
                             ]);
                             $this->errors[] = $debugMessage;
                         }
                     }
 
                     // check required staff_id key
-                    if (!array_key_exists('staff_id', $row->toArray())) {
+                    if (! array_key_exists('staff_id', $row->toArray())) {
                         Log::warning('Missing staff_id in row', ['row_index' => $index, 'row_data' => $row->toArray()]);
                         $this->errors[] = "Row {$index}: Missing column key 'staff_id'";
+
                         continue;
                     }
 
@@ -197,7 +187,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
                     // Debug date parsing
                     $dateOfBirth = null;
                     try {
-                        if (isset($row['date_of_birth']) && !empty($row['date_of_birth']) && $row['date_of_birth'] !== '-') {
+                        if (isset($row['date_of_birth']) && ! empty($row['date_of_birth']) && $row['date_of_birth'] !== '-') {
                             // If it's a pure Excel serial (all digits), convert it
                             if (ctype_digit($row['date_of_birth'])) {
                                 $dt = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['date_of_birth']);
@@ -208,56 +198,54 @@ class DevEmployeesImport extends DefaultValueBinder implements
                             $dateOfBirth = $dt->format('Y-m-d');
                         }
                     } catch (\Exception $e) {
-                        \Log::warning("Failed to parse date of birth", [
+                        \Log::warning('Failed to parse date of birth', [
                             'staff_id' => $staffId ?? null,
                             'value' => $row['date_of_birth'] ?? 'null',
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                         $dateOfBirth = null;
                     }
 
-
-
                     $employeeBatch[] = [
-                        'staff_id'                  => $staffId,
-                        'subsidiary'                => $row['org'] ?? null,
-                        'initial_en'                => $row['initial'] ?? null,
-                        'first_name_en'             => $row['first_name'] ?? null,
-                        'last_name_en'              => $row['last_name'] ?? null,
-                        'initial_th'                => $row['initial_th'] ?? null,
-                        'first_name_th'             => $row['first_name_th'] ?? null,
-                        'last_name_th'              => $row['last_name_th'] ?? null,
-                        'gender'                    => $row['gender'] ?? null,
-                        'date_of_birth'             => $dateOfBirth,
-                        'status'                    => $row['status'] ?? null,
-                        'nationality'               => $row['nationality'] ?? null,
-                        'religion'                  => $row['religion'] ?? null,
-                        'social_security_number'    => $row['social_security_no'] ?? null,
-                        'tax_number'                => $row['tax_no'] ?? null,
-                        'driver_license_number'     => $row['driver_license'] ?? null,
-                        'bank_name'                 => $row['bank_name'] ?? null,
-                        'bank_branch'               => $row['bank_branch'] ?? null,
-                        'bank_account_name'         => $row['bank_acc_name'] ?? null,
-                        'bank_account_number'       => $row['bank_acc_no'] ?? null,
-                        'mobile_phone'              => $row['mobile_no'] ?? null,
-                        'current_address'           => $row['current_address'] ?? null,
-                        'permanent_address'         => $row['permanent_address'] ?? null,
-                        'marital_status'            => $row['marital_status'] ?? null,
-                        'spouse_name'               => $row['spouse_name'] ?? null,
-                        'spouse_phone_number'       => $row['spouse_mobile_no'] ?? null,
-                        'emergency_contact_person_name'         => $row['emergency_name'] ?? null,
+                        'staff_id' => $staffId,
+                        'subsidiary' => $row['org'] ?? null,
+                        'initial_en' => $row['initial'] ?? null,
+                        'first_name_en' => $row['first_name'] ?? null,
+                        'last_name_en' => $row['last_name'] ?? null,
+                        'initial_th' => $row['initial_th'] ?? null,
+                        'first_name_th' => $row['first_name_th'] ?? null,
+                        'last_name_th' => $row['last_name_th'] ?? null,
+                        'gender' => $row['gender'] ?? null,
+                        'date_of_birth' => $dateOfBirth,
+                        'status' => $row['status'] ?? null,
+                        'nationality' => $row['nationality'] ?? null,
+                        'religion' => $row['religion'] ?? null,
+                        'social_security_number' => $row['social_security_no'] ?? null,
+                        'tax_number' => $row['tax_no'] ?? null,
+                        'driver_license_number' => $row['driver_license'] ?? null,
+                        'bank_name' => $row['bank_name'] ?? null,
+                        'bank_branch' => $row['bank_branch'] ?? null,
+                        'bank_account_name' => $row['bank_acc_name'] ?? null,
+                        'bank_account_number' => $row['bank_acc_no'] ?? null,
+                        'mobile_phone' => $row['mobile_no'] ?? null,
+                        'current_address' => $row['current_address'] ?? null,
+                        'permanent_address' => $row['permanent_address'] ?? null,
+                        'marital_status' => $row['marital_status'] ?? null,
+                        'spouse_name' => $row['spouse_name'] ?? null,
+                        'spouse_phone_number' => $row['spouse_mobile_no'] ?? null,
+                        'emergency_contact_person_name' => $row['emergency_name'] ?? null,
                         'emergency_contact_person_relationship' => $row['relationship'] ?? null,
-                        'emergency_contact_person_phone'        => $row['emergency_mobile_no'] ?? null,
-                        'father_name'               => $row['father_name'] ?? null,
-                        'father_occupation'         => $row['father_occupation'] ?? null,
-                        'father_phone_number'       => $row['father_mobile_no'] ?? null,
-                        'mother_name'               => $row['mother_name'] ?? null,
-                        'mother_occupation'         => $row['mother_occupation'] ?? null,
-                        'mother_phone_number'       => $row['mother_mobile_no'] ?? null,
-                        'military_status'           => $row['military_status'] ?? null,
-                        'remark'                    => $row['remark'] ?? null,
-                        'created_at'                => now(),
-                        'updated_at'                => now(),
+                        'emergency_contact_person_phone' => $row['emergency_mobile_no'] ?? null,
+                        'father_name' => $row['father_name'] ?? null,
+                        'father_occupation' => $row['father_occupation'] ?? null,
+                        'father_phone_number' => $row['father_mobile_no'] ?? null,
+                        'mother_name' => $row['mother_name'] ?? null,
+                        'mother_occupation' => $row['mother_occupation'] ?? null,
+                        'mother_phone_number' => $row['mother_mobile_no'] ?? null,
+                        'military_status' => $row['military_status'] ?? null,
+                        'remark' => $row['remark'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                 }
 
@@ -273,13 +261,13 @@ class DevEmployeesImport extends DefaultValueBinder implements
                     } catch (\Exception $e) {
                         Log::error('Failed to insert employee batch', [
                             'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
+                            'trace' => $e->getTraceAsString(),
                         ]);
                         throw $e;
                     }
                 } else {
                     Log::warning('No employees to insert');
-                    $this->errors[] = "No valid employee records found in the import file";
+                    $this->errors[] = 'No valid employee records found in the import file';
                 }
 
                 // 3) Fetch back the new employee IDs by staff_id
@@ -291,51 +279,52 @@ class DevEmployeesImport extends DefaultValueBinder implements
 
                 // 4) Build identifications & beneficiaries batches
                 foreach ($normalized as $index => $row) {
-                    if (!isset($row['staff_id'])) {
+                    if (! isset($row['staff_id'])) {
                         continue;
                     }
 
                     $staffId = trim($row['staff_id']);
-                    if (!isset($employeeMap[$staffId])) {
+                    if (! isset($employeeMap[$staffId])) {
                         $this->errors[] = "Staff ID {$staffId} not found in employee map after insert";
-                        Log::warning("Staff ID not found in employee map", ['staff_id' => $staffId]);
+                        Log::warning('Staff ID not found in employee map', ['staff_id' => $staffId]);
+
                         continue;
                     }
                     $empId = $employeeMap[$staffId];
 
                     // Identification (columns: ID type / ID no)
-                    if (!empty($row['id_type']) && !empty($row['id_no'])) {
+                    if (! empty($row['id_type']) && ! empty($row['id_no'])) {
                         $identBatch[] = [
-                            'employee_id'     => $empId,
-                            'id_type'         => $row['id_type'],
+                            'employee_id' => $empId,
+                            'id_type' => $row['id_type'],
                             'document_number' => $row['id_no'],
-                            'issue_date'      => null,
-                            'expiry_date'     => null,
-                            'created_at'      => now(),
-                            'updated_at'      => now(),
+                            'issue_date' => null,
+                            'expiry_date' => null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ];
                     }
 
                     // Beneficiary 1 (columns: kin1_name, kin1_relationship, kin1_mobile)
-                    if (!empty($row['kin1_name'])) {
+                    if (! empty($row['kin1_name'])) {
                         $beneBatch[] = [
-                            'employee_id'                => $empId,
-                            'beneficiary_name'           => $row['kin1_name'],
-                            'beneficiary_relationship'   => $row['kin1_relationship'] ?? null,
-                            'phone_number'               => $row['kin1_mobile'] ?? null,
-                            'created_at'                 => now(),
-                            'updated_at'                 => now(),
+                            'employee_id' => $empId,
+                            'beneficiary_name' => $row['kin1_name'],
+                            'beneficiary_relationship' => $row['kin1_relationship'] ?? null,
+                            'phone_number' => $row['kin1_mobile'] ?? null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ];
                     }
                     // Beneficiary 2 (kin2_name…)
-                    if (!empty($row['kin2_name'])) {
+                    if (! empty($row['kin2_name'])) {
                         $beneBatch[] = [
-                            'employee_id'                => $empId,
-                            'beneficiary_name'           => $row['kin2_name'],
-                            'beneficiary_relationship'   => $row['kin2_relationship'] ?? null,
-                            'phone_number'               => $row['kin2_mobile'] ?? null,
-                            'created_at'                 => now(),
-                            'updated_at'                 => now(),
+                            'employee_id' => $empId,
+                            'beneficiary_name' => $row['kin2_name'],
+                            'beneficiary_relationship' => $row['kin2_relationship'] ?? null,
+                            'phone_number' => $row['kin2_mobile'] ?? null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ];
                     }
                 }
@@ -347,7 +336,7 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         DB::table('employee_identifications')->insert($identBatch);
                     } catch (\Exception $e) {
                         Log::error('Failed to insert identifications', ['error' => $e->getMessage()]);
-                        $this->errors[] = "Failed to insert identifications: " . $e->getMessage();
+                        $this->errors[] = 'Failed to insert identifications: '.$e->getMessage();
                     }
                 }
 
@@ -357,25 +346,25 @@ class DevEmployeesImport extends DefaultValueBinder implements
                         DB::table('employee_beneficiaries')->insert($beneBatch);
                     } catch (\Exception $e) {
                         Log::error('Failed to insert beneficiaries', ['error' => $e->getMessage()]);
-                        $this->errors[] = "Failed to insert beneficiaries: " . $e->getMessage();
+                        $this->errors[] = 'Failed to insert beneficiaries: '.$e->getMessage();
                     }
                 }
 
                 Log::info('Employee import completed successfully', [
                     'employees_processed' => count($this->processedEmployees),
                     'identifications_added' => count($identBatch),
-                    'beneficiaries_added' => count($beneBatch)
+                    'beneficiaries_added' => count($beneBatch),
                 ]);
             });
         } catch (\Exception $e) {
-            $errorMessage = 'Error in ' . __METHOD__ . ' at line ' . $e->getLine() . ': ' . $e->getMessage();
+            $errorMessage = 'Error in '.__METHOD__.' at line '.$e->getLine().': '.$e->getMessage();
             $this->errors[] = $errorMessage;
             Log::error('Employee import failed', [
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
@@ -386,51 +375,51 @@ class DevEmployeesImport extends DefaultValueBinder implements
     public function rules(): array
     {
         return [
-            '*.org'           => 'nullable|string|max:10',
-            '*.staff_id'      => 'required|string|unique:employees,staff_id',
-            '*.initial'       => 'nullable|string|max:10',
-            '*.first_name'    => 'required|string|max:255',
-            '*.last_name'     => 'nullable|string|max:255',
-            '*.initial_th'    => 'nullable|string|max:20',
+            '*.org' => 'nullable|string|max:10',
+            '*.staff_id' => 'required|string|unique:employees,staff_id',
+            '*.initial' => 'nullable|string|max:10',
+            '*.first_name' => 'required|string|max:255',
+            '*.last_name' => 'nullable|string|max:255',
+            '*.initial_th' => 'nullable|string|max:20',
             '*.first_name_th' => 'nullable|string|max:255',
-            '*.last_name_th'  => 'nullable|string|max:255',
-            '*.gender'        => 'required|string|in:M,F',
+            '*.last_name_th' => 'nullable|string|max:255',
+            '*.gender' => 'required|string|in:M,F',
             '*.date_of_birth' => 'required|date',
-            '*.status'        => 'nullable|string|max:50',
-            '*.nationality'   => 'nullable|string|max:100',
-            '*.religion'      => 'nullable|string|max:100',
-            '*.id_type'       => ['nullable', Rule::in(['ThaiID','10YearsID','Passport','CI','Borderpass','BurmeseID','Other'])],
-            '*.id_no'         => 'nullable|string',
+            '*.status' => 'nullable|string|max:50',
+            '*.nationality' => 'nullable|string|max:100',
+            '*.religion' => 'nullable|string|max:100',
+            '*.id_type' => ['nullable', Rule::in(['ThaiID', '10YearsID', 'Passport', 'CI', 'Borderpass', 'BurmeseID', 'Other'])],
+            '*.id_no' => 'nullable|string',
             '*.social_security_no' => 'nullable|string|max:50',
-            '*.tax_no'        => 'nullable|string|max:50',
+            '*.tax_no' => 'nullable|string|max:50',
             '*.driver_license' => 'nullable|string|max:100',
-            '*.bank_name'     => 'nullable|string|max:100',
-            '*.bank_branch'   => 'nullable|string|max:100',
-            '*.bank_acc_name'  => 'nullable|string|max:100',
-            '*.bank_acc_no'    => 'nullable|string|max:50',
-            '*.mobile_no'     => 'nullable|string|max:50',
+            '*.bank_name' => 'nullable|string|max:100',
+            '*.bank_branch' => 'nullable|string|max:100',
+            '*.bank_acc_name' => 'nullable|string|max:100',
+            '*.bank_acc_no' => 'nullable|string|max:50',
+            '*.mobile_no' => 'nullable|string|max:50',
             '*.current_address' => 'nullable|string',
             '*.permanent_address' => 'nullable|string',
             '*.marital_status' => 'nullable|string|max:50',
-            '*.spouse_name'   => 'nullable|string|max:200',
+            '*.spouse_name' => 'nullable|string|max:200',
             '*.spouse_mobile_no' => 'nullable|string|max:50',
             '*.emergency_name' => 'nullable|string|max:100',
-            '*.relationship'  => 'nullable|string|max:100',
+            '*.relationship' => 'nullable|string|max:100',
             '*.emergency_mobile_no' => 'nullable|string|max:50',
-            '*.father_name'   => 'nullable|string|max:200',
+            '*.father_name' => 'nullable|string|max:200',
             '*.father_occupation' => 'nullable|string|max:200',
             '*.father_mobile_no' => 'nullable|string|max:50',
-            '*.mother_name'   => 'nullable|string|max:200',
+            '*.mother_name' => 'nullable|string|max:200',
             '*.mother_occupation' => 'nullable|string|max:200',
             '*.mother_mobile_no' => 'nullable|string|max:50',
-            '*.kin1_name'     => 'nullable|string|max:255',
+            '*.kin1_name' => 'nullable|string|max:255',
             '*.kin1_relationship' => 'nullable|string|max:255',
-            '*.kin1_mobile'   => 'nullable|string|max:50',
-            '*.kin2_name'     => 'nullable|string|max:255',
+            '*.kin1_mobile' => 'nullable|string|max:50',
+            '*.kin2_name' => 'nullable|string|max:255',
             '*.kin2_relationship' => 'nullable|string|max:255',
-            '*.kin2_mobile'   => 'nullable|string|max:50',
+            '*.kin2_mobile' => 'nullable|string|max:50',
             '*.military_status' => 'nullable|string|max:50',
-            '*.remark'        => 'nullable|string|max:255',
+            '*.remark' => 'nullable|string|max:255',
         ];
     }
 

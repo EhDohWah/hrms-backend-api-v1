@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Crypt;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
  *     schema="Payroll",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer", format="int64"),
  *     @OA\Property(property="employment_id", type="integer", format="int64"),
  *     @OA\Property(property="employee_funding_allocation_id", type="integer", format="int64"),
@@ -68,7 +67,7 @@ class Payroll extends Model
         'employer_contribution',
         'total_deduction',
         'notes',
-        'pay_period_date'
+        'pay_period_date',
     ];
 
     public $timestamps = true;

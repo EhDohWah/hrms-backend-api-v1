@@ -38,6 +38,7 @@ class RateLimitServiceProvider extends ServiceProvider
         // Grants pagination rate limiter
         RateLimiter::for('grants', function (Request $request) {
             $userId = $request->user()?->id ?: $request->ip();
+
             return [
                 Limit::perMinute(config('pagination.rate_limiting.max_requests_per_minute', 60))
                     ->by($userId)
@@ -46,7 +47,7 @@ class RateLimitServiceProvider extends ServiceProvider
                             'success' => false,
                             'message' => 'Too many pagination requests. Please slow down.',
                             'error' => 'Rate limit exceeded',
-                            'retry_after' => 60
+                            'retry_after' => 60,
                         ], 429);
                     }),
                 Limit::perHour(config('pagination.rate_limiting.max_requests_per_hour', 1000))
@@ -56,9 +57,9 @@ class RateLimitServiceProvider extends ServiceProvider
                             'success' => false,
                             'message' => 'Hourly pagination limit exceeded. Please try again later.',
                             'error' => 'Rate limit exceeded',
-                            'retry_after' => 3600
+                            'retry_after' => 3600,
                         ], 429);
-                    })
+                    }),
             ];
         });
 

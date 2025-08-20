@@ -9,6 +9,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="LeaveRequestApproval",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="leave_request_id", type="integer"),
  *     @OA\Property(property="approver_role", type="string", nullable=true),

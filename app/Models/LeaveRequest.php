@@ -3,15 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Employee;
-use App\Models\LeaveType;
-use App\Models\LeaveRequestApproval;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
  *     schema="LeaveRequest",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="employee_id", type="integer"),
  *     @OA\Property(property="leave_type_id", type="integer"),
@@ -55,5 +53,4 @@ class LeaveRequest extends Model
     {
         return $this->hasMany(LeaveRequestApproval::class);
     }
-
 }

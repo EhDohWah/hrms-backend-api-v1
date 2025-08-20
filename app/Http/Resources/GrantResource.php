@@ -15,15 +15,15 @@ class GrantResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'           => $this->id,
-            'code'         => $this->code,
-            'name'         => $this->name,
-            'subsidiary'   => $this->subsidiary,
-            'description'  => $this->description,
-            'end_date'     => $this->end_date,
-            'grant_items'  => GrantItemResource::collection($this->whenLoaded('grantItems')),
-            'created_at'   => $this->created_at,
-            'updated_at'   => $this->updated_at,
+            'id' => $this->id,
+            'code' => $this->code,
+            'name' => $this->name,
+            'subsidiary' => $this->subsidiary,
+            'description' => $this->description,
+            'end_date' => $this->end_date,
+            'grant_items' => GrantItemResource::collection($this->whenLoaded('grantItems')),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\DepartmentPosition;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
@@ -26,16 +26,20 @@ class DepartmentpositionController extends Controller
      *     operationId="getDepartmentPositions",
      *     tags={"Department Positions"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Department positions retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/DepartmentPosition")
      *             )
      *         )
@@ -49,7 +53,7 @@ class DepartmentpositionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Department positions retrieved successfully',
-            'data' => $departmentPositions
+            'data' => $departmentPositions,
         ]);
     }
 
@@ -63,30 +67,39 @@ class DepartmentpositionController extends Controller
      *     operationId="storeDepartmentPosition",
      *     tags={"Department Positions"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"department", "position"},
+     *
      *             @OA\Property(property="department", type="string", example="Human Resources"),
      *             @OA\Property(property="position", type="string", example="HR Manager"),
      *             @OA\Property(property="report_to", type="string", example="CEO", nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Department position created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Department position created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/DepartmentPosition")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -99,18 +112,18 @@ class DepartmentpositionController extends Controller
         $validator = Validator::make($request->all(), [
             'department' => 'required|string|max:255',
             'position' => 'required|string|max:255',
-            'report_to' => 'nullable|string|max:255'
+            'report_to' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        $departmentPosition = new DepartmentPosition();
+        $departmentPosition = new DepartmentPosition;
         $departmentPosition->department = $request->department;
         $departmentPosition->position = $request->position;
         $departmentPosition->report_to = $request->report_to;
@@ -120,7 +133,7 @@ class DepartmentpositionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Department position created successfully',
-            'data' => $departmentPosition
+            'data' => $departmentPosition,
         ], 201);
     }
 
@@ -134,28 +147,36 @@ class DepartmentpositionController extends Controller
      *     operationId="getDepartmentPosition",
      *     tags={"Department Positions"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of department position to return",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Department position retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/DepartmentPosition")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Department position not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Department position not found")
      *         )
@@ -166,17 +187,17 @@ class DepartmentpositionController extends Controller
     {
         $departmentPosition = DepartmentPosition::find($id);
 
-        if (!$departmentPosition) {
+        if (! $departmentPosition) {
             return response()->json([
                 'success' => false,
-                'message' => 'Department position not found'
+                'message' => 'Department position not found',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Department position retrieved successfully',
-            'data' => $departmentPosition
+            'data' => $departmentPosition,
         ]);
     }
 
@@ -190,45 +211,59 @@ class DepartmentpositionController extends Controller
      *     operationId="updateDepartmentPosition",
      *     tags={"Department Positions"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of department position to update",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="department", type="string", example="Human Resources"),
      *             @OA\Property(property="position", type="string", example="HR Director"),
      *             @OA\Property(property="report_to", type="string", example="CEO", nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Department position updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Department position updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/DepartmentPosition")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Department position not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Department position not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -240,24 +275,24 @@ class DepartmentpositionController extends Controller
     {
         $departmentPosition = DepartmentPosition::find($id);
 
-        if (!$departmentPosition) {
+        if (! $departmentPosition) {
             return response()->json([
                 'success' => false,
-                'message' => 'Department position not found'
+                'message' => 'Department position not found',
             ], 404);
         }
 
         $validator = Validator::make($request->all(), [
             'department' => 'required|string|max:255',
             'position' => 'required|string|max:255',
-            'report_to' => 'nullable|string|max:255'
+            'report_to' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -270,7 +305,7 @@ class DepartmentpositionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Department position updated successfully',
-            'data' => $departmentPosition
+            'data' => $departmentPosition,
         ]);
     }
 
@@ -284,27 +319,35 @@ class DepartmentpositionController extends Controller
      *     operationId="deleteDepartmentPosition",
      *     tags={"Department Positions"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of department position to delete",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Department position deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Department position deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Department position not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Department position not found")
      *         )
@@ -315,10 +358,10 @@ class DepartmentpositionController extends Controller
     {
         $departmentPosition = DepartmentPosition::find($id);
 
-        if (!$departmentPosition) {
+        if (! $departmentPosition) {
             return response()->json([
                 'success' => false,
-                'message' => 'Department position not found'
+                'message' => 'Department position not found',
             ], 404);
         }
 
@@ -326,7 +369,7 @@ class DepartmentpositionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Department position deleted successfully'
+            'message' => 'Department position deleted successfully',
         ]);
     }
 }

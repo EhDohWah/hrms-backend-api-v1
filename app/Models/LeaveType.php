@@ -9,6 +9,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="LeaveType",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="name", type="string"),
  *     @OA\Property(property="default_duration", type="number", format="float", nullable=true),

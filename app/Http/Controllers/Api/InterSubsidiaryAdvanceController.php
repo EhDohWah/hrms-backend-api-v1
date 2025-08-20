@@ -15,10 +15,13 @@ class InterSubsidiaryAdvanceController extends Controller
      *     path="/api/inter-subsidiary-advances",
      *     summary="Get all inter-subsidiary advances",
      *     tags={"Inter-Subsidiary Advances"},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/InterSubsidiaryAdvanceResource"))
      *         )
@@ -28,9 +31,10 @@ class InterSubsidiaryAdvanceController extends Controller
     public function index()
     {
         $items = InterSubsidiaryAdvance::with('viaGrant')->get();
+
         return response()->json([
             'success' => true,
-            'data'    => InterSubsidiaryAdvanceResource::collection($items)
+            'data' => InterSubsidiaryAdvanceResource::collection($items),
         ]);
     }
 
@@ -39,14 +43,19 @@ class InterSubsidiaryAdvanceController extends Controller
      *     path="/api/inter-subsidiary-advances",
      *     summary="Create a new inter-subsidiary advance",
      *     tags={"Inter-Subsidiary Advances"},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/StoreInterSubsidiaryAdvanceRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Created",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Advance recorded."),
      *             @OA\Property(property="data", ref="#/components/schemas/InterSubsidiaryAdvanceResource")
@@ -57,13 +66,14 @@ class InterSubsidiaryAdvanceController extends Controller
     public function store(StoreInterSubsidiaryAdvanceRequest $request)
     {
         $data = $request->validated() + [
-          'created_by' => auth()->user()->username ?? null
+            'created_by' => auth()->user()->username ?? null,
         ];
         $item = InterSubsidiaryAdvance::create($data);
+
         return response()->json([
             'success' => true,
             'message' => 'Advance recorded.',
-            'data'    => new InterSubsidiaryAdvanceResource($item->load('viaGrant'))
+            'data' => new InterSubsidiaryAdvanceResource($item->load('viaGrant')),
         ], 201);
     }
 
@@ -72,21 +82,27 @@ class InterSubsidiaryAdvanceController extends Controller
      *     path="/api/inter-subsidiary-advances/{id}",
      *     summary="Get a specific inter-subsidiary advance",
      *     tags={"Inter-Subsidiary Advances"},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the advance",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", ref="#/components/schemas/InterSubsidiaryAdvanceResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -96,9 +112,10 @@ class InterSubsidiaryAdvanceController extends Controller
     public function show($id)
     {
         $item = InterSubsidiaryAdvance::with('viaGrant')->findOrFail($id);
+
         return response()->json([
             'success' => true,
-            'data'    => new InterSubsidiaryAdvanceResource($item)
+            'data' => new InterSubsidiaryAdvanceResource($item),
         ]);
     }
 
@@ -107,26 +124,34 @@ class InterSubsidiaryAdvanceController extends Controller
      *     path="/api/inter-subsidiary-advances/{id}",
      *     summary="Update an inter-subsidiary advance",
      *     tags={"Inter-Subsidiary Advances"},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the advance",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/UpdateInterSubsidiaryAdvanceRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Advance updated."),
      *             @OA\Property(property="data", ref="#/components/schemas/InterSubsidiaryAdvanceResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -137,12 +162,13 @@ class InterSubsidiaryAdvanceController extends Controller
     {
         $item = InterSubsidiaryAdvance::findOrFail($id);
         $item->update($request->validated() + [
-          'updated_by' => auth()->user()->username ?? null
+            'updated_by' => auth()->user()->username ?? null,
         ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Advance updated.',
-            'data'    => new InterSubsidiaryAdvanceResource($item->load('viaGrant'))
+            'data' => new InterSubsidiaryAdvanceResource($item->load('viaGrant')),
         ]);
     }
 
@@ -151,21 +177,27 @@ class InterSubsidiaryAdvanceController extends Controller
      *     path="/api/inter-subsidiary-advances/{id}",
      *     summary="Delete an inter-subsidiary advance",
      *     tags={"Inter-Subsidiary Advances"},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the advance",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Advance deleted.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -176,9 +208,10 @@ class InterSubsidiaryAdvanceController extends Controller
     {
         $item = InterSubsidiaryAdvance::findOrFail($id);
         $item->delete();
+
         return response()->json([
             'success' => true,
-            'message' => 'Advance deleted.'
+            'message' => 'Advance deleted.',
         ]);
     }
 }

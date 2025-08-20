@@ -3,22 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-use Throwable;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * @OA\Info(
  *     version="1.0.0",
  *     title="HRMS API Documentation",
  *     description="HRMS Backend API documentation with OpenAPI/Swagger",
+ *
  *     @OA\Contact(
  *         email="admin@example.com"
  *     )
@@ -52,18 +50,24 @@ class AuthController extends Controller
      *     description="Authenticates user and returns access token",
      *     operationId="login",
      *     tags={"Authentication"},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"email","password"},
+     *
      *             @OA\Property(property="email", type="string", format="email", example="user@example.com"),
      *             @OA\Property(property="password", type="string", format="password", example="password123")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful login",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="access_token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."),
      *             @OA\Property(property="token_type", type="string", example="Bearer"),
      *             @OA\Property(
@@ -75,36 +79,48 @@ class AuthController extends Controller
      *                 @OA\Property(
      *                     property="roles",
      *                     type="array",
+     *
      *                     @OA\Items(type="object")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="permissions",
      *                     type="array",
+     *
      *                     @OA\Items(type="object")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Invalid credentials",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Invalid credentials")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=429,
      *         description="Too many login attempts",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Too many login attempts. Please try again in 60 seconds.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Something went wrong"),
      *             @OA\Property(property="error", type="string", example="Server error message")
@@ -116,7 +132,7 @@ class AuthController extends Controller
     {
         // Validate the request
         $credentials = $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required',
         ]);
 
@@ -124,23 +140,25 @@ class AuthController extends Controller
         if ($this->hasTooManyLoginAttempts($request)) {
             $this->fireLockoutEvent($request);
             $seconds = $this->limiter()->availableIn($this->throttleKey($request));
+
             return response()->json([
                 'success' => false,
-                'message' => "Too many login attempts. Please try again in {$seconds} seconds."
+                'message' => "Too many login attempts. Please try again in {$seconds} seconds.",
             ], 429);
         }
 
         // Attempt login
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             $this->incrementLoginAttempts($request);
             Log::warning('Failed login attempt', [
                 'email' => $request->email,
                 'ip' => $request->ip(),
-                'user_agent' => $request->userAgent()
+                'user_agent' => $request->userAgent(),
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid credentials',
             ], 401);
         }
 
@@ -158,22 +176,22 @@ class AuthController extends Controller
         $user->load('permissions', 'roles');
 
         // Create an API token
-        $token = $user->createToken($user->name . '-api-token')->plainTextToken;
+        $token = $user->createToken($user->name.'-api-token')->plainTextToken;
 
         // Set token expiration to 6 hours
         $expiresIn = 21600; // 6 hours in seconds
 
         Log::info('User logged in', [
             'user_id' => $user->id,
-            'ip' => $request->ip()
+            'ip' => $request->ip(),
         ]);
 
         return response()->json([
             'success' => true,
             'access_token' => $token,
-            'token_type'   => 'Bearer',
-            'expires_in'   => $expiresIn,
-            'user'         => $user
+            'token_type' => 'Bearer',
+            'expires_in' => $expiresIn,
+            'user' => $user,
         ]);
     }
 
@@ -187,26 +205,35 @@ class AuthController extends Controller
      *     operationId="logout",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successfully logged out",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Logged out successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Unauthenticated")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Something went wrong"),
      *             @OA\Property(property="error", type="string", example="Server error message")
@@ -218,7 +245,7 @@ class AuthController extends Controller
     {
         Log::info('User logged out', [
             'user_id' => $request->user()->id,
-            'ip' => $request->ip()
+            'ip' => $request->ip(),
         ]);
 
         // Revoke the token that was used to authenticate the current request
@@ -226,11 +253,9 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Logged out successfully'
+            'message' => 'Logged out successfully',
         ]);
     }
-
-
 
     /**
      * Refresh the user's token.
@@ -242,28 +267,37 @@ class AuthController extends Controller
      *     operationId="refreshToken",
      *     tags={"Authentication"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Token refreshed successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="access_token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1..."),
      *             @OA\Property(property="token_type", type="string", example="Bearer"),
      *             @OA\Property(property="expires_in", type="integer", example=21600)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Unauthenticated")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Something went wrong"),
      *             @OA\Property(property="error", type="string", example="Server error message")
@@ -278,13 +312,13 @@ class AuthController extends Controller
 
         // Create a new token with expiration set to 6 hours
         $expiresIn = 21600; // 6 hours in seconds
-        $token = $request->user()->createToken($request->user()->name . '-api-token')->plainTextToken;
+        $token = $request->user()->createToken($request->user()->name.'-api-token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'access_token' => $token,
-            'token_type'   => 'Bearer',
-            'expires_in'   => $expiresIn
+            'token_type' => 'Bearer',
+            'expires_in' => $expiresIn,
         ]);
     }
 
@@ -316,7 +350,7 @@ class AuthController extends Controller
         Log::warning('User account locked due to too many login attempts', [
             'email' => $request->email,
             'ip' => $request->ip(),
-            'user_agent' => $request->userAgent()
+            'user_agent' => $request->userAgent(),
         ]);
     }
 
@@ -337,6 +371,6 @@ class AuthController extends Controller
 
     protected function throttleKey(Request $request)
     {
-        return Str::lower($request->input('email')) . '|' . $request->ip();
+        return Str::lower($request->input('email')).'|'.$request->ip();
     }
 }

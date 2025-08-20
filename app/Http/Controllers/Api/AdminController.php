@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
-use OpenApi\Annotations as OA;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
+use OpenApi\Annotations as OA;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 /**
  * @OA\Tag(
@@ -17,17 +17,15 @@ use Illuminate\Support\Facades\Hash;
  *     description="Admin API Endpoints"
  * )
  */
-
 class AdminController extends Controller
 {
-
     /***
      *
      * User section
      *
      */
 
-     /**
+    /**
      * Display a listing of users.
      *
      * @OA\Get(
@@ -37,12 +35,16 @@ class AdminController extends Controller
      *     operationId="indexUsers",
      *     tags={"Admin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(
+     *
      *                 @OA\Property(property="id", type="integer", example=1),
      *                 @OA\Property(property="name", type="string", example="John Doe"),
      *                 @OA\Property(property="email", type="string", format="email", example="john@example.com"),
@@ -50,27 +52,36 @@ class AdminController extends Controller
      *                 @OA\Property(
      *                     property="roles",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="Admin")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="permissions",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="user.read")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Unauthenticated")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=403,
      *         description="Forbidden",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="Forbidden")
      *         )
      *     )
@@ -79,15 +90,13 @@ class AdminController extends Controller
     public function index(Request $request)
     {
         $users = User::with(['roles', 'permissions'])->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Users retrieved successfully',
-            'data' => $users
+            'data' => $users,
         ]);
     }
-
-
-
 
     /**
      * Store a newly created user in storage.
@@ -97,12 +106,16 @@ class AdminController extends Controller
      *     summary="Create new user",
      *     tags={"Admin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 required={"name","email","password","password_confirmation","role"},
+     *
      *                 @OA\Property(
      *                     property="name",
      *                     type="string",
@@ -135,9 +148,11 @@ class AdminController extends Controller
      *                 @OA\Property(
      *                     property="permissions",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="user.read"),
      *                     description="Array of permission strings"
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="profile_picture",
      *                     type="string",
@@ -147,10 +162,13 @@ class AdminController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="User created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="User created successfully"),
      *             @OA\Property(
@@ -164,19 +182,25 @@ class AdminController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid"),
      *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Error creating user"),
      *             @OA\Property(
@@ -198,7 +222,6 @@ class AdminController extends Controller
      *   Example: ["grant.read", "employee.read", "employment.read"]
      * - profile_picture (file, optional): User's profile picture image
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -220,7 +243,7 @@ class AdminController extends Controller
         }
 
         // If "permissions" is provided as a comma-separated string, convert it to an array.
-        if ($request->has('permissions') && !is_array($request->input('permissions'))) {
+        if ($request->has('permissions') && ! is_array($request->input('permissions'))) {
             $permissionsString = $request->input('permissions');
             // Explode the string by comma and trim each permission.
             $permissionsArray = array_map('trim', explode(',', $permissionsString));
@@ -229,14 +252,14 @@ class AdminController extends Controller
 
         // Validate incoming request data.
         $validationRules = [
-            'name'              => 'required|string|max:255',
-            'email'             => 'required|email|unique:users,email',
-            'password'          => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
             'password_confirmation' => 'required|string',
-            'role'              => 'required|string|in:admin,hr-manager,hr-assistant,employee',
-            'permissions'       => 'nullable|array',
-            'permissions.*'     => 'string',
-            'profile_picture'   => 'nullable|image|max:2048', // 2MB max file size
+            'role' => 'required|string|in:admin,hr-manager,hr-assistant,employee',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string',
+            'profile_picture' => 'nullable|image|max:2048', // 2MB max file size
         ];
 
         // Add custom error message for regex validation
@@ -256,11 +279,11 @@ class AdminController extends Controller
 
             // Create the user record with hashed password.
             $user = User::create([
-                'name'            => $validated['name'],
-                'email'           => $validated['email'],
-                'password'        => Hash::make($validated['password']),
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
                 'profile_picture' => $validated['profile_picture'] ?? null,
-                'created_by'      => auth()->user()->id,
+                'created_by' => auth()->user()->id,
             ]);
 
             // Assign role using Spatie's role package.
@@ -280,9 +303,9 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'User created successfully',
-                'data'    => [
+                'data' => [
                     'user' => $user->load('roles', 'permissions'),
-                ]
+                ],
             ], 201);
         } catch (\Exception $e) {
             // Rollback the transaction if something goes wrong.
@@ -291,14 +314,12 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating user',
-                'data'    => [
+                'data' => [
                     'error' => $e->getMessage(),
-                ]
+                ],
             ], 500);
         }
     }
-
-
 
     /**
      * Update a user's roles, permissions and password if provided.
@@ -308,19 +329,25 @@ class AdminController extends Controller
      *     summary="Update user roles, permissions and password",
      *     tags={"Admin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="User ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\MediaType(
      *             mediaType="application/json",
+     *
      *             @OA\Schema(
      *                 type="object",
+     *
      *                 @OA\Property(
      *                     property="role",
      *                     type="string",
@@ -331,9 +358,11 @@ class AdminController extends Controller
      *                 @OA\Property(
      *                     property="permissions",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="user.read"),
      *                     description="Array of permission strings"
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="password",
      *                     type="string",
@@ -347,11 +376,14 @@ class AdminController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="User updated successfully",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/User")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="User not found"
@@ -366,7 +398,7 @@ class AdminController extends Controller
     {
         // Find the user by ID
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
@@ -425,7 +457,7 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'User updated successfully',
-                'data' => $user
+                'data' => $user,
             ]);
         } catch (\Exception $e) {
             // Rollback the transaction if something goes wrong
@@ -436,7 +468,7 @@ class AdminController extends Controller
                 'message' => 'Error updating user',
                 'data' => [
                     'error' => $e->getMessage(),
-                ]
+                ],
             ], 500);
         }
     }
@@ -449,13 +481,16 @@ class AdminController extends Controller
      *     summary="Delete user",
      *     tags={"Admin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="User ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="User deleted successfully"
@@ -469,7 +504,7 @@ class AdminController extends Controller
     public function destroy(Request $request, $id)
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
@@ -491,7 +526,7 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'User deleted successfully',
-                'data' => ['message' => 'User and their role/permission associations deleted successfully']
+                'data' => ['message' => 'User and their role/permission associations deleted successfully'],
             ]);
         } catch (\Exception $e) {
             // Rollback the transaction if something goes wrong
@@ -502,16 +537,8 @@ class AdminController extends Controller
                 'message' => 'Error deleting user',
                 'data' => [
                     'error' => $e->getMessage(),
-                ]
+                ],
             ], 500);
         }
     }
-
-
-
-
-
-
-
-
 }

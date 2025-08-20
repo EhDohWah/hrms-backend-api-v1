@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeLanguage",
  *     title="Employee Language",
  *     description="Employee Language model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="language", type="string", example="English"),

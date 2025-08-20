@@ -27,7 +27,7 @@ class EmployeeGrantAllocationResource extends JsonResource
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Relationship data
             'employee' => $this->whenLoaded('employee', function () {
                 return [
@@ -35,10 +35,10 @@ class EmployeeGrantAllocationResource extends JsonResource
                     'staff_id' => $this->employee->staff_id,
                     'first_name_en' => $this->employee->first_name_en,
                     'last_name_en' => $this->employee->last_name_en,
-                    'full_name' => $this->employee->first_name_en . ' ' . $this->employee->last_name_en
+                    'full_name' => $this->employee->first_name_en.' '.$this->employee->last_name_en,
                 ];
             }),
-            
+
             'position_slot' => $this->whenLoaded('positionSlot', function () {
                 return [
                     'id' => $this->positionSlot->id,
@@ -53,52 +53,52 @@ class EmployeeGrantAllocationResource extends JsonResource
                                 return [
                                     'id' => $this->positionSlot->grantItem->grant->id,
                                     'name' => $this->positionSlot->grantItem->grant->name,
-                                    'code' => $this->positionSlot->grantItem->grant->code
+                                    'code' => $this->positionSlot->grantItem->grant->code,
                                 ];
-                            })
+                            }),
                         ];
                     }),
                     'budget_line' => $this->whenLoaded('positionSlot.budgetLine', function () {
                         return [
                             'id' => $this->positionSlot->budgetLine->id,
                             'budget_line_code' => $this->positionSlot->budgetLine->budget_line_code,
-                            'description' => $this->positionSlot->budgetLine->description
+                            'description' => $this->positionSlot->budgetLine->description,
                         ];
-                    })
+                    }),
                 ];
             }),
-            
+
             'employment' => $this->whenLoaded('employment', function () {
                 return [
                     'id' => $this->employment->id,
                     'employment_type' => $this->employment->employment_type,
-                    'start_date' => $this->employment->start_date
+                    'start_date' => $this->employment->start_date,
                 ];
             }),
 
             // Flattened data for easier UI consumption
             'grant_name' => $this->when(
-                $this->relationLoaded('positionSlot') && 
-                $this->positionSlot->relationLoaded('grantItem') && 
+                $this->relationLoaded('positionSlot') &&
+                $this->positionSlot->relationLoaded('grantItem') &&
                 $this->positionSlot->grantItem->relationLoaded('grant'),
                 $this->positionSlot->grantItem->grant->name
             ),
             'grant_code' => $this->when(
-                $this->relationLoaded('positionSlot') && 
-                $this->positionSlot->relationLoaded('grantItem') && 
+                $this->relationLoaded('positionSlot') &&
+                $this->positionSlot->relationLoaded('grantItem') &&
                 $this->positionSlot->grantItem->relationLoaded('grant'),
                 $this->positionSlot->grantItem->grant->code
             ),
             'grant_position' => $this->when(
-                $this->relationLoaded('positionSlot') && 
+                $this->relationLoaded('positionSlot') &&
                 $this->positionSlot->relationLoaded('grantItem'),
                 $this->positionSlot->grantItem->grant_position
             ),
             'budget_line_code' => $this->when(
-                $this->relationLoaded('positionSlot') && 
+                $this->relationLoaded('positionSlot') &&
                 $this->positionSlot->relationLoaded('budgetLine'),
                 $this->positionSlot->budgetLine->budget_line_code
-            )
+            ),
         ];
     }
 }

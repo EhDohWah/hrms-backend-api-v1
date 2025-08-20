@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     type="object",
  *     title="Payroll Calculation Result",
  *     description="Complete payroll calculation with tax breakdown",
+ *
  *     @OA\Property(property="gross_salary", type="number", format="float", example=50000, description="Monthly gross salary"),
  *     @OA\Property(property="total_income", type="number", format="float", example=55000, description="Total income including additional income"),
  *     @OA\Property(property="net_salary", type="number", format="float", example=48275, description="Net take-home salary"),
@@ -40,7 +41,9 @@ use OpenApi\Annotations as OA;
  *         property="tax_breakdown",
  *         type="array",
  *         description="Tax calculation breakdown by bracket",
+ *
  *         @OA\Items(
+ *
  *             @OA\Property(property="bracket_order", type="integer", example=1),
  *             @OA\Property(property="income_range", type="string", example="฿0 - ฿150,000"),
  *             @OA\Property(property="tax_rate", type="string", example="0%"),

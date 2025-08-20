@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  *     schema="Training",
  *     title="Training",
  *     description="Training model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="Training ID"),
  *     @OA\Property(property="title", type="string", description="Training title"),
  *     @OA\Property(property="organizer", type="string", description="Training organizer"),
@@ -31,7 +32,7 @@ class Training extends Model
         'start_date',
         'end_date',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     // Relationship: A training may have many employee trainings

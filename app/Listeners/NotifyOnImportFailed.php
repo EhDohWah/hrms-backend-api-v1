@@ -2,17 +2,17 @@
 
 namespace App\Listeners;
 
-use Illuminate\Queue\Events\JobFailed;
-use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Notifications\ImportFailedNotification;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\Log;
 
 class NotifyOnImportFailed
 {
     public function handle(JobFailed $event): void
     {
         $jobName = $event->job->resolveName();
-        if (!str_contains($jobName, 'Maatwebsite\Excel\Jobs')) {
+        if (! str_contains($jobName, 'Maatwebsite\Excel\Jobs')) {
             return; // Only target Excel import failures
         }
 

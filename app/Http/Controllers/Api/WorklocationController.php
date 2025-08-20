@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\WorkLocation;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
@@ -24,15 +24,19 @@ class WorklocationController extends Controller
      *     operationId="getWorkLocations",
      *     tags={"Work Locations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/WorkLocation"))
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated",
@@ -42,9 +46,10 @@ class WorklocationController extends Controller
     public function index()
     {
         $worklocations = WorkLocation::all();
+
         return response()->json([
             'status' => 'success',
-            'data' => $worklocations
+            'data' => $worklocations,
         ]);
     }
 
@@ -56,24 +61,31 @@ class WorklocationController extends Controller
      *     operationId="storeWorkLocation",
      *     tags={"Work Locations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"name", "type"},
+     *
      *             @OA\Property(property="name", type="string", example="MKT"),
      *             @OA\Property(property="type", type="string", example="Site")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Work location created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation"),
      *             @OA\Property(property="message", type="string", example="Work location created successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -90,7 +102,7 @@ class WorklocationController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -98,13 +110,13 @@ class WorklocationController extends Controller
             'name' => $request->name,
             'type' => $request->type,
             'created_by' => Auth::user()->name,
-            'updated_by' => Auth::user()->name
+            'updated_by' => Auth::user()->name,
         ]);
 
         return response()->json([
             'status' => 'success',
             'data' => $worklocation,
-            'message' => 'Work location created successfully'
+            'message' => 'Work location created successfully',
         ], 201);
     }
 
@@ -116,22 +128,28 @@ class WorklocationController extends Controller
      *     operationId="getWorkLocation",
      *     tags={"Work Locations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the work location",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Work location not found"
@@ -142,16 +160,16 @@ class WorklocationController extends Controller
     {
         $worklocation = WorkLocation::find($id);
 
-        if (!$worklocation) {
+        if (! $worklocation) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Work location not found'
+                'message' => 'Work location not found',
             ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => $worklocation
+            'data' => $worklocation,
         ]);
     }
 
@@ -163,30 +181,39 @@ class WorklocationController extends Controller
      *     operationId="updateWorkLocation",
      *     tags={"Work Locations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the work location",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="name", type="string", example="WPA"),
      *             @OA\Property(property="type", type="string", example="Site")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Work location updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation"),
      *             @OA\Property(property="message", type="string", example="Work location updated successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Work location not found"
@@ -197,10 +224,10 @@ class WorklocationController extends Controller
     {
         $worklocation = WorkLocation::find($id);
 
-        if (!$worklocation) {
+        if (! $worklocation) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Work location not found'
+                'message' => 'Work location not found',
             ], 404);
         }
 
@@ -212,20 +239,20 @@ class WorklocationController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         $worklocation->update([
             'name' => $request->name ?? $worklocation->name,
             'type' => $request->type ?? $worklocation->type,
-            'updated_by' => Auth::user()->name
+            'updated_by' => Auth::user()->name,
         ]);
 
         return response()->json([
             'status' => 'success',
             'data' => $worklocation,
-            'message' => 'Work location updated successfully'
+            'message' => 'Work location updated successfully',
         ]);
     }
 
@@ -237,22 +264,28 @@ class WorklocationController extends Controller
      *     operationId="deleteWorkLocation",
      *     tags={"Work Locations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="ID of the work location",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Work location deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="status", type="string", example="success"),
      *             @OA\Property(property="message", type="string", example="Work location deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Work location not found"
@@ -263,10 +296,10 @@ class WorklocationController extends Controller
     {
         $worklocation = WorkLocation::find($id);
 
-        if (!$worklocation) {
+        if (! $worklocation) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Work location not found'
+                'message' => 'Work location not found',
             ], 404);
         }
 
@@ -274,7 +307,7 @@ class WorklocationController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Work location deleted successfully'
+            'message' => 'Work location deleted successfully',
         ]);
     }
 }

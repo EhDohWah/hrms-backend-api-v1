@@ -25,11 +25,11 @@ class EmployeeBeneficiaryResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'employee' => [
-                'id' => $this->whenLoaded('employee', fn() => $this->employee->id),
-                'staff_id' => $this->whenLoaded('employee', fn() => $this->employee->staff_id),
-                'first_name_en' => $this->whenLoaded('employee', fn() => $this->employee->first_name_en),
-                'last_name_en' => $this->whenLoaded('employee', fn() => $this->employee->last_name_en),
-            ]
+                'id' => $this->whenLoaded('employee', fn () => $this->employee->id),
+                'staff_id' => $this->whenLoaded('employee', fn () => $this->employee->staff_id),
+                'first_name_en' => $this->whenLoaded('employee', fn () => $this->employee->first_name_en),
+                'last_name_en' => $this->whenLoaded('employee', fn () => $this->employee->last_name_en),
+            ],
         ];
     }
-} 
+}

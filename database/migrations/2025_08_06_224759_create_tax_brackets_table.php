@@ -16,6 +16,7 @@ return new class extends Migration
             $table->decimal('min_income', 15, 2);
             $table->decimal('max_income', 15, 2)->nullable(); // NULL for highest bracket
             $table->decimal('tax_rate', 5, 2); // Percentage (e.g., 5.00 for 5%)
+            $table->decimal('base_tax', 15, 2)->default(0); // Cumulative tax for optimization
             $table->integer('bracket_order');
             $table->integer('effective_year');
             $table->boolean('is_active')->default(true);
@@ -23,7 +24,7 @@ return new class extends Migration
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
             $table->timestamps();
-            
+
             // Indexes
             $table->index(['effective_year', 'is_active']);
             $table->index('bracket_order');

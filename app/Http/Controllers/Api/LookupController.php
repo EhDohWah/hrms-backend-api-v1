@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Lookup;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(
@@ -24,10 +24,13 @@ class LookupController extends Controller
      *     operationId="getLookups",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="gender", type="array", @OA\Items(ref="#/components/schemas/Lookup"), description="List of gender options"),
      *             @OA\Property(property="subsidiary", type="array", @OA\Items(ref="#/components/schemas/Lookup"), description="List of subsidiary options"),
      *             @OA\Property(property="employee_status", type="array", @OA\Items(ref="#/components/schemas/Lookup"), description="List of employee status options"),
@@ -42,6 +45,7 @@ class LookupController extends Controller
      *             @OA\Property(property="employment_type", type="array", @OA\Items(ref="#/components/schemas/Lookup"), description="List of employment type options")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error"
@@ -56,8 +60,8 @@ class LookupController extends Controller
             'gender', 'subsidiary', 'employee_status', 'nationality',
             'religion', 'marital_status', 'site', 'user_status',
             'interview_mode', 'interview_status', 'identification_types',
-            'employment_type', 'employee_language', 'employee_education', 'employee_initial_en', 'employee_initial_th', 
-            'pay_method'
+            'employment_type', 'employee_language', 'employee_education', 'employee_initial_en', 'employee_initial_th',
+            'pay_method',
         ];
 
         $result = [];
@@ -79,23 +83,30 @@ class LookupController extends Controller
      *     operationId="storeLookup",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"type", "value"},
+     *
      *             @OA\Property(property="type", type="string", example="gender", description="Lookup type"),
      *             @OA\Property(property="value", type="string", example="Non-binary", description="Display value")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Lookup created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Lookup created successfully"),
      *             @OA\Property(property="data", type="object", ref="#/components/schemas/Lookup")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -106,7 +117,6 @@ class LookupController extends Controller
      *     )
      * )
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
@@ -117,7 +127,7 @@ class LookupController extends Controller
         ]);
 
         try {
-            $lookup = new Lookup();
+            $lookup = new Lookup;
             $lookup->type = $validated['type'];
             $lookup->value = $validated['value'];
             $lookup->created_by = auth()->user() ? auth()->user()->username : null;
@@ -126,13 +136,13 @@ class LookupController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Lookup created successfully',
-                'data' => $lookup
+                'data' => $lookup,
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating lookup',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -147,29 +157,38 @@ class LookupController extends Controller
      *     operationId="updateLookup",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Lookup ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="type", type="string", example="gender", description="Lookup type"),
      *             @OA\Property(property="value", type="string", example="Updated Value", description="Display value")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Lookup updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Lookup updated successfully"),
      *             @OA\Property(property="data", type="object", ref="#/components/schemas/Lookup")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Lookup not found"
@@ -184,8 +203,7 @@ class LookupController extends Controller
      *     )
      * )
      *
-     * @param Request $request
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
@@ -212,18 +230,18 @@ class LookupController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Lookup updated successfully',
-                'data' => $lookup
+                'data' => $lookup,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lookup not found'
+                'message' => 'Lookup not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error updating lookup',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -238,21 +256,27 @@ class LookupController extends Controller
      *     operationId="deleteLookup",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Lookup ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Lookup deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Lookup deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Lookup not found"
@@ -263,7 +287,7 @@ class LookupController extends Controller
      *     )
      * )
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
@@ -274,18 +298,18 @@ class LookupController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lookup deleted successfully'
+                'message' => 'Lookup deleted successfully',
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lookup not found'
+                'message' => 'Lookup not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting lookup',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -300,18 +324,23 @@ class LookupController extends Controller
      *     operationId="showLookup",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Lookup ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/Lookup")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Lookup not found"
@@ -322,7 +351,7 @@ class LookupController extends Controller
      *     )
      * )
      *
-     * @param int $id
+     * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
@@ -332,18 +361,18 @@ class LookupController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $lookup
+                'data' => $lookup,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lookup not found'
+                'message' => 'Lookup not found',
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving lookup',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -358,21 +387,27 @@ class LookupController extends Controller
      *     operationId="getLookupsByType",
      *     tags={"Lookups"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="type",
      *         in="path",
      *         required=true,
      *         description="Lookup type (e.g., gender, nationality)",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/Lookup")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="No lookups found for this type"
@@ -383,7 +418,7 @@ class LookupController extends Controller
      *     )
      * )
      *
-     * @param string $type
+     * @param  string  $type
      * @return \Illuminate\Http\JsonResponse
      */
     public function getByType($type)
@@ -394,19 +429,19 @@ class LookupController extends Controller
             if ($lookups->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No lookups found for this type'
+                    'message' => 'No lookups found for this type',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'data' => $lookups
+                'data' => $lookups,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error retrieving lookups',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

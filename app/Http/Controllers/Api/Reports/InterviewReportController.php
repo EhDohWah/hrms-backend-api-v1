@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\Api\Reports;
 
+use App\Exports\InterviewReportExport;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Http\Requests\InterviewReportRequest;
 use App\Models\Interview;
-use PDF;
 use Carbon\Carbon;
-use OpenApi\Annotations as OA;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\InterviewReportExport;
+use OpenApi\Annotations as OA;
+use PDF;
 
 /**
  * @OA\Tag(
@@ -32,33 +31,45 @@ class InterviewReportController extends Controller
      *     operationId="exportInterviewReportPdf",
      *     tags={"Interview Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"start_date", "end_date"},
+     *
      *             @OA\Property(property="start_date", type="string", format="date", example="2025-04-02", description="Start date in format YYYY-MM-DD"),
      *             @OA\Property(property="end_date", type="string", format="date", example="2025-04-31", description="End date in format YYYY-MM-DD")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="PDF generated successfully",
+     *
      *         @OA\MediaType(
      *             mediaType="application/pdf",
+     *
      *             @OA\Schema(type="string", format="binary")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="error", type="string", example="Invalid date format.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="error", type="string", example="Failed to generate PDF")
      *         )
      *     )
@@ -96,14 +107,15 @@ class InterviewReportController extends Controller
         $pdf->getDomPDF()->setOptions($options);
 
         // Generate a filename based on the date range
-        $filename = 'interview_report_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'interview_report_'.now()->format('YmdHis').'.pdf';
 
         // Return the PDF as a download with cache control headers
         return $pdf->download($filename)
-                   ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                   ->header('Pragma', 'no-cache')
-                   ->header('Expires', '0');
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
+
     /**
      * @OA\Get(
      *     path="/reports/interview-report/export-excel",
@@ -112,40 +124,53 @@ class InterviewReportController extends Controller
      *     operationId="exportInterviewReportExcel",
      *     tags={"Interview Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="start_date",
      *         in="query",
      *         required=true,
+     *
      *         @OA\Schema(type="string", format="date"),
      *         description="Start date for the report (YYYY-MM-DD)"
      *     ),
+     *
      *     @OA\Parameter(
      *         name="end_date",
      *         in="query",
      *         required=true,
+     *
      *         @OA\Schema(type="string", format="date"),
      *         description="End date for the report (YYYY-MM-DD)"
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Excel file download",
+     *
      *         @OA\MediaType(
      *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+     *
      *             @OA\Schema(type="string", format="binary")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="The given data was invalid"),
      *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="error", type="string", example="Failed to generate Excel")
      *         )
      *     )
@@ -154,7 +179,7 @@ class InterviewReportController extends Controller
     public function exportExcel(InterviewReportRequest $request)
     {
         $start = Carbon::parse($request->start_date)->startOfDay()->toDateString();
-        $end   = Carbon::parse($request->end_date)->endOfDay()->toDateString();
+        $end = Carbon::parse($request->end_date)->endOfDay()->toDateString();
 
         $fileName = 'interview_report_'.now()->format('YmdHis').'.xlsx';
 

@@ -36,7 +36,7 @@ class InterviewRequest extends FormRequest
             'feedback' => 'nullable|string',
             'reference_info' => 'nullable|string',
             'created_by' => 'nullable|string',
-            'updated_by' => 'nullable|string'
+            'updated_by' => 'nullable|string',
         ];
     }
 }

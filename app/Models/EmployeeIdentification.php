@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Annotations as OA;
 
@@ -12,6 +12,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeIdentification",
  *     title="Employee Identification",
  *     description="Employee Identification model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="id_type", type="string", example="passport"),
@@ -35,7 +36,7 @@ class EmployeeIdentification extends Model
         'issue_date',
         'expiry_date',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -60,7 +61,6 @@ class EmployeeIdentification extends Model
     /**
      * Create a collection-like map method to make the model compatible with collection methods.
      *
-     * @param callable $callback
      * @return array
      */
     public function map(callable $callback)

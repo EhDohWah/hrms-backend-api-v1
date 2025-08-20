@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  *     schema="DepartmentPosition",
  *     title="Department Position",
  *     description="Department Position model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="Department Position ID"),
  *     @OA\Property(property="department", type="string", description="Department name"),
  *     @OA\Property(property="position", type="string", description="Position title"),
@@ -31,12 +32,12 @@ class DepartmentPosition extends Model
         'position',
         'report_to',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     // — Accessors —
     public function getFullTitleAttribute(): string
     {
-        return trim($this->department . ' - ' . $this->position);
+        return trim($this->department.' - '.$this->position);
     }
 }

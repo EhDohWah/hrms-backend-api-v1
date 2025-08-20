@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Employment;
+use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
+use App\Models\Employment;
 use App\Models\OrgFundedAllocation;
 use App\Models\PositionSlot;
-use App\Models\GrantItem;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
-use App\Models\Employee;
 
 /**
  * @OA\Tag(
@@ -34,67 +33,86 @@ class EmploymentController extends Controller
      *     operationId="getEmployments",
      *     tags={"Employments"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Page number for pagination",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Number of items per page",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_subsidiary",
      *         in="query",
      *         description="Filter employments by employee subsidiary (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="SMRU,BHF")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_employment_type",
      *         in="query",
      *         description="Filter by employment type (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Full-Time,Part-Time")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_work_location",
      *         in="query",
      *         description="Filter by work location name (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Main Office,Branch Office")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
      *         description="Sort by field",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"staff_id", "employee_name", "work_location", "start_date"}, example="start_date")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
      *         description="Sort order",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"asc", "desc"}, example="desc")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employments retrieved successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employments retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/Employment")
      *             ),
+     *
      *             @OA\Property(
      *                 property="pagination",
      *                 type="object",
@@ -119,20 +137,26 @@ class EmploymentController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error - Invalid parameters provided",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve employments"),
      *             @OA\Property(property="error", type="string")
@@ -145,14 +169,14 @@ class EmploymentController extends Controller
         try {
             // Validate incoming parameters
             $validated = $request->validate([
-                'page'                  => 'integer|min:1',
-                'per_page'              => 'integer|min:1|max:100',
-                'filter_subsidiary'     => 'string|nullable',
-                'filter_employment_type'=> 'string|nullable',
-                'filter_work_location'  => 'string|nullable',
-                'sort_by'               => 'string|nullable|in:staff_id,employee_name,work_location,start_date',
-                'sort_order'            => 'string|nullable|in:asc,desc',
-                'include_allocations'   => 'boolean', // New parameter for conditional loading
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_subsidiary' => 'string|nullable',
+                'filter_employment_type' => 'string|nullable',
+                'filter_work_location' => 'string|nullable',
+                'sort_by' => 'string|nullable|in:staff_id,employee_name,work_location,start_date',
+                'sort_order' => 'string|nullable|in:asc,desc',
+                'include_allocations' => 'boolean', // New parameter for conditional loading
             ]);
 
             // Determine pagination parameters
@@ -162,47 +186,47 @@ class EmploymentController extends Controller
             $sortOrder = $validated['sort_order'] ?? 'desc';
 
             // PRIORITY 4: Query Caching - Generate cache key
-            $cacheKey = 'employments_' . md5(serialize($validated));
+            $cacheKey = 'employments_'.md5(serialize($validated));
             $cacheDuration = 300; // 5 minutes cache
 
             // Check if we should bypass cache (for real-time data needs)
             $bypassCache = $request->input('bypass_cache', false);
 
             // Wrap entire query logic in cache and withoutEvents
-            $result = $bypassCache ? null : Cache::remember($cacheKey, $cacheDuration, function() use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
+            $result = $bypassCache ? null : Cache::remember($cacheKey, $cacheDuration, function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
                 // PRIORITY 2: Disable Model Events for Read Operations
-                return Employment::withoutEvents(function() use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
-                    
+                return Employment::withoutEvents(function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
+
                     // PRIORITY 1: Optimized Eager Loading with selective fields
                     $query = Employment::select([
-                        'id', 
-                        'employee_id', 
+                        'id',
+                        'employee_id',
                         'employment_type',
                         'pay_method',
                         'probation_pass_date',
-                        'start_date', 
+                        'start_date',
                         'end_date',
-                        'department_position_id', 
-                        'work_location_id', 
+                        'department_position_id',
+                        'work_location_id',
                         'position_salary',
-                        'probation_salary', 
-                        'fte', 
-                        'health_welfare', 
-                        'pvd', 
+                        'probation_salary',
+                        'fte',
+                        'health_welfare',
+                        'pvd',
                         'saving_fund',
-                        'created_at', 
+                        'created_at',
                         'updated_at',
                         'created_by',
-                        'updated_by'
+                        'updated_by',
                     ])->with([
                         'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
                         'departmentPosition:id,department,position',
-                        'workLocation:id,name'
+                        'workLocation:id,name',
                         // REMOVED 'employeeFundingAllocations' - will load conditionally
                     ]);
 
                     // Apply subsidiary filter (through employee relationship)
-                    if (!empty($validated['filter_subsidiary'])) {
+                    if (! empty($validated['filter_subsidiary'])) {
                         $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
                         $query->whereHas('employee', function ($q) use ($subsidiaries) {
                             $q->whereIn('subsidiary', $subsidiaries);
@@ -210,13 +234,13 @@ class EmploymentController extends Controller
                     }
 
                     // Apply employment type filter
-                    if (!empty($validated['filter_employment_type'])) {
+                    if (! empty($validated['filter_employment_type'])) {
                         $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
                         $query->whereIn('employment_type', $employmentTypes);
                     }
 
                     // Apply work location filter (by work location name or ID)
-                    if (!empty($validated['filter_work_location'])) {
+                    if (! empty($validated['filter_work_location'])) {
                         $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
                         $query->where(function ($q) use ($workLocations) {
                             $q->whereHas('workLocation', function ($wq) use ($workLocations) {
@@ -232,7 +256,7 @@ class EmploymentController extends Controller
                             $query->addSelect([
                                 'sort_staff_id' => Employee::select('staff_id')
                                     ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_staff_id', $sortOrder);
                             break;
 
@@ -241,7 +265,7 @@ class EmploymentController extends Controller
                             $query->addSelect([
                                 'sort_employee_name' => Employee::selectRaw("CONCAT(COALESCE(first_name_en, ''), ' ', COALESCE(last_name_en, ''))")
                                     ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_employee_name', $sortOrder);
                             break;
 
@@ -251,7 +275,7 @@ class EmploymentController extends Controller
                                 'sort_location_name' => DB::table('work_locations')
                                     ->select('name')
                                     ->whereColumn('work_locations.id', 'employments.work_location_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_location_name', $sortOrder);
                             break;
 
@@ -269,9 +293,9 @@ class EmploymentController extends Controller
                     // Only load funding allocations if specifically requested
                     if ($request->input('include_allocations', false)) {
                         $employments->load([
-                            'employeeFundingAllocations' => function($query) {
+                            'employeeFundingAllocations' => function ($query) {
                                 $query->select('id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id');
-                            }
+                            },
                         ]);
                     }
 
@@ -280,49 +304,49 @@ class EmploymentController extends Controller
             });
 
             // If cache was bypassed, execute query without caching
-            if (!$result) {
-                $result = Employment::withoutEvents(function() use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
+            if (! $result) {
+                $result = Employment::withoutEvents(function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
                     // Same query logic as above (DRY principle violated for performance)
                     $query = Employment::select([
-                        'id', 
-                        'employee_id', 
+                        'id',
+                        'employee_id',
                         'employment_type',
                         'pay_method',
                         'probation_pass_date',
-                        'start_date', 
+                        'start_date',
                         'end_date',
-                        'department_position_id', 
-                        'work_location_id', 
+                        'department_position_id',
+                        'work_location_id',
                         'position_salary',
-                        'probation_salary', 
-                        'fte', 
-                        'health_welfare', 
-                        'pvd', 
+                        'probation_salary',
+                        'fte',
+                        'health_welfare',
+                        'pvd',
                         'saving_fund',
-                        'created_at', 
+                        'created_at',
                         'updated_at',
                         'created_by',
-                        'updated_by'
+                        'updated_by',
                     ])->with([
                         'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
                         'departmentPosition:id,department,position',
-                        'workLocation:id,name'
+                        'workLocation:id,name',
                     ]);
 
                     // Apply filters
-                    if (!empty($validated['filter_subsidiary'])) {
+                    if (! empty($validated['filter_subsidiary'])) {
                         $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
                         $query->whereHas('employee', function ($q) use ($subsidiaries) {
                             $q->whereIn('subsidiary', $subsidiaries);
                         });
                     }
 
-                    if (!empty($validated['filter_employment_type'])) {
+                    if (! empty($validated['filter_employment_type'])) {
                         $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
                         $query->whereIn('employment_type', $employmentTypes);
                     }
 
-                    if (!empty($validated['filter_work_location'])) {
+                    if (! empty($validated['filter_work_location'])) {
                         $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
                         $query->where(function ($q) use ($workLocations) {
                             $q->whereHas('workLocation', function ($wq) use ($workLocations) {
@@ -337,7 +361,7 @@ class EmploymentController extends Controller
                             $query->addSelect([
                                 'sort_staff_id' => Employee::select('staff_id')
                                     ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_staff_id', $sortOrder);
                             break;
 
@@ -345,7 +369,7 @@ class EmploymentController extends Controller
                             $query->addSelect([
                                 'sort_employee_name' => Employee::selectRaw("CONCAT(COALESCE(first_name_en, ''), ' ', COALESCE(last_name_en, ''))")
                                     ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_employee_name', $sortOrder);
                             break;
 
@@ -354,7 +378,7 @@ class EmploymentController extends Controller
                                 'sort_location_name' => DB::table('work_locations')
                                     ->select('name')
                                     ->whereColumn('work_locations.id', 'employments.work_location_id')
-                                    ->limit(1)
+                                    ->limit(1),
                             ])->orderBy('sort_location_name', $sortOrder);
                             break;
 
@@ -368,9 +392,9 @@ class EmploymentController extends Controller
 
                     if ($request->input('include_allocations', false)) {
                         $employments->load([
-                            'employeeFundingAllocations' => function($query) {
+                            'employeeFundingAllocations' => function ($query) {
                                 $query->select('id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id');
-                            }
+                            },
                         ]);
                     }
 
@@ -382,27 +406,27 @@ class EmploymentController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (!empty($validated['filter_subsidiary'])) {
+            if (! empty($validated['filter_subsidiary'])) {
                 $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
             }
-            if (!empty($validated['filter_employment_type'])) {
+            if (! empty($validated['filter_employment_type'])) {
                 $appliedFilters['employment_type'] = explode(',', $validated['filter_employment_type']);
             }
-            if (!empty($validated['filter_work_location'])) {
+            if (! empty($validated['filter_work_location'])) {
                 $appliedFilters['work_location'] = explode(',', $validated['filter_work_location']);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employments retrieved successfully',
-                'data'    => $employments->items(),
+                'data' => $employments->items(),
                 'pagination' => [
-                    'current_page'   => $employments->currentPage(),
-                    'per_page'       => $employments->perPage(),
-                    'total'          => $employments->total(),
-                    'last_page'      => $employments->lastPage(),
-                    'from'           => $employments->firstItem(),
-                    'to'             => $employments->lastItem(),
+                    'current_page' => $employments->currentPage(),
+                    'per_page' => $employments->perPage(),
+                    'total' => $employments->total(),
+                    'last_page' => $employments->lastPage(),
+                    'from' => $employments->firstItem(),
+                    'to' => $employments->lastItem(),
                     'has_more_pages' => $employments->hasMorePages(),
                 ],
                 'filters' => [
@@ -414,13 +438,13 @@ class EmploymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'The given data was invalid.',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employments',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -435,25 +459,32 @@ class EmploymentController extends Controller
      *     operationId="searchEmploymentByStaffId",
      *     tags={"Employments"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="staffId",
      *         in="path",
      *         description="Staff ID of the employee to search for",
      *         required=true,
+     *
      *         @OA\Schema(type="string", example="EMP001")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="include_inactive",
      *         in="query",
      *         description="Include inactive/ended employment records",
      *         required=false,
+     *
      *         @OA\Schema(type="boolean", example=false, default=false)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employment records found successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employment records found for staff ID: EMP001"),
      *             @OA\Property(
@@ -472,36 +503,47 @@ class EmploymentController extends Controller
      *                 @OA\Property(
      *                     property="employments",
      *                     type="array",
+     *
      *                     @OA\Items(ref="#/components/schemas/Employment")
      *                 ),
+     *
      *                 @OA\Property(property="total_employments", type="integer", example=2),
      *                 @OA\Property(property="active_employments", type="integer", example=1),
      *                 @OA\Property(property="inactive_employments", type="integer", example=1)
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="No employee found with staff ID: EMP001")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to search employment records"),
      *             @OA\Property(property="error", type="string")
@@ -513,16 +555,16 @@ class EmploymentController extends Controller
     {
         try {
             // Validate the staff ID parameter
-            if (empty($staffId) || !is_string($staffId)) {
+            if (empty($staffId) || ! is_string($staffId)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Staff ID is required and must be a valid string'
+                    'message' => 'Staff ID is required and must be a valid string',
                 ], 422);
             }
 
             // Validate query parameters
             $validated = $request->validate([
-                'include_inactive' => 'boolean'
+                'include_inactive' => 'boolean',
             ]);
 
             $includeInactive = $validated['include_inactive'] ?? false;
@@ -532,10 +574,10 @@ class EmploymentController extends Controller
                 ->select('id', 'staff_id', 'subsidiary', 'first_name_en', 'last_name_en')
                 ->first();
 
-            if (!$employee) {
+            if (! $employee) {
                 return response()->json([
                     'success' => false,
-                    'message' => "No employee found with staff ID: {$staffId}"
+                    'message' => "No employee found with staff ID: {$staffId}",
                 ], 404);
             }
 
@@ -544,14 +586,14 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
                 'departmentPosition:id,department,position',
                 'workLocation:id,name',
-                'employeeFundingAllocations'
+                'employeeFundingAllocations',
             ])->where('employee_id', $employee->id);
 
             // Filter active/inactive employments if requested
-            if (!$includeInactive) {
+            if (! $includeInactive) {
                 $employmentsQuery->where(function ($query) {
                     $query->whereNull('end_date')
-                          ->orWhere('end_date', '>', now());
+                        ->orWhere('end_date', '>', now());
                 });
             }
 
@@ -561,13 +603,13 @@ class EmploymentController extends Controller
             // Calculate employment statistics
             $totalEmployments = $employments->count();
             $activeEmployments = $employments->filter(function ($employment) {
-                return !$employment->end_date || $employment->end_date > now();
+                return ! $employment->end_date || $employment->end_date > now();
             })->count();
             $inactiveEmployments = $totalEmployments - $activeEmployments;
 
             // Add computed full name to employee data
             $employeeData = $employee->toArray();
-            $employeeData['full_name'] = trim($employee->first_name_en . ' ' . $employee->last_name_en);
+            $employeeData['full_name'] = trim($employee->first_name_en.' '.$employee->last_name_en);
 
             // Return EXACTLY the same format as index() method
             return response()->json([
@@ -577,26 +619,26 @@ class EmploymentController extends Controller
                 'employee_summary' => [
                     'staff_id' => $employee->staff_id,
                     'full_name' => $employeeData['full_name'],
-                    'subsidiary' => $employee->subsidiary
+                    'subsidiary' => $employee->subsidiary,
                 ],
                 'statistics' => [
                     'total_employments' => $totalEmployments,
                     'active_employments' => $activeEmployments,
-                    'inactive_employments' => $inactiveEmployments
-                ]
+                    'inactive_employments' => $inactiveEmployments,
+                ],
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'The given data was invalid.',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to search employment records',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -609,10 +651,13 @@ class EmploymentController extends Controller
      *     summary="Create employment record with funding allocations",
      *     description="Creates an employment record and associated funding allocations. For org_funded allocations, creates org_funded_allocation records first, then creates employee_funding_allocations for both grant and org_funded types.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"employee_id", "employment_type", "start_date", "position_salary", "allocations"},
+     *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
      *             @OA\Property(property="employment_type", type="string", description="Type of employment"),
      *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
@@ -632,9 +677,11 @@ class EmploymentController extends Controller
      *                 property="allocations",
      *                 type="array",
      *                 description="Array of funding allocations",
+     *
      *                 @OA\Items(
      *                     type="object",
      *                     required={"allocation_type", "level_of_effort"},
+     *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
@@ -645,11 +692,14 @@ class EmploymentController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Employment and allocations created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employment and funding allocations created successfully"),
      *             @OA\Property(property="data", type="object",
@@ -665,6 +715,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(response=400, description="Bad request"),
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=422, description="Validation error")
@@ -693,7 +744,7 @@ class EmploymentController extends Controller
                 'health_welfare' => 'boolean',
                 'pvd' => 'boolean',
                 'saving_fund' => 'boolean',
-                
+
                 // Allocation fields - Updated to include allocated_amount
                 'allocations' => 'required|array|min:1',
                 'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
@@ -708,7 +759,7 @@ class EmploymentController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -718,14 +769,14 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 2: BUSINESS LOGIC VALIDATION
             // ============================================================================
-            
+
             // Validate that the total effort of all allocations equals exactly 100%
             $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
             if ($totalEffort != 100) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Total effort of all allocations must equal exactly 100%',
-                    'current_total' => $totalEffort
+                    'current_total' => $totalEffort,
                 ], 422);
             }
 
@@ -735,14 +786,14 @@ class EmploymentController extends Controller
                 ->where('start_date', '<=', $today)
                 ->where(function ($query) use ($today) {
                     $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', $today);
+                        ->orWhere('end_date', '>=', $today);
                 })
                 ->exists();
 
             if ($existingActiveEmployment) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employee already has an active employment record. Please end the existing employment first.'
+                    'message' => 'Employee already has an active employment record. Please end the existing employment first.',
                 ], 422);
             }
 
@@ -782,10 +833,10 @@ class EmploymentController extends Controller
                     if ($allocationType === 'grant') {
                         // Validate position slot exists
                         $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                        if (!$positionSlot) {
+                        if (! $positionSlot) {
 
-                            
                             $errors[] = "Allocation #{$index}: Position slot not found";
+
                             continue;
                         }
 
@@ -795,16 +846,17 @@ class EmploymentController extends Controller
                             $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
                                 $query->where('grant_item_id', $grantItem->id);
                             })
-                            ->where('allocation_type', 'grant')
-                            ->where('start_date', '<=', $today)
-                            ->where(function ($query) use ($today) {
-                                $query->whereNull('end_date')
-                                      ->orWhere('end_date', '>=', $today);
-                            })
-                            ->count();
+                                ->where('allocation_type', 'grant')
+                                ->where('start_date', '<=', $today)
+                                ->where(function ($query) use ($today) {
+                                    $query->whereNull('end_date')
+                                        ->orWhere('end_date', '>=', $today);
+                                })
+                                ->count();
 
                             if ($currentAllocations >= $grantItem->grant_position_number) {
                                 $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
+
                                 continue;
                             }
                         }
@@ -834,6 +886,7 @@ class EmploymentController extends Controller
                         // For org_funded, we need grant_id to create the OrgFundedAllocation
                         if (empty($allocationData['grant_id'])) {
                             $errors[] = "Allocation #{$index}: grant_id is required for org_funded allocations";
+
                             continue;
                         }
 
@@ -841,7 +894,7 @@ class EmploymentController extends Controller
                         $orgFundedAllocation = OrgFundedAllocation::create([
                             'grant_id' => $allocationData['grant_id'],
                             'department_position_id' => $employment->department_position_id,
-                            'description' => 'Auto-created for employment ID: ' . $employment->id,
+                            'description' => 'Auto-created for employment ID: '.$employment->id,
                             'created_by' => $currentUser,
                             'updated_by' => $currentUser,
                         ]);
@@ -867,24 +920,25 @@ class EmploymentController extends Controller
                     }
 
                 } catch (\Exception $e) {
-                    $errors[] = "Allocation #{$index}: " . $e->getMessage();
+                    $errors[] = "Allocation #{$index}: ".$e->getMessage();
                 }
             }
 
             // ============================================================================
             // SECTION 6: HANDLE ERRORS AND ROLLBACK IF NECESSARY
             // ============================================================================
-            if (empty($createdFundingAllocations) && !empty($errors)) {
+            if (empty($createdFundingAllocations) && ! empty($errors)) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to create employment and allocations',
-                    'errors' => $errors
+                    'errors' => $errors,
                 ], 422);
             }
 
             // If some allocations failed but others succeeded, add warnings
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $warnings = array_merge($warnings, $errors);
             }
 
@@ -897,7 +951,7 @@ class EmploymentController extends Controller
             $employmentWithRelations = Employment::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'departmentPosition:id,department,position',
-                'workLocation:id,name'
+                'workLocation:id,name',
             ])->find($employment->id);
 
             $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
@@ -906,12 +960,12 @@ class EmploymentController extends Controller
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
                 'orgFunded.grant:id,name,code',
-                'orgFunded.departmentPosition:id,department,position'
+                'orgFunded.departmentPosition:id,department,position',
             ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
             $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
                 'grant:id,name,code',
-                'departmentPosition:id,department,position'
+                'departmentPosition:id,department,position',
             ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
             // ============================================================================
@@ -923,16 +977,16 @@ class EmploymentController extends Controller
                 'data' => [
                     'employment' => $employmentWithRelations,
                     'funding_allocations' => $fundingAllocationsWithRelations,
-                    'org_funded_allocations' => $orgFundedAllocationsWithRelations
+                    'org_funded_allocations' => $orgFundedAllocationsWithRelations,
                 ],
                 'summary' => [
                     'employment_created' => true,
                     'org_funded_created' => count($createdOrgFundedAllocations),
-                    'funding_allocations_created' => count($createdFundingAllocations)
-                ]
+                    'funding_allocations_created' => count($createdFundingAllocations),
+                ],
             ];
 
-            if (!empty($warnings)) {
+            if (! empty($warnings)) {
                 $response['warnings'] = $warnings;
             }
 
@@ -940,10 +994,11 @@ class EmploymentController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employment and funding allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -958,23 +1013,29 @@ class EmploymentController extends Controller
      *     operationId="getEmployment",
      *     tags={"Employments"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of employment record to return",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", ref="#/components/schemas/Employment"),
      *             @OA\Property(property="message", type="string", example="Employment retrieved successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Employment not found")
      * )
      */
@@ -985,13 +1046,13 @@ class EmploymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data'    => $employment,
-                'message' => 'Employment retrieved successfully'
+                'data' => $employment,
+                'message' => 'Employment retrieved successfully',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employment not found'
+                'message' => 'Employment not found',
             ], 404);
         }
     }
@@ -1006,16 +1067,21 @@ class EmploymentController extends Controller
      *     summary="Update employment record with optional funding allocations",
      *     description="Updates an employment record and optionally replaces funding allocations. If allocations are provided, all existing allocations will be replaced with the new ones. For org_funded allocations, creates new org_funded_allocation records. Validates that total effort equals 100% if allocations are provided.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of employment record to update",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee", nullable=true),
      *             @OA\Property(property="employment_type", type="string", description="Type of employment", nullable=true),
      *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
@@ -1035,9 +1101,11 @@ class EmploymentController extends Controller
      *                 type="array",
      *                 description="Optional array of funding allocations to replace existing ones",
      *                 nullable=true,
+     *
      *                 @OA\Items(
      *                     type="object",
      *                     required={"allocation_type", "level_of_effort"},
+     *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
@@ -1048,11 +1116,14 @@ class EmploymentController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employment and allocations updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employment and funding allocations updated successfully"),
      *             @OA\Property(property="data", type="object",
@@ -1070,6 +1141,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(response=400, description="Bad request"),
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=404, description="Employment not found"),
@@ -1082,7 +1154,7 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 1: REQUEST VALIDATION
             // ============================================================================
-        $validator = Validator::make($request->all(), [
+            $validator = Validator::make($request->all(), [
                 // Employment fields - all optional for updates
                 'employee_id' => 'nullable|exists:employees,id',
                 'employment_type' => 'nullable|string',
@@ -1098,7 +1170,7 @@ class EmploymentController extends Controller
                 'health_welfare' => 'nullable|boolean',
                 'pvd' => 'nullable|boolean',
                 'saving_fund' => 'nullable|boolean',
-                
+
                 // Allocation fields - optional for updates
                 'allocations' => 'nullable|array|min:1',
                 'allocations.*.allocation_type' => 'required_with:allocations|string|in:grant,org_funded',
@@ -1107,15 +1179,15 @@ class EmploymentController extends Controller
                 'allocations.*.grant_id' => 'nullable|exists:grants,id', // For org_funded, we need the grant_id
                 'allocations.*.level_of_effort' => 'required_with:allocations|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
-        ]);
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-            ], 422);
-        }
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
 
             $validated = $validator->validated();
             $currentUser = Auth::user()->name ?? 'system';
@@ -1123,19 +1195,19 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 2: BUSINESS LOGIC VALIDATION
             // ============================================================================
-            
+
             // Find the existing employment record
             $employment = Employment::findOrFail($id);
-            
+
             // If allocations are provided, validate that the total effort equals exactly 100%
-            $allocationsProvided = !empty($validated['allocations']);
+            $allocationsProvided = ! empty($validated['allocations']);
             if ($allocationsProvided) {
                 $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
                 if ($totalEffort != 100) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Total effort of all allocations must equal exactly 100%',
-                        'current_total' => $totalEffort
+                        'current_total' => $totalEffort,
                     ], 422);
                 }
             }
@@ -1143,9 +1215,9 @@ class EmploymentController extends Controller
             // Validate date constraints if dates are being updated
             if (isset($validated['start_date']) && isset($validated['end_date'])) {
                 if ($validated['end_date'] && $validated['start_date'] > $validated['end_date']) {
-            return response()->json([
+                    return response()->json([
                         'success' => false,
-                        'message' => 'End date must be after or equal to start date'
+                        'message' => 'End date must be after or equal to start date',
                     ], 422);
                 }
             }
@@ -1165,7 +1237,7 @@ class EmploymentController extends Controller
             // SECTION 4: UPDATE EMPLOYMENT RECORD
             // ============================================================================
             $employmentData = collect($validated)->except('allocations')->toArray();
-            if (!empty($employmentData)) {
+            if (! empty($employmentData)) {
                 $employmentData['updated_by'] = $currentUser;
                 $employment->update($employmentData);
             }
@@ -1177,15 +1249,15 @@ class EmploymentController extends Controller
                 // Remove existing funding allocations and their related org_funded records
                 $existingAllocations = EmployeeFundingAllocation::where('employment_id', $employment->id)->get();
                 $removedAllocationsCount = $existingAllocations->count();
-                
+
                 // Collect org_funded IDs to clean up
                 $orgFundedIdsToDelete = $existingAllocations->whereNotNull('org_funded_id')->pluck('org_funded_id')->toArray();
-                
+
                 // Delete existing allocations
                 EmployeeFundingAllocation::where('employment_id', $employment->id)->delete();
-                
+
                 // Delete orphaned org_funded_allocations
-                if (!empty($orgFundedIdsToDelete)) {
+                if (! empty($orgFundedIdsToDelete)) {
                     OrgFundedAllocation::whereIn('id', $orgFundedIdsToDelete)->delete();
                 }
 
@@ -1201,8 +1273,9 @@ class EmploymentController extends Controller
                         if ($allocationType === 'grant') {
                             // Validate position slot exists
                             $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                            if (!$positionSlot) {
+                            if (! $positionSlot) {
                                 $errors[] = "Allocation #{$index}: Position slot not found";
+
                                 continue;
                             }
 
@@ -1212,17 +1285,18 @@ class EmploymentController extends Controller
                                 $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
                                     $query->where('grant_item_id', $grantItem->id);
                                 })
-                                ->where('allocation_type', 'grant')
-                                ->where('employment_id', '!=', $employment->id) // Exclude current employment
-                                ->where('start_date', '<=', $today)
-                                ->where(function ($query) use ($today) {
-                                    $query->whereNull('end_date')
-                                          ->orWhere('end_date', '>=', $today);
-                                })
-                                ->count();
+                                    ->where('allocation_type', 'grant')
+                                    ->where('employment_id', '!=', $employment->id) // Exclude current employment
+                                    ->where('start_date', '<=', $today)
+                                    ->where(function ($query) use ($today) {
+                                        $query->whereNull('end_date')
+                                            ->orWhere('end_date', '>=', $today);
+                                    })
+                                    ->count();
 
                                 if ($currentAllocations >= $grantItem->grant_position_number) {
                                     $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
+
                                     continue;
                                 }
                             }
@@ -1252,6 +1326,7 @@ class EmploymentController extends Controller
                             // For org_funded, we need grant_id to create the OrgFundedAllocation
                             if (empty($allocationData['grant_id'])) {
                                 $errors[] = "Allocation #{$index}: grant_id is required for org_funded allocations";
+
                                 continue;
                             }
 
@@ -1259,7 +1334,7 @@ class EmploymentController extends Controller
                             $orgFundedAllocation = OrgFundedAllocation::create([
                                 'grant_id' => $allocationData['grant_id'],
                                 'department_position_id' => $employment->department_position_id,
-                                'description' => 'Auto-created for employment ID: ' . $employment->id . ' (Updated)',
+                                'description' => 'Auto-created for employment ID: '.$employment->id.' (Updated)',
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
                             ]);
@@ -1285,7 +1360,7 @@ class EmploymentController extends Controller
                         }
 
                     } catch (\Exception $e) {
-                        $errors[] = "Allocation #{$index}: " . $e->getMessage();
+                        $errors[] = "Allocation #{$index}: ".$e->getMessage();
                     }
                 }
             }
@@ -1293,17 +1368,18 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 6: HANDLE ERRORS AND ROLLBACK IF NECESSARY
             // ============================================================================
-            if ($allocationsProvided && empty($createdFundingAllocations) && !empty($errors)) {
+            if ($allocationsProvided && empty($createdFundingAllocations) && ! empty($errors)) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update employment and allocations',
-                    'errors' => $errors
+                    'errors' => $errors,
                 ], 422);
             }
 
             // If some allocations failed but others succeeded, add warnings
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $warnings = array_merge($warnings, $errors);
             }
 
@@ -1317,11 +1393,11 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'departmentPosition:id,department,position',
                 'workLocation:id,name',
-                'employeeFundingAllocations'
+                'employeeFundingAllocations',
             ])->find($employment->id);
 
             $responseData = [
-                'employment' => $employmentWithRelations
+                'employment' => $employmentWithRelations,
             ];
 
             // Include allocation data if allocations were updated
@@ -1332,12 +1408,12 @@ class EmploymentController extends Controller
                     'positionSlot.grantItem.grant:id,name,code',
                     'positionSlot.budgetLine:id,budget_line_code,description',
                     'orgFunded.grant:id,name,code',
-                    'orgFunded.departmentPosition:id,department,position'
+                    'orgFunded.departmentPosition:id,department,position',
                 ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
                 $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
                     'grant:id,name,code',
-                    'departmentPosition:id,department,position'
+                    'departmentPosition:id,department,position',
                 ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
                 $responseData['funding_allocations'] = $fundingAllocationsWithRelations;
@@ -1349,7 +1425,7 @@ class EmploymentController extends Controller
             // ============================================================================
             $response = [
                 'success' => true,
-                'message' => $allocationsProvided 
+                'message' => $allocationsProvided
                     ? 'Employment and funding allocations updated successfully'
                     : 'Employment updated successfully',
                 'data' => $responseData,
@@ -1358,11 +1434,11 @@ class EmploymentController extends Controller
                     'allocations_updated' => $allocationsProvided,
                     'old_allocations_removed' => $removedAllocationsCount,
                     'org_funded_created' => count($createdOrgFundedAllocations),
-                    'funding_allocations_created' => count($createdFundingAllocations)
-                ]
+                    'funding_allocations_created' => count($createdFundingAllocations),
+                ],
             ];
 
-            if (!empty($warnings)) {
+            if (! empty($warnings)) {
                 $response['warnings'] = $warnings;
             }
 
@@ -1371,14 +1447,15 @@ class EmploymentController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employment record not found'
+                'message' => 'Employment record not found',
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employment and funding allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -1393,22 +1470,28 @@ class EmploymentController extends Controller
      *     operationId="deleteEmployment",
      *     tags={"Employments"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of employment record to delete",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employment deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employment deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Employment not found")
      * )
      */
@@ -1420,12 +1503,12 @@ class EmploymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Employment deleted successfully'
+                'message' => 'Employment deleted successfully',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete employment: ' . $e->getMessage()
+                'message' => 'Failed to delete employment: '.$e->getMessage(),
             ], 500);
         }
     }

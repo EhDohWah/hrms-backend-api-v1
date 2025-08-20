@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\JobOffer;
-use Illuminate\Http\Request;
 use App\Http\Requests\JobOfferRequest;
 use App\Http\Resources\JobOfferResource;
+use App\Models\JobOffer;
+use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 use PDF;
-
 
 /**
  * @OA\Tag(
@@ -29,58 +28,75 @@ class JobOfferController extends Controller
      *     description="Returns a paginated list of job offers. Supports filtering by position and status, sorting by various fields with standard Laravel pagination parameters (page, per_page).",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Page number for pagination",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Number of items per page",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_position",
      *         in="query",
      *         description="Filter job offers by position name (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Manager,Developer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_status",
      *         in="query",
      *         description="Filter job offers by acceptance status (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Pending,Accepted")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
      *         description="Sort by field",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"job_offer_id", "candidate_name", "position_name", "date", "status"}, example="candidate_name")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
      *         description="Sort order (asc or desc)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="List of job offers retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offers retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
+     *
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="custom_offer_id", type="string", example="JO-2024-001"),
      *                     @OA\Property(property="date", type="string", format="date", example="2024-01-15"),
@@ -115,15 +131,19 @@ class JobOfferController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error - Invalid parameters provided",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated - User not logged in or token expired"
@@ -135,7 +155,9 @@ class JobOfferController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve job offers"),
      *             @OA\Property(property="error", type="string")
@@ -148,12 +170,12 @@ class JobOfferController extends Controller
         try {
             // Validate incoming parameters
             $validated = $request->validate([
-                'page'             => 'integer|min:1',
-                'per_page'         => 'integer|min:1|max:100',
-                'filter_position'  => 'string|nullable',
-                'filter_status'    => 'string|nullable',
-                'sort_by'          => 'string|nullable|in:job_offer_id,candidate_name,position_name,date,status',
-                'sort_order'       => 'string|nullable|in:asc,desc',
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_position' => 'string|nullable',
+                'filter_status' => 'string|nullable',
+                'sort_by' => 'string|nullable|in:job_offer_id,candidate_name,position_name,date,status',
+                'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
             // Determine page size
@@ -164,13 +186,13 @@ class JobOfferController extends Controller
             $query = JobOffer::query();
 
             // Apply position filter if provided
-            if (!empty($validated['filter_position'])) {
+            if (! empty($validated['filter_position'])) {
                 $positions = explode(',', $validated['filter_position']);
                 $query->whereIn('position_name', array_map('trim', $positions));
             }
 
             // Apply status filter if provided
-            if (!empty($validated['filter_status'])) {
+            if (! empty($validated['filter_status'])) {
                 $statuses = explode(',', $validated['filter_status']);
                 $query->whereIn('acceptance_status', array_map('trim', $statuses));
             }
@@ -178,16 +200,16 @@ class JobOfferController extends Controller
             // Apply sorting
             $sortBy = $validated['sort_by'] ?? 'created_at';
             $sortOrder = $validated['sort_order'] ?? 'desc';
-            
+
             // Map sort_by values to actual column names
             $sortMapping = [
                 'job_offer_id' => 'id',
                 'candidate_name' => 'candidate_name',
                 'position_name' => 'position_name',
                 'date' => 'date',
-                'status' => 'acceptance_status'
+                'status' => 'acceptance_status',
             ];
-            
+
             $sortColumn = $sortMapping[$sortBy] ?? 'created_at';
             $query->orderBy($sortColumn, $sortOrder);
 
@@ -196,24 +218,24 @@ class JobOfferController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (!empty($validated['filter_position'])) {
+            if (! empty($validated['filter_position'])) {
                 $appliedFilters['position'] = explode(',', $validated['filter_position']);
             }
-            if (!empty($validated['filter_status'])) {
+            if (! empty($validated['filter_status'])) {
                 $appliedFilters['status'] = explode(',', $validated['filter_status']);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Job offers retrieved successfully',
-                'data'    => JobOfferResource::collection($jobOffers->items()),
+                'data' => JobOfferResource::collection($jobOffers->items()),
                 'pagination' => [
-                    'current_page'   => $jobOffers->currentPage(),
-                    'per_page'       => $jobOffers->perPage(),
-                    'total'          => $jobOffers->total(),
-                    'last_page'      => $jobOffers->lastPage(),
-                    'from'           => $jobOffers->firstItem(),
-                    'to'             => $jobOffers->lastItem(),
+                    'current_page' => $jobOffers->currentPage(),
+                    'per_page' => $jobOffers->perPage(),
+                    'total' => $jobOffers->total(),
+                    'last_page' => $jobOffers->lastPage(),
+                    'from' => $jobOffers->firstItem(),
+                    'to' => $jobOffers->lastItem(),
                     'has_more_pages' => $jobOffers->hasMorePages(),
                 ],
                 'filters' => [
@@ -225,7 +247,7 @@ class JobOfferController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve job offers',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -240,40 +262,53 @@ class JobOfferController extends Controller
      *     operationId="storeJobOffer",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/JobOffer")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Job offer created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offer created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/JobOffer")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(
      *                 property="errors",
      *                 type="object",
+     *
      *                 @OA\AdditionalProperties(
      *                     type="array",
+     *
      *                     @OA\Items(type="string")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to create job offer"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -284,10 +319,11 @@ class JobOfferController extends Controller
     public function store(JobOfferRequest $request)
     {
         $jobOffer = JobOffer::create($request->validated());
+
         return response()->json([
             'success' => true,
             'message' => 'Job offer created successfully',
-            'data' => new JobOfferResource($jobOffer)
+            'data' => new JobOfferResource($jobOffer),
         ], 201);
     }
 
@@ -301,35 +337,46 @@ class JobOfferController extends Controller
      *     operationId="getJobOfferById",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of job offer to return",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offer retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/JobOffer")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Job offer not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Job offer not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve job offer"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -340,10 +387,11 @@ class JobOfferController extends Controller
     public function show($id)
     {
         $jobOffer = JobOffer::findOrFail($id);
+
         return response()->json([
             'success' => true,
             'message' => 'Job offer retrieved successfully',
-            'data' => new JobOfferResource($jobOffer)
+            'data' => new JobOfferResource($jobOffer),
         ]);
     }
 
@@ -357,55 +405,73 @@ class JobOfferController extends Controller
      *     operationId="updateJobOffer",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of job offer to update",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/JobOffer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Job offer updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offer updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/JobOffer")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Job offer not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Job offer not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(
      *                 property="errors",
      *                 type="object",
+     *
      *                 @OA\AdditionalProperties(
      *                     type="array",
+     *
      *                     @OA\Items(type="string")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to update job offer"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -417,10 +483,11 @@ class JobOfferController extends Controller
     {
         $jobOffer = JobOffer::findOrFail($id);
         $jobOffer->update($request->validated());
+
         return response()->json([
             'success' => true,
             'message' => 'Job offer updated successfully',
-            'data' => new JobOfferResource($jobOffer)
+            'data' => new JobOfferResource($jobOffer),
         ]);
     }
 
@@ -434,34 +501,45 @@ class JobOfferController extends Controller
      *     operationId="deleteJobOffer",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of job offer to delete",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Job offer deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offer deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Job offer not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Job offer not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to delete job offer"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -473,18 +551,17 @@ class JobOfferController extends Controller
     {
         $jobOffer = JobOffer::findOrFail($id);
         $jobOffer->delete();
+
         return response()->json([
             'success' => true,
-            'message' => 'Job offer deleted successfully'
+            'message' => 'Job offer deleted successfully',
         ]);
     }
 
     /**
-     *
      * Create a method to preview or display the job offer letter on vue component modal,
      *
-     * @param string $custom_offer_id
-     *
+     * @param  string  $custom_offer_id
      */
 
     /**
@@ -495,33 +572,44 @@ class JobOfferController extends Controller
      *     operationId="generateJobOfferPdf",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="custom_offer_id",
      *         in="path",
      *         description="Custom ID of the job offer",
      *         required=true,
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="PDF generated successfully",
+     *
      *         @OA\MediaType(
      *             mediaType="application/pdf",
+     *
      *             @OA\Schema(type="string", format="binary")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Job offer not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Job offer not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to generate PDF"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -531,17 +619,17 @@ class JobOfferController extends Controller
      *
      * Generate a PDF job offer letter
      *
-     * @param string $custom_offer_id
+     * @param  string  $custom_offer_id
      * @return \Illuminate\Http\Response
      */
     public function generatePdf($custom_offer_id)
     {
         // Find the job offer by custom ID
         $jobOffer = JobOffer::where('custom_offer_id', $custom_offer_id)->first();
-        if (!$jobOffer) {
+        if (! $jobOffer) {
             return response()->json([
                 'success' => false,
-                'message' => 'Job offer not found'
+                'message' => 'Job offer not found',
             ], 404);
         }
 
@@ -563,13 +651,13 @@ class JobOfferController extends Controller
         $pdf->setPaper('a4', 'portrait');
 
         // Generate a filename based on the offer details
-        $filename = 'job-offer-' . $jobOffer->candidate_name . '.pdf';
+        $filename = 'job-offer-'.$jobOffer->candidate_name.'.pdf';
 
         // Return the PDF as a download
         return $pdf->download($filename)
-                   ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                   ->header('Pragma', 'no-cache')
-                   ->header('Expires', '0');
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
@@ -582,17 +670,22 @@ class JobOfferController extends Controller
      *     description="Returns a job offer based on the candidate's name. Finds the first matching job offer for the specified candidate.",
      *     tags={"Job Offers"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="candidateName",
      *         in="path",
      *         required=true,
      *         description="Name of the candidate",
+     *
      *         @OA\Schema(type="string", example="John Doe")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Job offer retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Job offer retrieved successfully"),
      *             @OA\Property(
@@ -614,14 +707,18 @@ class JobOfferController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Job offer not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Job offer not found for candidate: John Doe")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated - User not logged in or token expired"
@@ -633,7 +730,9 @@ class JobOfferController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve job offer"),
      *             @OA\Property(property="error", type="string")
@@ -646,34 +745,36 @@ class JobOfferController extends Controller
         try {
             // Decode URL-encoded candidate name
             $candidateName = urldecode($candidateName);
-            
-            $jobOffer = JobOffer::where('candidate_name', 'LIKE', '%' . $candidateName . '%')
+
+            $jobOffer = JobOffer::where('candidate_name', 'LIKE', '%'.$candidateName.'%')
                 ->first();
 
-            if (!$jobOffer) {
+            if (! $jobOffer) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Job offer not found for candidate: ' . $candidateName
+                    'message' => 'Job offer not found for candidate: '.$candidateName,
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Job offer retrieved successfully',
-                'data' => new JobOfferResource($jobOffer)
+                'data' => new JobOfferResource($jobOffer),
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve job offer',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    function formatDateWithSuperscript($date)
+    public function formatDateWithSuperscript($date)
     {
-        if (!$date) return 'N/A';
+        if (! $date) {
+            return 'N/A';
+        }
 
         $day = date('j', strtotime($date));
         $monthYear = date('F, Y', strtotime($date));
@@ -689,7 +790,6 @@ class JobOfferController extends Controller
             $suffix = 'th';
         }
 
-        return $day . '<sup>' . $suffix . '</sup> ' . $monthYear;
+        return $day.'<sup>'.$suffix.'</sup> '.$monthYear;
     }
-
 }

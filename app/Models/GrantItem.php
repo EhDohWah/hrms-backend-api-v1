@@ -2,10 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Grant;
-use App\Models\EmployeeGrantAllocation;
+use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     schema="GrantItem",
  *     type="object",
  *     title="Grant Item",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="grant_id", type="integer", example=1),
  *     @OA\Property(property="grant_position", type="string", example="Project Manager", nullable=true),
@@ -43,7 +42,7 @@ class GrantItem extends Model
         'grant_level_of_effort',
         'grant_position_number',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -66,5 +65,4 @@ class GrantItem extends Model
     {
         return $this->hasMany(PositionSlot::class);
     }
- 
 }

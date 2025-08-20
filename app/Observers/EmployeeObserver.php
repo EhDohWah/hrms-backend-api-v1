@@ -3,8 +3,8 @@
 namespace App\Observers;
 
 use App\Models\Employee;
-use App\Models\LeaveType;
 use App\Models\LeaveBalance;
+use App\Models\LeaveType;
 
 class EmployeeObserver
 {
@@ -13,7 +13,7 @@ class EmployeeObserver
      */
     public function created(Employee $employee): void
     {
-        //// Get the current year.
+        // // Get the current year.
         $currentYear = date('Y');
 
         // Retrieve all leave types.
@@ -25,10 +25,10 @@ class EmployeeObserver
             $defaultDuration = $leaveType->default_duration; // Use default_duration from LeaveType
 
             LeaveBalance::create([
-                'employee_id'    => $employee->id,
-                'leave_type_id'  => $leaveType->id,
+                'employee_id' => $employee->id,
+                'leave_type_id' => $leaveType->id,
                 'remaining_days' => $defaultDuration,
-                'year'           => $currentYear,
+                'year' => $currentYear,
             ]);
         }
     }

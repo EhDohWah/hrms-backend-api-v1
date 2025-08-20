@@ -21,8 +21,7 @@ return new class extends Migration
             $table->string('status', 50)->default('pending'); // approved/declined/pending
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
-            $table->string('updated_by', 100)->nullable(); 
-
+            $table->string('updated_by', 100)->nullable();
 
         });
     }

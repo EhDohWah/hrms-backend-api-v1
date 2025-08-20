@@ -2,36 +2,28 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Employee;
-use Illuminate\Validation\Rule;
-use App\Models\WorkLocation;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\EmployeesImport;
-use Illuminate\Support\Facades\Log;
-use App\Http\Requests\UploadEmployeeImportRequest;
-use App\Http\Resources\EmployeeResource;
-use App\Http\Requests\FilterEmployeeRequest;
-use App\Http\Resources\EmployeeCollection;
-use App\Http\Requests\ShowEmployeeRequest;
-use App\Http\Resources\EmployeeDetailResource;
-use App\Models\Employment;
-use App\Models\EmployeeGrantAllocation;
-use App\Models\EmployeeBeneficiary;
-use App\Models\EmployeeIdentification;
-use App\Imports\DevEmployeesImport;
-use App\Http\Requests\StoreEmployeeRequest;
-use App\Http\Requests\UpdateEmployeeRequest;
-use App\Models\EmployeeLanguage;
-use App\Http\Requests\UpdateEmployeePersonalRequest;
-use App\Http\Requests\UpdateEmployeeBasicRequest;
-use Illuminate\Support\Facades\Cache;
 use App\Exports\EmployeesExport;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\FilterEmployeeRequest;
+use App\Http\Requests\ShowEmployeeRequest;
+use App\Http\Requests\StoreEmployeeRequest;
+use App\Http\Requests\UpdateEmployeePersonalRequest;
+use App\Http\Requests\UpdateEmployeeRequest;
+use App\Http\Requests\UploadEmployeeImportRequest;
+use App\Http\Resources\EmployeeCollection;
+use App\Http\Resources\EmployeeResource;
+use App\Models\Employee;
+use App\Models\EmployeeBeneficiary;
+use App\Models\EmployeeGrantAllocation;
+use App\Models\EmployeeIdentification;
+use App\Models\Employment;
+use App\Models\WorkLocation;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * @OA\Tag(
@@ -41,7 +33,6 @@ use App\Exports\EmployeesExport;
  */
 class EmployeeController extends Controller
 {
-
     /**
      * Get all employees for tree search
      *
@@ -52,10 +43,13 @@ class EmployeeController extends Controller
      *     operationId="getEmployeesForTreeSearch",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
      *             @OA\Property(property="data", type="array", @OA\Items(
@@ -70,6 +64,7 @@ class EmployeeController extends Controller
      *             ))
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error"
@@ -87,38 +82,38 @@ class EmployeeController extends Controller
             $grouped = $employees->groupBy('subsidiary');
 
             // Map each subsidiary into a parent node with its employees as children
-            $treeData = $grouped->map(function($subsidiaryEmployees, $subsidiary) {
+            $treeData = $grouped->map(function ($subsidiaryEmployees, $subsidiary) {
                 return [
                     'key' => "subsidiary-{$subsidiary}",
                     'title' => $subsidiary,
                     'value' => "subsidiary-{$subsidiary}",
-                    'children' => $subsidiaryEmployees->map(function($emp) {
+                    'children' => $subsidiaryEmployees->map(function ($emp) {
                         $fullName = $emp->first_name_en;
                         if ($emp->last_name_en && $emp->last_name_en !== '-') {
-                            $fullName .= ' ' . $emp->last_name_en;
+                            $fullName .= ' '.$emp->last_name_en;
                         }
 
                         return [
                             'key' => "{$emp->id}",
                             'title' => "{$emp->staff_id} - {$fullName}",
                             'status' => $emp->status,
-                            'value' => "{$emp->id}"
+                            'value' => "{$emp->id}",
                         ];
-                    })->values()->toArray()
+                    })->values()->toArray(),
                 ];
             })->values()->toArray();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employees retrieved successfully',
-                'data' => $treeData
+                'data' => $treeData,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employees',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -131,34 +126,44 @@ class EmployeeController extends Controller
      *     operationId="deleteSelectedEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Employee IDs to delete",
+     *
      *         @OA\JsonContent(
      *             required={"ids"},
+     *
      *             @OA\Property(
      *                 property="ids",
      *                 type="array",
      *                 description="Array of employee IDs to delete",
+     *
      *                 @OA\Items(type="integer")
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employees deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="5 employee(s) deleted successfully"),
      *             @OA\Property(property="count", type="integer", example=5)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to delete employees"),
      *             @OA\Property(property="error", type="string", example="Error message details")
@@ -168,7 +173,7 @@ class EmployeeController extends Controller
      *
      * Delete multiple employees by their IDs
      *
-     * @param FilterEmployeeRequest $request
+     * @param  FilterEmployeeRequest  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function deleteSelectedEmployees(Request $request)
@@ -195,17 +200,17 @@ class EmployeeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $count . ' employee(s) deleted successfully',
-                'count' => $count
+                'message' => $count.' employee(s) deleted successfully',
+                'count' => $count,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to delete employees: ' . $e->getMessage());
+            Log::error('Failed to delete employees: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete employees',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -218,13 +223,17 @@ class EmployeeController extends Controller
      *     operationId="uploadEmployeeData",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Excel file containing employee data",
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 required={"file"},
+     *
      *                 @OA\Property(
      *                     property="file",
      *                     type="string",
@@ -234,11 +243,14 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee data uploaded successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee data upload completed"),
      *             @OA\Property(property="data", type="object",
@@ -246,10 +258,13 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error or no rows imported",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="No rows were imported – check your column headings & data."),
      *             @OA\Property(property="debug", type="object",
@@ -259,10 +274,13 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Failed to import employees",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to import employee data"),
      *             @OA\Property(property="error", type="string")
@@ -284,10 +302,9 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Your file is being imported. You'll be notified when it's done.",
-            'import_id' => $importId
+            'import_id' => $importId,
         ], 202);
     }
-
 
     public function exportEmployees()
     {
@@ -304,88 +321,113 @@ class EmployeeController extends Controller
      *     operationId="getEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Page number for pagination",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Number of items per page",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_subsidiary",
      *         in="query",
      *         description="Filter by subsidiary (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="SMRU,BHF")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_status",
      *         in="query",
      *         description="Filter by employee status (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Expats,Local ID")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_gender",
      *         in="query",
      *         description="Filter by gender (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Male,Female")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_age",
      *         in="query",
      *         description="Filter by age",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=30)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_id_type",
      *         in="query",
      *         description="Filter by identification type (comma-separated for multiple values)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="Passport,ThaiID")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="filter_staff_id",
      *         in="query",
      *         description="Filter by staff ID (partial match)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", example="EMP")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
      *         description="Sort by field",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"subsidiary", "staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status", "age", "id_type"}, example="first_name_en")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
      *         description="Sort order (asc or desc)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/Employee")
      *             ),
+     *
      *             @OA\Property(
      *                 property="statistics",
      *                 type="object",
@@ -424,20 +466,26 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve employees"),
      *             @OA\Property(property="error", type="string")
@@ -450,16 +498,16 @@ class EmployeeController extends Controller
         try {
             // Validate incoming parameters - matching GrantController exactly
             $validated = $request->validate([
-                'page'                => 'integer|min:1',
-                'per_page'            => 'integer|min:1|max:100',
-                'filter_subsidiary'   => 'string|nullable',
-                'filter_status'       => 'string|nullable',
-                'filter_gender'       => 'string|nullable',
-                'filter_age'          => 'integer|nullable',
-                'filter_id_type'      => 'string|nullable',
-                'filter_staff_id'     => 'string|nullable',
-                'sort_by'             => 'string|nullable|in:subsidiary,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
-                'sort_order'          => 'string|nullable|in:asc,desc',
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_subsidiary' => 'string|nullable',
+                'filter_status' => 'string|nullable',
+                'filter_gender' => 'string|nullable',
+                'filter_age' => 'integer|nullable',
+                'filter_id_type' => 'string|nullable',
+                'filter_staff_id' => 'string|nullable',
+                'sort_by' => 'string|nullable|in:subsidiary,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
+                'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
             // Determine page size
@@ -471,44 +519,44 @@ class EmployeeController extends Controller
                 ->withOptimizedRelations();
 
             // Apply filters if provided
-            if (!empty($validated['filter_subsidiary'])) {
+            if (! empty($validated['filter_subsidiary'])) {
                 $query->bySubsidiary($validated['filter_subsidiary']);
             }
 
-            if (!empty($validated['filter_status'])) {
+            if (! empty($validated['filter_status'])) {
                 $query->byStatus($validated['filter_status']);
             }
 
-            if (!empty($validated['filter_gender'])) {
+            if (! empty($validated['filter_gender'])) {
                 $query->byGender($validated['filter_gender']);
             }
 
-            if (!empty($validated['filter_age'])) {
+            if (! empty($validated['filter_age'])) {
                 $query->byAge($validated['filter_age']);
             }
 
-            if (!empty($validated['filter_id_type'])) {
+            if (! empty($validated['filter_id_type'])) {
                 $query->byIdType($validated['filter_id_type']);
             }
 
-            if (!empty($validated['filter_staff_id'])) {
-                $query->where('staff_id', 'like', '%' . $validated['filter_staff_id'] . '%');
+            if (! empty($validated['filter_staff_id'])) {
+                $query->where('staff_id', 'like', '%'.$validated['filter_staff_id'].'%');
             }
 
             // Apply sorting
             $sortBy = $validated['sort_by'] ?? 'created_at';
             $sortOrder = $validated['sort_order'] ?? 'desc';
-            
+
             // Validate sort field and apply sorting
             if (in_array($sortBy, ['subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
-                $query->orderBy('employees.' . $sortBy, $sortOrder);
+                $query->orderBy('employees.'.$sortBy, $sortOrder);
             } elseif ($sortBy === 'age') {
                 // Sort by age means sort by date_of_birth in reverse order
                 $query->orderBy('employees.date_of_birth', $sortOrder === 'asc' ? 'desc' : 'asc');
             } elseif ($sortBy === 'id_type') {
                 // Sort by id_type from relationship - need to specify table aliases to avoid ambiguous column names
                 $query->leftJoin('employee_identifications as ei', 'employees.id', '=', 'ei.employee_id')
-                      ->orderBy('ei.id_type', $sortOrder);
+                    ->orderBy('ei.id_type', $sortOrder);
             } else {
                 $query->orderBy('employees.created_at', 'desc');
             }
@@ -518,22 +566,22 @@ class EmployeeController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (!empty($validated['filter_subsidiary'])) {
+            if (! empty($validated['filter_subsidiary'])) {
                 $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
             }
-            if (!empty($validated['filter_status'])) {
+            if (! empty($validated['filter_status'])) {
                 $appliedFilters['status'] = explode(',', $validated['filter_status']);
             }
-            if (!empty($validated['filter_gender'])) {
+            if (! empty($validated['filter_gender'])) {
                 $appliedFilters['gender'] = explode(',', $validated['filter_gender']);
             }
-            if (!empty($validated['filter_age'])) {
+            if (! empty($validated['filter_age'])) {
                 $appliedFilters['age'] = $validated['filter_age'];
             }
-            if (!empty($validated['filter_id_type'])) {
+            if (! empty($validated['filter_id_type'])) {
                 $appliedFilters['id_type'] = explode(',', $validated['filter_id_type']);
             }
-            if (!empty($validated['filter_staff_id'])) {
+            if (! empty($validated['filter_staff_id'])) {
                 $appliedFilters['staff_id'] = $validated['filter_staff_id'];
             }
 
@@ -543,15 +591,15 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employees retrieved successfully',
-                'data'    => EmployeeResource::collection($employees->items()),
+                'data' => EmployeeResource::collection($employees->items()),
                 'statistics' => $statistics,
                 'pagination' => [
-                    'current_page'   => $employees->currentPage(),
-                    'per_page'       => $employees->perPage(),
-                    'total'          => $employees->total(),
-                    'last_page'      => $employees->lastPage(),
-                    'from'           => $employees->firstItem(),
-                    'to'             => $employees->lastItem(),
+                    'current_page' => $employees->currentPage(),
+                    'per_page' => $employees->perPage(),
+                    'total' => $employees->total(),
+                    'last_page' => $employees->lastPage(),
+                    'from' => $employees->firstItem(),
+                    'to' => $employees->lastItem(),
                     'has_more_pages' => $employees->hasMorePages(),
                 ],
                 'filters' => [
@@ -563,7 +611,7 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employees',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -578,19 +626,25 @@ class EmployeeController extends Controller
      *     operationId="getEmployeeByStaffId",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="staff_id", in="path", required=true, description="Staff ID of the employee", @OA\Schema(type="string")),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee(s) retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
      *                     type="object",
+     *
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
      *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
@@ -607,8 +661,10 @@ class EmployeeController extends Controller
      *                     @OA\Property(
      *                         property="employee_identification",
      *                         type="array",
+     *
      *                         @OA\Items(
      *                             type="object",
+     *
      *                             @OA\Property(property="id", type="integer", example=1),
      *                             @OA\Property(property="employee_id", type="integer", example=1),
      *                             @OA\Property(property="id_type", type="string", example="Passport"),
@@ -629,11 +685,14 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="message", type="string", example="No employee found with staff_id = EMP001")
      *         )
      *     )
@@ -641,7 +700,6 @@ class EmployeeController extends Controller
      */
     public function show(ShowEmployeeRequest $request, string $staff_id)
     {
-
 
         // 1) base query: Remove 'active' from employment selection
         $query = Employee::select([
@@ -658,17 +716,17 @@ class EmployeeController extends Controller
             'tax_number',
             'mobile_phone',
         ])
-        ->with([
-            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-            'employment:id,employee_id,start_date,end_date', // Removed 'active', added 'end_date'
-        ]);
+            ->with([
+                'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
+                'employment:id,employee_id,start_date,end_date', // Removed 'active', added 'end_date'
+            ]);
 
         // 2) exact match on staff_id
         $employees = $query->where('staff_id', $staff_id)->get();
 
         // 3) if none found, return 404
         if ($employees->isEmpty()) {
-        abort(404, "No employee found with staff_id = {$staff_id}");
+            abort(404, "No employee found with staff_id = {$staff_id}");
         }
 
         // 4) wrap in a collection resource so `data` is an array
@@ -689,12 +747,16 @@ class EmployeeController extends Controller
      *     operationId="getEmployeeDetailsById",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="id", in="path", required=true, description="ID of the employee", @OA\Schema(type="integer")),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee retrieved successfully"),
      *             @OA\Property(
@@ -705,11 +767,14 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Employee not found")
      *         )
@@ -734,17 +799,17 @@ class EmployeeController extends Controller
             'employeeLanguages',
         ])->find($id);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Employee retrieved successfully',
-            'data' => $employee
+            'data' => $employee,
         ]);
     }
 
@@ -758,11 +823,14 @@ class EmployeeController extends Controller
      *     operationId="createEmployee",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Employee data",
+     *
      *         @OA\JsonContent(
      *             required={"subsidiary","staff_id","first_name_en","gender","date_of_birth","status"},
+     *
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
@@ -779,21 +847,27 @@ class EmployeeController extends Controller
      *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Employee created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Employee")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
      *             @OA\Property(
@@ -802,21 +876,27 @@ class EmployeeController extends Controller
      *                 @OA\Property(
      *                     property="staff_id",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The staff id field is required.")
      *                 ),
+     *
      *                 @OA\Property(
      *                     property="first_name_en",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The first name en field is required.")
      *                 )
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to create employee"),
      *             @OA\Property(property="error", type="string", example="Internal server error occurred")
@@ -833,20 +913,20 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employee created successfully',
-                'data'    => $employee,
+                'data' => $employee,
             ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -861,18 +941,23 @@ class EmployeeController extends Controller
      *     operationId="updateEmployee",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Employee information to update",
+     *
      *         @OA\JsonContent(
      *             required={"staff_id","first_name_en","last_name_en","gender","date_of_birth","status"},
+     *
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
      *             @OA\Property(property="user_id", type="integer", nullable=true, description="Associated user ID"),
@@ -916,30 +1001,39 @@ class EmployeeController extends Controller
      *             @OA\Property(property="remark", type="string", example="Additional notes", description="Additional remarks")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Employee")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Employee not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -950,10 +1044,10 @@ class EmployeeController extends Controller
     public function update(Request $request, $id)
     {
         $employee = Employee::find($id);
-        if (!$employee) {
+        if (! $employee) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         }
 
@@ -1000,13 +1094,13 @@ class EmployeeController extends Controller
         ]);
 
         $employee->update($validated + [
-            'updated_by' => auth()->user()->name ?? 'system'
+            'updated_by' => auth()->user()->name ?? 'system',
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Employee updated successfully',
-            'data' => $employee
+            'data' => $employee,
         ]);
     }
 
@@ -1020,27 +1114,35 @@ class EmployeeController extends Controller
      *     operationId="deleteEmployee",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee deleted successfully")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Employee not found")
      *         )
@@ -1050,10 +1152,10 @@ class EmployeeController extends Controller
     public function destroy($id)
     {
         $employee = Employee::find($id);
-        if (!$employee) {
+        if (! $employee) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         }
 
@@ -1061,7 +1163,7 @@ class EmployeeController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Employee deleted successfully'
+            'message' => 'Employee deleted successfully',
         ]);
     }
 
@@ -1075,18 +1177,23 @@ class EmployeeController extends Controller
      *     operationId="getSiteRecords",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Site records retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
      *                     type="object",
+     *
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="name", type="string", example="Main Office"),
      *                     @OA\Property(property="address", type="string", example="123 Main Street"),
@@ -1105,7 +1212,7 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Site records retrieved successfully',
-            'data' => $sites
+            'data' => $sites,
         ]);
     }
 
@@ -1119,46 +1226,59 @@ class EmployeeController extends Controller
      *     operationId="filterEmployees",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="staff_id",
      *         in="query",
      *         description="Staff ID to filter by",
      *         required=false,
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="status",
      *         in="query",
      *         description="Employee status to filter by",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"Expats", "Local ID", "Local non ID"})
      *     ),
+     *
      *     @OA\Parameter(
      *         name="subsidiary",
      *         in="query",
      *         description="Employee subsidiary to filter by",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"SMRU", "BHF"})
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Filtered employees retrieved successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(ref="#/components/schemas/Employee")
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="No employees found matching the criteria",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="No employees found.")
      *         )
@@ -1175,15 +1295,15 @@ class EmployeeController extends Controller
 
         $query = Employee::query();
 
-        if (!empty($validated['staff_id'])) {
-            $query->where('staff_id', 'like', '%' . $validated['staff_id'] . '%');
+        if (! empty($validated['staff_id'])) {
+            $query->where('staff_id', 'like', '%'.$validated['staff_id'].'%');
         }
 
-        if (!empty($validated['status'])) {
+        if (! empty($validated['status'])) {
             $query->where('status', $validated['status']);
         }
 
-        if (!empty($validated['subsidiary'])) {
+        if (! empty($validated['subsidiary'])) {
             $query->where('subsidiary', $validated['subsidiary']);
         }
 
@@ -1213,20 +1333,26 @@ class EmployeeController extends Controller
      *     operationId="uploadProfilePictureEmployee",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Employee ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         description="Profile picture file",
+     *
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
+     *
      *             @OA\Schema(
      *                 required={"profile_picture"},
+     *
      *                 @OA\Property(
      *                     property="profile_picture",
      *                     type="string",
@@ -1236,11 +1362,14 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Profile picture uploaded successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Profile picture uploaded successfully"),
      *             @OA\Property(
@@ -1251,20 +1380,26 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Employee not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Employee not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation error"),
      *             @OA\Property(property="errors", type="object")
@@ -1279,10 +1414,10 @@ class EmployeeController extends Controller
         ]);
 
         $employee = Employee::find($id);
-        if (!$employee) {
+        if (! $employee) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee not found'
+                'message' => 'Employee not found',
             ], 404);
         }
 
@@ -1303,36 +1438,37 @@ class EmployeeController extends Controller
             'message' => 'Profile picture uploaded successfully',
             'data' => [
                 'profile_picture' => $path,
-                'url' => Storage::disk('public')->url($path)
-            ]
+                'url' => Storage::disk('public')->url($path),
+            ],
         ]);
     }
 
     /**
      * Validate uploaded file
      *
-     * @param \Illuminate\Http\Request $request
      * @throws \Illuminate\Validation\ValidationException
      */
     private function validateFile(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240' // Added max file size
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Added max file size
         ]);
     }
 
     /**
      * Convert string value to float
      *
-     * @param mixed $value Value to convert
+     * @param  mixed  $value  Value to convert
      * @return float|null Converted float value or null if input is null
      */
     private function toFloat($value): ?float
     {
-        if (is_null($value)) return null;
+        if (is_null($value)) {
+            return null;
+        }
+
         return floatval(preg_replace('/[^0-9.-]/', '', $value));
     }
-
 
     // employee grant-item add
     public function addEmployeeGrantItem(Request $request)
@@ -1365,7 +1501,7 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employee grant-item added successfully',
-            'data' => $employee
+            'data' => $employee,
         ]);
     }
 
@@ -1375,17 +1511,22 @@ class EmployeeController extends Controller
      *     summary="Update employee basic information",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="employee",
      *         in="path",
      *         required=true,
      *         description="Employee ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"subsidiary", "staff_id", "first_name_en", "gender", "date_of_birth", "status"},
+     *
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}),
      *             @OA\Property(property="staff_id", type="string", maxLength=50),
      *             @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
@@ -1399,10 +1540,13 @@ class EmployeeController extends Controller
      *             @OA\Property(property="status", type="string", enum={"Expats (Local)", "Local ID Staff", "Local non ID Staff"})
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee basic information updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee basic information updated successfully"),
      *             @OA\Property(
@@ -1412,6 +1556,7 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -1425,7 +1570,7 @@ class EmployeeController extends Controller
     public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request, Employee $employee)
     {
         \Log::info('Employee injected by route model binding', ['employee' => $employee]);
-        
+
         try {
             // validate the request
             $validated = $request->validated();
@@ -1436,7 +1581,7 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employee basic information updated successfully',
-                'data' => $employee
+                'data' => $employee,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error updating employee basic information', [
@@ -1444,6 +1589,7 @@ class EmployeeController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee basic information',
@@ -1451,7 +1597,6 @@ class EmployeeController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * @OA\Put(
@@ -1461,17 +1606,22 @@ class EmployeeController extends Controller
      *     operationId="updateEmployeePersonalInformation",
      *     tags={"Employees"},
      *     security={{"sanctum":{}}},
+     *
      *     @OA\Parameter(
      *         name="employee",
      *         in="path",
      *         required=true,
      *         description="ID of the employee",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"employee_id", "mobile_phone", "nationality", "religion", "marital_status", "current_address", "permanent_address", "employee_identification"},
+     *
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="staff_id", type="string", example="EMP001"),
      *             @OA\Property(property="mobile_phone", type="string", example="0812345678"),
@@ -1483,8 +1633,10 @@ class EmployeeController extends Controller
      *             @OA\Property(
      *                 property="languages",
      *                 type="array",
+     *
      *                 @OA\Items(type="string", example="English")
      *             ),
+     *
      *             @OA\Property(property="current_address", type="string", example="123 Main St"),
      *             @OA\Property(property="permanent_address", type="string", example="456 Home St"),
      *             @OA\Property(
@@ -1496,10 +1648,13 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee personal information updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee personal information updated successfully"),
      *             @OA\Property(
@@ -1509,6 +1664,7 @@ class EmployeeController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -1553,7 +1709,7 @@ class EmployeeController extends Controller
                     $employee->employeeLanguages()->create([
                         'language' => is_array($lang) ? ($lang['language'] ?? '') : $lang,
                         'proficiency_level' => is_array($lang) ? ($lang['proficiency_level'] ?? null) : null,
-                        'created_by' => auth()->id() ?? 'system'
+                        'created_by' => auth()->id() ?? 'system',
                     ]);
                 }
             }
@@ -1566,7 +1722,7 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employee personal information updated successfully',
-                'data' => $employee
+                'data' => $employee,
             ]);
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -1575,6 +1731,7 @@ class EmployeeController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee personal information',
@@ -1587,17 +1744,17 @@ class EmployeeController extends Controller
     public function getImportStatus(string $importId)
     {
         $stats = Cache::get("import_{$importId}_stats");
-        
-        if (!$stats) {
+
+        if (! $stats) {
             return response()->json([
                 'success' => false,
-                'message' => 'Import not found'
+                'message' => 'Import not found',
             ], 404);
         }
-        
+
         return response()->json([
             'success' => true,
-            'data' => $stats
+            'data' => $stats,
         ]);
     }
 }

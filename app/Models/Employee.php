@@ -2,25 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\User;
-use App\Models\Employment;
-use App\Models\GrantPosition;
-use App\Models\EmployeeBeneficiary;
-use App\Models\EmployeeIdentification;
-use App\Models\EmployeeGrantAllocation;
-use App\Models\EmployeeLanguage;
-use App\Models\EmployeeFundingAllocation;
-use App\Models\EmployeeEducation;
-use App\Models\EmployeeTraining;
-use App\Models\EmployeeChild;
-
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @OA\Schema(
  *     schema="Employee",
  *     required={"staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status"},
+ *
  *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
  *     @OA\Property(property="staff_id", type="string", maxLength=50),
  *     @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, default="SMRU"),
@@ -70,6 +61,7 @@ use App\Models\EmployeeChild;
 class Employee extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'user_id',
         'subsidiary',
@@ -110,10 +102,17 @@ class Employee extends Model
         'driver_license_number',
         'remark',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
-   
+    /**
+     * The attributes that should be cast to native types.
+     */
+    protected $casts = [
+        'date_of_birth' => 'date',
+        'military_status' => 'boolean',
+    ];
+
     /**
      * Get the user associated with the employee
      */
@@ -137,7 +136,7 @@ class Employee extends Model
      */
     public function hasUserAccount()
     {
-        return !is_null($this->user_id);
+        return ! is_null($this->user_id);
     }
 
     /**
@@ -156,11 +155,11 @@ class Employee extends Model
         return $this->hasOne(EmployeeIdentification::class);
     }
 
-    public function employeeFundingAllocations() 
+    public function employeeFundingAllocations()
     {
         return $this->hasMany(EmployeeFundingAllocation::class, 'employee_id');
     }
-    
+
     public function employeeLanguages()
     {
         return $this->hasMany(EmployeeLanguage::class);
@@ -169,6 +168,43 @@ class Employee extends Model
     public function employeeChildren()
     {
         return $this->hasMany(EmployeeChild::class);
+    }
+
+    // Parent information is stored directly in employees table
+    // Helper methods for tax calculation
+    
+    /**
+     * Get count of eligible parents for tax allowance
+     * In Thai tax law, parents are eligible if they are over 60 and have income < 30,000 per year
+     */
+    public function getEligibleParentsCountAttribute(): int
+    {
+        $count = 0;
+        
+        // For now, assume parents are eligible if their names are provided
+        // In a real system, you'd want separate parent records with age and income
+        if (!empty($this->father_name)) {
+            $count++;
+        }
+        
+        if (!empty($this->mother_name)) {
+            $count++;
+        }
+        
+        return $count;
+    }
+    
+    /**
+     * Check if employee has spouse based on marital status and spouse name
+     */
+    public function getHasSpouseAttribute(): bool
+    {
+        return strtolower($this->marital_status) === 'married' || !empty($this->spouse_name);
+    }
+
+    public function taxCalculationLogs()
+    {
+        return $this->hasMany(TaxCalculationLog::class);
     }
 
     public function employeeEducation()
@@ -198,7 +234,7 @@ class Employee extends Model
             'employees.tax_number',
             'employees.mobile_phone',
             'employees.created_at',
-            'employees.updated_at'
+            'employees.updated_at',
         ]);
     }
 
@@ -206,7 +242,7 @@ class Employee extends Model
     {
         return $query->with([
             'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-            'employment:id,employee_id,start_date,end_date'
+            'employment:id,employee_id,start_date,end_date',
         ]);
     }
 
@@ -215,6 +251,7 @@ class Employee extends Model
         if (is_string($subsidiaries)) {
             $subsidiaries = explode(',', $subsidiaries);
         }
+
         return $query->whereIn('subsidiary', array_filter($subsidiaries));
     }
 
@@ -223,6 +260,7 @@ class Employee extends Model
         if (is_string($statuses)) {
             $statuses = explode(',', $statuses);
         }
+
         return $query->whereIn('status', array_filter($statuses));
     }
 
@@ -231,6 +269,7 @@ class Employee extends Model
         if (is_string($genders)) {
             $genders = explode(',', $genders);
         }
+
         return $query->whereIn('gender', array_filter($genders));
     }
 
@@ -238,8 +277,10 @@ class Employee extends Model
     {
         if (is_numeric($age)) {
             $birthYear = now()->year - $age;
+
             return $query->whereYear('date_of_birth', $birthYear);
         }
+
         return $query;
     }
 
@@ -248,7 +289,8 @@ class Employee extends Model
         if (is_string($idTypes)) {
             $idTypes = explode(',', $idTypes);
         }
-        return $query->whereHas('employeeIdentification', function($q) use ($idTypes) {
+
+        return $query->whereHas('employeeIdentification', function ($q) use ($idTypes) {
             $q->whereIn('id_type', array_filter($idTypes));
         });
     }
@@ -256,7 +298,10 @@ class Employee extends Model
     // Computed attributes
     public function getAgeAttribute()
     {
-        if (!$this->date_of_birth) return null;
+        if (! $this->date_of_birth) {
+            return null;
+        }
+
         return now()->diffInYears($this->date_of_birth);
     }
 
@@ -266,9 +311,9 @@ class Employee extends Model
     }
 
     // Helper methods for statistics
-    public static function getStatistics(): array 
+    public static function getStatistics(): array
     {
-        return Cache::remember('employee_statistics', 300, function() {
+        return Cache::remember('employee_statistics', 300, function () {
             $now = now();
             $threeMonthsAgo = $now->copy()->subMonths(3);
 
@@ -277,9 +322,9 @@ class Employee extends Model
                 'totalEmployees' => Employee::count(),
                 'activeCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
-                    ->where(function($q) use ($now) {
+                    ->where(function ($q) use ($now) {
                         $q->whereNull('employments.end_date')
-                        ->orWhere('employments.end_date', '>', $now);
+                            ->orWhere('employments.end_date', '>', $now);
                     })
                     ->count(),
                 'inactiveCount' => DB::table('employments')
@@ -293,11 +338,9 @@ class Employee extends Model
                     ->count(),
                 'subsidiaryCount' => [
                     'SMRU_count' => Employee::where('subsidiary', 'SMRU')->count(),
-                    'BHF_count' => Employee::where('subsidiary', 'BHF')->count()
-                ]
+                    'BHF_count' => Employee::where('subsidiary', 'BHF')->count(),
+                ],
             ];
         });
     }
-
-
 }

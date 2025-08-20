@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\BudgetLine;
 use App\Http\Resources\BudgetLineResource;
+use App\Models\BudgetLine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -24,44 +24,57 @@ class BudgetLineController extends Controller
      *     summary="List all budget lines with pagination and sorting",
      *     description="Retrieve a paginated list of budget lines with sorting capabilities. Supports pagination parameters (page, per_page) and sorting by budget_line_code.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Page number for pagination",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Number of items per page",
      *         required=false,
+     *
      *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_by",
      *         in="query",
      *         description="Sort by field (only budget_line_code allowed)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"budget_line_code"}, example="budget_line_code")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort_order",
      *         in="query",
      *         description="Sort order (asc or desc)",
      *         required=false,
+     *
      *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Budget lines retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Budget lines retrieved successfully"),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
+     *
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="budget_line_code", type="string", example="BL001"),
      *                     @OA\Property(property="description", type="string", example="Description"),
@@ -89,15 +102,19 @@ class BudgetLineController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error - Invalid parameters provided",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated - User not logged in or token expired"
@@ -105,7 +122,9 @@ class BudgetLineController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve budget lines"),
      *             @OA\Property(property="error", type="string")
@@ -118,9 +137,9 @@ class BudgetLineController extends Controller
         try {
             // Validate incoming parameters
             $validator = Validator::make($request->all(), [
-                'page'       => 'integer|min:1',
-                'per_page'   => 'integer|min:1|max:100',
-                'sort_by'    => 'string|nullable|in:budget_line_code',
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'sort_by' => 'string|nullable|in:budget_line_code',
                 'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
@@ -128,7 +147,7 @@ class BudgetLineController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'The given data was invalid.',
-                    'errors'  => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -150,14 +169,14 @@ class BudgetLineController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Budget lines retrieved successfully',
-                'data'    => BudgetLineResource::collection($budgetLines->items()),
+                'data' => BudgetLineResource::collection($budgetLines->items()),
                 'pagination' => [
-                    'current_page'   => $budgetLines->currentPage(),
-                    'per_page'       => $budgetLines->perPage(),
-                    'total'          => $budgetLines->total(),
-                    'last_page'      => $budgetLines->lastPage(),
-                    'from'           => $budgetLines->firstItem(),
-                    'to'             => $budgetLines->lastItem(),
+                    'current_page' => $budgetLines->currentPage(),
+                    'per_page' => $budgetLines->perPage(),
+                    'total' => $budgetLines->total(),
+                    'last_page' => $budgetLines->lastPage(),
+                    'from' => $budgetLines->firstItem(),
+                    'to' => $budgetLines->lastItem(),
                     'has_more_pages' => $budgetLines->hasMorePages(),
                 ],
                 'filters' => [
@@ -169,7 +188,7 @@ class BudgetLineController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve budget lines',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -181,17 +200,22 @@ class BudgetLineController extends Controller
      *     summary="Get a budget line by code",
      *     description="Retrieve a specific budget line by its budget line code with associated position slots",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="code",
      *         in="path",
      *         required=true,
      *         description="Budget line code",
+     *
      *         @OA\Schema(type="string", example="RD001")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Budget line retrieved successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Budget line retrieved successfully"),
      *             @OA\Property(
@@ -207,7 +231,9 @@ class BudgetLineController extends Controller
      *                 @OA\Property(
      *                     property="position_slots",
      *                     type="array",
+     *
      *                     @OA\Items(
+     *
      *                         @OA\Property(property="id", type="integer", example=1),
      *                         @OA\Property(property="grant_item_id", type="integer", example=1),
      *                         @OA\Property(property="slot_number", type="string", example="1"),
@@ -219,14 +245,18 @@ class BudgetLineController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Budget line not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Budget line not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=401,
      *         description="Unauthenticated - User not logged in or token expired"
@@ -234,7 +264,9 @@ class BudgetLineController extends Controller
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to retrieve budget line"),
      *             @OA\Property(property="error", type="string")
@@ -246,51 +278,57 @@ class BudgetLineController extends Controller
     {
         try {
             $budgetLine = BudgetLine::with([
-                'positionSlots' => function($query) {
+                'positionSlots' => function ($query) {
                     $query->select('id', 'grant_item_id', 'slot_number', 'budget_line_id', 'created_at', 'updated_at');
-                }
+                },
             ])
-            ->where('budget_line_code', $code)
-            ->first(['id', 'budget_line_code', 'description', 'created_by', 'updated_by', 'created_at', 'updated_at']);
+                ->where('budget_line_code', $code)
+                ->first(['id', 'budget_line_code', 'description', 'created_by', 'updated_by', 'created_at', 'updated_at']);
 
-            if (!$budgetLine) {
+            if (! $budgetLine) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Budget line not found'
+                    'message' => 'Budget line not found',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Budget line retrieved successfully',
-                'data' => new BudgetLineResource($budgetLine)
+                'data' => new BudgetLineResource($budgetLine),
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve budget line',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * @OA\Post(
-     *     path="/budget-lines", 
+     *     path="/budget-lines",
      *     tags={"Budget Lines"},
      *     summary="Create a new budget line",
      *     description="Create a new budget line with a unique budget line code",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="budget_line_code", type="string", example="BL001", description="Unique budget line code")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Budget line created successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="data",
@@ -304,16 +342,20 @@ class BudgetLineController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(
      *                 property="errors",
      *                 @OA\Property(
      *                     property="budget_line_code",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The budget line code has already been taken.")
      *                 )
      *             )
@@ -330,8 +372,9 @@ class BudgetLineController extends Controller
         $line = BudgetLine::create([
             'budget_line_code' => $validated['budget_line_code'],
             'description' => $validated['description'],
-            'created_by' => $request->user()?->name ?? 'system'
+            'created_by' => $request->user()?->name ?? 'system',
         ]);
+
         return response()->json(['success' => true, 'data' => $line], 201);
     }
 
@@ -342,17 +385,22 @@ class BudgetLineController extends Controller
      *     summary="Show a single budget line",
      *     description="Retrieve details of a specific budget line by ID",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Budget line ID",
+     *
      *         @OA\Schema(type="integer", example=1)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="data",
@@ -366,10 +414,13 @@ class BudgetLineController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Budget line not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="No query results for model [App\\Models\\BudgetLine] 1")
      *         )
      *     )
@@ -378,6 +429,7 @@ class BudgetLineController extends Controller
     public function show($id)
     {
         $line = BudgetLine::findOrFail($id);
+
         return response()->json(['success' => true, 'data' => $line]);
     }
 
@@ -388,23 +440,31 @@ class BudgetLineController extends Controller
      *     summary="Update a budget line",
      *     description="Update an existing budget line's budget line code",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Budget line ID",
+     *
      *         @OA\Schema(type="integer", example=1)
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="budget_line_code", type="string", example="BL001-UPDATED", description="Updated budget line code")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Budget line updated successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="data",
@@ -418,23 +478,30 @@ class BudgetLineController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Budget line not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="No query results for model [App\\Models\\BudgetLine] 1")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="The given data was invalid."),
      *             @OA\Property(
      *                 property="errors",
      *                 @OA\Property(
      *                     property="budget_line_code",
      *                     type="array",
+     *
      *                     @OA\Items(type="string", example="The budget line code has already been taken.")
      *                 )
      *             )
@@ -456,6 +523,7 @@ class BudgetLineController extends Controller
         $line->description = $validated['description'];
         $line->updated_by = $request->user()?->name ?? 'system';
         $line->save();
+
         return response()->json(['success' => true, 'data' => $line]);
     }
 
@@ -466,24 +534,32 @@ class BudgetLineController extends Controller
      *     summary="Delete a budget line",
      *     description="Delete a specific budget line by ID",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Budget line ID",
+     *
      *         @OA\Schema(type="integer", example=1)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Budget line deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Budget line not found",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="message", type="string", example="No query results for model [App\\Models\\BudgetLine] 1")
      *         )
      *     )
@@ -493,6 +569,7 @@ class BudgetLineController extends Controller
     {
         $line = BudgetLine::findOrFail($id);
         $line->delete();
+
         return response()->json(['success' => true]);
     }
 }

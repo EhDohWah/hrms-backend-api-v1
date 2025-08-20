@@ -3,17 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmployeeFundingAllocation;
+use App\Models\OrgFundedAllocation;
+use App\Models\PositionSlot;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Models\EmployeeFundingAllocation;
-use App\Models\PositionSlot;
-use App\Models\OrgFundedAllocation;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use App\Models\GrantItem;
-
+use Illuminate\Support\Facades\Validator;
 
 /**
  * @OA\Tag(
@@ -31,18 +29,23 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Get list of employee funding allocations",
      *     description="Returns paginated list of employee funding allocations with related data",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="employee_id",
      *         in="query",
      *         description="Filter by employee ID",
      *         required=false,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
      *             @OA\Property(property="current_page", type="integer"),
      *             @OA\Property(property="last_page", type="integer"),
@@ -50,22 +53,22 @@ class EmployeeFundingAllocationController extends Controller
      *             @OA\Property(property="total", type="integer")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
     public function index(Request $request)
     {
         $query = EmployeeFundingAllocation::with(['employee', 'employment', 'orgFunded', 'positionSlot']);
-        
+
         if ($request->has('employee_id')) {
             $query->where('employee_id', $request->employee_id);
         }
-        
+
         $allocations = $query->orderByDesc('id')->paginate(20);
 
         return response()->json($allocations);
     }
-
 
     /**
      * @OA\Get(
@@ -75,24 +78,30 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Get employee funding allocations by grant item ID",
      *     description="Returns employee funding allocations for a specific grant item (position)",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="grantItemId",
      *         in="path",
      *         description="Grant Item ID",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
      *             @OA\Property(property="total_allocations", type="integer"),
      *             @OA\Property(property="active_allocations", type="integer")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=404, description="Grant item not found")
      * )
@@ -105,36 +114,36 @@ class EmployeeFundingAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date,end_date',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description'
+                'positionSlot.budgetLine:id,budget_line_code,description',
             ])
-            ->whereHas('positionSlot', function ($query) use ($grantItemId) {
-                $query->where('grant_item_id', $grantItemId);
-            })
-            ->where('allocation_type', 'grant')
-            ->orderByDesc('id')
-            ->get();
+                ->whereHas('positionSlot', function ($query) use ($grantItemId) {
+                    $query->where('grant_item_id', $grantItemId);
+                })
+                ->where('allocation_type', 'grant')
+                ->orderByDesc('id')
+                ->get();
 
             // Calculate active allocations (those that are currently active based on dates)
             $today = Carbon::today();
             $activeCount = $allocations->filter(function ($allocation) use ($today) {
                 $startDate = Carbon::parse($allocation->start_date);
                 $endDate = $allocation->end_date ? Carbon::parse($allocation->end_date) : null;
-                
-                return $startDate->lte($today) && (!$endDate || $endDate->gte($today));
+
+                return $startDate->lte($today) && (! $endDate || $endDate->gte($today));
             })->count();
 
             return response()->json([
                 'success' => true,
                 'data' => $allocations,
                 'total_allocations' => $allocations->count(),
-                'active_allocations' => $activeCount
+                'active_allocations' => $activeCount,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch allocations for grant item',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -147,10 +156,13 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Create multiple employee funding allocations",
      *     description="Creates multiple employee funding allocations with validation for total effort (must equal 100%) and allocation type constraints. Checks for existing active allocations and prevents duplicates.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"employee_id", "employment_id", "start_date", "allocations"},
+     *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
      *             @OA\Property(property="employment_id", type="integer", description="ID of the employment"),
      *             @OA\Property(property="start_date", type="string", format="date", description="Start date for allocations"),
@@ -159,9 +171,11 @@ class EmployeeFundingAllocationController extends Controller
      *                 property="allocations",
      *                 type="array",
      *                 description="Array of funding allocations (total effort must equal 100%)",
+     *
      *                 @OA\Items(
      *                     type="object",
      *                     required={"allocation_type", "level_of_effort"},
+     *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (required for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Org funded allocation ID (required for org_funded allocations)", nullable=true),
@@ -171,11 +185,14 @@ class EmployeeFundingAllocationController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Allocations created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee funding allocations created successfully"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
@@ -183,30 +200,40 @@ class EmployeeFundingAllocationController extends Controller
      *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true, description="Array of warning messages for allocations that failed to create")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation or business logic error",
+     *
      *         @OA\JsonContent(
      *             oneOf={
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Validation failed"),
      *                     @OA\Property(property="errors", type="object", description="Validation errors")
      *                 ),
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Total effort of all allocations must equal exactly 100%"),
      *                     @OA\Property(property="current_total", type="number", example=85.5)
      *                 ),
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Employee already has active funding allocations for this employment. Please use the update endpoint to modify existing allocations or end them first.")
      *                 ),
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Failed to create any allocations"),
      *                     @OA\Property(property="errors", type="array", @OA\Items(type="string"), description="Array of error messages")
@@ -214,16 +241,20 @@ class EmployeeFundingAllocationController extends Controller
      *             }
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to create employee funding allocations"),
      *             @OA\Property(property="error", type="string", description="Error message")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
@@ -248,7 +279,7 @@ class EmployeeFundingAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -261,7 +292,7 @@ class EmployeeFundingAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Total effort of all allocations must equal exactly 100%',
-                    'current_total' => $totalNewEffort
+                    'current_total' => $totalNewEffort,
                 ], 422);
             }
 
@@ -272,14 +303,14 @@ class EmployeeFundingAllocationController extends Controller
                 ->where('start_date', '<=', $today)
                 ->where(function ($query) use ($today) {
                     $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', $today);
+                        ->orWhere('end_date', '>=', $today);
                 })
                 ->exists();
 
             if ($existingActiveAllocations) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employee already has active funding allocations for this employment. Please use the update endpoint to modify existing allocations or end them first.'
+                    'message' => 'Employee already has active funding allocations for this employment. Please use the update endpoint to modify existing allocations or end them first.',
                 ], 422);
             }
 
@@ -296,13 +327,15 @@ class EmployeeFundingAllocationController extends Controller
                     if ($allocationType === 'grant') {
                         if (empty($allocationData['position_slot_id'])) {
                             $errors[] = "Allocation #{$index}: position_slot_id is required for grant allocations";
+
                             continue;
                         }
 
                         // Get the position slot with its grant item for capacity checking
                         $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                        if (!$positionSlot) {
+                        if (! $positionSlot) {
                             $errors[] = "Allocation #{$index}: Position slot not found";
+
                             continue;
                         }
 
@@ -312,16 +345,17 @@ class EmployeeFundingAllocationController extends Controller
                             $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
                                 $query->where('grant_item_id', $grantItem->id);
                             })
-                            ->where('allocation_type', 'grant')
-                            ->where('start_date', '<=', $today)
-                            ->where(function ($query) use ($today) {
-                                $query->whereNull('end_date')
-                                      ->orWhere('end_date', '>=', $today);
-                            })
-                            ->count();
+                                ->where('allocation_type', 'grant')
+                                ->where('start_date', '<=', $today)
+                                ->where(function ($query) use ($today) {
+                                    $query->whereNull('end_date')
+                                        ->orWhere('end_date', '>=', $today);
+                                })
+                                ->count();
 
                             if ($currentAllocations >= $grantItem->grant_position_number) {
                                 $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
+
                                 continue;
                             }
                         }
@@ -329,13 +363,15 @@ class EmployeeFundingAllocationController extends Controller
                     } elseif ($allocationType === 'org_funded') {
                         if (empty($allocationData['org_funded_id'])) {
                             $errors[] = "Allocation #{$index}: org_funded_id is required for org_funded allocations";
+
                             continue;
                         }
 
                         // Verify org funded allocation exists
                         $orgFunded = OrgFundedAllocation::find($allocationData['org_funded_id']);
-                        if (!$orgFunded) {
+                        if (! $orgFunded) {
                             $errors[] = "Allocation #{$index}: Org funded allocation not found";
+
                             continue;
                         }
                     }
@@ -346,11 +382,11 @@ class EmployeeFundingAllocationController extends Controller
                         'employment_id' => $validated['employment_id'],
                         'allocation_type' => $allocationType,
                     ])
-                    ->where('start_date', '<=', $today)
-                    ->where(function ($query) use ($today) {
-                        $query->whereNull('end_date')
-                              ->orWhere('end_date', '>=', $today);
-                    });
+                        ->where('start_date', '<=', $today)
+                        ->where(function ($query) use ($today) {
+                            $query->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $today);
+                        });
 
                     if ($allocationType === 'grant') {
                         $existingAllocation->where('position_slot_id', $allocationData['position_slot_id']);
@@ -360,6 +396,7 @@ class EmployeeFundingAllocationController extends Controller
 
                     if ($existingAllocation->exists()) {
                         $errors[] = "Allocation #{$index}: Already exists for this employee, employment, and {$allocationType} allocation";
+
                         continue;
                     }
 
@@ -381,16 +418,17 @@ class EmployeeFundingAllocationController extends Controller
                     $createdAllocations[] = $allocation;
 
                 } catch (\Exception $e) {
-                    $errors[] = "Allocation #{$index}: " . $e->getMessage();
+                    $errors[] = "Allocation #{$index}: ".$e->getMessage();
                 }
             }
 
-            if (empty($createdAllocations) && !empty($errors)) {
+            if (empty($createdAllocations) && ! empty($errors)) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to create any allocations',
-                    'errors' => $errors
+                    'errors' => $errors,
                 ], 422);
             }
 
@@ -402,17 +440,17 @@ class EmployeeFundingAllocationController extends Controller
                 'employment:id,employment_type,start_date',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'orgFunded'
+                'orgFunded',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
             $response = [
                 'success' => true,
                 'message' => 'Employee funding allocations created successfully',
                 'data' => $allocationsWithRelations,
-                'total_created' => count($createdAllocations)
+                'total_created' => count($createdAllocations),
             ];
 
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $response['warnings'] = $errors;
             }
 
@@ -420,10 +458,11 @@ class EmployeeFundingAllocationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee funding allocations',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -436,18 +475,23 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Get employee funding allocation by ID",
      *     description="Returns a single employee funding allocation with related data including employee, employment, orgFunded, and positionSlot relationships",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee funding allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeFundingAllocation")
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated"),
      *     @OA\Response(response=404, description="Allocation not found")
      * )
@@ -455,6 +499,7 @@ class EmployeeFundingAllocationController extends Controller
     public function show($id)
     {
         $allocation = EmployeeFundingAllocation::with(['employee', 'employment', 'orgFunded', 'positionSlot'])->findOrFail($id);
+
         return response()->json($allocation);
     }
 
@@ -466,16 +511,21 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Update employee funding allocation",
      *     description="Updates an existing employee funding allocation with comprehensive validation including allocation type constraints, capacity checking, and business logic validation.",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee funding allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
      *             @OA\Property(property="employment_id", type="integer", description="ID of the employment"),
      *             @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
@@ -487,54 +537,70 @@ class EmployeeFundingAllocationController extends Controller
      *             @OA\Property(property="end_date", type="string", format="date", description="End date (must be after or equal to start_date)", nullable=true)
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Allocation updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee funding allocation updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeFundingAllocation")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation or business logic error",
+     *
      *         @OA\JsonContent(
      *             oneOf={
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Validation failed"),
      *                     @OA\Property(property="errors", type="object", description="Validation errors")
      *                 ),
+     *
      *                 @OA\Schema(
      *                     type="object",
+     *
      *                     @OA\Property(property="success", type="boolean", example=false),
      *                     @OA\Property(property="message", type="string", example="Grant position has reached its maximum capacity")
      *                 )
      *             }
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Allocation not found",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Employee funding allocation not found")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to update employee funding allocation"),
      *             @OA\Property(property="error", type="string", description="Error message")
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
@@ -560,7 +626,7 @@ class EmployeeFundingAllocationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
@@ -576,19 +642,21 @@ class EmployeeFundingAllocationController extends Controller
                 if ($allocationType === 'grant') {
                     if (empty($validated['position_slot_id'])) {
                         DB::rollBack();
+
                         return response()->json([
                             'success' => false,
-                            'message' => 'position_slot_id is required for grant allocations'
+                            'message' => 'position_slot_id is required for grant allocations',
                         ], 422);
                     }
 
                     // Get the position slot with its grant item for capacity checking
                     $positionSlot = PositionSlot::with('grantItem')->find($validated['position_slot_id']);
-                    if (!$positionSlot) {
+                    if (! $positionSlot) {
                         DB::rollBack();
+
                         return response()->json([
                             'success' => false,
-                            'message' => 'Position slot not found'
+                            'message' => 'Position slot not found',
                         ], 422);
                     }
 
@@ -599,20 +667,21 @@ class EmployeeFundingAllocationController extends Controller
                         $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
                             $query->where('grant_item_id', $grantItem->id);
                         })
-                        ->where('allocation_type', 'grant')
-                        ->where('id', '!=', $id) // Exclude current allocation
-                        ->where('start_date', '<=', $today)
-                        ->where(function ($query) use ($today) {
-                            $query->whereNull('end_date')
-                                  ->orWhere('end_date', '>=', $today);
-                        })
-                        ->count();
+                            ->where('allocation_type', 'grant')
+                            ->where('id', '!=', $id) // Exclude current allocation
+                            ->where('start_date', '<=', $today)
+                            ->where(function ($query) use ($today) {
+                                $query->whereNull('end_date')
+                                    ->orWhere('end_date', '>=', $today);
+                            })
+                            ->count();
 
                         if ($currentAllocations >= $grantItem->grant_position_number) {
                             DB::rollBack();
+
                             return response()->json([
                                 'success' => false,
-                                'message' => "Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}"
+                                'message' => "Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}",
                             ], 422);
                         }
                     }
@@ -620,19 +689,21 @@ class EmployeeFundingAllocationController extends Controller
                 } elseif ($allocationType === 'org_funded') {
                     if (empty($validated['org_funded_id'])) {
                         DB::rollBack();
+
                         return response()->json([
                             'success' => false,
-                            'message' => 'org_funded_id is required for org_funded allocations'
+                            'message' => 'org_funded_id is required for org_funded allocations',
                         ], 422);
                     }
 
                     // Verify org funded allocation exists
                     $orgFunded = OrgFundedAllocation::find($validated['org_funded_id']);
-                    if (!$orgFunded) {
+                    if (! $orgFunded) {
                         DB::rollBack();
+
                         return response()->json([
                             'success' => false,
-                            'message' => 'Org funded allocation not found'
+                            'message' => 'Org funded allocation not found',
                         ], 422);
                     }
                 }
@@ -664,26 +735,27 @@ class EmployeeFundingAllocationController extends Controller
                 'employment:id,employment_type,start_date',
                 'positionSlot.grantItem.grant:id,name,code',
                 'positionSlot.budgetLine:id,budget_line_code,description',
-                'orgFunded'
+                'orgFunded',
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Employee funding allocation updated successfully',
-                'data' => $allocation
+                'data' => $allocation,
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Employee funding allocation not found'
+                'message' => 'Employee funding allocation not found',
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee funding allocation',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -696,13 +768,16 @@ class EmployeeFundingAllocationController extends Controller
      *     summary="Delete employee funding allocation",
      *     description="Deletes an employee funding allocation",
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee funding allocation",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=204,
      *         description="Allocation deleted successfully"

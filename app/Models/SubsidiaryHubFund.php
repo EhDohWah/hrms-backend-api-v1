@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  *     schema="SubsidiaryHubFund",
  *     title="Subsidiary Hub Fund",
  *     description="Subsidiary Hub Fund model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="ID of the subsidiary hub fund"),
  *     @OA\Property(property="subsidiary", type="string", maxLength=5, description="Subsidiary code"),
  *     @OA\Property(property="hub_grant_id", type="integer", format="int64", description="ID of the hub grant"),
@@ -22,9 +23,11 @@ class SubsidiaryHubFund extends Model
 {
     /**
      * @var array
+     *
      * @OA\Property(
      *     property="fillable",
      *     type="array",
+     *
      *     @OA\Items(type="string"),
      *     description="Mass assignable attributes"
      * )
@@ -33,7 +36,7 @@ class SubsidiaryHubFund extends Model
         'subsidiary',
         'hub_grant_id',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**

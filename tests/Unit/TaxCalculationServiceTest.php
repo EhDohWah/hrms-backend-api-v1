@@ -2,19 +2,20 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
-use App\Services\TaxCalculationService;
-use App\Models\TaxBracket;
-use App\Models\TaxSetting;
 use App\Models\Employee;
 use App\Models\Employment;
+use App\Models\TaxBracket;
+use App\Models\TaxSetting;
+use App\Services\TaxCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class TaxCalculationServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     protected $taxService;
+
     protected $testYear = 2025;
 
     protected function setUp(): void
@@ -30,7 +31,7 @@ class TaxCalculationServiceTest extends TestCase
         // Test income of 600,000 (should be in multiple brackets)
         $taxableIncome = 600000;
         $monthlyTax = $this->taxService->calculateProgressiveIncomeTax($taxableIncome);
-        
+
         // Expected calculation:
         // 0-150,000: 0% = 0
         // 150,001-300,000: 5% = 7,500
@@ -38,7 +39,7 @@ class TaxCalculationServiceTest extends TestCase
         // 500,001-600,000: 15% = 15,000
         // Total annual tax: 42,500
         // Monthly tax: 42,500 / 12 = 3,541.67
-        
+
         $this->assertEqualsWithDelta(3541.67, $monthlyTax, 0.01);
     }
 
@@ -47,7 +48,7 @@ class TaxCalculationServiceTest extends TestCase
     {
         $taxableIncome = 100000; // Below 150,000 threshold
         $monthlyTax = $this->taxService->calculateProgressiveIncomeTax($taxableIncome);
-        
+
         $this->assertEquals(0, $monthlyTax);
     }
 
@@ -55,14 +56,14 @@ class TaxCalculationServiceTest extends TestCase
     public function it_calculates_social_security_contributions_correctly()
     {
         $grossSalary = 20000; // Monthly salary
-        
+
         // Use reflection to access private method
         $reflection = new \ReflectionClass($this->taxService);
         $method = $reflection->getMethod('calculateSocialSecurity');
         $method->setAccessible(true);
-        
+
         $socialSecurity = $method->invoke($this->taxService, $grossSalary);
-        
+
         // Expected: 5% of 20,000 = 1,000 (but capped at 750)
         $this->assertEquals(750, $socialSecurity['employee_contribution']);
         $this->assertEquals(750, $socialSecurity['employer_contribution']);
@@ -73,11 +74,11 @@ class TaxCalculationServiceTest extends TestCase
     public function it_applies_personal_allowances_correctly()
     {
         $employee = Employee::factory()->create([
-            'marital_status' => 'married'
+            'marital_status' => 'married',
         ]);
-        
+
         Employment::factory()->create([
-            'employee_id' => $employee->id
+            'employee_id' => $employee->id,
         ]);
 
         // Create 2 children for the employee
@@ -85,21 +86,21 @@ class TaxCalculationServiceTest extends TestCase
         $employee->employeeChildren()->create(['name' => 'Child 2', 'date_of_birth' => '2017-01-01']);
 
         $grossSalary = 50000;
-        
+
         // Use reflection to access private method
         $reflection = new \ReflectionClass($this->taxService);
         $method = $reflection->getMethod('calculateDeductions');
         $method->setAccessible(true);
-        
+
         $deductions = $method->invoke($this->taxService, $employee, $grossSalary, []);
-        
+
         // Expected deductions:
         // Personal allowance: 60,000
         // Spouse allowance: 60,000 (married)
         // Child allowance: 60,000 (2 children × 30,000)
         // Personal expenses: 240,000 (40% of 600,000 annual salary)
         // Provident fund: 18,000 (3% of 600,000 annual salary)
-        
+
         $this->assertEquals(60000, $deductions['personal_allowance']);
         $this->assertEquals(60000, $deductions['spouse_allowance']);
         $this->assertEquals(60000, $deductions['child_allowance']);
@@ -112,10 +113,10 @@ class TaxCalculationServiceTest extends TestCase
     {
         $employee = Employee::factory()->create();
         Employment::factory()->create(['employee_id' => $employee->id]);
-        
+
         $grossSalary = 50000;
         $payrollData = $this->taxService->calculatePayroll($employee->id, $grossSalary);
-        
+
         $this->assertArrayHasKey('gross_salary', $payrollData);
         $this->assertArrayHasKey('total_income', $payrollData);
         $this->assertArrayHasKey('taxable_income', $payrollData);
@@ -124,7 +125,7 @@ class TaxCalculationServiceTest extends TestCase
         $this->assertArrayHasKey('deductions', $payrollData);
         $this->assertArrayHasKey('social_security', $payrollData);
         $this->assertArrayHasKey('tax_breakdown', $payrollData);
-        
+
         $this->assertEquals($grossSalary, $payrollData['gross_salary']);
         $this->assertLessThan($grossSalary, $payrollData['net_salary']);
         $this->assertGreaterThanOrEqual(0, $payrollData['income_tax']);
@@ -137,17 +138,17 @@ class TaxCalculationServiceTest extends TestCase
             'employee_id' => 1,
             'gross_salary' => 50000,
             'additional_income' => [],
-            'additional_deductions' => []
+            'additional_deductions' => [],
         ];
-        
+
         $errors = $this->taxService->validateCalculationInputs($validInputs);
         $this->assertEmpty($errors);
-        
+
         $invalidInputs = [
             'employee_id' => 'invalid',
             'gross_salary' => -1000,
         ];
-        
+
         $errors = $this->taxService->validateCalculationInputs($invalidInputs);
         $this->assertNotEmpty($errors);
     }
@@ -157,22 +158,22 @@ class TaxCalculationServiceTest extends TestCase
     {
         $employee = Employee::factory()->create();
         Employment::factory()->create(['employee_id' => $employee->id]);
-        
+
         $grossSalary = 40000;
         $additionalIncome = [
-            ['type' => 'bonus', 'amount' => 10000, 'description' => 'Performance bonus']
+            ['type' => 'bonus', 'amount' => 10000, 'description' => 'Performance bonus'],
         ];
         $additionalDeductions = [
-            ['type' => 'loan', 'amount' => 5000, 'description' => 'Company loan']
+            ['type' => 'loan', 'amount' => 5000, 'description' => 'Company loan'],
         ];
-        
+
         $payrollData = $this->taxService->calculatePayroll(
             $employee->id,
             $grossSalary,
             $additionalIncome,
             $additionalDeductions
         );
-        
+
         $this->assertEquals(50000, $payrollData['total_income']); // 40000 + 10000
         $this->assertEquals(5000, $payrollData['deductions']['additional_deductions']);
     }
@@ -201,7 +202,7 @@ class TaxCalculationServiceTest extends TestCase
                 'effective_year' => $this->testYear,
                 'is_active' => true,
                 'description' => "Test bracket {$bracket['order']}",
-                'created_by' => 'test'
+                'created_by' => 'test',
             ]);
         }
 
@@ -226,7 +227,7 @@ class TaxCalculationServiceTest extends TestCase
                 'effective_year' => $this->testYear,
                 'is_active' => true,
                 'description' => "Test setting {$setting[0]}",
-                'created_by' => 'test'
+                'created_by' => 'test',
             ]);
         }
     }

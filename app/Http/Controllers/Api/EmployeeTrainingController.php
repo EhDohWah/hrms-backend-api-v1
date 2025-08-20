@@ -3,20 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Training;
 use App\Models\EmployeeTraining;
-use OpenApi\Annotations as OA;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\Training;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use OpenApi\Annotations as OA;
 
 /**
  * @OA\Tag(
  *     name="Trainings",
  *     description="API Endpoints for managing trainings"
  * )
- *
  * @OA\Tag(
  *     name="Employee Trainings",
  *     description="API Endpoints for managing employee training records"
@@ -34,16 +33,20 @@ class EmployeeTrainingController extends Controller
      *     operationId="listTrainings",
      *     tags={"Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Trainings retrieved successfully"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Training"))
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
@@ -51,16 +54,17 @@ class EmployeeTrainingController extends Controller
     {
         try {
             $trainings = Training::all();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Trainings retrieved successfully',
-                'data' => $trainings
+                'data' => $trainings,
             ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve trainings',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -73,10 +77,13 @@ class EmployeeTrainingController extends Controller
      *     operationId="storeTraining",
      *     tags={"Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"title", "organizer", "start_date", "end_date"},
+     *
      *             @OA\Property(property="title", type="string", example="Leadership Training"),
      *             @OA\Property(property="organizer", type="string", example="HR Department"),
      *             @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
@@ -85,16 +92,20 @@ class EmployeeTrainingController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Training created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Training created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Training")
      *         )
      *     ),
+     *
      *     @OA\Response(response=422, description="Validation error"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -103,31 +114,32 @@ class EmployeeTrainingController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'title'       => 'required|string|max:200',
-                'organizer'   => 'required|string|max:100',
-                'start_date'  => 'required|date',
-                'end_date'    => 'required|date',
-                'created_by'  => 'nullable|string|max:100',
-                'updated_by'  => 'nullable|string|max:100'
+                'title' => 'required|string|max:200',
+                'organizer' => 'required|string|max:100',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date',
+                'created_by' => 'nullable|string|max:100',
+                'updated_by' => 'nullable|string|max:100',
             ]);
 
             $training = Training::create($validatedData);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Training created successfully',
-                'data' => $training
+                'data' => $training,
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create training',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -140,23 +152,29 @@ class EmployeeTrainingController extends Controller
      *     operationId="showTraining",
      *     tags={"Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the training to retrieve",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Training retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Training")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Training not found"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -165,22 +183,23 @@ class EmployeeTrainingController extends Controller
     {
         try {
             $training = Training::findOrFail($id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Training retrieved successfully',
-                'data' => $training
+                'data' => $training,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Training not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve training',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -193,16 +212,21 @@ class EmployeeTrainingController extends Controller
      *     operationId="updateTraining",
      *     tags={"Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the training to update",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="title", type="string", example="Updated Leadership Training"),
      *             @OA\Property(property="organizer", type="string", example="HR Department"),
      *             @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
@@ -211,16 +235,20 @@ class EmployeeTrainingController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Training updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Training updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/Training")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Training not found"),
      *     @OA\Response(response=422, description="Validation error"),
      *     @OA\Response(response=401, description="Unauthenticated")
@@ -232,37 +260,38 @@ class EmployeeTrainingController extends Controller
             $training = Training::findOrFail($id);
 
             $validatedData = $request->validate([
-                'title'       => 'sometimes|required|string|max:200',
-                'organizer'   => 'sometimes|required|string|max:100',
-                'start_date'  => 'sometimes|required|date',
-                'end_date'    => 'sometimes|required|date',
-                'created_by'  => 'nullable|string|max:100',
-                'updated_by'  => 'nullable|string|max:100'
+                'title' => 'sometimes|required|string|max:200',
+                'organizer' => 'sometimes|required|string|max:100',
+                'start_date' => 'sometimes|required|date',
+                'end_date' => 'sometimes|required|date',
+                'created_by' => 'nullable|string|max:100',
+                'updated_by' => 'nullable|string|max:100',
             ]);
 
             $training->update($validatedData);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Training updated successfully',
-                'data' => $training
+                'data' => $training,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Training not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update training',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -275,23 +304,29 @@ class EmployeeTrainingController extends Controller
      *     operationId="destroyTraining",
      *     tags={"Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the training to delete",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Training deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Training deleted successfully"),
      *             @OA\Property(property="data", type="null")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Training not found"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -301,26 +336,26 @@ class EmployeeTrainingController extends Controller
         try {
             $training = Training::findOrFail($id);
             $training->delete();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Training deleted successfully',
-                'data' => null
+                'data' => null,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Training not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete training',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
 
     // Employee Trainings Section
 
@@ -332,16 +367,20 @@ class EmployeeTrainingController extends Controller
      *     operationId="indexEmployeeTrainings",
      *     tags={"Employee Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee training records retrieved successfully"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeTraining"))
      *         )
      *     ),
+     *
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
      */
@@ -349,16 +388,17 @@ class EmployeeTrainingController extends Controller
     {
         try {
             $employeeTrainings = EmployeeTraining::with('training')->get();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee training records retrieved successfully',
-                'data' => $employeeTrainings
+                'data' => $employeeTrainings,
             ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employee training records',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -371,10 +411,13 @@ class EmployeeTrainingController extends Controller
      *     operationId="storeEmployeeTraining",
      *     tags={"Employee Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"employee_id", "training_id", "status"},
+     *
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="training_id", type="integer", example=1),
      *             @OA\Property(property="status", type="string", example="Completed"),
@@ -382,16 +425,20 @@ class EmployeeTrainingController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Employee training record created successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee training record created successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
      *         )
      *     ),
+     *
      *     @OA\Response(response=422, description="Validation error"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -402,28 +449,29 @@ class EmployeeTrainingController extends Controller
             $validatedData = $request->validate([
                 'employee_id' => 'required|integer',
                 'training_id' => 'required|integer|exists:trainings,id',
-                'status'      => 'required|string|max:50',
-                'created_by'  => 'nullable|string|max:100',
-                'updated_by'  => 'nullable|string|max:100'
+                'status' => 'required|string|max:50',
+                'created_by' => 'nullable|string|max:100',
+                'updated_by' => 'nullable|string|max:100',
             ]);
 
             $employeeTraining = EmployeeTraining::create($validatedData);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee training record created successfully',
-                'data' => $employeeTraining
+                'data' => $employeeTraining,
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee training record',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -436,23 +484,29 @@ class EmployeeTrainingController extends Controller
      *     operationId="showEmployeeTraining",
      *     tags={"Employee Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee training record to retrieve",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee training record retrieved successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Employee training record not found"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -461,22 +515,23 @@ class EmployeeTrainingController extends Controller
     {
         try {
             $employeeTraining = EmployeeTraining::with('training')->findOrFail($id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee training record retrieved successfully',
-                'data' => $employeeTraining
+                'data' => $employeeTraining,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee training record not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve employee training record',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -489,16 +544,21 @@ class EmployeeTrainingController extends Controller
      *     operationId="updateEmployeeTraining",
      *     tags={"Employee Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee training record to update",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="employee_id", type="integer", example=1),
      *             @OA\Property(property="training_id", type="integer", example=1),
      *             @OA\Property(property="status", type="string", example="In Progress"),
@@ -506,16 +566,20 @@ class EmployeeTrainingController extends Controller
      *             @OA\Property(property="updated_by", type="string", example="admin")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee training record updated successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee training record updated successfully"),
      *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Employee training record not found"),
      *     @OA\Response(response=422, description="Validation error"),
      *     @OA\Response(response=401, description="Unauthenticated")
@@ -529,34 +593,35 @@ class EmployeeTrainingController extends Controller
             $validatedData = $request->validate([
                 'employee_id' => 'sometimes|required|integer',
                 'training_id' => 'sometimes|required|integer|exists:trainings,id',
-                'status'      => 'sometimes|required|string|max:50',
-                'created_by'  => 'nullable|string|max:100',
-                'updated_by'  => 'nullable|string|max:100'
+                'status' => 'sometimes|required|string|max:50',
+                'created_by' => 'nullable|string|max:100',
+                'updated_by' => 'nullable|string|max:100',
             ]);
 
             $employeeTraining->update($validatedData);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee training record updated successfully',
-                'data' => $employeeTraining
+                'data' => $employeeTraining,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee training record not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee training record',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -569,23 +634,29 @@ class EmployeeTrainingController extends Controller
      *     operationId="destroyEmployeeTraining",
      *     tags={"Employee Trainings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         description="ID of the employee training record to delete",
      *         required=true,
+     *
      *         @OA\Schema(type="integer", format="int64")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Employee training record deleted successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employee training record deleted successfully"),
      *             @OA\Property(property="data", type="null")
      *         )
      *     ),
+     *
      *     @OA\Response(response=404, description="Employee training record not found"),
      *     @OA\Response(response=401, description="Unauthenticated")
      * )
@@ -595,22 +666,23 @@ class EmployeeTrainingController extends Controller
         try {
             $employeeTraining = EmployeeTraining::findOrFail($id);
             $employeeTraining->delete();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee training record deleted successfully',
-                'data' => null
+                'data' => null,
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee training record not found',
-                'error' => 'Resource with ID ' . $id . ' not found'
+                'error' => 'Resource with ID '.$id.' not found',
             ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete employee training record',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

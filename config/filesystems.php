@@ -61,17 +61,14 @@ return [
         ],
 
         'laravel_cloud' => [
-        'driver' => 's3',
-        'key' => env('LARAVEL_CLOUD_ACCESS_KEY'),
-        'secret' => env('LARAVEL_CLOUD_SECRET_KEY'),
-        'region' => env('LARAVEL_CLOUD_REGION', 'us-east-1'),
-        'bucket' => env('LARAVEL_CLOUD_BUCKET'),
-        'endpoint' => env('LARAVEL_CLOUD_ENDPOINT'), // if Laravel Cloud provides a custom endpoint
-        'visibility' => 'public',
-        ], 
-
-
-
+            'driver' => 's3',
+            'key' => env('LARAVEL_CLOUD_ACCESS_KEY'),
+            'secret' => env('LARAVEL_CLOUD_SECRET_KEY'),
+            'region' => env('LARAVEL_CLOUD_REGION', 'us-east-1'),
+            'bucket' => env('LARAVEL_CLOUD_BUCKET'),
+            'endpoint' => env('LARAVEL_CLOUD_ENDPOINT'), // if Laravel Cloud provides a custom endpoint
+            'visibility' => 'public',
+        ],
 
     ],
 

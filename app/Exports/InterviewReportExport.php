@@ -4,25 +4,26 @@ namespace App\Exports;
 
 use App\Models\Interview;
 use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 
-class InterviewReportExport implements FromQuery, WithMapping, WithHeadings, ShouldAutoSize
+class InterviewReportExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping
 {
     protected $start;
+
     protected $end;
 
     public function __construct($startDate, $endDate)
     {
         $this->start = $startDate;
-        $this->end   = $endDate;
+        $this->end = $endDate;
     }
 
     public function query()
     {
         return Interview::whereBetween('created_at', [$this->start, $this->end])
-                        ->orderBy('created_at');
+            ->orderBy('created_at');
     }
 
     public function map($interview): array

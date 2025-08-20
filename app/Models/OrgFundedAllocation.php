@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  *     type="object",
  *     title="Organization Funded Allocation",
  *     description="Organization funded allocation model",
+ *
  *     @OA\Property(property="id", type="integer", description="Unique identifier"),
  *     @OA\Property(property="grant_id", type="integer", description="Grant ID"),
  *     @OA\Property(property="department_position_id", type="integer", description="Department position ID"),

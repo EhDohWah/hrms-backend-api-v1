@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
  *     schema="PayrollGrantAllocationResource",
  *     title="Payroll Grant Allocation Resource",
  *     description="Payroll Grant Allocation resource representation",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="payroll_id", type="integer", example=1),
  *     @OA\Property(property="grant_id", type="integer", example=1),

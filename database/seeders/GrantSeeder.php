@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Grant;
+use Illuminate\Database\Seeder;
 
 class GrantSeeder extends Seeder
 {
@@ -15,7 +14,7 @@ class GrantSeeder extends Seeder
     {
         // Note: The migration already creates 2 default hub grants (S0031 and S22001)
         // We'll create additional diverse grants for testing
-        
+
         // Create Active Research Grants for SMRU (8 grants)
         Grant::factory()
             ->count(4)
@@ -60,7 +59,7 @@ class GrantSeeder extends Seeder
             ->permanent()
             ->create();
 
-        // Create Expired Grants (8 grants) 
+        // Create Expired Grants (8 grants)
         Grant::factory()
             ->count(3)
             ->forSubsidiary('SMRU')
@@ -107,11 +106,11 @@ class GrantSeeder extends Seeder
         // Display summary
         $this->command->info('Grant seeding completed!');
         $this->command->info('Summary:');
-        $this->command->info('- Total Active Grants: ' . Grant::active()->count());
-        $this->command->info('- Total Expired Grants: ' . Grant::expired()->count());
-        $this->command->info('- Total Ending Soon: ' . Grant::endingSoon()->count());
-        $this->command->info('- Total Grants: ' . Grant::count());
-        
+        $this->command->info('- Total Active Grants: '.Grant::active()->count());
+        $this->command->info('- Total Expired Grants: '.Grant::expired()->count());
+        $this->command->info('- Total Ending Soon: '.Grant::endingSoon()->count());
+        $this->command->info('- Total Grants: '.Grant::count());
+
         // Show grants by subsidiary
         $this->command->info('');
         $this->command->info('Grants by Subsidiary:');
@@ -119,7 +118,7 @@ class GrantSeeder extends Seeder
             ->groupBy('subsidiary')
             ->orderBy('subsidiary')
             ->get();
-            
+
         foreach ($subsidiaryStats as $stat) {
             $this->command->info("- {$stat->subsidiary}: {$stat->count} grants");
         }

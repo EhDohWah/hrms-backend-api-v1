@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -20,7 +18,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'MRM',
@@ -28,7 +26,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'WPA',
@@ -36,7 +34,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'KKH',
@@ -44,7 +42,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'TB-MRM',
@@ -52,7 +50,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'TB-KK',
@@ -60,7 +58,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'MKT',
@@ -68,7 +66,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'MSL',
@@ -76,7 +74,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
             [
                 'name' => 'Mutraw',
@@ -84,7 +82,7 @@ return new class extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'Migration',
-                'updated_by' => 'Migration'
+                'updated_by' => 'Migration',
             ],
         ]);
     }
@@ -99,7 +97,7 @@ return new class extends Migration
         DB::table('work_locations')
             ->whereIn('name', [
                 'Expat', 'MRM', 'WPA', 'KKH', 'TB-MRM', 'TB-KK',
-                'MKT', 'MSL', 'Mutraw'
+                'MKT', 'MSL', 'Mutraw',
             ])
             ->where('created_by', 'Migration')
             ->delete();

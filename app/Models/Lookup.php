@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  *     schema="Lookup",
  *     title="Lookup",
  *     description="Lookup model for various system reference data",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", description="Lookup ID"),
  *     @OA\Property(property="type", type="string", description="Type of lookup (gender, subsidiary, etc.)"),
  *     @OA\Property(property="value", type="string", description="Display value"),
@@ -29,13 +30,12 @@ class Lookup extends Model
         'type',
         'value',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
      * Get lookup values by type
      *
-     * @param string $type
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public static function getByType(string $type)

@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeChild",
  *     title="Employee Child",
  *     description="Employee Child model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="John Doe"),
@@ -29,7 +30,7 @@ class EmployeeChild extends Model
         'name',
         'date_of_birth',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function employee()

@@ -16,10 +16,13 @@ class PayrollGrantAllocationController extends Controller
      *     summary="Get all payroll grant allocations",
      *     tags={"Payroll Grant Allocations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/PayrollGrantAllocationResource"))
      *         )
@@ -29,9 +32,10 @@ class PayrollGrantAllocationController extends Controller
     public function index()
     {
         $items = PayrollGrantAllocation::with('employeeGrantAllocation')->get();
+
         return response()->json([
             'success' => true,
-            'data'    => PayrollGrantAllocationResource::collection($items)
+            'data' => PayrollGrantAllocationResource::collection($items),
         ]);
     }
 
@@ -41,14 +45,19 @@ class PayrollGrantAllocationController extends Controller
      *     summary="Create a new payroll grant allocation",
      *     tags={"Payroll Grant Allocations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/StorePayrollGrantAllocationRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Created",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Allocation created."),
      *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
@@ -59,13 +68,14 @@ class PayrollGrantAllocationController extends Controller
     public function store(StorePayrollGrantAllocationRequest $request)
     {
         $data = $request->validated() + [
-          'created_by' => auth()->user()->username ?? null
+            'created_by' => auth()->user()->username ?? null,
         ];
         $item = PayrollGrantAllocation::create($data);
+
         return response()->json([
             'success' => true,
             'message' => 'Allocation created.',
-            'data'    => new PayrollGrantAllocationResource($item->load('employeeGrantAllocation'))
+            'data' => new PayrollGrantAllocationResource($item->load('employeeGrantAllocation')),
         ], 201);
     }
 
@@ -75,20 +85,26 @@ class PayrollGrantAllocationController extends Controller
      *     summary="Get a specific payroll grant allocation",
      *     tags={"Payroll Grant Allocations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -98,9 +114,10 @@ class PayrollGrantAllocationController extends Controller
     public function show($id)
     {
         $item = PayrollGrantAllocation::with('employeeGrantAllocation')->findOrFail($id);
+
         return response()->json([
             'success' => true,
-            'data'    => new PayrollGrantAllocationResource($item)
+            'data' => new PayrollGrantAllocationResource($item),
         ]);
     }
 
@@ -110,25 +127,33 @@ class PayrollGrantAllocationController extends Controller
      *     summary="Update a payroll grant allocation",
      *     tags={"Payroll Grant Allocations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/UpdatePayrollGrantAllocationRequest")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Allocation updated."),
      *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -139,12 +164,13 @@ class PayrollGrantAllocationController extends Controller
     {
         $item = PayrollGrantAllocation::findOrFail($id);
         $item->update($request->validated() + [
-          'updated_by' => auth()->user()->username ?? null
+            'updated_by' => auth()->user()->username ?? null,
         ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Allocation updated.',
-            'data'    => new PayrollGrantAllocationResource($item->load('employeeGrantAllocation'))
+            'data' => new PayrollGrantAllocationResource($item->load('employeeGrantAllocation')),
         ]);
     }
 
@@ -154,20 +180,26 @@ class PayrollGrantAllocationController extends Controller
      *     summary="Delete a payroll grant allocation",
      *     tags={"Payroll Grant Allocations"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Success",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Allocation deleted.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Not Found"
@@ -178,9 +210,10 @@ class PayrollGrantAllocationController extends Controller
     {
         $item = PayrollGrantAllocation::findOrFail($id);
         $item->delete();
+
         return response()->json([
             'success' => true,
-            'message' => 'Allocation deleted.'
+            'message' => 'Allocation deleted.',
         ]);
     }
 }

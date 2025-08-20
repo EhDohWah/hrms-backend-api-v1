@@ -9,7 +9,7 @@ class Subsidiary extends Model
     protected $fillable = [
         'code',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function grants()

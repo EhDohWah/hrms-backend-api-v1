@@ -21,16 +21,17 @@ class TaxSettingResource extends JsonResource
             'setting_type' => $this->setting_type,
             'description' => $this->description,
             'effective_year' => $this->effective_year,
-            'is_active' => $this->is_active,
+            'is_selected' => $this->is_selected,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Computed attributes
             'formatted_value' => $this->getFormattedValue(),
             'setting_category' => $this->getSettingCategory(),
-            
+            'status' => $this->is_selected ? 'enabled' : 'disabled',
+
             // Conditional attributes
             'can_edit' => $this->when($request->user()?->can('tax.update'), true),
             'can_delete' => $this->when($request->user()?->can('tax.delete'), true),
@@ -44,10 +45,10 @@ class TaxSettingResource extends JsonResource
     {
         switch ($this->setting_type) {
             case 'RATE':
-                return $this->setting_value . '%';
+                return $this->setting_value.'%';
             case 'DEDUCTION':
             case 'LIMIT':
-                return '฿' . number_format($this->setting_value, 2);
+                return '฿'.number_format($this->setting_value, 2);
             default:
                 return (string) $this->setting_value;
         }

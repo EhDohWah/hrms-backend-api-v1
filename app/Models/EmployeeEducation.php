@@ -10,6 +10,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeEducation",
  *     title="Employee Education",
  *     description="Employee Education model",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="school_name", type="string", example="Harvard University"),
@@ -31,7 +32,7 @@ class EmployeeEducation extends Model
         'start_date',
         'end_date',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function employee()

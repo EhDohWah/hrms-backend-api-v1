@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\BudgetLine;
+use Illuminate\Database\Seeder;
 
 class BudgetLineSeeder extends Seeder
 {
@@ -220,14 +219,14 @@ class BudgetLineSeeder extends Seeder
         // Display summary
         $this->command->info('Budget Line seeding completed!');
         $this->command->info('Summary:');
-        $this->command->info('- New Budget Lines Created: ' . $createdCount);
-        $this->command->info('- Existing Budget Lines Skipped: ' . $skippedCount);
-        $this->command->info('- Total Budget Lines in Database: ' . BudgetLine::count());
-        
+        $this->command->info('- New Budget Lines Created: '.$createdCount);
+        $this->command->info('- Existing Budget Lines Skipped: '.$skippedCount);
+        $this->command->info('- Total Budget Lines in Database: '.BudgetLine::count());
+
         // Show budget lines by category
         $this->command->info('');
         $this->command->info('Budget Lines by Category:');
-        
+
         $categories = [
             'RD' => 'Research & Development',
             'AS' => 'Administrative & Support',
@@ -238,9 +237,9 @@ class BudgetLineSeeder extends Seeder
             'EC' => 'Emergency & Contingency',
             'BL' => 'Legacy Operations',
         ];
-        
+
         foreach ($categories as $prefix => $categoryName) {
-            $count = BudgetLine::where('budget_line_code', 'LIKE', $prefix . '%')->count();
+            $count = BudgetLine::where('budget_line_code', 'LIKE', $prefix.'%')->count();
             $this->command->info("- {$categoryName}: {$count} budget lines");
         }
 

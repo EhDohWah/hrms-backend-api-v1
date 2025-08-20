@@ -3,19 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Employment;
-use App\Models\Employee;
-use App\Models\EmploymentType;
-use App\Models\Position;
-use App\Models\Department;
-use App\Models\WorkLocation;
-use App\Models\GrantItem;
 
 /**
  * @OA\Schema(
  *     schema="EmploymentHistory",
  *     required={"employment_id", "employee_id", "employment_type_id", "start_date", "position_id", "department_id", "work_location_id", "position_salary"},
+ *
  *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
  *     @OA\Property(property="employment_id", type="integer", format="int64"),
  *     @OA\Property(property="employee_id", type="integer", format="int64"),
@@ -63,7 +56,7 @@ class EmploymentHistory extends Model
         'pvd',
         'saving_fund',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function employment()

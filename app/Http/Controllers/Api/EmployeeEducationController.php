@@ -7,7 +7,6 @@ use App\Http\Requests\StoreEmployeeEducationRequest;
 use App\Http\Requests\UpdateEmployeeEducationRequest;
 use App\Http\Resources\EmployeeEducationResource;
 use App\Models\EmployeeEducation;
-use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
 /**
@@ -26,11 +25,14 @@ class EmployeeEducationController extends Controller
      *     tags={"Employee Education"},
      *     summary="Get list of employee education records",
      *     description="Returns list of employee education records",
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(
      *             type="array",
+     *
      *             @OA\Items(ref="#/components/schemas/EmployeeEducation")
      *         )
      *     )
@@ -49,15 +51,20 @@ class EmployeeEducationController extends Controller
      *     tags={"Employee Education"},
      *     summary="Store new employee education record",
      *     description="Stores a new employee education record and returns it",
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
      *     ),
+     *
      *     @OA\Response(
      *         response=201,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error"
@@ -67,6 +74,7 @@ class EmployeeEducationController extends Controller
     public function store(StoreEmployeeEducationRequest $request)
     {
         $employeeEducation = EmployeeEducation::create($request->validated());
+
         return new EmployeeEducationResource($employeeEducation);
     }
 
@@ -78,18 +86,23 @@ class EmployeeEducationController extends Controller
      *     tags={"Employee Education"},
      *     summary="Get employee education record by ID",
      *     description="Returns a single employee education record",
+     *
      *     @OA\Parameter(
      *         name="id",
      *         description="Employee education ID",
      *         required=true,
      *         in="path",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Record not found"
@@ -109,22 +122,29 @@ class EmployeeEducationController extends Controller
      *     tags={"Employee Education"},
      *     summary="Update employee education record",
      *     description="Updates an employee education record and returns it",
+     *
      *     @OA\Parameter(
      *         name="id",
      *         description="Employee education ID",
      *         required=true,
      *         in="path",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Successful operation",
+     *
      *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Record not found"
@@ -138,6 +158,7 @@ class EmployeeEducationController extends Controller
     public function update(UpdateEmployeeEducationRequest $request, EmployeeEducation $employeeEducation)
     {
         $employeeEducation->update($request->validated());
+
         return new EmployeeEducationResource($employeeEducation);
     }
 
@@ -149,13 +170,16 @@ class EmployeeEducationController extends Controller
      *     tags={"Employee Education"},
      *     summary="Delete employee education record",
      *     description="Deletes an employee education record",
+     *
      *     @OA\Parameter(
      *         name="id",
      *         description="Employee education ID",
      *         required=true,
      *         in="path",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=204,
      *         description="Successful operation"
@@ -169,6 +193,7 @@ class EmployeeEducationController extends Controller
     public function destroy(EmployeeEducation $employeeEducation)
     {
         $employeeEducation->delete();
+
         return response()->json(null, 204);
     }
 }

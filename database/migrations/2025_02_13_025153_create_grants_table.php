@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -37,34 +37,30 @@ return new class extends Migration
     {
         // Insert default grants
         $smruGrant = DB::table('grants')->insertGetId([
-            'code'         => 'S0031',
-            'name'         => 'Other Fund',
-            'subsidiary'   => 'SMRU',
-            'description'  => "SMRU's hub grant",
-            'end_date'     => null,
-            'created_at'   => now(),
-            'updated_at'   => now(),
-            'created_by'   => 'system',
-            'updated_by'   => 'system',
+            'code' => 'S0031',
+            'name' => 'Other Fund',
+            'subsidiary' => 'SMRU',
+            'description' => "SMRU's hub grant",
+            'end_date' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+            'created_by' => 'system',
+            'updated_by' => 'system',
         ]);
 
         $bhfGrant = DB::table('grants')->insertGetId([
-            'code'         => 'S22001',
-            'name'         => 'General Fund',
-            'subsidiary'   => 'BHF',
-            'description'  => "BHF's hub grant",
-            'end_date'     => null,
-            'created_at'   => now(),
-            'updated_at'   => now(),
-            'created_by'   => 'system',
-            'updated_by'   => 'system',
+            'code' => 'S22001',
+            'name' => 'General Fund',
+            'subsidiary' => 'BHF',
+            'description' => "BHF's hub grant",
+            'end_date' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+            'created_by' => 'system',
+            'updated_by' => 'system',
         ]);
 
     }
-
-
-
-
 
     /**
      * Reverse the migrations.

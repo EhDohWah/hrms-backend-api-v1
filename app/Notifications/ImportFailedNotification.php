@@ -4,10 +4,9 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
-use Illuminate\Support\Str;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class ImportFailedNotification extends Notification implements ShouldQueue
 {
@@ -15,7 +14,9 @@ class ImportFailedNotification extends Notification implements ShouldQueue
 
     // public $importId;
     public $message;
+
     public $errorDetails;
+
     public $importId;
 
     /**
@@ -48,8 +49,8 @@ class ImportFailedNotification extends Notification implements ShouldQueue
             ->error()
             ->subject('Import Failed')
             ->line($this->message)
-            ->line($this->importId ? 'Import ID: ' . $this->importId : '')
-            ->line($this->errorDetails ? 'Error Details: ' . $this->errorDetails : '')
+            ->line($this->importId ? 'Import ID: '.$this->importId : '')
+            ->line($this->errorDetails ? 'Error Details: '.$this->errorDetails : '')
             ->action('Review Imports', url('/imports'))
             ->line('Please address the issue and try again.');
     }
@@ -77,7 +78,6 @@ class ImportFailedNotification extends Notification implements ShouldQueue
             'failed_at' => now()->toDateTimeString(),
         ]);
     }
-
 
     /**
      * Get the array representation of the notification.

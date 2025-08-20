@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
  *     schema="LetterTemplate",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="title", type="string", maxLength=200, nullable=true),
  *     @OA\Property(property="content", type="string", nullable=true),

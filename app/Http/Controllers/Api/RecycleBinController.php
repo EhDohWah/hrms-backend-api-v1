@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\UniversalRestoreService;
-use App\Models\DeletedModel;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * @OA\Tag(
@@ -31,15 +30,20 @@ class RecycleBinController extends Controller
      *     description="Retrieve all deleted records from the deleted_models table",
      *     security={{"bearerAuth":{}}},
      *     tags={"Recycle Bin"},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="All deleted records retrieved",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
+     *
      *                 @OA\Items(
+     *
      *                     @OA\Property(property="deleted_record_id", type="integer", example=1),
      *                     @OA\Property(property="model_class", type="string", example="App\\Models\\Interview"),
      *                     @OA\Property(property="model_type", type="string", example="Interview"),
@@ -65,12 +69,12 @@ class RecycleBinController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $deletedRecords,
-                'total_count' => count($deletedRecords)
+                'total_count' => count($deletedRecords),
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve deleted records: ' . $e->getMessage()
+                'message' => 'Failed to retrieve deleted records: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -82,28 +86,37 @@ class RecycleBinController extends Controller
      *     description="Restore any model dynamically by specifying the model class and original ID",
      *     tags={"Recycle Bin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             oneOf={
+     *
      *                 @OA\Schema(
      *                     title="Restore by Model Class and ID (Dynamic)",
+     *
      *                     @OA\Property(property="model_class", type="string", example="App\\Models\\Interview", description="Full model class name from deleted_models table"),
      *                     @OA\Property(property="original_id", type="integer", example=5, description="Original record ID"),
      *                     required={"model_class", "original_id"}
      *                 ),
+     *
      *                 @OA\Schema(
      *                     title="Restore by Deleted Record ID",
+     *
      *                     @OA\Property(property="deleted_record_id", type="integer", example=1, description="ID from deleted_models table"),
      *                     required={"deleted_record_id"}
      *                 )
      *             }
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Record restored successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Record restored successfully"),
      *             @OA\Property(
@@ -115,10 +128,13 @@ class RecycleBinController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Restoration failed",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="No deleted record found for App\\Models\\Interview with ID 5")
      *         )
@@ -131,7 +147,7 @@ class RecycleBinController extends Controller
         $request->validate([
             'model_class' => 'required_without:deleted_record_id|string',
             'original_id' => 'required_without:deleted_record_id|integer',
-            'deleted_record_id' => 'required_without_all:model_class,original_id|integer|exists:deleted_models,id'
+            'deleted_record_id' => 'required_without_all:model_class,original_id|integer|exists:deleted_models,id',
         ]);
 
         try {
@@ -152,13 +168,13 @@ class RecycleBinController extends Controller
                 'restored_record' => [
                     'id' => $restoredModel->id,
                     'model_class' => get_class($restoredModel),
-                    'model_type' => class_basename(get_class($restoredModel))
-                ]
+                    'model_type' => class_basename(get_class($restoredModel)),
+                ],
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 422);
         }
     }
@@ -170,20 +186,28 @@ class RecycleBinController extends Controller
      *     description="Restore multiple records from different models dynamically",
      *     tags={"Recycle Bin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(
      *                 property="restore_requests",
      *                 type="array",
      *                 description="Array of restore requests for different models",
+     *
      *                 @OA\Items(
      *                     oneOf={
+     *
      *                         @OA\Schema(
+     *
      *                             @OA\Property(property="model_class", type="string", example="App\\Models\\Interview"),
      *                             @OA\Property(property="original_id", type="integer", example=5)
      *                         ),
+     *
      *                         @OA\Schema(
+     *
      *                             @OA\Property(property="deleted_record_id", type="integer", example=1)
      *                         )
      *                     }
@@ -191,6 +215,7 @@ class RecycleBinController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(response=200, description="Bulk restore completed")
      * )
      */
@@ -200,25 +225,25 @@ class RecycleBinController extends Controller
             'restore_requests' => 'required|array',
             'restore_requests.*.model_class' => 'required_without:restore_requests.*.deleted_record_id|string',
             'restore_requests.*.original_id' => 'required_without:restore_requests.*.deleted_record_id|integer',
-            'restore_requests.*.deleted_record_id' => 'required_without_all:restore_requests.*.model_class,restore_requests.*.original_id|integer|exists:deleted_models,id'
+            'restore_requests.*.deleted_record_id' => 'required_without_all:restore_requests.*.model_class,restore_requests.*.original_id|integer|exists:deleted_models,id',
         ]);
 
         try {
             $results = $this->restoreService->bulkRestore($request->restore_requests);
-            
-            $successCount = count(array_filter($results, fn($r) => $r['success']));
+
+            $successCount = count(array_filter($results, fn ($r) => $r['success']));
             $failureCount = count($results) - $successCount;
-            
+
             return response()->json([
                 'success' => true,
-                'message' => "Restored {$successCount} records successfully" . 
-                           ($failureCount > 0 ? ", {$failureCount} failed" : ""),
-                'results' => $results
+                'message' => "Restored {$successCount} records successfully".
+                           ($failureCount > 0 ? ", {$failureCount} failed" : ''),
+                'results' => $results,
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bulk restore failed: ' . $e->getMessage()
+                'message' => 'Bulk restore failed: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -229,11 +254,14 @@ class RecycleBinController extends Controller
      *     summary="Get recycle bin statistics",
      *     tags={"Recycle Bin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Recycle bin statistics retrieved successfully",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(
      *                 property="stats",
@@ -247,11 +275,14 @@ class RecycleBinController extends Controller
      *             )
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Failed to load statistics",
+     *
      *         @OA\JsonContent(
      *             type="object",
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to load statistics")
      *         )
@@ -262,15 +293,15 @@ class RecycleBinController extends Controller
     {
         try {
             $stats = $this->restoreService->getRecycleBinStats();
-            
+
             return response()->json([
                 'success' => true,
-                'stats' => $stats
+                'stats' => $stats,
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load statistics'
+                'message' => 'Failed to load statistics',
             ], 422);
         }
     }
@@ -281,25 +312,33 @@ class RecycleBinController extends Controller
      *     summary="Permanently delete a record",
      *     tags={"Recycle Bin"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="deletedRecordId",
      *         in="path",
      *         required=true,
      *         description="ID of the deleted record to permanently delete",
+     *
      *         @OA\Schema(type="integer", example=1)
-     *     ), 
+     *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Record permanently deleted successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Record permanently deleted")
      *         )
-     *     ), 
+     *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Failed to permanently delete record",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to permanently delete record: Record not found")
      *         )
@@ -310,15 +349,15 @@ class RecycleBinController extends Controller
     {
         try {
             $this->restoreService->permanentlyDelete($deletedRecordId);
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'Record permanently deleted'
+                'message' => 'Record permanently deleted',
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to permanently delete record: ' . $e->getMessage()
+                'message' => 'Failed to permanently delete record: '.$e->getMessage(),
             ], 422);
         }
     }

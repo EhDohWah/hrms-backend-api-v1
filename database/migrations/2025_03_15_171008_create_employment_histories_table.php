@@ -38,7 +38,6 @@ return new class extends Migration
             $table->json('previous_values')->nullable(); // Optional - previous values before change
             $table->text('notes')->nullable(); // Optional - additional notes
 
-            
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();

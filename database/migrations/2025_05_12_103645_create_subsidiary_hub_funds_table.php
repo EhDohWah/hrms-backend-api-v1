@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('subsidiary', 5)->unique();
             $table->foreignId('hub_grant_id')
-                  ->constrained('grants');
+                ->constrained('grants');
             $table->timestamps();
-            $table->string('created_by',100)->nullable();
-            $table->string('updated_by',100)->nullable();
+            $table->string('created_by', 100)->nullable();
+            $table->string('updated_by', 100)->nullable();
         });
     }
 

@@ -9,6 +9,7 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="LeaveBalance",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="employee_id", type="integer"),
  *     @OA\Property(property="leave_type_id", type="integer"),

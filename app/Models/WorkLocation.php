@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Employment;
+use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
  *     schema="WorkLocation",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer"),
  *     @OA\Property(property="name", type="string"),
  *     @OA\Property(property="type", type="string"),
@@ -28,7 +28,7 @@ class WorkLocation extends Model
         'name',
         'type',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function employments()

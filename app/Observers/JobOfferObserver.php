@@ -21,7 +21,6 @@ class JobOfferObserver
         $jobOffer->custom_offer_id = "{$date}-{$prefix}-{$sequence}";
     }
 
-
     /**
      * Handle the JobOffer "created" event.
      */

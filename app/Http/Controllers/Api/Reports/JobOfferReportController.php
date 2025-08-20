@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Api\Reports;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\JobOffer;
-use PDF;
-use Carbon\Carbon;
 use App\Http\Requests\JobOfferReportRequest;
+use App\Models\JobOffer;
+use Carbon\Carbon;
 use OpenApi\Annotations as OA;
-use Dompdf\Options;
+use PDF;
 
 /**
  * @OA\Tag(
@@ -31,33 +29,45 @@ class JobOfferReportController extends Controller
      *     operationId="exportJobOfferReportPdf",
      *     tags={"Job Offer Reports"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\RequestBody(
      *         required=true,
+     *
      *         @OA\JsonContent(
      *             required={"start_date", "end_date"},
+     *
      *             @OA\Property(property="start_date", type="string", format="date", example="2025-04-02", description="Start date in format YYYY-MM-DD"),
      *             @OA\Property(property="end_date", type="string", format="date", example="2025-04-31", description="End date in format YYYY-MM-DD")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="PDF generated successfully",
+     *
      *         @OA\MediaType(
      *             mediaType="application/pdf",
+     *
      *             @OA\Schema(type="string", format="binary")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=422,
      *         description="Validation error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="error", type="string", example="Invalid date format.")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=500,
      *         description="Server error",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="error", type="string", example="Failed to generate PDF")
      *         )
      *     )
@@ -95,12 +105,12 @@ class JobOfferReportController extends Controller
         $pdf->getDomPDF()->setOptions($options);
 
         // Generate a filename based on the date range
-        $filename = 'job_offer_report_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'job_offer_report_'.now()->format('YmdHis').'.pdf';
 
         // Return the PDF as a download with cache control headers
         return $pdf->download($filename)
-                   ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                   ->header('Pragma', 'no-cache')
-                   ->header('Expires', '0');
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }
