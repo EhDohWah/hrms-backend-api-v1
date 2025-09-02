@@ -1,25 +1,27 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PayrollGrantAllocationController;
-use App\Http\Controllers\Api\InterSubsidiaryAdvanceController;
 use App\Http\Controllers\Api\TaxBracketController;
-use App\Http\Controllers\Api\TaxSettingController;
 use App\Http\Controllers\Api\TaxCalculationController;
+use App\Http\Controllers\Api\TaxSettingController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     // Payroll routes (use middleware permission:read payrolls)
     Route::prefix('payrolls')->group(function () {
         Route::get('/', [PayrollController::class, 'index'])->middleware('permission:payroll.read');
+        Route::get('/search', [PayrollController::class, 'search'])->middleware('permission:payroll.read');
         Route::get('/employee-employment', [PayrollController::class, 'getEmployeeEmploymentDetail'])->middleware('permission:payroll.read');
         Route::get('/employee-employment-calculated', [PayrollController::class, 'getEmployeeEmploymentDetailWithCalculations'])->middleware('permission:payroll.read');
+        Route::get('/preview-advances', [PayrollController::class, 'previewAdvances'])->middleware('permission:payroll.read');
         Route::get('/tax-summary/{id}', [PayrollController::class, 'getTaxSummary'])->middleware('permission:payroll.read');
         Route::get('/{id}', [PayrollController::class, 'show'])->middleware('permission:payroll.read');
         Route::post('/', [PayrollController::class, 'store'])->middleware('permission:payroll.create');
         Route::put('/{id}', [PayrollController::class, 'update'])->middleware('permission:payroll.update');
         Route::delete('/{id}', [PayrollController::class, 'destroy'])->middleware('permission:payroll.delete');
-        
+
         // New automated tax calculation routes
         Route::post('/calculate', [PayrollController::class, 'calculatePayroll'])->middleware('permission:payroll.read');
         Route::post('/bulk-calculate', [PayrollController::class, 'bulkCalculatePayroll'])->middleware('permission:payroll.create');
@@ -46,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tax Bracket routes (admin and payroll permissions)
     Route::prefix('tax-brackets')->group(function () {
         Route::get('/', [TaxBracketController::class, 'index'])->middleware('permission:tax.read');
+        Route::get('/search', [TaxBracketController::class, 'search'])->middleware('permission:tax.read');
         Route::post('/', [TaxBracketController::class, 'store'])->middleware('permission:tax.create');
         Route::get('/{id}', [TaxBracketController::class, 'show'])->middleware('permission:tax.read');
         Route::put('/{id}', [TaxBracketController::class, 'update'])->middleware('permission:tax.update');
@@ -72,7 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/income-tax', [TaxCalculationController::class, 'calculateIncomeTax'])->middleware('permission:tax.read');
         Route::post('/annual-summary', [TaxCalculationController::class, 'calculateAnnualSummary'])->middleware('permission:tax.read');
         Route::post('/validate-inputs', [TaxCalculationController::class, 'validateInputs'])->middleware('permission:tax.read');
-        
+
         // Thai compliance endpoints
         Route::post('/compliance-check', [TaxCalculationController::class, 'complianceCheck'])->middleware('permission:tax.read');
         Route::post('/thai-report', [TaxCalculationController::class, 'generateThaiReport'])->middleware('permission:tax.read');

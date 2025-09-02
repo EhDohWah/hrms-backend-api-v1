@@ -19,25 +19,72 @@ class TaxBracketController extends Controller
     /**
      * @OA\Get(
      *     path="/tax-brackets",
-     *     summary="Get all tax brackets",
-     *     description="Get a list of all tax brackets with optional filtering by year",
+     *     summary="Get all tax brackets with advanced filtering and pagination",
+     *     description="Get a paginated list of all tax brackets with advanced filtering, sorting, and search capabilities",
      *     tags={"Tax Brackets"},
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
-     *         name="year",
+     *         name="page",
      *         in="query",
-     *         description="Filter by effective year",
+     *         description="Page number for pagination",
+     *         required=false,
      *
-     *         @OA\Schema(type="integer", example=2025)
+     *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
      *
      *     @OA\Parameter(
-     *         name="active_only",
+     *         name="per_page",
      *         in="query",
-     *         description="Show only active brackets",
+     *         description="Number of items per page",
+     *         required=false,
      *
-     *         @OA\Schema(type="boolean", default=true)
+     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="filter_effective_year",
+     *         in="query",
+     *         description="Filter by effective year (comma-separated for multiple values)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", example="2024,2025")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="filter_is_active",
+     *         in="query",
+     *         description="Filter by is_active status",
+     *         required=false,
+     *
+     *         @OA\Schema(type="boolean", example=true)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="sort_by",
+     *         in="query",
+     *         description="Sort by field",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", enum={"effective_year", "bracket_order", "min_income", "max_income", "tax_rate"}, example="bracket_order")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="sort_order",
+     *         in="query",
+     *         description="Sort order",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search by bracket_order (exact match)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", example="1")
      *     ),
      *
      *     @OA\Response(
@@ -65,7 +112,44 @@ class TaxBracketController extends Controller
      *                     @OA\Property(property="income_range", type="string", example="฿0 - ฿150,000"),
      *                     @OA\Property(property="formatted_rate", type="string", example="0%")
      *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="pagination",
+     *                 type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=8),
+     *                 @OA\Property(property="last_page", type="integer", example=1),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="to", type="integer", example=8),
+     *                 @OA\Property(property="has_more_pages", type="boolean", example=false)
+     *             ),
+     *             @OA\Property(
+     *                 property="filters",
+     *                 type="object",
+     *                 @OA\Property(property="applied_filters", type="object",
+     *                     @OA\Property(property="effective_year", type="array", @OA\Items(type="integer"), example={2025}),
+     *                     @OA\Property(property="is_active", type="boolean", example=true)
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="meta",
+     *                 type="object",
+     *                 @OA\Property(property="total_count", type="integer", example=16),
+     *                 @OA\Property(property="filtered_count", type="integer", example=8)
      *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error - Invalid parameters provided",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     )
      * )
@@ -73,34 +157,306 @@ class TaxBracketController extends Controller
     public function index(Request $request)
     {
         try {
+            // Validate incoming parameters
+            $validated = $request->validate([
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_effective_year' => 'string|nullable',
+                'filter_is_active' => 'nullable|in:true,false,1,0',
+                'sort_by' => 'string|nullable|in:effective_year,bracket_order,min_income,max_income,tax_rate',
+                'sort_order' => 'string|nullable|in:asc,desc',
+                'search' => 'string|nullable',
+            ]);
+
+            // Determine page size
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
+
+            // Get total count before filtering for meta
+            $totalCount = TaxBracket::count();
+
+            // Build query
             $query = TaxBracket::query();
 
-            // Filter by year if provided
-            if ($request->has('year')) {
-                $query->forYear($request->year);
+            // Apply search filter (search by bracket_order - exact match)
+            if (! empty($validated['search'])) {
+                // Try to parse as integer for bracket_order search
+                if (is_numeric($validated['search'])) {
+                    $query->where('bracket_order', intval($validated['search']));
+                }
             }
 
-            // Filter by active status
-            if ($request->boolean('active_only', true)) {
-                $query->active();
+            // Apply effective year filter
+            if (! empty($validated['filter_effective_year'])) {
+                $years = explode(',', $validated['filter_effective_year']);
+                $years = array_map('intval', $years); // Convert to integers
+                $query->whereIn('effective_year', $years);
             }
 
-            $taxBrackets = $query->ordered()->get();
+            // Apply is_active filter
+            if (isset($validated['filter_is_active'])) {
+                $isActive = filter_var($validated['filter_is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($isActive !== null) {
+                    $query->where('is_active', $isActive);
+                }
+            }
 
-            // Add calculated attributes
-            $taxBrackets->each(function ($bracket) {
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'bracket_order';
+            $sortOrder = $validated['sort_order'] ?? 'asc';
+
+            if (in_array($sortBy, ['effective_year', 'bracket_order', 'min_income', 'max_income', 'tax_rate'])) {
+                $query->orderBy($sortBy, $sortOrder);
+                // Add secondary sort for consistency
+                if ($sortBy !== 'bracket_order') {
+                    $query->orderBy('bracket_order', 'asc');
+                }
+            } else {
+                $query->orderBy('bracket_order', 'asc');
+            }
+
+            // Execute pagination
+            $taxBrackets = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Add calculated attributes to each item
+            $taxBrackets->getCollection()->each(function ($bracket) {
                 $bracket->append(['income_range', 'formatted_rate']);
             });
+
+            // Build applied filters array
+            $appliedFilters = [];
+            if (! empty($validated['filter_effective_year'])) {
+                $appliedFilters['effective_year'] = array_map('intval', explode(',', $validated['filter_effective_year']));
+            }
+            if (isset($validated['filter_is_active'])) {
+                $appliedFilters['is_active'] = filter_var($validated['filter_is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tax brackets retrieved successfully',
-                'data' => $taxBrackets,
+                'data' => $taxBrackets->items(),
+                'pagination' => [
+                    'current_page' => $taxBrackets->currentPage(),
+                    'per_page' => $taxBrackets->perPage(),
+                    'total' => $taxBrackets->total(),
+                    'last_page' => $taxBrackets->lastPage(),
+                    'from' => $taxBrackets->firstItem(),
+                    'to' => $taxBrackets->lastItem(),
+                    'has_more_pages' => $taxBrackets->hasMorePages(),
+                ],
+                'filters' => [
+                    'applied_filters' => $appliedFilters,
+                ],
+                'meta' => [
+                    'total_count' => $totalCount,
+                    'filtered_count' => $taxBrackets->total(),
+                ],
             ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The given data was invalid.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve tax brackets',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/tax-brackets/search",
+     *     operationId="searchTaxBracketsByOrder",
+     *     summary="Search tax brackets by bracket order ID",
+     *     description="Returns all tax brackets matching the specified bracket order. Useful for finding specific tax brackets by their order in the progression.",
+     *     tags={"Tax Brackets"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="order_id",
+     *         in="query",
+     *         description="Bracket order ID to search for (exact match)",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer", example=1, minimum=1)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="effective_year",
+     *         in="query",
+     *         description="Filter by effective year (optional)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="integer", example=2025)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="is_active",
+     *         in="query",
+     *         description="Filter by active status (optional)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="boolean", example=true)
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Tax brackets found successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Tax brackets found successfully"),
+     *             @OA\Property(property="total_records", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="search_criteria",
+     *                 type="object",
+     *                 @OA\Property(property="order_id", type="integer", example=1),
+     *                 @OA\Property(property="effective_year", type="integer", example=2025),
+     *                 @OA\Property(property="is_active", type="boolean", example=true)
+     *             ),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="min_income", type="number", format="float", example=0),
+     *                     @OA\Property(property="max_income", type="number", format="float", example=150000),
+     *                     @OA\Property(property="tax_rate", type="number", format="float", example=0),
+     *                     @OA\Property(property="bracket_order", type="integer", example=1),
+     *                     @OA\Property(property="effective_year", type="integer", example=2025),
+     *                     @OA\Property(property="is_active", type="boolean", example=true),
+     *                     @OA\Property(property="description", type="string", example="Tax-free bracket"),
+     *                     @OA\Property(property="income_range", type="string", example="฿0 - ฿150,000"),
+     *                     @OA\Property(property="formatted_rate", type="string", example="0%"),
+     *                     @OA\Property(property="created_at", type="string", format="date-time", example="2025-01-15T10:30:00Z"),
+     *                     @OA\Property(property="updated_at", type="string", format="date-time", example="2025-01-15T10:30:00Z")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="No tax brackets found for the specified order ID",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="No tax brackets found for order ID: 99")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error - Invalid or missing order_id parameter",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object", example={"order_id": {"The order id field is required."}})
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - User not logged in or token expired"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission to access tax brackets"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to search tax brackets"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function search(Request $request)
+    {
+        try {
+            // Validate incoming parameters
+            $validated = $request->validate([
+                'order_id' => 'required|integer|min:1',
+                'effective_year' => 'nullable|integer|min:2000|max:2100',
+                'is_active' => 'nullable|boolean',
+            ]);
+
+            $orderId = $validated['order_id'];
+
+            // Build query to search by bracket_order using model scope
+            $query = TaxBracket::byOrder($orderId);
+
+            // Apply optional filters
+            if (isset($validated['effective_year'])) {
+                $query->where('effective_year', $validated['effective_year']);
+            }
+
+            if (isset($validated['is_active'])) {
+                $query->where('is_active', $validated['is_active']);
+            }
+
+            // Execute query with ordering
+            $taxBrackets = $query->orderBy('effective_year', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Check if any records were found
+            if ($taxBrackets->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "No tax brackets found for order ID: {$orderId}",
+                ], 404);
+            }
+
+            // Add calculated attributes to each item
+            $taxBrackets->each(function ($bracket) {
+                $bracket->append(['income_range', 'formatted_rate']);
+            });
+
+            // Build search criteria for response
+            $searchCriteria = ['order_id' => $orderId];
+            if (isset($validated['effective_year'])) {
+                $searchCriteria['effective_year'] = $validated['effective_year'];
+            }
+            if (isset($validated['is_active'])) {
+                $searchCriteria['is_active'] = $validated['is_active'];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tax brackets found successfully',
+                'total_records' => $taxBrackets->count(),
+                'search_criteria' => $searchCriteria,
+                'data' => $taxBrackets,
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The given data was invalid.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to search tax brackets',
                 'error' => $e->getMessage(),
             ], 500);
         }

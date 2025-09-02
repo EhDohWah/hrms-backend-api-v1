@@ -365,17 +365,37 @@ class BudgetLineController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'budget_line_code' => 'required|string|max:255|unique:budget_lines,budget_line_code',
-            'description' => 'required|string|max:255',
-        ]);
-        $line = BudgetLine::create([
-            'budget_line_code' => $validated['budget_line_code'],
-            'description' => $validated['description'],
-            'created_by' => $request->user()?->name ?? 'system',
-        ]);
+        try {
+            $validated = $request->validate([
+                'budget_line_code' => 'required|string|max:255|unique:budget_lines,budget_line_code',
+                'description' => 'required|string|max:255',
+            ]);
 
-        return response()->json(['success' => true, 'data' => $line], 201);
+            $line = BudgetLine::create([
+                'budget_line_code' => $validated['budget_line_code'],
+                'description' => $validated['description'],
+                'created_by' => $request->user()?->name ?? 'system',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Budget line created successfully',
+                'data' => new BudgetLineResource($line),
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create budget line',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -428,9 +448,27 @@ class BudgetLineController extends Controller
      */
     public function show($id)
     {
-        $line = BudgetLine::findOrFail($id);
+        try {
+            $line = BudgetLine::findOrFail($id);
 
-        return response()->json(['success' => true, 'data' => $line]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Budget line retrieved successfully',
+                'data' => new BudgetLineResource($line),
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Budget line not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve budget line',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -511,20 +549,46 @@ class BudgetLineController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $line = BudgetLine::findOrFail($id);
-        $validated = $request->validate([
-            'budget_line_code' => [
-                'required', 'string', 'max:255',
-                Rule::unique('budget_lines')->ignore($line->id),
-            ],
-            'description' => 'required|string|max:255',
-        ]);
-        $line->budget_line_code = $validated['budget_line_code'];
-        $line->description = $validated['description'];
-        $line->updated_by = $request->user()?->name ?? 'system';
-        $line->save();
+        try {
+            $line = BudgetLine::findOrFail($id);
 
-        return response()->json(['success' => true, 'data' => $line]);
+            $validated = $request->validate([
+                'budget_line_code' => [
+                    'required', 'string', 'max:255',
+                    Rule::unique('budget_lines')->ignore($line->id),
+                ],
+                'description' => 'required|string|max:255',
+            ]);
+
+            $line->budget_line_code = $validated['budget_line_code'];
+            $line->description = $validated['description'];
+            $line->updated_by = $request->user()?->name ?? 'system';
+            $line->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Budget line updated successfully',
+                'data' => new BudgetLineResource($line),
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Budget line not found',
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update budget line',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -567,9 +631,26 @@ class BudgetLineController extends Controller
      */
     public function destroy($id)
     {
-        $line = BudgetLine::findOrFail($id);
-        $line->delete();
+        try {
+            $line = BudgetLine::findOrFail($id);
+            $line->delete();
 
-        return response()->json(['success' => true]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Budget line deleted successfully',
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Budget line not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete budget line',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

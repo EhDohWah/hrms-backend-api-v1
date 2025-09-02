@@ -1,23 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\EmploymentController;
 use App\Http\Controllers\Api\DepartmentpositionController;
-use App\Http\Controllers\Api\WorklocationController;
+use App\Http\Controllers\Api\EmploymentController;
 use App\Http\Controllers\Api\InterviewController;
 use App\Http\Controllers\Api\JobOfferController;
 use App\Http\Controllers\Api\LeaveManagementController;
-use App\Http\Controllers\Api\TravelRequestController;
-use App\Http\Controllers\Api\TravelRequestApprovalController;
+use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\Reports\InterviewReportController;
 use App\Http\Controllers\Api\Reports\JobOfferReportController;
-use App\Http\Controllers\Api\RecycleBinController;
+use App\Http\Controllers\Api\TravelRequestApprovalController;
+use App\Http\Controllers\Api\TravelRequestController;
+use App\Http\Controllers\Api\WorklocationController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     // Employment routes
     Route::prefix('employments')->group(function () {
         Route::get('/', [EmploymentController::class, 'index'])->middleware('permission:employment.read');
         Route::get('/search/staff-id/{staffId}', [EmploymentController::class, 'searchByStaffId'])->middleware('permission:employment.read');
+        Route::get('/{id}/funding-allocations', [EmploymentController::class, 'getFundingAllocations'])->middleware('permission:employment.read');
         Route::get('/{id}', [EmploymentController::class, 'show'])->middleware('permission:employment.read');
         Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment.create');
         Route::put('/{id}', [EmploymentController::class, 'update'])->middleware('permission:employment.update');
@@ -65,35 +66,29 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Leave management routes (use middleware permission:read leaves)
     Route::prefix('leaves')->group(function () {
+        // Leave Types - CORRECTED to match actual controller methods
         Route::get('/types', [LeaveManagementController::class, 'getLeaveTypes'])->middleware('permission:leave_request.read');
-        Route::get('/types/{id}', [LeaveManagementController::class, 'getLeaveType'])->middleware('permission:leave_request.read');
         Route::post('/types', [LeaveManagementController::class, 'createLeaveType'])->middleware('permission:leave_request.create');
         Route::put('/types/{id}', [LeaveManagementController::class, 'updateLeaveType'])->middleware('permission:leave_request.update');
         Route::delete('/types/{id}', [LeaveManagementController::class, 'deleteLeaveType'])->middleware('permission:leave_request.delete');
 
+        // Leave Requests - CORRECTED to match actual controller methods
         Route::get('/requests', [LeaveManagementController::class, 'getLeaveRequests'])->middleware('permission:leave_request.read');
         Route::get('/requests/{id}', [LeaveManagementController::class, 'getLeaveRequest'])->middleware('permission:leave_request.read');
         Route::post('/requests', [LeaveManagementController::class, 'createLeaveRequest'])->middleware('permission:leave_request.create');
         Route::put('/requests/{id}', [LeaveManagementController::class, 'updateLeaveRequest'])->middleware('permission:leave_request.update');
         Route::delete('/requests/{id}', [LeaveManagementController::class, 'deleteLeaveRequest'])->middleware('permission:leave_request.delete');
 
+        // Leave Balances - CORRECTED to match actual controller methods
         Route::get('/balances', [LeaveManagementController::class, 'getLeaveBalances'])->middleware('permission:leave_request.read');
-        Route::get('/balances/{id}', [LeaveManagementController::class, 'getLeaveBalance'])->middleware('permission:leave_request.read');
+        Route::get('/balance/{employeeId}/{leaveTypeId}', [LeaveManagementController::class, 'getEmployeeLeaveBalance'])->middleware('permission:leave_request.read');
         Route::post('/balances', [LeaveManagementController::class, 'createLeaveBalance'])->middleware('permission:leave_request.create');
         Route::put('/balances/{id}', [LeaveManagementController::class, 'updateLeaveBalance'])->middleware('permission:leave_request.update');
-        Route::delete('/balances/{id}', [LeaveManagementController::class, 'deleteLeaveBalance'])->middleware('permission:leave_request.delete');
 
-        Route::get('/approvals', [LeaveManagementController::class, 'getApprovals'])->middleware('permission:leave_request.read');
-        Route::get('/approvals/{id}', [LeaveManagementController::class, 'getApproval'])->middleware('permission:leave_request.read');
-        Route::post('/approvals', [LeaveManagementController::class, 'createApproval'])->middleware('permission:leave_request.create');
+        // Leave Approvals - CORRECTED to match actual controller methods with proper parameters
+        Route::get('/requests/{leaveRequestId}/approvals', [LeaveManagementController::class, 'getApprovals'])->middleware('permission:leave_request.read');
+        Route::post('/requests/{leaveRequestId}/approvals', [LeaveManagementController::class, 'createApproval'])->middleware('permission:leave_request.create');
         Route::put('/approvals/{id}', [LeaveManagementController::class, 'updateApproval'])->middleware('permission:leave_request.update');
-        Route::delete('/approvals/{id}', [LeaveManagementController::class, 'deleteApproval'])->middleware('permission:leave_request.delete');
-
-        Route::get('/traditional', [LeaveManagementController::class, 'getTraditionalLeaves'])->middleware('permission:leave_request.read');
-        Route::get('/traditional/{id}', [LeaveManagementController::class, 'getTraditionalLeave'])->middleware('permission:leave_request.read');
-        Route::post('/traditional', [LeaveManagementController::class, 'createTraditionalLeave'])->middleware('permission:leave_request.create');
-        Route::put('/traditional/{id}', [LeaveManagementController::class, 'updateTraditionalLeave'])->middleware('permission:leave_request.update');
-        Route::delete('/traditional/{id}', [LeaveManagementController::class, 'deleteTraditionalLeave'])->middleware('permission:leave_request.delete');
     });
 
     // Travel request routes (use middleware permission:read travel requests)

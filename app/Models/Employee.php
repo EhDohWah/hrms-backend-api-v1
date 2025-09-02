@@ -130,6 +130,14 @@ class Employee extends Model
     }
 
     /**
+     * Get all employment records associated with the employee
+     */
+    public function employments()
+    {
+        return $this->hasMany(Employment::class);
+    }
+
+    /**
      * Check if employee has a user account
      *
      * @return bool
@@ -172,7 +180,7 @@ class Employee extends Model
 
     // Parent information is stored directly in employees table
     // Helper methods for tax calculation
-    
+
     /**
      * Get count of eligible parents for tax allowance
      * In Thai tax law, parents are eligible if they are over 60 and have income < 30,000 per year
@@ -180,26 +188,26 @@ class Employee extends Model
     public function getEligibleParentsCountAttribute(): int
     {
         $count = 0;
-        
+
         // For now, assume parents are eligible if their names are provided
         // In a real system, you'd want separate parent records with age and income
-        if (!empty($this->father_name)) {
+        if (! empty($this->father_name)) {
             $count++;
         }
-        
-        if (!empty($this->mother_name)) {
+
+        if (! empty($this->mother_name)) {
             $count++;
         }
-        
+
         return $count;
     }
-    
+
     /**
      * Check if employee has spouse based on marital status and spouse name
      */
     public function getHasSpouseAttribute(): bool
     {
-        return strtolower($this->marital_status) === 'married' || !empty($this->spouse_name);
+        return strtolower($this->marital_status) === 'married' || ! empty($this->spouse_name);
     }
 
     public function taxCalculationLogs()
@@ -215,6 +223,22 @@ class Employee extends Model
     public function employeeTrainings()
     {
         return $this->hasMany(EmployeeTraining::class);
+    }
+
+    /**
+     * Get the leave requests for the employee.
+     */
+    public function leaveRequests()
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
+    /**
+     * Get the leave balances for the employee.
+     */
+    public function leaveBalances()
+    {
+        return $this->hasMany(LeaveBalance::class);
     }
 
     // Query optimization scopes

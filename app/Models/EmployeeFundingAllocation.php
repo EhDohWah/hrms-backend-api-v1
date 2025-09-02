@@ -66,4 +66,67 @@ class EmployeeFundingAllocation extends Model
     {
         return $this->belongsTo(PositionSlot::class);
     }
+
+    // Query scopes for better performance
+    public function scopeActive($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('end_date')
+                ->orWhere('end_date', '>', now());
+        });
+    }
+
+    public function scopeByAllocationType($query, $type)
+    {
+        return $query->where('allocation_type', $type);
+    }
+
+    public function scopeGrant($query)
+    {
+        return $query->where('allocation_type', 'grant');
+    }
+
+    public function scopeOrgFunded($query)
+    {
+        return $query->where('allocation_type', 'org_funded');
+    }
+
+    public function scopeByEffortRange($query, $minEffort, $maxEffort = null)
+    {
+        $query->where('level_of_effort', '>=', $minEffort);
+
+        if ($maxEffort !== null) {
+            $query->where('level_of_effort', '<=', $maxEffort);
+        }
+
+        return $query;
+    }
+
+    public function scopeWithFullDetails($query)
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+            'employment:id,employee_id,start_date,end_date,position_salary',
+            'positionSlot:id,grant_item_id,slot_number,budget_line_id',
+            'positionSlot.grantItem:id,grant_id,grant_position,grant_salary',
+            'positionSlot.grantItem.grant:id,name,code',
+            'positionSlot.budgetLine:id,budget_line_code,description',
+            'orgFunded.grant:id,name,code',
+            'orgFunded.departmentPosition:id,department,position',
+        ]);
+    }
+
+    public function scopeForPayrollCalculation($query)
+    {
+        return $query->active()
+            ->select([
+                'id', 'employee_id', 'employment_id', 'allocation_type',
+                'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id',
+            ])
+            ->with([
+                'positionSlot:id,grant_item_id,slot_number',
+                'positionSlot.grantItem.grant:id,name,code',
+                'orgFunded.grant:id,name,code',
+            ]);
+    }
 }

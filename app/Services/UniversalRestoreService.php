@@ -46,7 +46,7 @@ class UniversalRestoreService
 
         // Find the deleted record using model class and original ID
 
-        // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit
+        // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit -----------> This is for MS SQL Server <----------
         // $deletedRecord = DeletedModel::where('model', $modelClass)
         //     ->where(function ($query) use ($originalId) {
         //         // For SQL Server, use JSON_VALUE instead of JSON_EXTRACT

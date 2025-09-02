@@ -25,33 +25,81 @@ class TaxSettingController extends Controller
     /**
      * @OA\Get(
      *     path="/tax-settings",
-     *     summary="Get all tax settings",
-     *     description="Get a list of all tax settings with optional filtering",
+     *     summary="Get all tax settings with advanced filtering and pagination",
+     *     description="Get a paginated list of all tax settings with advanced filtering, sorting, and search capabilities",
      *     tags={"Tax Settings"},
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
-     *         name="year",
+     *         name="page",
      *         in="query",
-     *         description="Filter by effective year",
+     *         description="Page number for pagination",
+     *         required=false,
      *
-     *         @OA\Schema(type="integer", example=2025)
+     *         @OA\Schema(type="integer", example=1, minimum=1)
      *     ),
      *
      *     @OA\Parameter(
-     *         name="type",
+     *         name="per_page",
      *         in="query",
-     *         description="Filter by setting type",
+     *         description="Number of items per page",
+     *         required=false,
      *
-     *         @OA\Schema(type="string", enum={"DEDUCTION", "RATE", "LIMIT"})
+     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
      *     ),
      *
      *     @OA\Parameter(
-     *         name="active_only",
+     *         name="filter_setting_type",
      *         in="query",
-     *         description="Show only active settings",
+     *         description="Filter by setting type (comma-separated for multiple values)",
+     *         required=false,
      *
-     *         @OA\Schema(type="boolean", default=true)
+     *         @OA\Schema(type="string", example="DEDUCTION,RATE")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="filter_effective_year",
+     *         in="query",
+     *         description="Filter by effective year (comma-separated for multiple values)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", example="2024,2025")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="filter_is_selected",
+     *         in="query",
+     *         description="Filter by is_selected status",
+     *         required=false,
+     *
+     *         @OA\Schema(type="boolean", example=true)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="sort_by",
+     *         in="query",
+     *         description="Sort by field",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", enum={"setting_key", "setting_value", "setting_type", "effective_year"}, example="setting_key")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="sort_order",
+     *         in="query",
+     *         description="Sort order",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search by setting_key (partial match, case-insensitive)",
+     *         required=false,
+     *
+     *         @OA\Schema(type="string", example="PERSONAL")
      *     ),
      *
      *     @OA\Response(
@@ -74,9 +122,46 @@ class TaxSettingController extends Controller
      *                     @OA\Property(property="setting_type", type="string", example="DEDUCTION"),
      *                     @OA\Property(property="description", type="string", example="Personal allowance for income tax"),
      *                     @OA\Property(property="effective_year", type="integer", example=2025),
-     *                     @OA\Property(property="is_active", type="boolean", example=true)
+     *                     @OA\Property(property="is_selected", type="boolean", example=true)
      *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="pagination",
+     *                 type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=25),
+     *                 @OA\Property(property="last_page", type="integer", example=3),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="to", type="integer", example=10),
+     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
+     *             ),
+     *             @OA\Property(
+     *                 property="filters",
+     *                 type="object",
+     *                 @OA\Property(property="applied_filters", type="object",
+     *                     @OA\Property(property="setting_type", type="array", @OA\Items(type="string"), example={"DEDUCTION"}),
+     *                     @OA\Property(property="effective_year", type="array", @OA\Items(type="integer"), example={2025})
+     *                 )
+     *             ),
+     *             @OA\Property(
+     *                 property="meta",
+     *                 type="object",
+     *                 @OA\Property(property="total_count", type="integer", example=25),
+     *                 @OA\Property(property="filtered_count", type="integer", example=15)
      *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error - Invalid parameters provided",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
      *         )
      *     )
      * )
@@ -84,35 +169,111 @@ class TaxSettingController extends Controller
     public function index(Request $request)
     {
         try {
+            // Validate incoming parameters
+            $validated = $request->validate([
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+                'filter_setting_type' => 'string|nullable',
+                'filter_effective_year' => 'string|nullable',
+                'filter_is_selected' => 'nullable|in:true,false,1,0',
+                'sort_by' => 'string|nullable|in:setting_key,setting_value,setting_type,effective_year',
+                'sort_order' => 'string|nullable|in:asc,desc',
+                'search' => 'string|nullable',
+            ]);
+
+            // Determine page size
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
+
+            // Get total count before filtering for meta
+            $totalCount = TaxSetting::count();
+
+            // Build query
             $query = TaxSetting::query();
 
-            // Filter by year if provided
-            if ($request->has('year')) {
-                $query->forYear($request->year);
+            // Apply search filter
+            if (! empty($validated['search'])) {
+                $query->where('setting_key', 'LIKE', '%'.$validated['search'].'%');
             }
 
-            // Filter by type if provided
-            if ($request->has('type')) {
-                $query->byType($request->type);
+            // Apply setting type filter
+            if (! empty($validated['filter_setting_type'])) {
+                $types = explode(',', $validated['filter_setting_type']);
+                $query->whereIn('setting_type', $types);
             }
 
-            // Filter by selected status (default to show all)
-            if ($request->has('selected_only') && $request->boolean('selected_only')) {
-                $query->selected();
+            // Apply effective year filter
+            if (! empty($validated['filter_effective_year'])) {
+                $years = explode(',', $validated['filter_effective_year']);
+                $years = array_map('intval', $years); // Convert to integers
+                $query->whereIn('effective_year', $years);
             }
 
-            $taxSettings = $query->orderBy('setting_type')->orderBy('setting_key')->get();
+            // Apply is_selected filter
+            if (isset($validated['filter_is_selected'])) {
+                $isSelected = filter_var($validated['filter_is_selected'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($isSelected !== null) {
+                    $query->where('is_selected', $isSelected);
+                }
+            }
+
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'setting_type';
+            $sortOrder = $validated['sort_order'] ?? 'asc';
+
+            if (in_array($sortBy, ['setting_key', 'setting_value', 'setting_type', 'effective_year'])) {
+                $query->orderBy($sortBy, $sortOrder);
+                // Add secondary sort for consistency
+                if ($sortBy !== 'setting_key') {
+                    $query->orderBy('setting_key', 'asc');
+                }
+            } else {
+                $query->orderBy('setting_type', 'asc')->orderBy('setting_key', 'asc');
+            }
+
+            // Execute pagination
+            $taxSettings = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Build applied filters array
+            $appliedFilters = [];
+            if (! empty($validated['filter_setting_type'])) {
+                $appliedFilters['setting_type'] = explode(',', $validated['filter_setting_type']);
+            }
+            if (! empty($validated['filter_effective_year'])) {
+                $appliedFilters['effective_year'] = array_map('intval', explode(',', $validated['filter_effective_year']));
+            }
+            if (isset($validated['filter_is_selected'])) {
+                $appliedFilters['is_selected'] = filter_var($validated['filter_is_selected'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tax settings retrieved successfully',
-                'data' => TaxSettingResource::collection($taxSettings),
+                'data' => TaxSettingResource::collection($taxSettings->items()),
+                'pagination' => [
+                    'current_page' => $taxSettings->currentPage(),
+                    'per_page' => $taxSettings->perPage(),
+                    'total' => $taxSettings->total(),
+                    'last_page' => $taxSettings->lastPage(),
+                    'from' => $taxSettings->firstItem(),
+                    'to' => $taxSettings->lastItem(),
+                    'has_more_pages' => $taxSettings->hasMorePages(),
+                ],
+                'filters' => [
+                    'applied_filters' => $appliedFilters,
+                ],
                 'meta' => [
-                    'total_count' => $taxSettings->count(),
-                    'selected_count' => $taxSettings->where('is_selected', true)->count(),
-                    'year' => $request->get('year', date('Y'))
-                ]
+                    'total_count' => $totalCount,
+                    'filtered_count' => $taxSettings->total(),
+                ],
             ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The given data was invalid.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -730,23 +891,29 @@ class TaxSettingController extends Controller
      *     description="Toggle the is_selected status of a tax setting for global control",
      *     tags={"Tax Settings"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
      *         description="Tax setting ID",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Tax setting toggled successfully",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Tax setting toggled successfully"),
      *             @OA\Property(property="data", type="object"),
      *             @OA\Property(property="status", type="string", example="enabled")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=404,
      *         description="Tax setting not found"
@@ -758,10 +925,10 @@ class TaxSettingController extends Controller
         try {
             $taxSetting = TaxSetting::findOrFail($id);
             $oldStatus = $taxSetting->is_selected;
-            
+
             $taxSetting->update([
-                'is_selected' => !$taxSetting->is_selected,
-                'updated_by' => auth()->user()->name ?? 'System'
+                'is_selected' => ! $taxSetting->is_selected,
+                'updated_by' => auth()->user()->name ?? 'System',
             ]);
 
             // Clear tax calculation cache immediately
@@ -779,7 +946,7 @@ class TaxSettingController extends Controller
                 'old_status' => $oldStatus ? 'enabled' : 'disabled',
                 'new_status' => $taxSetting->is_selected ? 'enabled' : 'disabled',
                 'user' => auth()->user()->name ?? 'System',
-                'effective_year' => $taxSetting->effective_year
+                'effective_year' => $taxSetting->effective_year,
             ]);
 
             return response()->json([
@@ -787,7 +954,7 @@ class TaxSettingController extends Controller
                 'message' => 'Tax setting toggled successfully',
                 'data' => new TaxSettingResource($taxSetting),
                 'status' => $taxSetting->is_selected ? 'enabled' : 'disabled',
-                'previous_status' => $oldStatus ? 'enabled' : 'disabled'
+                'previous_status' => $oldStatus ? 'enabled' : 'disabled',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

@@ -138,6 +138,15 @@ return new class extends Migration
             ['type' => 'section_department', 'value' => 'Ultrasound', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'section_department', 'value' => 'Delivery', 'created_at' => now(), 'updated_at' => now()],
 
+            // Bank Name options
+            ['type' => 'bank_name', 'value' => 'Bangkok Bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'Kasikorn Bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'Siam Commercial Bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'Krung Thai Bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'Bank of Ayudhya', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'TMBThanachart Bank', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'bank_name', 'value' => 'Government Savings Bank', 'created_at' => now(), 'updated_at' => now()],
+
         ]);
     }
 

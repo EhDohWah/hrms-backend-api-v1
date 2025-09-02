@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use OpenApi\Annotations as OA;
 
 /**
@@ -39,18 +41,41 @@ class LeaveRequest extends Model
         'updated_by',
     ];
 
-    public function employee()
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'total_days' => 'decimal:2',
+    ];
+
+    /**
+     * Get the employee that owns the leave request.
+     */
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
 
-    public function leaveType()
+    /**
+     * Get the leave type that owns the leave request.
+     */
+    public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class);
     }
 
-    public function approvals()
+    /**
+     * Get the approvals for the leave request.
+     */
+    public function approvals(): HasMany
     {
         return $this->hasMany(LeaveRequestApproval::class);
+    }
+
+    /**
+     * Get the attachments for the leave request.
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(LeaveAttachment::class);
     }
 }

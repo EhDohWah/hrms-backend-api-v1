@@ -263,6 +263,43 @@ class Grant extends Model
         }]);
     }
 
+    // Hub Grant Helper Methods
+    public static function getHubGrantForSubsidiary(string $subsidiary): ?Grant
+    {
+        $hubGrantCodes = [
+            'SMRU' => 'S0031',  // Other Fund
+            'BHF' => 'S22001',  // General Fund
+        ];
+
+        if (! isset($hubGrantCodes[$subsidiary])) {
+            return null;
+        }
+
+        return self::where('subsidiary', $subsidiary)
+            ->where('code', $hubGrantCodes[$subsidiary])
+            ->first();
+    }
+
+    public function isHubGrant(): bool
+    {
+        return in_array($this->code, ['S0031', 'S22001']);
+    }
+
+    public static function getHubGrantCodes(): array
+    {
+        return [
+            'SMRU' => 'S0031',  // Other Fund
+            'BHF' => 'S22001',  // General Fund
+        ];
+    }
+
+    public static function getAllHubGrants(): \Illuminate\Database\Eloquent\Collection
+    {
+        $hubCodes = array_values(self::getHubGrantCodes());
+
+        return self::whereIn('code', $hubCodes)->get();
+    }
+
     // Model events to set created_by/updated_by
     protected static function boot()
     {

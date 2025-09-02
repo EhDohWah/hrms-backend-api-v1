@@ -31,8 +31,8 @@ return new class extends Migration
             $table->text('compensation_refund')->comment('Required Encryption. TYPE - decimal()');
             $table->text('thirteen_month_salary')->comment('Required Encryption. TYPE - decimal()');
             $table->text('thirteen_month_salary_accured')->comment('Required Encryption');
-            $table->text('pvd')->comment('Required Encryption. TYPE - decimal()');
-            $table->text('saving_fund')->comment('Required Encryption. TYPE - decimal()');
+            $table->text('pvd')->comment('Required Encryption. TYPE - decimal()')->nullable();
+            $table->text('saving_fund')->comment('Required Encryption. TYPE - decimal()')->nullable();
             $table->text('employer_social_security')->comment('Required Encryption. TYPE - decimal()');
             $table->text('employee_social_security')->comment('Required Encryption. TYPE - decimal()');
             $table->text('employer_health_welfare')->comment('Required Encryption. TYPE - decimal()');
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->text('total_salary')->comment('Required Encryption. TYPE - decimal()');
             $table->text('total_pvd')->comment('Required Encryption. TYPE - decimal()');
             $table->text('total_saving_fund')->comment('Required Encryption. TYPE - decimal()');
-            $table->text('salary_bonus')->comment('Required Encryption. TYPE - decimal()');
+            $table->text('salary_bonus')->comment('Required Encryption. TYPE - decimal()')->nullable();
             $table->text('total_income')->comment('Required Encryption. TYPE - decimal()');
             $table->text('employer_contribution')->comment('Required Encryption. TYPE - decimal()');
             $table->text('total_deduction')->comment('Required Encryption. TYPE - decimal()');

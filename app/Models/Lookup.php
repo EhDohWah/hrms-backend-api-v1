@@ -42,4 +42,68 @@ class Lookup extends Model
     {
         return self::where('type', $type)->get();
     }
+
+    /**
+     * Get all distinct lookup types from the database
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getAllTypes()
+    {
+        return self::distinct()->pluck('type')->sort()->values();
+    }
+
+    /**
+     * Get all lookup data organized by type
+     */
+    public static function getAllLookups(): array
+    {
+        $types = self::getAllTypes();
+        $result = [];
+
+        foreach ($types as $type) {
+            $result[$type] = self::getByType($type);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Check if a lookup type exists
+     */
+    public static function typeExists(string $type): bool
+    {
+        return self::where('type', $type)->exists();
+    }
+
+    /**
+     * Get lookup values as array for validation rules
+     */
+    public static function getValuesForValidation(string $type): array
+    {
+        return self::where('type', $type)->pluck('value')->toArray();
+    }
+
+    /**
+     * Get all lookup validation rules dynamically
+     */
+    public static function getValidationRules(): array
+    {
+        $types = self::getAllTypes();
+        $rules = [];
+
+        foreach ($types as $type) {
+            $rules[$type] = self::getValuesForValidation($type);
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Get validation rule for a specific lookup type
+     */
+    public static function getValidationRule(string $type): array
+    {
+        return self::getValuesForValidation($type);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Annotations as OA;
 
 /**
@@ -37,7 +38,16 @@ class LeaveRequestApproval extends Model
         'updated_by',
     ];
 
-    public function leaveRequest()
+    protected $casts = [
+        'approval_date' => 'date',
+    ];
+
+    public $timestamps = true;
+
+    /**
+     * Get the leave request that owns the approval.
+     */
+    public function leaveRequest(): BelongsTo
     {
         return $this->belongsTo(LeaveRequest::class);
     }

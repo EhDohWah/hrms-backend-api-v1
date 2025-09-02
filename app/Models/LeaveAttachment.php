@@ -3,55 +3,51 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Annotations as OA;
 
 /**
  * @OA\Schema(
- *     schema="LeaveType",
+ *     schema="LeaveAttachment",
  *     type="object",
  *
  *     @OA\Property(property="id", type="integer"),
- *     @OA\Property(property="name", type="string", maxLength=100),
- *     @OA\Property(property="default_duration", type="number", format="float", nullable=true),
+ *     @OA\Property(property="leave_request_id", type="integer"),
+ *     @OA\Property(property="document_name", type="string", maxLength=255),
+ *     @OA\Property(property="document_url", type="string", maxLength=1000),
  *     @OA\Property(property="description", type="string", nullable=true),
- *     @OA\Property(property="requires_attachment", type="boolean", default=false),
+ *     @OA\Property(property="added_at", type="string", format="date-time"),
  *     @OA\Property(property="created_by", type="string", nullable=true),
  *     @OA\Property(property="updated_by", type="string", nullable=true),
  *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
  *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
  * )
  */
-class LeaveType extends Model
+class LeaveAttachment extends Model
 {
+    protected $table = 'leave_attachments';
+
     protected $fillable = [
-        'name',
-        'default_duration',
+        'leave_request_id',
+        'document_name',
+        'document_url',
         'description',
-        'requires_attachment',
+        'added_at',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'requires_attachment' => 'boolean',
-        'default_duration' => 'decimal:2',
+        'added_at' => 'datetime',
     ];
 
     public $timestamps = true;
 
     /**
-     * Get the leave requests for this leave type.
+     * Get the leave request that owns the attachment.
      */
-    public function leaveRequests()
+    public function leaveRequest(): BelongsTo
     {
-        return $this->hasMany(LeaveRequest::class);
-    }
-
-    /**
-     * Get the leave balances for this leave type.
-     */
-    public function leaveBalances()
-    {
-        return $this->hasMany(LeaveBalance::class);
+        return $this->belongsTo(LeaveRequest::class);
     }
 }

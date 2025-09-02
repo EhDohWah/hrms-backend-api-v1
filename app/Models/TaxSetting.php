@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use OpenApi\Annotations as OA;
@@ -15,6 +15,7 @@ use OpenApi\Annotations as OA;
  *     type="object",
  *     title="Tax Setting",
  *     description="Configurable tax settings for deductions, rates, and limits",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE", description="Unique setting identifier"),
  *     @OA\Property(property="setting_value", type="number", format="float", example=60000, description="Setting value"),
@@ -40,79 +41,115 @@ class TaxSetting extends Model
         'effective_year',
         'is_selected',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
         'setting_value' => 'decimal:2',
         'is_selected' => 'boolean',
-        'effective_year' => 'integer'
+        'effective_year' => 'integer',
     ];
 
     // Setting types
     const TYPE_DEDUCTION = 'DEDUCTION';
+
     const TYPE_RATE = 'RATE';
+
     const TYPE_LIMIT = 'LIMIT';
+
     const TYPE_ALLOWANCE = 'ALLOWANCE';
 
     // Setting categories for Thai compliance
     const CATEGORY_EMPLOYMENT = 'EMPLOYMENT';
+
     const CATEGORY_ALLOWANCE = 'ALLOWANCE';
+
     const CATEGORY_SOCIAL_SECURITY = 'SOCIAL_SECURITY';
+
     const CATEGORY_PROVIDENT_FUND = 'PROVIDENT_FUND';
+
     const CATEGORY_DEDUCTION = 'DEDUCTION';
+
     const CATEGORY_TEMPORARY = 'TEMPORARY';
 
     // Thai Revenue Department Setting Keys - Employment Deductions (Applied FIRST)
     const KEY_EMPLOYMENT_DEDUCTION_RATE = 'EMPLOYMENT_DEDUCTION_RATE'; // 50% of income
+
     const KEY_EMPLOYMENT_DEDUCTION_MAX = 'EMPLOYMENT_DEDUCTION_MAX';   // ฿100,000 maximum
 
     // Thai Revenue Department Setting Keys - Personal Allowances (Applied AFTER employment deductions)
     const KEY_PERSONAL_ALLOWANCE = 'PERSONAL_ALLOWANCE';               // ฿60,000
+
     const KEY_SPOUSE_ALLOWANCE = 'SPOUSE_ALLOWANCE';                   // ฿60,000
+
     const KEY_CHILD_ALLOWANCE = 'CHILD_ALLOWANCE';                     // ฿30,000 first child
+
     const KEY_CHILD_ALLOWANCE_SUBSEQUENT = 'CHILD_ALLOWANCE_SUBSEQUENT'; // ฿60,000 for children born 2018+
+
     const KEY_PARENT_ALLOWANCE = 'PARENT_ALLOWANCE';                   // ฿30,000 per eligible parent
 
     // Social Security Fund (SSF) - Fixed rates per Thai law
     const KEY_SSF_RATE = 'SSF_RATE';                                   // 5% (mandatory)
+
     const KEY_SSF_MIN_SALARY = 'SSF_MIN_SALARY';                       // ฿1,650 monthly
+
     const KEY_SSF_MAX_SALARY = 'SSF_MAX_SALARY';                       // ฿15,000 monthly
+
     const KEY_SSF_MAX_MONTHLY = 'SSF_MAX_MONTHLY';                     // ฿750 monthly
+
     const KEY_SSF_MAX_YEARLY = 'SSF_MAX_YEARLY';                       // ฿9,000 annually
 
     // Provident Fund (PF) - Negotiable rates
     const KEY_PF_MIN_RATE = 'PF_MIN_RATE';                            // 2% minimum
+
     const KEY_PF_MAX_RATE = 'PF_MAX_RATE';                            // 15% maximum
+
     const KEY_PF_MAX_ANNUAL = 'PF_MAX_ANNUAL';                        // ฿500,000 maximum annual
 
     // Additional Deduction Categories
     const KEY_HEALTH_INSURANCE_MAX = 'HEALTH_INSURANCE_MAX';           // ฿25,000
+
     const KEY_LIFE_INSURANCE_MAX = 'LIFE_INSURANCE_MAX';               // ฿100,000
+
     const KEY_MORTGAGE_INTEREST_MAX = 'MORTGAGE_INTEREST_MAX';         // ฿100,000
+
     const KEY_POLITICAL_DONATION_MAX = 'POLITICAL_DONATION_MAX';       // ฿10,000
+
     const KEY_THAI_ESG_FUND_MAX = 'THAI_ESG_FUND_MAX';               // ฿300,000 (2024-2026)
 
     // Temporary Deductions (2024-2025)
     const KEY_SHOPPING_ALLOWANCE = 'SHOPPING_ALLOWANCE';               // ฿50,000 for 2024
+
     const KEY_CONSTRUCTION_EXPENSE_MAX = 'CONSTRUCTION_EXPENSE_MAX';    // ฿100,000 (Apr 2024 - Dec 2025)
 
     // Legacy keys (for backwards compatibility)
     const KEY_PERSONAL_EXPENSE_RATE = 'PERSONAL_EXPENSE_RATE';         // Deprecated: Use EMPLOYMENT_DEDUCTION_RATE
+
     const KEY_PERSONAL_EXPENSE_MAX = 'PERSONAL_EXPENSE_MAX';           // Deprecated: Use EMPLOYMENT_DEDUCTION_MAX
 
     // Thai 2025 Official Values
     const THAI_2025_EMPLOYMENT_DEDUCTION_RATE = 50.0;                 // 50% of income
+
     const THAI_2025_EMPLOYMENT_DEDUCTION_MAX = 100000;                // ฿100,000 maximum
+
     const THAI_2025_PERSONAL_ALLOWANCE = 60000;                       // ฿60,000
+
     const THAI_2025_SPOUSE_ALLOWANCE = 60000;                         // ฿60,000
+
     const THAI_2025_CHILD_ALLOWANCE = 30000;                          // ฿30,000 first child
+
     const THAI_2025_CHILD_ALLOWANCE_SUBSEQUENT = 60000;               // ฿60,000 subsequent children (born 2018+)
+
     const THAI_2025_PARENT_ALLOWANCE = 30000;                         // ฿30,000 per eligible parent
+
     const THAI_2025_SSF_RATE = 5.0;                                   // 5% mandatory rate
+
     const THAI_2025_SSF_MIN_SALARY = 1650;                            // ฿1,650 monthly minimum
+
     const THAI_2025_SSF_MAX_SALARY = 15000;                           // ฿15,000 monthly maximum
+
     const THAI_2025_SSF_MAX_MONTHLY = 750;                            // ฿750 monthly maximum contribution
+
     const THAI_2025_SSF_MAX_YEARLY = 9000;                            // ฿9,000 annual maximum contribution
 
     // Boot method for cache clearing
@@ -125,7 +162,7 @@ class TaxSetting extends Model
             Cache::forget("tax_settings_all_{$year}");
             Cache::forget("tax_config_{$year}_settings");
             Cache::forget("tax_config_{$year}_brackets");
-            
+
             // Clear pattern-based caches if possible
             try {
                 Cache::tags(['tax_calculations'])->flush();
@@ -133,12 +170,12 @@ class TaxSetting extends Model
                 // Fallback for cache drivers that don't support tagging
                 Cache::flush();
             }
-            
+
             Log::info('Tax setting cache cleared', [
                 'setting_id' => $taxSetting->id,
                 'setting_key' => $taxSetting->setting_key,
                 'effective_year' => $year,
-                'is_selected' => $taxSetting->is_selected
+                'is_selected' => $taxSetting->is_selected,
             ]);
         });
 
@@ -181,59 +218,62 @@ class TaxSetting extends Model
     }
 
     // Helper: Get selected allowances for current year
-    public static function getSelectedAllowances(int $year = null): \Illuminate\Database\Eloquent\Collection
+    public static function getSelectedAllowances(?int $year = null): \Illuminate\Database\Eloquent\Collection
     {
         $year = $year ?? date('Y');
+
         return static::selected()
-                     ->byType('ALLOWANCE')
-                     ->forYear($year)
-                     ->get();
+            ->byType('ALLOWANCE')
+            ->forYear($year)
+            ->get();
     }
 
-    // Helper: Get selected deductions for current year  
-    public static function getSelectedDeductions(int $year = null): \Illuminate\Database\Eloquent\Collection
+    // Helper: Get selected deductions for current year
+    public static function getSelectedDeductions(?int $year = null): \Illuminate\Database\Eloquent\Collection
     {
         $year = $year ?? date('Y');
+
         return static::selected()
-                     ->byType('DEDUCTION')
-                     ->forYear($year)
-                     ->get();
+            ->byType('DEDUCTION')
+            ->forYear($year)
+            ->get();
     }
 
     // Helper: Get selected rates for current year
-    public static function getSelectedRates(int $year = null): \Illuminate\Database\Eloquent\Collection
+    public static function getSelectedRates(?int $year = null): \Illuminate\Database\Eloquent\Collection
     {
         $year = $year ?? date('Y');
+
         return static::selected()
-                     ->byType('RATE')
-                     ->forYear($year)
-                     ->get();
+            ->byType('RATE')
+            ->forYear($year)
+            ->get();
     }
 
     // Get a specific setting value
-    public static function getValue(string $key, int $year = null): ?float
+    public static function getValue(string $key, ?int $year = null): ?float
     {
         $year = $year ?: date('Y');
-        
+
         $cacheKey = "tax_setting_{$key}_{$year}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($key, $year) {
             $setting = static::selected()
                 ->forYear($year)
                 ->where('setting_key', $key)
                 ->first();
-            
+
             return $setting ? $setting->setting_value : null;
         });
     }
 
     // Get all settings for a year grouped by type
-    public static function getSettingsForYear(int $year = null): array
+    public static function getSettingsForYear(?int $year = null): array
     {
         $year = $year ?: date('Y');
-        
+
         $cacheKey = "tax_settings_all_{$year}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($year) {
             return static::selected()
                 ->forYear($year)
@@ -247,12 +287,12 @@ class TaxSetting extends Model
     }
 
     // Get settings by category for Thai compliance
-    public static function getSettingsByCategory(string $category, int $year = null): array
+    public static function getSettingsByCategory(string $category, ?int $year = null): array
     {
         $year = $year ?: date('Y');
-        
+
         $cacheKey = "tax_settings_category_{$category}_{$year}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($category, $year) {
             return static::selected()
                 ->forYear($year)
@@ -263,29 +303,29 @@ class TaxSetting extends Model
     }
 
     // Thai compliance validation methods
-    public static function validateThaiCompliance(int $year = null): array
+    public static function validateThaiCompliance(?int $year = null): array
     {
         $year = $year ?: date('Y');
         $errors = [];
         $warnings = [];
 
         // Check required employment deduction settings
-        if (!static::getValue(self::KEY_EMPLOYMENT_DEDUCTION_RATE, $year)) {
+        if (! static::getValue(self::KEY_EMPLOYMENT_DEDUCTION_RATE, $year)) {
             $errors[] = 'Employment deduction rate is required for Thai compliance';
         }
 
-        if (!static::getValue(self::KEY_EMPLOYMENT_DEDUCTION_MAX, $year)) {
+        if (! static::getValue(self::KEY_EMPLOYMENT_DEDUCTION_MAX, $year)) {
             $errors[] = 'Employment deduction maximum is required for Thai compliance';
         }
 
         // Check personal allowance settings
-        if (!static::getValue(self::KEY_PERSONAL_ALLOWANCE, $year)) {
+        if (! static::getValue(self::KEY_PERSONAL_ALLOWANCE, $year)) {
             $errors[] = 'Personal allowance is required for Thai compliance';
         }
 
         // Check Social Security Fund settings
         $ssfRate = static::getValue(self::KEY_SSF_RATE, $year);
-        if (!$ssfRate || $ssfRate != 5.0) {
+        if (! $ssfRate || $ssfRate != 5.0) {
             $errors[] = 'SSF rate must be exactly 5% for Thai compliance';
         }
 
@@ -320,7 +360,7 @@ class TaxSetting extends Model
                 'description' => 'Maximum employment income deduction - ฿100,000 annually',
                 'thai_law_reference' => 'Revenue Code Section 42(1)',
             ],
-            
+
             // Personal allowances (applied AFTER employment deductions)
             self::KEY_PERSONAL_ALLOWANCE => [
                 'value' => self::THAI_2025_PERSONAL_ALLOWANCE,
@@ -358,7 +398,6 @@ class TaxSetting extends Model
                 'thai_law_reference' => 'Revenue Code Section 42(5)',
             ],
 
-            
             // Social Security Fund
             self::KEY_SSF_RATE => [
                 'value' => self::THAI_2025_SSF_RATE,
@@ -398,17 +437,109 @@ class TaxSetting extends Model
         ];
     }
 
+    // Get all allowed setting keys
+    public static function getAllowedKeys(): array
+    {
+        return [
+            // Employment deductions
+            self::KEY_EMPLOYMENT_DEDUCTION_RATE,
+            self::KEY_EMPLOYMENT_DEDUCTION_MAX,
+
+            // Personal allowances
+            self::KEY_PERSONAL_ALLOWANCE,
+            self::KEY_SPOUSE_ALLOWANCE,
+            self::KEY_CHILD_ALLOWANCE,
+            self::KEY_CHILD_ALLOWANCE_SUBSEQUENT,
+            self::KEY_PARENT_ALLOWANCE,
+
+            // Social Security Fund
+            self::KEY_SSF_RATE,
+            self::KEY_SSF_MIN_SALARY,
+            self::KEY_SSF_MAX_SALARY,
+            self::KEY_SSF_MAX_MONTHLY,
+            self::KEY_SSF_MAX_YEARLY,
+
+            // Provident Fund
+            self::KEY_PF_MIN_RATE,
+            self::KEY_PF_MAX_RATE,
+            self::KEY_PF_MAX_ANNUAL,
+
+            // Additional deductions
+            self::KEY_HEALTH_INSURANCE_MAX,
+            self::KEY_LIFE_INSURANCE_MAX,
+            self::KEY_MORTGAGE_INTEREST_MAX,
+            self::KEY_POLITICAL_DONATION_MAX,
+            self::KEY_THAI_ESG_FUND_MAX,
+
+            // Temporary deductions
+            self::KEY_SHOPPING_ALLOWANCE,
+            self::KEY_CONSTRUCTION_EXPENSE_MAX,
+
+            // Legacy keys (deprecated but still allowed)
+            self::KEY_PERSONAL_EXPENSE_RATE,
+            self::KEY_PERSONAL_EXPENSE_MAX,
+
+            // Test keys (for development/testing)
+            'CHILD_ALLOWANCE_TEST',
+        ];
+    }
+
+    // Get setting keys organized by category
+    public static function getKeysByCategory(): array
+    {
+        return [
+            'employment_deductions' => [
+                self::KEY_EMPLOYMENT_DEDUCTION_RATE,
+                self::KEY_EMPLOYMENT_DEDUCTION_MAX,
+            ],
+            'personal_allowances' => [
+                self::KEY_PERSONAL_ALLOWANCE,
+                self::KEY_SPOUSE_ALLOWANCE,
+                self::KEY_CHILD_ALLOWANCE,
+                self::KEY_CHILD_ALLOWANCE_SUBSEQUENT,
+                self::KEY_PARENT_ALLOWANCE,
+            ],
+            'social_security' => [
+                self::KEY_SSF_RATE,
+                self::KEY_SSF_MIN_SALARY,
+                self::KEY_SSF_MAX_SALARY,
+                self::KEY_SSF_MAX_MONTHLY,
+                self::KEY_SSF_MAX_YEARLY,
+            ],
+            'provident_fund' => [
+                self::KEY_PF_MIN_RATE,
+                self::KEY_PF_MAX_RATE,
+                self::KEY_PF_MAX_ANNUAL,
+            ],
+            'additional_deductions' => [
+                self::KEY_HEALTH_INSURANCE_MAX,
+                self::KEY_LIFE_INSURANCE_MAX,
+                self::KEY_MORTGAGE_INTEREST_MAX,
+                self::KEY_POLITICAL_DONATION_MAX,
+                self::KEY_THAI_ESG_FUND_MAX,
+            ],
+            'temporary_deductions' => [
+                self::KEY_SHOPPING_ALLOWANCE,
+                self::KEY_CONSTRUCTION_EXPENSE_MAX,
+            ],
+            'legacy_deprecated' => [
+                self::KEY_PERSONAL_EXPENSE_RATE,
+                self::KEY_PERSONAL_EXPENSE_MAX,
+            ],
+        ];
+    }
+
     // Clear cache when settings are updated
     protected static function boot()
     {
         parent::boot();
-        
+
         static::saved(function ($model) {
             Cache::forget("tax_setting_{$model->setting_key}_{$model->effective_year}");
             Cache::forget("tax_settings_all_{$model->effective_year}");
             Cache::forget("tax_settings_category_{$model->setting_category}_{$model->effective_year}");
         });
-        
+
         static::deleted(function ($model) {
             Cache::forget("tax_setting_{$model->setting_key}_{$model->effective_year}");
             Cache::forget("tax_settings_all_{$model->effective_year}");

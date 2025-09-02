@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::put('/{employee}/basic-information', [EmployeeController::class, 'updateEmployeeBasicInformation'])->where('employee', '[0-9]+')->middleware('permission:employee.update');
         Route::put('/{employee}/personal-information', [EmployeeController::class, 'updateEmployeePersonalInformation'])->where('employee', '[0-9]+')->middleware('permission:employee.update');
+        Route::put('/{id}/bank-information', [EmployeeController::class, 'updateBankInformation'])->where('id', '[0-9]+')->middleware('permission:employee.update');
     });
 
     // Employee grant allocation routes

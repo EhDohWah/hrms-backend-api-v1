@@ -304,13 +304,11 @@ class InterviewController extends Controller
             $validated = $request->validated();
             $interview = Interview::create($validated);
 
-            return (new InterviewResource($interview))
-                ->additional([
-                    'success' => true,
-                    'message' => 'Interview created successfully',
-                ])
-                ->response()
-                ->setStatusCode(201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Interview created successfully',
+                'data' => new InterviewResource($interview),
+            ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -385,13 +383,11 @@ class InterviewController extends Controller
         try {
             $interview = Interview::findOrFail($id);
 
-            return (new InterviewResource($interview))
-                ->additional([
-                    'success' => true,
-                    'message' => 'Interview retrieved successfully',
-                ])
-                ->response()
-                ->setStatusCode(200);
+            return response()->json([
+                'success' => true,
+                'message' => 'Interview retrieved successfully',
+                'data' => new InterviewResource($interview),
+            ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
@@ -508,13 +504,11 @@ class InterviewController extends Controller
             $validated = $request->validated();
             $interview->update($validated);
 
-            return (new InterviewResource($interview))
-                ->additional([
-                    'success' => true,
-                    'message' => 'Interview updated successfully',
-                ])
-                ->response()
-                ->setStatusCode(200);
+            return response()->json([
+                'success' => true,
+                'message' => 'Interview updated successfully',
+                'data' => new InterviewResource($interview),
+            ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([

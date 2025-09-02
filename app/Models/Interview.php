@@ -57,11 +57,11 @@ class Interview extends Model
         'updated_by',
     ];
 
-    // Below code is for SQL Server only, to allow explicit ID insertion.
-    /**
-     * Hook called before restoring a deleted model.
-     * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
-     */
+    // // Below code is for SQL Server only, to allow explicit ID insertion.
+    // /**
+    //  * Hook called before restoring a deleted model.
+    //  * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
+    //  */
     // public static function beforeRestoringModel($deletedModel): void
     // {
     //     if (DB::getDriverName() === 'sqlsrv') {

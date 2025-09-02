@@ -318,13 +318,21 @@ class JobOfferController extends Controller
      */
     public function store(JobOfferRequest $request)
     {
-        $jobOffer = JobOffer::create($request->validated());
+        try {
+            $jobOffer = JobOffer::create($request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Job offer created successfully',
-            'data' => new JobOfferResource($jobOffer),
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offer created successfully',
+                'data' => new JobOfferResource($jobOffer),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create job offer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -386,13 +394,26 @@ class JobOfferController extends Controller
      */
     public function show($id)
     {
-        $jobOffer = JobOffer::findOrFail($id);
+        try {
+            $jobOffer = JobOffer::findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Job offer retrieved successfully',
-            'data' => new JobOfferResource($jobOffer),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offer retrieved successfully',
+                'data' => new JobOfferResource($jobOffer),
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job offer not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve job offer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -481,14 +502,27 @@ class JobOfferController extends Controller
      */
     public function update(JobOfferRequest $request, $id)
     {
-        $jobOffer = JobOffer::findOrFail($id);
-        $jobOffer->update($request->validated());
+        try {
+            $jobOffer = JobOffer::findOrFail($id);
+            $jobOffer->update($request->validated());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Job offer updated successfully',
-            'data' => new JobOfferResource($jobOffer),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offer updated successfully',
+                'data' => new JobOfferResource($jobOffer),
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job offer not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update job offer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -549,13 +583,26 @@ class JobOfferController extends Controller
      */
     public function destroy($id)
     {
-        $jobOffer = JobOffer::findOrFail($id);
-        $jobOffer->delete();
+        try {
+            $jobOffer = JobOffer::findOrFail($id);
+            $jobOffer->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Job offer deleted successfully',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Job offer deleted successfully',
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job offer not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete job offer',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -624,40 +671,48 @@ class JobOfferController extends Controller
      */
     public function generatePdf($custom_offer_id)
     {
-        // Find the job offer by custom ID
-        $jobOffer = JobOffer::where('custom_offer_id', $custom_offer_id)->first();
-        if (! $jobOffer) {
+        try {
+            // Find the job offer by custom ID
+            $jobOffer = JobOffer::where('custom_offer_id', $custom_offer_id)->first();
+            if (! $jobOffer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job offer not found',
+                ], 404);
+            }
+
+            // Prepare data for the job offer template
+            $data = [
+                'date' => $jobOffer->date ? $this->formatDateWithSuperscript($jobOffer->date) : now()->format('dS F, Y'),
+                'position' => $jobOffer->position_name,
+                'subject' => 'Job Offer',
+                'probation_salary' => $jobOffer->salary_detail,
+                'post_probation_salary' => $jobOffer->salary_detail,
+                'acceptance_deadline' => $jobOffer->acceptance_deadline ? $this->formatDateWithSuperscript($jobOffer->acceptance_deadline) : 'N/A',
+                'employee_name' => $jobOffer->candidate_name,
+            ];
+
+            // Load the job offer view and pass the data
+            $pdf = PDF::loadView('jobOffer', $data);
+
+            // Set paper to A4 size
+            $pdf->setPaper('a4', 'portrait');
+
+            // Generate a filename based on the offer details
+            $filename = 'job-offer-'.$jobOffer->candidate_name.'.pdf';
+
+            // Return the PDF as a download
+            return $pdf->download($filename)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Job offer not found',
-            ], 404);
+                'message' => 'Failed to generate PDF',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        // Prepare data for the job offer template
-        $data = [
-            'date' => $jobOffer->date ? $this->formatDateWithSuperscript($jobOffer->date) : now()->format('dS F, Y'),
-            'position' => $jobOffer->position_name,
-            'subject' => 'Job Offer',
-            'probation_salary' => $jobOffer->salary_detail,
-            'post_probation_salary' => $jobOffer->salary_detail,
-            'acceptance_deadline' => $jobOffer->acceptance_deadline ? $this->formatDateWithSuperscript($jobOffer->acceptance_deadline) : 'N/A',
-            'employee_name' => $jobOffer->candidate_name,
-        ];
-
-        // Load the job offer view and pass the data
-        $pdf = PDF::loadView('jobOffer', $data);
-
-        // Set paper to A4 size
-        $pdf->setPaper('a4', 'portrait');
-
-        // Generate a filename based on the offer details
-        $filename = 'job-offer-'.$jobOffer->candidate_name.'.pdf';
-
-        // Return the PDF as a download
-        return $pdf->download($filename)
-            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            ->header('Pragma', 'no-cache')
-            ->header('Expires', '0');
     }
 
     /**

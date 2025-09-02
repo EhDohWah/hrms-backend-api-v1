@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\UserController;
+use Illuminate\Support\Facades\Route;
 
 // Public route for login
 Route::post('/login', [AuthController::class, 'login']);
@@ -39,6 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Lookups routes
     Route::prefix('lookups')->group(function () {
         Route::get('/', [LookupController::class, 'index']);
+        Route::get('/lists', [LookupController::class, 'getLookupLists']); // New route for organized lookup lists
+        Route::get('/search', [LookupController::class, 'search']);
+        Route::get('/types', [LookupController::class, 'getTypes']);
+        Route::get('/type/{type}', [LookupController::class, 'getByType']);
         Route::post('/', [LookupController::class, 'store'])->middleware('permission:admin.create');
         Route::get('/{id}', [LookupController::class, 'show'])->middleware('permission:admin.read');
         Route::put('/{id}', [LookupController::class, 'update'])->middleware('permission:admin.update');

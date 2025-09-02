@@ -45,7 +45,7 @@ class UpdateTaxSettingRequest extends FormRequest
                 'sometimes',
                 'required',
                 'string',
-                Rule::in([TaxSetting::TYPE_DEDUCTION, TaxSetting::TYPE_RATE, TaxSetting::TYPE_LIMIT]),
+                Rule::in([TaxSetting::TYPE_DEDUCTION, TaxSetting::TYPE_RATE, TaxSetting::TYPE_LIMIT, TaxSetting::TYPE_ALLOWANCE]),
             ],
             'description' => 'nullable|string|max:255',
             'effective_year' => 'sometimes|required|integer|min:2000|max:2100',
@@ -62,7 +62,7 @@ class UpdateTaxSettingRequest extends FormRequest
         return [
             'setting_key.in' => 'The selected setting key is not allowed. Use /api/v1/tax-settings/allowed-keys to see valid options.',
             'setting_key.unique' => 'This setting key already exists for the specified year.',
-            'setting_type.in' => 'Setting type must be one of: DEDUCTION, RATE, or LIMIT.',
+            'setting_type.in' => 'Setting type must be one of: DEDUCTION, RATE, LIMIT, or ALLOWANCE.',
             'effective_year.integer' => 'Effective year must be a valid year.',
             'effective_year.min' => 'Effective year must be 2000 or later.',
             'effective_year.max' => 'Effective year must be 2100 or earlier.',

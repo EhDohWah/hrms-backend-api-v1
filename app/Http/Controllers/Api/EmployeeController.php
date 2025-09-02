@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FilterEmployeeRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
+use App\Http\Requests\UpdateEmployeeBankRequest;
 use App\Http\Requests\UpdateEmployeePersonalRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UploadEmployeeImportRequest;
@@ -14,9 +15,18 @@ use App\Http\Resources\EmployeeCollection;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
 use App\Models\EmployeeBeneficiary;
-use App\Models\EmployeeGrantAllocation;
+use App\Models\EmployeeChild;
+use App\Models\EmployeeEducation;
+use App\Models\EmployeeFundingAllocation;
 use App\Models\EmployeeIdentification;
+use App\Models\EmployeeLanguage;
+use App\Models\EmployeeTraining;
 use App\Models\Employment;
+use App\Models\EmploymentHistory;
+use App\Models\GrantItem;
+use App\Models\LeaveBalance;
+use App\Models\LeaveRequest;
+use App\Models\TravelRequest;
 use App\Models\WorkLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -188,9 +198,18 @@ class EmployeeController extends Controller
             DB::beginTransaction();
 
             // Delete related records first to maintain referential integrity
-            EmployeeGrantAllocation::whereIn('employee_id', $ids)->delete();
+            // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
+            EmployeeFundingAllocation::whereIn('employee_id', $ids)->delete();
             EmployeeBeneficiary::whereIn('employee_id', $ids)->delete();
             EmployeeIdentification::whereIn('employee_id', $ids)->delete();
+            EmployeeChild::whereIn('employee_id', $ids)->delete();
+            EmployeeEducation::whereIn('employee_id', $ids)->delete();
+            EmployeeLanguage::whereIn('employee_id', $ids)->delete();
+            EmployeeTraining::whereIn('employee_id', $ids)->delete();
+            EmploymentHistory::whereIn('employee_id', $ids)->delete();
+            LeaveBalance::whereIn('employee_id', $ids)->delete();
+            LeaveRequest::whereIn('employee_id', $ids)->delete();
+            TravelRequest::whereIn('employee_id', $ids)->delete();
             Employment::whereIn('employee_id', $ids)->delete();
 
             // Delete the employees
@@ -302,7 +321,9 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Your file is being imported. You'll be notified when it's done.",
-            'import_id' => $importId,
+            'data' => [
+                'import_id' => $importId,
+            ],
         ], 202);
     }
 
@@ -726,7 +747,10 @@ class EmployeeController extends Controller
 
         // 3) if none found, return 404
         if ($employees->isEmpty()) {
-            abort(404, "No employee found with staff_id = {$staff_id}");
+            return response()->json([
+                'success' => false,
+                'message' => "No employee found with staff_id = {$staff_id}",
+            ], 404);
         }
 
         // 4) wrap in a collection resource so `data` is an array
@@ -810,7 +834,7 @@ class EmployeeController extends Controller
             'success' => true,
             'message' => 'Employee retrieved successfully',
             'data' => $employee,
-        ]);
+        ], 200);
     }
 
     /**
@@ -1043,65 +1067,79 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $employee = Employee::find($id);
-        if (! $employee) {
+        try {
+            $employee = Employee::findOrFail($id);
+
+            $validated = $request->validate([
+                'staff_id' => "required|string|max:50|unique:employees,staff_id,{$id}",
+                'subsidiary' => 'nullable|string|in:SMRU,BHF',
+                'user_id' => 'nullable|integer|exists:users,id',
+                'department_position_id' => 'nullable|integer|exists:department_positions,id',
+                'initial_en' => 'nullable|string|max:10',
+                'initial_th' => 'nullable|string|max:10',
+                'first_name_en' => 'required|string|max:255',
+                'last_name_en' => 'required|string|max:255',
+                'first_name_th' => 'nullable|string|max:255',
+                'last_name_th' => 'nullable|string|max:255',
+                'gender' => 'required|string|max:10',
+                'date_of_birth' => 'required|date',
+                'status' => 'required|string|in:Expats,Local ID,Local non ID',
+                'nationality' => 'nullable|string|max:100',
+                'religion' => 'nullable|string|max:100',
+                'social_security_number' => 'nullable|string|max:50',
+                'tax_number' => 'nullable|string|max:50',
+                'bank_name' => 'nullable|string|max:100',
+                'bank_branch' => 'nullable|string|max:100',
+                'bank_account_name' => 'nullable|string|max:100',
+                'bank_account_number' => 'nullable|string|max:100',
+                'mobile_phone' => 'nullable|string|max:20',
+                'permanent_address' => 'nullable|string',
+                'current_address' => 'nullable|string',
+                'military_status' => 'nullable|boolean',
+                'marital_status' => 'nullable|string|max:20',
+                'spouse_name' => 'nullable|string|max:100',
+                'spouse_phone_number' => 'nullable|string|max:20',
+                'emergency_contact_person_name' => 'nullable|string|max:100',
+                'emergency_contact_person_relationship' => 'nullable|string|max:50',
+                'emergency_contact_person_phone' => 'nullable|string|max:20',
+                'father_name' => 'nullable|string|max:100',
+                'father_occupation' => 'nullable|string|max:100',
+                'father_phone_number' => 'nullable|string|max:20',
+                'mother_name' => 'nullable|string|max:100',
+                'mother_occupation' => 'nullable|string|max:100',
+                'mother_phone_number' => 'nullable|string|max:20',
+                'driver_license_number' => 'nullable|string|max:50',
+                'remark' => 'nullable|string',
+            ]);
+
+            $employee->update($validated + [
+                'updated_by' => auth()->user()->name ?? 'system',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee updated successfully',
+                'data' => $employee,
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee not found',
             ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $validated = $request->validate([
-            'staff_id' => "required|string|max:50|unique:employees,staff_id,{$id}",
-            'subsidiary' => 'nullable|string|in:SMRU,BHF',
-            'user_id' => 'nullable|integer|exists:users,id',
-            'department_position_id' => 'nullable|integer|exists:department_positions,id',
-            'initial_en' => 'nullable|string|max:10',
-            'initial_th' => 'nullable|string|max:10',
-            'first_name_en' => 'required|string|max:255',
-            'last_name_en' => 'required|string|max:255',
-            'first_name_th' => 'nullable|string|max:255',
-            'last_name_th' => 'nullable|string|max:255',
-            'gender' => 'required|string|max:10',
-            'date_of_birth' => 'required|date',
-            'status' => 'required|string|in:Expats,Local ID,Local non ID',
-            'nationality' => 'nullable|string|max:100',
-            'religion' => 'nullable|string|max:100',
-            'social_security_number' => 'nullable|string|max:50',
-            'tax_number' => 'nullable|string|max:50',
-            'bank_name' => 'nullable|string|max:100',
-            'bank_branch' => 'nullable|string|max:100',
-            'bank_account_name' => 'nullable|string|max:100',
-            'bank_account_number' => 'nullable|string|max:100',
-            'mobile_phone' => 'nullable|string|max:20',
-            'permanent_address' => 'nullable|string',
-            'current_address' => 'nullable|string',
-            'military_status' => 'nullable|boolean',
-            'marital_status' => 'nullable|string|max:20',
-            'spouse_name' => 'nullable|string|max:100',
-            'spouse_phone_number' => 'nullable|string|max:20',
-            'emergency_contact_person_name' => 'nullable|string|max:100',
-            'emergency_contact_person_relationship' => 'nullable|string|max:50',
-            'emergency_contact_person_phone' => 'nullable|string|max:20',
-            'father_name' => 'nullable|string|max:100',
-            'father_occupation' => 'nullable|string|max:100',
-            'father_phone_number' => 'nullable|string|max:20',
-            'mother_name' => 'nullable|string|max:100',
-            'mother_occupation' => 'nullable|string|max:100',
-            'mother_phone_number' => 'nullable|string|max:20',
-            'driver_license_number' => 'nullable|string|max:50',
-            'remark' => 'nullable|string',
-        ]);
-
-        $employee->update($validated + [
-            'updated_by' => auth()->user()->name ?? 'system',
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee updated successfully',
-            'data' => $employee,
-        ]);
     }
 
     /**
@@ -1151,20 +1189,51 @@ class EmployeeController extends Controller
      */
     public function destroy($id)
     {
-        $employee = Employee::find($id);
-        if (! $employee) {
+        try {
+            $employee = Employee::findOrFail($id);
+
+            DB::beginTransaction();
+
+            // Delete related records first to maintain referential integrity
+            // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
+            EmployeeFundingAllocation::where('employee_id', $id)->delete();
+            EmployeeBeneficiary::where('employee_id', $id)->delete();
+            EmployeeIdentification::where('employee_id', $id)->delete();
+            EmployeeChild::where('employee_id', $id)->delete();
+            EmployeeEducation::where('employee_id', $id)->delete();
+            EmployeeLanguage::where('employee_id', $id)->delete();
+            EmployeeTraining::where('employee_id', $id)->delete();
+            EmploymentHistory::where('employee_id', $id)->delete();
+            LeaveBalance::where('employee_id', $id)->delete();
+            LeaveRequest::where('employee_id', $id)->delete();
+            TravelRequest::where('employee_id', $id)->delete();
+            Employment::where('employee_id', $id)->delete();
+
+            // Delete the employee
+            $employee->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee deleted successfully',
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee not found',
             ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete employee: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete employee',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $employee->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee deleted successfully',
-        ]);
     }
 
     /**
@@ -1213,7 +1282,7 @@ class EmployeeController extends Controller
             'success' => true,
             'message' => 'Site records retrieved successfully',
             'data' => $sites,
-        ]);
+        ], 200);
     }
 
     /**
@@ -1320,7 +1389,7 @@ class EmployeeController extends Controller
             'success' => true,
             'message' => 'Employees retrieved successfully',
             'data' => $employees,
-        ]);
+        ], 200);
     }
 
     /**
@@ -1409,38 +1478,52 @@ class EmployeeController extends Controller
      */
     public function uploadProfilePicture(Request $request, $id)
     {
-        $request->validate([
-            'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+        try {
+            $request->validate([
+                'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ]);
 
-        $employee = Employee::find($id);
-        if (! $employee) {
+            $employee = Employee::findOrFail($id);
+
+            // Delete old profile picture if exists
+            if ($employee->profile_picture) {
+                Storage::disk('public')->delete($employee->profile_picture);
+            }
+
+            // Store new profile picture
+            $path = $request->file('profile_picture')->store('employee/profile_pictures', 'public');
+
+            // Update employee record
+            $employee->profile_picture = $path;
+            $employee->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture uploaded successfully',
+                'data' => [
+                    'profile_picture' => $path,
+                    'url' => Storage::disk('public')->url($path),
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee not found',
             ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload profile picture',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        // Delete old profile picture if exists
-        if ($employee->profile_picture) {
-            Storage::disk('public')->delete($employee->profile_picture);
-        }
-
-        // Store new profile picture
-        $path = $request->file('profile_picture')->store('employee/profile_pictures', 'public');
-
-        // Update employee record
-        $employee->profile_picture = $path;
-        $employee->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Profile picture uploaded successfully',
-            'data' => [
-                'profile_picture' => $path,
-                'url' => Storage::disk('public')->url($path),
-            ],
-        ]);
     }
 
     /**
@@ -1473,36 +1556,56 @@ class EmployeeController extends Controller
     // employee grant-item add
     public function addEmployeeGrantItem(Request $request)
     {
-        $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'grant_item_id' => 'required|exists:grant_items,id',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date',
-            'amount' => 'required|numeric',
-            'currency' => 'required|string',
-            'payment_method' => 'required|string',
-            'payment_account' => 'required|string',
-            'payment_account_name' => 'required|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'employee_id' => 'required|exists:employees,id',
+                'grant_item_id' => 'required|exists:grant_items,id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date',
+                'amount' => 'required|numeric',
+                'currency' => 'required|string',
+                'payment_method' => 'required|string',
+                'payment_account' => 'required|string',
+                'payment_account_name' => 'required|string',
+            ]);
 
-        $employee = Employee::find($request->employee_id);
-        $grantItem = GrantItem::find($request->grant_item_id);
+            $employee = Employee::findOrFail($validated['employee_id']);
+            $grantItem = GrantItem::findOrFail($validated['grant_item_id']);
 
-        $employee->grant_items()->attach($grantItem, [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'amount' => $request->amount,
-            'currency' => $request->currency,
-            'payment_method' => $request->payment_method,
-            'payment_account' => $request->payment_account,
-            'payment_account_name' => $request->payment_account_name,
-        ]);
+            $employee->grant_items()->attach($grantItem, [
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'amount' => $validated['amount'],
+                'currency' => $validated['currency'],
+                'payment_method' => $validated['payment_method'],
+                'payment_account' => $validated['payment_account'],
+                'payment_account_name' => $validated['payment_account_name'],
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee grant-item added successfully',
-            'data' => $employee,
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee grant-item added successfully',
+                'data' => $employee,
+            ], 201);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee or grant item not found',
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add employee grant-item',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1582,7 +1685,7 @@ class EmployeeController extends Controller
                 'success' => true,
                 'message' => 'Employee basic information updated successfully',
                 'data' => $employee,
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             \Log::error('Error updating employee basic information', [
                 'employee_id' => $employee->id ?? null,
@@ -1723,7 +1826,7 @@ class EmployeeController extends Controller
                 'success' => true,
                 'message' => 'Employee personal information updated successfully',
                 'data' => $employee,
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('Error updating employee personal information', [
@@ -1754,7 +1857,196 @@ class EmployeeController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Import status retrieved successfully',
             'data' => $stats,
-        ]);
+        ], 200);
+    }
+
+    /**
+     * Update employee bank information
+     *
+     * @OA\Put(
+     *     path="/employees/{id}/bank-information",
+     *     summary="Update employee bank information",
+     *     description="Updates bank details for a specific employee including bank name, branch, account name and account number",
+     *     operationId="updateEmployeeBankInformation",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Employee ID",
+     *
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Bank information to update",
+     *
+     *         @OA\JsonContent(
+     *             required={"bank_account_name", "bank_account_number"},
+     *
+     *             @OA\Property(
+     *                 property="bank_name",
+     *                 type="string",
+     *                 maxLength=100,
+     *                 example="Bangkok Bank",
+     *                 description="Name of the bank",
+     *                 nullable=true
+     *             ),
+     *             @OA\Property(
+     *                 property="bank_branch",
+     *                 type="string",
+     *                 maxLength=100,
+     *                 example="Silom Branch",
+     *                 description="Bank branch name",
+     *                 nullable=true
+     *             ),
+     *             @OA\Property(
+     *                 property="bank_account_name",
+     *                 type="string",
+     *                 maxLength=100,
+     *                 example="John Doe",
+     *                 description="Name on the bank account"
+     *             ),
+     *             @OA\Property(
+     *                 property="bank_account_number",
+     *                 type="string",
+     *                 maxLength=100,
+     *                 example="1234567890",
+     *                 description="Bank account number (numbers, dashes, and spaces only)"
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Bank information updated successfully",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Bank information updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="bank_name", type="string", example="Bangkok Bank", nullable=true),
+     *                 @OA\Property(property="bank_branch", type="string", example="Silom Branch", nullable=true),
+     *                 @OA\Property(property="bank_account_name", type="string", example="John Doe"),
+     *                 @OA\Property(property="bank_account_number", type="string", example="1234567890")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Employee not found")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="bank_account_name",
+     *                     type="array",
+     *
+     *                     @OA\Items(type="string", example="Bank account name is required when providing bank information.")
+     *                 ),
+     *
+     *                 @OA\Property(
+     *                     property="bank_account_number",
+     *                     type="array",
+     *
+     *                     @OA\Items(type="string", example="Bank account number can only contain numbers, dashes, and spaces.")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to update bank information"),
+     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
+     *         )
+     *     )
+     * )
+     */
+    public function updateBankInformation(UpdateEmployeeBankRequest $request, $id)
+    {
+        try {
+            $employee = Employee::findOrFail($id);
+            
+            $validated = $request->validated();
+
+            // Add audit fields
+            $validated['updated_by'] = auth()->user()->name ?? 'system';
+
+            // Update only bank-related fields
+            $employee->update($validated);
+
+            // Return only bank information in response
+            $bankInfo = $employee->only([
+                'bank_name', 
+                'bank_branch', 
+                'bank_account_name', 
+                'bank_account_number'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bank information updated successfully',
+                'data' => $bankInfo,
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to update employee bank information: '.$e->getMessage(), [
+                'employee_id' => $id,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update bank information',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

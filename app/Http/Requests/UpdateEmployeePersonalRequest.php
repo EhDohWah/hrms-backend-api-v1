@@ -30,6 +30,8 @@ class UpdateEmployeePersonalRequest extends FormRequest
             'tax_number' => 'nullable|string|max:30',
             'religion' => 'required|string|max:50',
             'marital_status' => 'required|string|max:20',
+            'spouse_name' => 'nullable|string|max:255',
+            'spouse_phone_number' => 'nullable|string|max:20',
             'languages' => 'nullable|array',
             'languages.*' => 'string|max:30',
             'current_address' => 'required|string',

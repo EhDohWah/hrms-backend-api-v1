@@ -24,11 +24,19 @@ class EmployeeObserver
             // You can optionally calculate a prorated duration if the employee joins mid-year.
             $defaultDuration = $leaveType->default_duration; // Use default_duration from LeaveType
 
+            // Skip leave types with NULL default_duration or set a default value of 0
+            if ($defaultDuration === null) {
+                $defaultDuration = 0;
+            }
+
             LeaveBalance::create([
                 'employee_id' => $employee->id,
                 'leave_type_id' => $leaveType->id,
+                'total_days' => $defaultDuration,
+                'used_days' => 0,
                 'remaining_days' => $defaultDuration,
                 'year' => $currentYear,
+                'created_by' => 'System',
             ]);
         }
     }

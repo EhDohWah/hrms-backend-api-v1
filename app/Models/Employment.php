@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
  *   @OA\Property(property="probation_pass_date", type="string", format="date", nullable=true),
  *   @OA\Property(property="pay_method", type="string", nullable=true),
  *   @OA\Property(property="department_position_id", type="integer", format="int64", nullable=true),
+ *   @OA\Property(property="section_department", type="string", nullable=true),
  *   @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
  *   @OA\Property(property="position_salary", type="number", format="float"),
  *   @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
@@ -46,6 +47,7 @@ class Employment extends Model
         'probation_pass_date',
         'pay_method',
         'department_position_id',
+        'section_department',
         'work_location_id',
         'position_salary',
         'probation_salary',
@@ -268,5 +270,55 @@ class Employment extends Model
     public function getFormattedSalaryAttribute(): string
     {
         return number_format($this->position_salary, 2);
+    }
+
+    // Query scopes for better performance
+    public function scopeActive($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('end_date')
+                ->orWhere('end_date', '>', now());
+        });
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->whereNotNull('end_date')
+            ->where('end_date', '<=', now());
+    }
+
+    public function scopeByDateRange($query, $startDate, $endDate = null)
+    {
+        return $query->where('start_date', '>=', $startDate)
+            ->when($endDate, function ($q) use ($endDate) {
+                $q->where(function ($subQuery) use ($endDate) {
+                    $subQuery->whereNull('end_date')
+                        ->orWhere('end_date', '<=', $endDate);
+                });
+            });
+    }
+
+    public function scopeWithFundingAllocations($query)
+    {
+        return $query->with([
+            'employeeFundingAllocations' => function ($q) {
+                $q->with(['positionSlot.grantItem.grant', 'orgFunded.grant'])
+                    ->orderBy('allocation_type')
+                    ->orderBy('level_of_effort', 'desc');
+            },
+        ]);
+    }
+
+    public function scopeForPayroll($query)
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,subsidiary,status',
+            'departmentPosition:id,department,position',
+            'employeeFundingAllocations' => function ($q) {
+                $q->active()
+                    ->with(['positionSlot.grantItem.grant:id,name,code', 'orgFunded.grant:id,name,code'])
+                    ->select(['id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount']);
+            },
+        ]);
     }
 }

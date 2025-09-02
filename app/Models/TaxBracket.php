@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +13,7 @@ use OpenApi\Annotations as OA;
  *     type="object",
  *     title="Tax Bracket",
  *     description="Progressive income tax bracket configuration",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="min_income", type="number", format="float", example=150001, description="Minimum income for this bracket"),
  *     @OA\Property(property="max_income", type="number", format="float", example=300000, description="Maximum income for this bracket (null for highest bracket)"),
@@ -43,7 +44,7 @@ class TaxBracket extends Model
         'is_active',
         'description',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     protected $casts = [
@@ -53,7 +54,7 @@ class TaxBracket extends Model
         'base_tax' => 'decimal:2',
         'is_active' => 'boolean',
         'effective_year' => 'integer',
-        'bracket_order' => 'integer'
+        'bracket_order' => 'integer',
     ];
 
     // Scopes
@@ -72,16 +73,22 @@ class TaxBracket extends Model
         return $query->orderBy('bracket_order');
     }
 
+    public function scopeByOrder(Builder $query, int $order): Builder
+    {
+        return $query->where('bracket_order', $order);
+    }
+
     // Helper methods
     public function getFormattedRateAttribute(): string
     {
-        return $this->tax_rate . '%';
+        return $this->tax_rate.'%';
     }
 
     public function getIncomeRangeAttribute(): string
     {
         $min = number_format($this->min_income);
         $max = $this->max_income ? number_format($this->max_income) : '∞';
+
         return "฿{$min} - ฿{$max}";
     }
 
@@ -178,7 +185,7 @@ class TaxBracket extends Model
     }
 
     // Thai compliance validation
-    public static function validateThaiCompliance(int $year = null): array
+    public static function validateThaiCompliance(?int $year = null): array
     {
         $year = $year ?: date('Y');
         $brackets = static::getBracketsForYear($year);
@@ -187,6 +194,7 @@ class TaxBracket extends Model
 
         if ($brackets->isEmpty()) {
             $errors[] = "No tax brackets found for year {$year}";
+
             return ['is_compliant' => false, 'errors' => $errors, 'warnings' => $warnings];
         }
 
@@ -199,8 +207,8 @@ class TaxBracket extends Model
         $expectedBrackets = self::THAI_2025_BRACKETS;
         foreach ($brackets as $index => $bracket) {
             $expected = $expectedBrackets[$index] ?? null;
-            
-            if (!$expected) {
+
+            if (! $expected) {
                 continue;
             }
 
@@ -229,7 +237,7 @@ class TaxBracket extends Model
         // Check highest bracket is unlimited
         $highestBracket = $brackets->sortByDesc('bracket_order')->first();
         if ($highestBracket && $highestBracket->max_income !== null) {
-            $errors[] = "Highest tax bracket must have unlimited maximum income (null)";
+            $errors[] = 'Highest tax bracket must have unlimited maximum income (null)';
         }
 
         // Check highest bracket rate is 35%
@@ -248,7 +256,7 @@ class TaxBracket extends Model
     public function calculateCumulativeTaxAtMin(): float
     {
         $cumulativeTax = 0;
-        
+
         // Get all brackets below this one
         $lowerBrackets = static::active()
             ->forYear($this->effective_year)
@@ -268,7 +276,7 @@ class TaxBracket extends Model
     public static function getThaiDefaults2025(int $year = 2025): array
     {
         $brackets = [];
-        
+
         foreach (self::THAI_2025_BRACKETS as $bracketData) {
             $brackets[] = array_merge($bracketData, [
                 'effective_year' => $year,
