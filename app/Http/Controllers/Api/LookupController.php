@@ -18,7 +18,7 @@ class LookupController extends Controller
      * Get all lookups organized by category
      *
      * @OA\Get(
-     *     path="/lookups",
+     *     path="/lookups/lists",
      *     summary="Get all lookup values organized by category",
      *     description="Returns all system lookup values grouped by their respective categories",
      *     operationId="getLookupLists",
