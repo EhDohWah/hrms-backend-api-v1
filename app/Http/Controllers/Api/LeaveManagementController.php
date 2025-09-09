@@ -53,7 +53,28 @@ class LeaveManagementController extends Controller
      *             @OA\Property(property="message", type="string"),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/LeaveRequest")),
      *             @OA\Property(property="pagination", type="object"),
-     *             @OA\Property(property="stats", type="object")
+     *             @OA\Property(property="statistics", type="object",
+     *                 @OA\Property(property="totalRequests", type="integer", example=150),
+     *                 @OA\Property(property="pendingRequests", type="integer", example=25),
+     *                 @OA\Property(property="approvedRequests", type="integer", example=100),
+     *                 @OA\Property(property="declinedRequests", type="integer", example=20),
+     *                 @OA\Property(property="cancelledRequests", type="integer", example=5),
+     *                 @OA\Property(property="thisMonthRequests", type="integer", example=45),
+     *                 @OA\Property(property="thisWeekRequests", type="integer", example=12),
+     *                 @OA\Property(property="thisYearRequests", type="integer", example=150),
+     *                 @OA\Property(property="statusBreakdown", type="object",
+     *                     @OA\Property(property="pending", type="integer", example=25),
+     *                     @OA\Property(property="approved", type="integer", example=100),
+     *                     @OA\Property(property="declined", type="integer", example=20),
+     *                     @OA\Property(property="cancelled", type="integer", example=5)
+     *                 ),
+     *                 @OA\Property(property="timeBreakdown", type="object",
+     *                     @OA\Property(property="thisWeek", type="integer", example=12),
+     *                     @OA\Property(property="thisMonth", type="integer", example=45),
+     *                     @OA\Property(property="thisYear", type="integer", example=150)
+     *                 ),
+     *                 @OA\Property(property="leaveTypeBreakdown", type="object", example={"Annual Leave": 80, "Sick Leave": 30, "Personal Leave": 25})
+     *             )
      *         )
      *     )
      * )
@@ -139,8 +160,8 @@ class LeaveManagementController extends Controller
             // Execute pagination
             $leaveRequests = $query->paginate($perPage, ['*'], 'page', $page);
 
-            // Calculate statistics
-            $stats = $this->calculateLeaveRequestStats($validated);
+            // Calculate comprehensive statistics using the model's static method
+            $statistics = LeaveRequest::getStatistics();
 
             return response()->json([
                 'success' => true,
@@ -155,7 +176,7 @@ class LeaveManagementController extends Controller
                     'to' => $leaveRequests->lastItem(),
                     'has_more_pages' => $leaveRequests->hasMorePages(),
                 ],
-                'stats' => $stats,
+                'statistics' => $statistics,
             ], 200);
 
         } catch (\Exception $e) {
@@ -291,21 +312,18 @@ class LeaveManagementController extends Controller
                 ], 422);
             }
 
-            // Check leave balance
-            $currentYear = Carbon::now()->year;
-            $leaveBalance = LeaveBalance::where('employee_id', $validated['employee_id'])
-                ->where('leave_type_id', $validated['leave_type_id'])
-                ->where('year', $currentYear)
-                ->first();
+            // Check leave balance with improved validation
+            $balanceCheck = $this->checkLeaveBalance(
+                $validated['employee_id'],
+                $validated['leave_type_id'],
+                $validated['total_days']
+            );
 
-            if (! $leaveBalance || $leaveBalance->remaining_days < $validated['total_days']) {
+            if (! $balanceCheck['valid']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient leave balance',
-                    'data' => [
-                        'requested_days' => $validated['total_days'],
-                        'available_days' => $leaveBalance ? $leaveBalance->remaining_days : 0,
-                    ],
+                    'message' => $balanceCheck['message'],
+                    'data' => $balanceCheck,
                 ], 400);
             }
 
@@ -345,6 +363,9 @@ class LeaveManagementController extends Controller
 
             DB::commit();
 
+            // Clear cache to ensure fresh statistics
+            $this->clearStatisticsCache();
+
             // Load relationships for response
             $leaveRequest->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
@@ -372,11 +393,12 @@ class LeaveManagementController extends Controller
     }
 
     /**
-     * Update a leave request with status change handling
+     * Update a leave request with status change handling and approval tracking
      *
      * @OA\Put(
      *     path="/leave-requests/{id}",
-     *     summary="Update a leave request",
+     *     summary="Update a leave request with approval tracking",
+     *     description="Updates a leave request and automatically creates approval records when status changes to approved/declined",
      *     tags={"Leave Management"},
      *     security={{"bearerAuth":{}}},
      *
@@ -391,13 +413,17 @@ class LeaveManagementController extends Controller
      *             @OA\Property(property="end_date", type="string", format="date"),
      *             @OA\Property(property="total_days", type="number", format="float"),
      *             @OA\Property(property="reason", type="string"),
-     *             @OA\Property(property="status", type="string", enum={"pending", "approved", "declined", "cancelled"})
+     *             @OA\Property(property="status", type="string", enum={"pending", "approved", "declined", "cancelled"}),
+     *             @OA\Property(property="approver_role", type="string", description="Role of the approver (required when status is approved/declined)"),
+     *             @OA\Property(property="approver_name", type="string", description="Name of the approver (optional, defaults to current user)"),
+     *             @OA\Property(property="approver_signature", type="string", description="Digital signature of the approver"),
+     *             @OA\Property(property="approval_comments", type="string", description="Comments about the approval/rejection")
      *         )
      *     ),
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Leave request updated successfully",
+     *         description="Leave request updated successfully with approval tracking",
      *
      *         @OA\JsonContent(ref="#/components/schemas/LeaveRequest")
      *     )
@@ -412,6 +438,10 @@ class LeaveManagementController extends Controller
                 'total_days' => 'nullable|numeric|min:0.5',
                 'reason' => 'nullable|string|max:1000',
                 'status' => 'nullable|in:pending,approved,declined,cancelled',
+                'approver_role' => 'nullable|string|max:100',
+                'approver_name' => 'nullable|string|max:200',
+                'approver_signature' => 'nullable|string|max:200',
+                'approval_comments' => 'nullable|string|max:500',
             ]);
 
             DB::beginTransaction();
@@ -420,17 +450,43 @@ class LeaveManagementController extends Controller
             $oldStatus = $leaveRequest->status;
             $newStatus = $validated['status'] ?? $oldStatus;
 
-            // Handle balance updates based on status changes
-            if ($oldStatus !== $newStatus) {
+            // Check balance if status is changing to approved
+            if ($oldStatus !== $newStatus && $newStatus === 'approved') {
+                $balanceCheck = $this->checkLeaveBalance(
+                    $leaveRequest->employee_id,
+                    $leaveRequest->leave_type_id,
+                    $leaveRequest->total_days,
+                    $id // Exclude current request from calculation
+                );
+
+                if (! $balanceCheck['valid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot approve request: '.$balanceCheck['message'],
+                        'data' => $balanceCheck,
+                    ], 400);
+                }
+            }
+
+            // Handle status change with approval tracking
+            if ($oldStatus !== $newStatus && in_array($newStatus, ['approved', 'declined'])) {
+                $this->createApprovalRecord($leaveRequest, $validated, $newStatus);
                 $this->handleStatusChange($leaveRequest, $oldStatus, $newStatus);
             }
 
-            // Update the leave request
-            $leaveRequest->update(array_merge($validated, [
+            // Update the leave request (excluding approval-specific fields)
+            $leaveRequestData = array_diff_key($validated, array_flip([
+                'approver_role', 'approver_name', 'approver_signature', 'approval_comments',
+            ]));
+
+            $leaveRequest->update(array_merge($leaveRequestData, [
                 'updated_by' => auth()->user()->name ?? 'System',
             ]));
 
             DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearStatisticsCache();
 
             $leaveRequest->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
@@ -458,11 +514,12 @@ class LeaveManagementController extends Controller
     }
 
     /**
-     * Delete a leave request with balance restoration
+     * Delete a leave request with balance restoration and cascade delete
      *
      * @OA\Delete(
      *     path="/leave-requests/{id}",
      *     summary="Delete a leave request",
+     *     description="Deletes a leave request and automatically removes all related approvals and attachments via cascade delete. Restores leave balance if the request was approved.",
      *     tags={"Leave Management"},
      *     security={{"bearerAuth":{}}},
      *
@@ -470,7 +527,7 @@ class LeaveManagementController extends Controller
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Leave request deleted successfully"
+     *         description="Leave request deleted successfully with related records"
      *     )
      * )
      */
@@ -486,12 +543,14 @@ class LeaveManagementController extends Controller
                 $this->restoreLeaveBalance($leaveRequest);
             }
 
-            // Note: Attachments are now document URLs, so no physical files to delete
-            // The attachments will be deleted automatically due to foreign key cascade
-
+            // Note: Related records (approvals and attachments) will be automatically
+            // deleted due to cascade delete constraints defined in the migration
             $leaveRequest->delete();
 
             DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -987,6 +1046,24 @@ class LeaveManagementController extends Controller
 
             $leaveRequest = LeaveRequest::findOrFail($leaveRequestId);
 
+            // Check balance if approval status is 'approved'
+            if ($validated['status'] === 'approved') {
+                $balanceCheck = $this->checkLeaveBalance(
+                    $leaveRequest->employee_id,
+                    $leaveRequest->leave_type_id,
+                    $leaveRequest->total_days,
+                    $leaveRequestId // Exclude current request from calculation
+                );
+
+                if (! $balanceCheck['valid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot approve request: '.$balanceCheck['message'],
+                        'data' => $balanceCheck,
+                    ], 400);
+                }
+            }
+
             $approval = LeaveRequestApproval::create([
                 'leave_request_id' => $leaveRequestId,
                 'approver_role' => $validated['approver_role'],
@@ -1001,6 +1078,9 @@ class LeaveManagementController extends Controller
             $this->evaluateLeaveRequestStatus($leaveRequest);
 
             DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -1048,6 +1128,25 @@ class LeaveManagementController extends Controller
             $approval = LeaveRequestApproval::findOrFail($id);
             $oldStatus = $approval->status;
 
+            // Check balance if approval status is changing to 'approved'
+            if (isset($validated['status']) && $validated['status'] === 'approved' && $oldStatus !== 'approved') {
+                $leaveRequest = $approval->leaveRequest;
+                $balanceCheck = $this->checkLeaveBalance(
+                    $leaveRequest->employee_id,
+                    $leaveRequest->leave_type_id,
+                    $leaveRequest->total_days,
+                    $leaveRequest->id // Exclude current request from calculation
+                );
+
+                if (! $balanceCheck['valid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot approve request: '.$balanceCheck['message'],
+                        'data' => $balanceCheck,
+                    ], 400);
+                }
+            }
+
             // Update approval date when status changes from pending
             if (isset($validated['status']) && $validated['status'] !== 'pending' && $oldStatus === 'pending') {
                 $validated['approval_date'] = now();
@@ -1063,6 +1162,9 @@ class LeaveManagementController extends Controller
             }
 
             DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -1221,37 +1323,87 @@ class LeaveManagementController extends Controller
     // ==================== PRIVATE HELPER METHODS ====================
 
     /**
-     * Calculate leave request statistics
+     * Clear leave request statistics cache
      */
-    private function calculateLeaveRequestStats($filters = [])
+    private function clearStatisticsCache(): void
     {
-        $baseQuery = LeaveRequest::query();
+        \Cache::forget('leave_request_statistics');
+    }
 
-        // Apply same filters as main query
-        if (! empty($filters['from'])) {
-            $baseQuery->where('start_date', '>=', $filters['from']);
+    /**
+     * Check if employee has sufficient leave balance for the requested days
+     */
+    private function checkLeaveBalance(int $employeeId, int $leaveTypeId, float $requestedDays, ?int $excludeRequestId = null): array
+    {
+        $currentYear = Carbon::now()->year;
+        $leaveBalance = LeaveBalance::where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->where('year', $currentYear)
+            ->first();
+
+        if (! $leaveBalance) {
+            return [
+                'valid' => false,
+                'message' => 'No leave balance found for this employee and leave type for the current year',
+                'available_days' => 0,
+                'requested_days' => $requestedDays,
+            ];
         }
-        if (! empty($filters['to'])) {
-            $baseQuery->where('end_date', '<=', $filters['to']);
+
+        // Calculate current used days excluding the request being updated (if any)
+        $currentUsedDays = $leaveBalance->used_days;
+        if ($excludeRequestId) {
+            $excludedRequest = LeaveRequest::where('id', $excludeRequestId)
+                ->where('status', 'approved')
+                ->first();
+            if ($excludedRequest) {
+                $currentUsedDays -= $excludedRequest->total_days;
+            }
         }
-        if (! empty($filters['leave_types'])) {
-            $leaveTypeIds = explode(',', $filters['leave_types']);
-            $baseQuery->whereIn('leave_type_id', $leaveTypeIds);
+
+        $availableDays = $leaveBalance->total_days - $currentUsedDays;
+
+        if ($availableDays < $requestedDays) {
+            return [
+                'valid' => false,
+                'message' => 'Insufficient leave balance. You cannot request more days than available.',
+                'available_days' => $availableDays,
+                'requested_days' => $requestedDays,
+                'shortfall' => $requestedDays - $availableDays,
+            ];
         }
 
         return [
-            'total_requests' => (clone $baseQuery)->count(),
-            'pending_requests' => (clone $baseQuery)->where('status', 'pending')->count(),
-            'approved_requests' => (clone $baseQuery)->where('status', 'approved')->count(),
-            'declined_requests' => (clone $baseQuery)->where('status', 'declined')->count(),
-            'cancelled_requests' => (clone $baseQuery)->where('status', 'cancelled')->count(),
-            'this_month' => (clone $baseQuery)->whereMonth('created_at', Carbon::now()->month)->count(),
-            'this_week' => (clone $baseQuery)->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count(),
+            'valid' => true,
+            'message' => 'Sufficient leave balance available',
+            'available_days' => $availableDays,
+            'requested_days' => $requestedDays,
+            'remaining_after_request' => $availableDays - $requestedDays,
         ];
     }
 
     /**
-     * Handle status change logic for leave requests
+     * Create an approval record when status changes to approved/declined
+     */
+    private function createApprovalRecord(LeaveRequest $leaveRequest, array $validated, string $status)
+    {
+        // Get current user as default approver if not provided
+        $currentUser = auth()->user();
+
+        LeaveRequestApproval::create([
+            'leave_request_id' => $leaveRequest->id,
+            'approver_role' => $validated['approver_role'] ?? 'Manager',
+            'approver_name' => $validated['approver_name'] ?? ($currentUser ? $currentUser->name : 'System'),
+            'approver_signature' => $validated['approver_signature'] ?? null,
+            'approval_date' => now(),
+            'status' => $status,
+            'comments' => $validated['approval_comments'] ?? null,
+            'created_by' => $currentUser ? $currentUser->name : 'System',
+        ]);
+    }
+
+    /**
+     * Handle status change logic for leave requests with balance protection
      */
     private function handleStatusChange(LeaveRequest $leaveRequest, $oldStatus, $newStatus)
     {
@@ -1267,20 +1419,37 @@ class LeaveManagementController extends Controller
 
         // Handle transitions
         if ($oldStatus === 'approved' && in_array($newStatus, ['declined', 'cancelled'])) {
-            // Restore balance
-            $leaveBalance->used_days -= $leaveRequest->total_days;
-            $leaveBalance->remaining_days += $leaveRequest->total_days;
+            // Restore balance (safe operation - always valid)
+            $leaveBalance->used_days = max(0, $leaveBalance->used_days - $leaveRequest->total_days);
+            $leaveBalance->remaining_days = $leaveBalance->total_days - $leaveBalance->used_days;
             $leaveBalance->save();
         } elseif ($oldStatus !== 'approved' && $newStatus === 'approved') {
-            // Deduct balance
-            $leaveBalance->used_days += $leaveRequest->total_days;
-            $leaveBalance->remaining_days -= $leaveRequest->total_days;
-            $leaveBalance->save();
+            // Deduct balance (this should already be validated by checkLeaveBalance)
+            $newUsedDays = $leaveBalance->used_days + $leaveRequest->total_days;
+            $newRemainingDays = $leaveBalance->total_days - $newUsedDays;
+
+            // Safety check to prevent negative balance (should not happen with our validation)
+            if ($newRemainingDays >= 0) {
+                $leaveBalance->used_days = $newUsedDays;
+                $leaveBalance->remaining_days = $newRemainingDays;
+                $leaveBalance->save();
+            } else {
+                Log::warning('Attempted to create negative balance', [
+                    'employee_id' => $leaveRequest->employee_id,
+                    'leave_type_id' => $leaveRequest->leave_type_id,
+                    'request_id' => $leaveRequest->id,
+                    'total_days' => $leaveBalance->total_days,
+                    'used_days' => $leaveBalance->used_days,
+                    'request_days' => $leaveRequest->total_days,
+                    'would_be_remaining' => $newRemainingDays,
+                ]);
+                throw new \Exception('Operation would result in negative leave balance. This should not happen with proper validation.');
+            }
         }
     }
 
     /**
-     * Restore leave balance when request is deleted
+     * Restore leave balance when request is deleted with safety checks
      */
     private function restoreLeaveBalance(LeaveRequest $leaveRequest)
     {
@@ -1291,8 +1460,9 @@ class LeaveManagementController extends Controller
             ->first();
 
         if ($leaveBalance) {
-            $leaveBalance->used_days -= $leaveRequest->total_days;
-            $leaveBalance->remaining_days += $leaveRequest->total_days;
+            // Ensure used_days doesn't go below 0
+            $leaveBalance->used_days = max(0, $leaveBalance->used_days - $leaveRequest->total_days);
+            $leaveBalance->remaining_days = $leaveBalance->total_days - $leaveBalance->used_days;
             $leaveBalance->save();
         }
     }

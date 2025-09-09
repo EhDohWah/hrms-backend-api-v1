@@ -14,6 +14,10 @@ Route::get('/job-offer', function () {
     return view('jobOffer');
 });
 
+Route::get('/leave-request', function () {
+    return view('reports.leave_request_report_pdf');
+});
+
 Route::get('/broadcast-test', function () {
     event(new MyTestEvent('Hello, this is a Pusher test event!'));
 

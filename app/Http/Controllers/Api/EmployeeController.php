@@ -217,6 +217,9 @@ class EmployeeController extends Controller
 
             DB::commit();
 
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
+
             return response()->json([
                 'success' => true,
                 'message' => $count.' employee(s) deleted successfully',
@@ -767,7 +770,7 @@ class EmployeeController extends Controller
      * @OA\Get(
      *     path="/employees/{id}",
      *     summary="Get employee details",
-     *     description="Returns employee details by ID with related data including employment, grant allocations, beneficiaries, and identification",
+     *     description="Returns employee details by ID with related data including employment, grant allocations, beneficiaries, identification, and leave balances",
      *     operationId="getEmployeeDetailsById",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
@@ -821,6 +824,8 @@ class EmployeeController extends Controller
             'employeeIdentification',
             'employeeChildren',
             'employeeLanguages',
+            'leaveBalances',
+            'leaveBalances.leaveType',
         ])->find($id);
 
         if (! $employee) {
@@ -933,6 +938,9 @@ class EmployeeController extends Controller
         try {
             $validated = $request->validated();
             $employee = Employee::create($validated);
+
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -1116,6 +1124,9 @@ class EmployeeController extends Controller
                 'updated_by' => auth()->user()->name ?? 'system',
             ]);
 
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee updated successfully',
@@ -1213,6 +1224,9 @@ class EmployeeController extends Controller
             $employee->delete();
 
             DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -1553,6 +1567,14 @@ class EmployeeController extends Controller
         return floatval(preg_replace('/[^0-9.-]/', '', $value));
     }
 
+    /**
+     * Clear employee statistics cache
+     */
+    private function clearEmployeeStatisticsCache(): void
+    {
+        \Cache::forget('employee_statistics');
+    }
+
     // employee grant-item add
     public function addEmployeeGrantItem(Request $request)
     {
@@ -1680,6 +1702,9 @@ class EmployeeController extends Controller
 
             // update the employee
             $employee->update($validated);
+
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
 
             return response()->json([
                 'success' => true,
@@ -1818,6 +1843,9 @@ class EmployeeController extends Controller
             }
 
             \DB::commit();
+
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
 
             // Reload employee with relations if needed for API response
             $employee->load('employeeIdentification', 'employeeLanguages');
@@ -2001,7 +2029,7 @@ class EmployeeController extends Controller
     {
         try {
             $employee = Employee::findOrFail($id);
-            
+
             $validated = $request->validated();
 
             // Add audit fields
@@ -2010,12 +2038,15 @@ class EmployeeController extends Controller
             // Update only bank-related fields
             $employee->update($validated);
 
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
+
             // Return only bank information in response
             $bankInfo = $employee->only([
-                'bank_name', 
-                'bank_branch', 
-                'bank_account_name', 
-                'bank_account_number'
+                'bank_name',
+                'bank_branch',
+                'bank_account_name',
+                'bank_account_number',
             ]);
 
             return response()->json([

@@ -71,7 +71,7 @@ return new class extends Migration
         // Leave Request Approvals - Enhanced
         Schema::create('leave_request_approvals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('leave_request_id')->constrained('leave_requests');
+            $table->foreignId('leave_request_id')->constrained('leave_requests')->onDelete('cascade');
             $table->string('approver_role', 100)->nullable();
             $table->string('approver_name', 200)->nullable();
             $table->string('approver_signature', 200)->nullable();
@@ -141,9 +141,18 @@ return new class extends Migration
     {
         $leaveTypes = [
             [
-                'name' => 'Annual vacation',
+                'name' => 'Annual Leave',
                 'default_duration' => 26.00,
                 'description' => 'Annual vacation / ลาพักร้อนประจำปี (Remain vacation/จำนวนวันลาพักร้อนคงเหลือ ............days/วัน)',
+                'requires_attachment' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+                'created_by' => 'system',
+            ],
+            [
+                'name' => 'Unpaid Leave',
+                'default_duration' => 0.00,
+                'description' => 'Unpaid Leave / ลาป่วยไม่จ่ายเงิน (state disease/ระบุโรค) 30 days',
                 'requires_attachment' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -188,8 +197,8 @@ return new class extends Migration
             [
                 'name' => 'Career development training',
                 'default_duration' => 14.00,
-                'description' => 'Career development training (Please attach with Career development training request form/กรุณาแนบแบบฟอร์มขออนุญาตเข้าร่วมการอบรมพัฒนาโดยภายนอกให้แก่ กยุกอนพพุ่อรออำนิยสำนักงำน) 14 days',
-                'requires_attachment' => true,
+                'description' => 'Career development training (Career development training request form is optional/แบบฟอร์มขออนุญาตเข้าร่วมการอบรมพัฒนาโดยภายนอก เป็นทางเลือก) 14 days',
+                'requires_attachment' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
                 'created_by' => 'system',

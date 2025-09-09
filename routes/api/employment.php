@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\LeaveManagementController;
 use App\Http\Controllers\Api\RecycleBinController;
 use App\Http\Controllers\Api\Reports\InterviewReportController;
 use App\Http\Controllers\Api\Reports\JobOfferReportController;
+use App\Http\Controllers\Api\Reports\LeaveRequestReportController;
 use App\Http\Controllers\Api\TravelRequestApprovalController;
 use App\Http\Controllers\Api\TravelRequestController;
 use App\Http\Controllers\Api\WorklocationController;
@@ -114,6 +115,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/interview-report/export-pdf', [InterviewReportController::class, 'exportPDF'])->middleware('permission:reports.create');
         Route::get('/interview-report/export-excel', [InterviewReportController::class, 'exportExcel'])->middleware('permission:reports.create');
         Route::post('/job-offer-report/export-pdf', [JobOfferReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+        Route::post('/leave-request-report/export-pdf', [LeaveRequestReportController::class, 'exportPDF'])->middleware('permission:reports.create');
+        Route::post('/leave-request-report/export-individual-pdf', [LeaveRequestReportController::class, 'exportIndividualPDF'])->middleware('permission:reports.create');
     });
 
     // Recycle bin routes

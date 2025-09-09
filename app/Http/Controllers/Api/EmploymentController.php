@@ -9,6 +9,7 @@ use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
 use App\Models\OrgFundedAllocation;
 use App\Models\PositionSlot;
+use App\Traits\HasCacheManagement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,16 @@ use Illuminate\Support\Facades\Validator;
  */
 class EmploymentController extends Controller
 {
+    use HasCacheManagement;
+
+    /**
+     * Override model name for cache management
+     */
+    protected function getModelName(): string
+    {
+        return 'employment';
+    }
+
     /**
      * Display a listing of employments with advanced pagination, filtering, and sorting.
      *
@@ -143,7 +154,7 @@ class EmploymentController extends Controller
      *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"}),
      *                     @OA\Property(property="employment_type", type="array", @OA\Items(type="string"), example={"Full-Time"}),
      *                     @OA\Property(property="work_location", type="array", @OA\Items(type="string"), example={"Main Office"}),
-                     @OA\Property(property="department", type="array", @OA\Items(type="string"), example={"Administration"})
+     *                     @OA\Property(property="department", type="array", @OA\Items(type="string"), example={"Administration"})
      *                 )
      *             )
      *         )
@@ -197,239 +208,120 @@ class EmploymentController extends Controller
             $sortBy = $validated['sort_by'] ?? 'start_date';
             $sortOrder = $validated['sort_order'] ?? 'desc';
 
-            // PRIORITY 4: Query Caching - Generate cache key
-            $cacheKey = 'employments_'.md5(serialize($validated));
-            $cacheDuration = 300; // 5 minutes cache
+            // Build optimized query with selective fields
+            $query = Employment::select([
+                'id',
+                'employee_id',
+                'employment_type',
+                'pay_method',
+                'probation_pass_date',
+                'start_date',
+                'end_date',
+                'department_position_id',
+                'work_location_id',
+                'position_salary',
+                'probation_salary',
+                'fte',
+                'health_welfare',
+                'pvd',
+                'saving_fund',
+                'created_at',
+                'updated_at',
+                'created_by',
+                'updated_by',
+            ])->with([
+                'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
+                'departmentPosition:id,department,position',
+                'workLocation:id,name',
+            ]);
 
-            // Check if we should bypass cache (for real-time data needs)
-            $bypassCache = $request->input('bypass_cache', false);
+            // Conditionally load allocations if requested
+            if ($validated['include_allocations'] ?? false) {
+                $query->with([
+                    'employeeFundingAllocations:id,employment_id,allocation_type,level_of_effort,allocated_amount',
+                    'employeeFundingAllocations.positionSlot:id,grant_id,position_title',
+                    'employeeFundingAllocations.positionSlot.grant:id,name',
+                ]);
+            }
 
-            // Wrap entire query logic in cache and withoutEvents
-            $result = $bypassCache ? null : Cache::remember($cacheKey, $cacheDuration, function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
-                // PRIORITY 2: Disable Model Events for Read Operations
-                return Employment::withoutEvents(function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
-
-                    // PRIORITY 1: Optimized Eager Loading with selective fields
-                    $query = Employment::select([
-                        'id',
-                        'employee_id',
-                        'employment_type',
-                        'pay_method',
-                        'probation_pass_date',
-                        'start_date',
-                        'end_date',
-                        'department_position_id',
-                        'work_location_id',
-                        'position_salary',
-                        'probation_salary',
-                        'fte',
-                        'health_welfare',
-                        'pvd',
-                        'saving_fund',
-                        'created_at',
-                        'updated_at',
-                        'created_by',
-                        'updated_by',
-                    ])->with([
-                        'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
-                        'departmentPosition:id,department,position',
-                        'workLocation:id,name',
-                        // REMOVED 'employeeFundingAllocations' - will load conditionally
-                    ]);
-
-                    // Apply subsidiary filter (through employee relationship)
-                    if (! empty($validated['filter_subsidiary'])) {
-                        $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
-                        $query->whereHas('employee', function ($q) use ($subsidiaries) {
-                            $q->whereIn('subsidiary', $subsidiaries);
-                        });
-                    }
-
-                    // Apply employment type filter
-                    if (! empty($validated['filter_employment_type'])) {
-                        $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
-                        $query->whereIn('employment_type', $employmentTypes);
-                    }
-
-                    // Apply work location filter (by work location name or ID)
-                    if (! empty($validated['filter_work_location'])) {
-                        $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
-                        $query->where(function ($q) use ($workLocations) {
-                            $q->whereHas('workLocation', function ($wq) use ($workLocations) {
-                                $wq->whereIn('name', $workLocations);
-                            })->orWhereIn('work_location_id', array_filter($workLocations, 'is_numeric'));
-                        });
-                    }
-
-                    // Apply department filter (by department name from department_positions table)
-                    if (! empty($validated['filter_department'])) {
-                        $departments = array_map('trim', explode(',', $validated['filter_department']));
-                        $query->whereHas('departmentPosition', function ($dq) use ($departments) {
-                            $dq->whereIn('department', $departments);
-                        });
-                    }
-
-                    // PRIORITY 3: Optimized Sorting Without Manual Joins (using subqueries)
-                    switch ($sortBy) {
-                        case 'staff_id':
-                            // Use subquery for sorting by staff_id
-                            $query->addSelect([
-                                'sort_staff_id' => Employee::select('staff_id')
-                                    ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_staff_id', $sortOrder);
-                            break;
-
-                        case 'employee_name':
-                            // Use subquery for sorting by employee name
-                            $query->addSelect([
-                                'sort_employee_name' => Employee::selectRaw("CONCAT(COALESCE(first_name_en, ''), ' ', COALESCE(last_name_en, ''))")
-                                    ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_employee_name', $sortOrder);
-                            break;
-
-                        case 'work_location':
-                            // Use subquery for sorting by work location
-                            $query->addSelect([
-                                'sort_location_name' => DB::table('work_locations')
-                                    ->select('name')
-                                    ->whereColumn('work_locations.id', 'employments.work_location_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_location_name', $sortOrder);
-                            break;
-
-                        case 'start_date':
-                        default:
-                            // Direct sort on indexed start_date field
-                            $query->orderBy('start_date', $sortOrder);
-                            break;
-                    }
-
-                    // Execute pagination with optimized query
-                    $employments = $query->paginate($perPage, ['*'], 'page', $page);
-
-                    // PRIORITY 5: Conditional Relationship Loading
-                    // Only load funding allocations if specifically requested
-                    if ($request->input('include_allocations', false)) {
-                        $employments->load([
-                            'employeeFundingAllocations' => function ($query) {
-                                $query->select('id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id');
-                            },
-                        ]);
-                    }
-
-                    return $employments;
-                });
-            });
-
-            // If cache was bypassed, execute query without caching
-            if (! $result) {
-                $result = Employment::withoutEvents(function () use ($validated, $perPage, $page, $sortBy, $sortOrder, $request) {
-                    // Same query logic as above (DRY principle violated for performance)
-                    $query = Employment::select([
-                        'id',
-                        'employee_id',
-                        'employment_type',
-                        'pay_method',
-                        'probation_pass_date',
-                        'start_date',
-                        'end_date',
-                        'department_position_id',
-                        'work_location_id',
-                        'position_salary',
-                        'probation_salary',
-                        'fte',
-                        'health_welfare',
-                        'pvd',
-                        'saving_fund',
-                        'created_at',
-                        'updated_at',
-                        'created_by',
-                        'updated_by',
-                    ])->with([
-                        'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
-                        'departmentPosition:id,department,position',
-                        'workLocation:id,name',
-                    ]);
-
-                    // Apply filters
-                    if (! empty($validated['filter_subsidiary'])) {
-                        $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
-                        $query->whereHas('employee', function ($q) use ($subsidiaries) {
-                            $q->whereIn('subsidiary', $subsidiaries);
-                        });
-                    }
-
-                    if (! empty($validated['filter_employment_type'])) {
-                        $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
-                        $query->whereIn('employment_type', $employmentTypes);
-                    }
-
-                    if (! empty($validated['filter_work_location'])) {
-                        $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
-                        $query->where(function ($q) use ($workLocations) {
-                            $q->whereHas('workLocation', function ($wq) use ($workLocations) {
-                                $wq->whereIn('name', $workLocations);
-                            })->orWhereIn('work_location_id', array_filter($workLocations, 'is_numeric'));
-                        });
-                    }
-
-                    if (! empty($validated['filter_department'])) {
-                        $departments = array_map('trim', explode(',', $validated['filter_department']));
-                        $query->whereHas('departmentPosition', function ($dq) use ($departments) {
-                            $dq->whereIn('department', $departments);
-                        });
-                    }
-
-                    // Apply optimized sorting
-                    switch ($sortBy) {
-                        case 'staff_id':
-                            $query->addSelect([
-                                'sort_staff_id' => Employee::select('staff_id')
-                                    ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_staff_id', $sortOrder);
-                            break;
-
-                        case 'employee_name':
-                            $query->addSelect([
-                                'sort_employee_name' => Employee::selectRaw("CONCAT(COALESCE(first_name_en, ''), ' ', COALESCE(last_name_en, ''))")
-                                    ->whereColumn('employees.id', 'employments.employee_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_employee_name', $sortOrder);
-                            break;
-
-                        case 'work_location':
-                            $query->addSelect([
-                                'sort_location_name' => DB::table('work_locations')
-                                    ->select('name')
-                                    ->whereColumn('work_locations.id', 'employments.work_location_id')
-                                    ->limit(1),
-                            ])->orderBy('sort_location_name', $sortOrder);
-                            break;
-
-                        case 'start_date':
-                        default:
-                            $query->orderBy('start_date', $sortOrder);
-                            break;
-                    }
-
-                    $employments = $query->paginate($perPage, ['*'], 'page', $page);
-
-                    if ($request->input('include_allocations', false)) {
-                        $employments->load([
-                            'employeeFundingAllocations' => function ($query) {
-                                $query->select('id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id');
-                            },
-                        ]);
-                    }
-
-                    return $employments;
+            // Apply subsidiary filter (through employee relationship)
+            if (! empty($validated['filter_subsidiary'])) {
+                $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
+                $query->whereHas('employee', function ($q) use ($subsidiaries) {
+                    $q->whereIn('subsidiary', $subsidiaries);
                 });
             }
 
-            $employments = $result;
+            // Apply employment type filter
+            if (! empty($validated['filter_employment_type'])) {
+                $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
+                $query->whereIn('employment_type', $employmentTypes);
+            }
+
+            // Apply work location filter (by work location name or ID)
+            if (! empty($validated['filter_work_location'])) {
+                $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
+                $query->where(function ($q) use ($workLocations) {
+                    $q->whereHas('workLocation', function ($wq) use ($workLocations) {
+                        $wq->whereIn('name', $workLocations);
+                    })->orWhereIn('work_location_id', array_filter($workLocations, 'is_numeric'));
+                });
+            }
+
+            // Apply department filter (by department name from department_positions table)
+            if (! empty($validated['filter_department'])) {
+                $departments = array_map('trim', explode(',', $validated['filter_department']));
+                $query->whereHas('departmentPosition', function ($dq) use ($departments) {
+                    $dq->whereIn('department', $departments);
+                });
+            }
+
+            // Apply sorting optimizations
+            switch ($sortBy) {
+                case 'staff_id':
+                    $query->addSelect([
+                        'sort_staff_id' => Employee::select('staff_id')
+                            ->whereColumn('employees.id', 'employments.employee_id')
+                            ->limit(1),
+                    ])->orderBy('sort_staff_id', $sortOrder);
+                    break;
+
+                case 'employee_name':
+                    $query->addSelect([
+                        'sort_employee_name' => Employee::selectRaw("CONCAT(COALESCE(first_name_en, ''), ' ', COALESCE(last_name_en, ''))")
+                            ->whereColumn('employees.id', 'employments.employee_id')
+                            ->limit(1),
+                    ])->orderBy('sort_employee_name', $sortOrder);
+                    break;
+
+                case 'work_location':
+                    $query->addSelect([
+                        'sort_location_name' => DB::table('work_locations')
+                            ->select('name')
+                            ->whereColumn('work_locations.id', 'employments.work_location_id')
+                            ->limit(1),
+                    ])->orderBy('sort_location_name', $sortOrder);
+                    break;
+
+                case 'start_date':
+                default:
+                    $query->orderBy('start_date', $sortOrder);
+                    break;
+            }
+
+            // Use the new caching system instead of manual cache management
+            $filters = array_filter([
+                'filter_subsidiary' => $validated['filter_subsidiary'] ?? null,
+                'filter_employment_type' => $validated['filter_employment_type'] ?? null,
+                'filter_work_location' => $validated['filter_work_location'] ?? null,
+                'filter_department' => $validated['filter_department'] ?? null,
+                'sort_by' => $sortBy,
+                'sort_order' => $sortOrder,
+                'include_allocations' => $validated['include_allocations'] ?? false,
+            ]);
+
+            // Cache and paginate results using the new caching system
+            $employments = $this->cacheAndPaginate($query, $filters, $perPage);
 
             // Build applied filters array
             $appliedFilters = [];
@@ -984,6 +876,9 @@ class EmploymentController extends Controller
             if (! empty($warnings)) {
                 $response['warnings'] = $warnings;
             }
+
+            // Invalidate employment-related caches after successful creation
+            $this->invalidateCacheAfterWrite($employment);
 
             return response()->json($response, 201);
 
@@ -1623,6 +1518,9 @@ class EmploymentController extends Controller
                 $response['warnings'] = $warnings;
             }
 
+            // Invalidate employment-related caches after successful update
+            $this->invalidateCacheAfterWrite($employment);
+
             return response()->json($response, 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1681,6 +1579,9 @@ class EmploymentController extends Controller
         try {
             $employment = Employment::findOrFail($id);
             $employment->delete();
+
+            // Invalidate employment-related caches after successful deletion
+            $this->invalidateCacheAfterWrite($employment);
 
             return response()->json([
                 'success' => true,
