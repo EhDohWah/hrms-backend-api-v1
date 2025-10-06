@@ -20,8 +20,8 @@ return new class extends Migration
             // Slot number, e.g., 1, 2, 3...
             $table->unsignedInteger('slot_number');
 
-            // Foreign key to budget_lines
-            $table->foreignId('budget_line_id')->constrained('budget_lines')->cascadeOnDelete();
+            // Budget line code moved to grant_items table for better normalization
+            // $table->string('budgetline_code'); // Removed - now in grant_items
 
             $table->timestamps();
 

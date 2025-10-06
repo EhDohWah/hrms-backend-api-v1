@@ -40,8 +40,8 @@ return new class extends Migration
             'leave_request' => $defaultActions,
             'job_offer' => $defaultActions,
             'budget_line' => $defaultActions,
-            'position_slot' => $defaultActions,
             'tax' => $defaultActions,
+            'personnel_action' => $defaultActions,
         ];
 
         // Create each permission (if not exists)
@@ -56,29 +56,48 @@ return new class extends Migration
         // Create roles
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $hrManagerRole = Role::firstOrCreate(['name' => 'hr-manager']);
-        $hrAssistantRole = Role::firstOrCreate(['name' => 'hr-assistant']);
-        $employeeRole = Role::firstOrCreate(['name' => 'employee']);
+        $hrAssistantJuniorRole = Role::firstOrCreate(['name' => 'hr-assistant-junior']);
+        $hrAssistantSeniorRole = Role::firstOrCreate(['name' => 'hr-assistant-senior']);
+        $siteAdminRole = Role::firstOrCreate(['name' => 'site-admin']);
 
-        // Full access for Admin, HR Manager, and HR Assistant
+        // Assign permissions per role configuration
         $fullPermissions = Permission::all();
-        $adminRole->syncPermissions($fullPermissions);
-        $hrManagerRole->syncPermissions($fullPermissions);
-        $hrAssistantRole->syncPermissions($fullPermissions);
 
-        // Limited permissions for Employee
-        $employeePermissions = [
-            'user.read',
-            'user.update',
-            'attendance.create',
-            'attendance.read',
-            'travel_request.create',
-            'travel_request.read',
-            'travel_request.update',
-            'leave_request.create',
-            'leave_request.read',
-            'leave_request.update',
-        ];
-        $employeeRole->syncPermissions($employeePermissions);
+        // Admin: full access
+        $adminRole->syncPermissions($fullPermissions);
+
+        // HR Manager: full access
+        $hrManagerRole->syncPermissions($fullPermissions);
+
+        // HR Assistant Senior: all except grant.*
+        $hrAssistantSeniorPermissions = $fullPermissions->filter(fn ($permission) => strpos($permission->name, 'grant.') !== 0);
+        $hrAssistantSeniorRole->syncPermissions($hrAssistantSeniorPermissions);
+
+        // HR Assistant Junior: all except grant.*, employment.*, payroll.*, reports.*
+        $juniorExclusions = ['grant.', 'employment.', 'payroll.', 'reports.'];
+        $hrAssistantJuniorPermissions = $fullPermissions->filter(function ($permission) use ($juniorExclusions) {
+            foreach ($juniorExclusions as $prefix) {
+                if (strpos($permission->name, $prefix) === 0) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+        $hrAssistantJuniorRole->syncPermissions($hrAssistantJuniorPermissions);
+
+        // Site Admin: only leave_request.*, travel_request.*, training.*
+        $siteAdminAllowed = ['leave_request.', 'travel_request.', 'training.'];
+        $siteAdminPermissions = $fullPermissions->filter(function ($permission) use ($siteAdminAllowed) {
+            foreach ($siteAdminAllowed as $prefix) {
+                if (strpos($permission->name, $prefix) === 0) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+        $siteAdminRole->syncPermissions($siteAdminPermissions);
 
         // Create a default admin user if not already exists
         $defaultAdminEmail = 'admin@hrms.com';
@@ -112,36 +131,52 @@ return new class extends Migration
             $hrManagerUser->syncPermissions($fullPermissions);
         }
 
-        // Create a default hr assistant user if not already exists
-        $defaultHrAssistantEmail = 'hrassistant@hrms.com';
-        if (! User::where('email', $defaultHrAssistantEmail)->exists()) {
-            $hrAssistantUser = User::create([
-                'name' => 'HR Assistant User',
-                'email' => $defaultHrAssistantEmail,
+        // Create a default HR Assistant Junior user if not already exists
+        $defaultHrAssistantJuniorEmail = 'hrassistant.junior@hrms.com';
+        if (! User::where('email', $defaultHrAssistantJuniorEmail)->exists()) {
+            $hrAssistantJuniorUser = User::create([
+                'name' => 'HR Assistant Junior User',
+                'email' => $defaultHrAssistantJuniorEmail,
                 'password' => Hash::make('password'), // Change this to a secure password for production
                 'created_by' => 'system',
                 'updated_by' => 'system',
                 'last_login_at' => null,
                 'status' => 'active',
             ]);
-            $hrAssistantUser->assignRole($hrAssistantRole);
-            $hrAssistantUser->syncPermissions($fullPermissions);
+            $hrAssistantJuniorUser->assignRole($hrAssistantJuniorRole);
+            $hrAssistantJuniorUser->syncPermissions($hrAssistantJuniorPermissions);
         }
 
-        // Create a default employee user if not already exists
-        $defaultEmployeeEmail = 'employee@hrms.com';
-        if (! User::where('email', $defaultEmployeeEmail)->exists()) {
-            $employeeUser = User::create([
-                'name' => 'Employee User',
-                'email' => $defaultEmployeeEmail,
+        // Create a default HR Assistant Senior user if not already exists
+        $defaultHrAssistantSeniorEmail = 'hrassistant.senior@hrms.com';
+        if (! User::where('email', $defaultHrAssistantSeniorEmail)->exists()) {
+            $hrAssistantSeniorUser = User::create([
+                'name' => 'HR Assistant Senior User',
+                'email' => $defaultHrAssistantSeniorEmail,
                 'password' => Hash::make('password'), // Change this to a secure password for production
                 'created_by' => 'system',
                 'updated_by' => 'system',
                 'last_login_at' => null,
                 'status' => 'active',
             ]);
-            $employeeUser->assignRole($employeeRole);
-            $employeeUser->syncPermissions($employeePermissions);
+            $hrAssistantSeniorUser->assignRole($hrAssistantSeniorRole);
+            $hrAssistantSeniorUser->syncPermissions($hrAssistantSeniorPermissions);
+        }
+
+        // Create a default Site Admin user if not already exists
+        $defaultSiteAdminEmail = 'siteadmin@hrms.com';
+        if (! User::where('email', $defaultSiteAdminEmail)->exists()) {
+            $siteAdminUser = User::create([
+                'name' => 'Site Admin User',
+                'email' => $defaultSiteAdminEmail,
+                'password' => Hash::make('password'), // Change this to a secure password for production
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'last_login_at' => null,
+                'status' => 'active',
+            ]);
+            $siteAdminUser->assignRole($siteAdminRole);
+            $siteAdminUser->syncPermissions($siteAdminPermissions);
         }
     }
 
@@ -150,15 +185,24 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Optionally, you could delete the default admin user.
+        // Optionally, you could delete the default users created by this migration.
         // Be cautious: you may not want to remove roles/permissions in production.
-        $defaultAdminEmail = 'admin@hrms.com';
-        User::where('email', $defaultAdminEmail)->delete();
+
+        // Delete default users by email
+        foreach ([
+            'admin@hrms.com',
+            'hrmanager@hrms.com',
+            'hrassistant.junior@hrms.com',
+            'hrassistant.senior@hrms.com',
+            'siteadmin@hrms.com',
+        ] as $email) {
+            User::where('email', $email)->delete();
+        }
 
         // Optionally, remove the roles if needed:
-        // Role::whereIn('name', ['admin', 'hr-manager', 'hr-assistant', 'employee'])->delete();
+        // Role::whereIn('name', ['hr-manager', 'hr-assistant-junior', 'hr-assistant-senior', 'site-admin'])->delete();
 
         // Similarly for permissions if you really intend to remove them:
-        // Permission::whereIn('name', collect($modules)->flatten())->delete();
+        // Permission::whereIn('name', Permission::pluck('name'))->delete();
     }
 };

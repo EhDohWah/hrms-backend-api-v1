@@ -89,7 +89,7 @@ class EmploymentObserver
         }
 
         // Check if critical changes affect existing funding allocations
-        if ($employment->isDirty(['start_date', 'end_date', 'department_position_id'])) {
+        if ($employment->isDirty(['start_date', 'end_date', 'department_id', 'position_id'])) {
             $this->validateFundingAllocationImpact($employment);
         }
     }
@@ -172,25 +172,28 @@ class EmploymentObserver
         $startDate = Carbon::parse($employment->start_date);
         $probationDate = Carbon::parse($employment->probation_pass_date);
 
-        // Probation pass date must be before start date (probation comes first, then employment)
-        if ($probationDate->gte($startDate)) {
+        // Probation pass date must be after start date (probation period ends after employment begins)
+        if ($probationDate->lte($startDate)) {
             throw new \InvalidArgumentException(
-                'Probation pass date must be before employment start date'
+                'Probation pass date must be after employment start date'
             );
         }
 
-        // Probation pass date should not be too far in the past (e.g., more than 1 year before employment)
-        if ($probationDate->lt($startDate->copy()->subYear())) {
+        // Probation pass date should typically be within 6 months of start date (flexible for exceptional cases)
+        if ($probationDate->gt($startDate->copy()->addMonths(6))) {
             throw new \InvalidArgumentException(
-                'Probation pass date cannot be more than 1 year before employment start date'
+                'Probation pass date should typically be within 6 months of employment start date'
             );
         }
 
-        // If employment has end date, probation should be before both start and end date
+        // If employment has end date, probation should be before end date
         if ($employment->end_date) {
             $endDate = Carbon::parse($employment->end_date);
-            // This validation is already covered by the probation < start date check
-            // since start date < end date, probation will automatically be < end date
+            if ($probationDate->gte($endDate)) {
+                throw new \InvalidArgumentException(
+                    'Probation pass date must be before employment end date'
+                );
+            }
         }
     }
 

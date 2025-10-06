@@ -22,8 +22,6 @@ use Illuminate\Database\Eloquent\Model;
  *     @OA\Property(property="position_salary", type="number", format="float"),
  *     @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
  *     @OA\Property(property="supervisor_id", type="integer", format="int64", nullable=true),
-
- *     @OA\Property(property="fte", type="number", format="float", nullable=true),
  *     @OA\Property(property="active", type="boolean", default=true),
  *     @OA\Property(property="health_welfare", type="boolean", default=false),
  *     @OA\Property(property="pvd", type="boolean", default=false),
@@ -46,11 +44,9 @@ class EmploymentHistory extends Model
         'end_date',
         'probation_pass_date',
         'pay_method',
-        'department_position_id',
         'work_location_id',
         'position_salary',
         'probation_salary',
-        'fte',
         'active',
         'health_welfare',
         'pvd',
@@ -74,14 +70,14 @@ class EmploymentHistory extends Model
         return $this->belongsTo(EmploymentType::class);
     }
 
-    public function position()
-    {
-        return $this->belongsTo(Position::class);
-    }
-
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
     }
 
     public function workLocation()

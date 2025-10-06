@@ -140,8 +140,9 @@ class Payroll extends Model
     {
         return $query->with([
             'employment.employee:id,staff_id,first_name_en,last_name_en,subsidiary',
-            'employment.departmentPosition:id,department,position',
-            'employeeFundingAllocation:id,employee_id,allocation_type,level_of_effort',
+            'employment.department:id,name',
+            'employment.position:id,title,department_id',
+            'employeeFundingAllocation:id,employee_id,allocation_type,fte',
         ]);
     }
 
@@ -164,8 +165,8 @@ class Payroll extends Model
         }
         $departments = array_map('trim', array_filter($departments));
 
-        return $query->whereHas('employment.departmentPosition', function ($q) use ($departments) {
-            $q->whereIn('department', $departments);
+        return $query->whereHas('employment.department', function ($q) use ($departments) {
+            $q->whereIn('name', $departments);
         });
     }
 
@@ -201,8 +202,8 @@ class Payroll extends Model
 
             case 'department':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
-                    ->join('department_positions', 'employments.department_position_id', '=', 'department_positions.id')
-                    ->orderBy('department_positions.department', $sortOrder)
+                    ->join('departments', 'employments.department_id', '=', 'departments.id')
+                    ->orderBy('departments.name', $sortOrder)
                     ->select('payrolls.*');
 
             case 'staff_id':
@@ -244,9 +245,9 @@ class Payroll extends Model
 
     public static function getUniqueDepartments()
     {
-        return \App\Models\DepartmentPosition::select('department')
-            ->distinct()
-            ->whereNotNull('department')
+        return \App\Models\Department::select('name as department')
+            ->where('is_active', true)
+            ->whereNotNull('name')
             ->where('department', '!=', '')
             ->whereHas('employments.payrolls')
             ->orderBy('department')
@@ -264,8 +265,9 @@ class Payroll extends Model
     {
         return $query->with([
             'employment.employee:id,staff_id,first_name_en,last_name_en,subsidiary',
-            'employment.departmentPosition:id,department,position',
-            'employeeFundingAllocation:id,employee_id,allocation_type,level_of_effort',
+            'employment.department:id,name',
+            'employment.position:id,title,department_id',
+            'employeeFundingAllocation:id,employee_id,allocation_type,fte',
         ]);
     }
 }

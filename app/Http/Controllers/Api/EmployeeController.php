@@ -8,6 +8,7 @@ use App\Http\Requests\FilterEmployeeRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeBankRequest;
+use App\Http\Requests\UpdateEmployeeFamilyRequest;
 use App\Http\Requests\UpdateEmployeePersonalRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UploadEmployeeImportRequest;
@@ -67,9 +68,22 @@ class EmployeeController extends Controller
      *                 @OA\Property(property="title", type="string", example="SMRU"),
      *                 @OA\Property(property="value", type="string", example="subsidiary-SMRU"),
      *                 @OA\Property(property="children", type="array", @OA\Items(
-     *                     @OA\Property(property="key", type="string", example="employee-1"),
-     *                     @OA\Property(property="title", type="string", example="EMP001 - John Doe"),
-     *                     @OA\Property(property="value", type="string", example="employee-1")
+     *                     @OA\Property(property="key", type="string", example="34"),
+     *                     @OA\Property(property="title", type="string", example="0001 - John Doe"),
+     *                     @OA\Property(property="status", type="string", example="Local ID Staff"),
+     *                     @OA\Property(property="value", type="string", example="34"),
+     *                     @OA\Property(property="department_id", type="integer", example=5, nullable=true),
+     *                     @OA\Property(property="position_id", type="integer", example=12, nullable=true),
+     *                     @OA\Property(property="employment", type="object", nullable=true,
+     *                         @OA\Property(property="department", type="object", nullable=true,
+     *                             @OA\Property(property="id", type="integer", example=5),
+     *                             @OA\Property(property="name", type="string", example="Human Resources")
+     *                         ),
+     *                         @OA\Property(property="position", type="object", nullable=true,
+     *                             @OA\Property(property="id", type="integer", example=12),
+     *                             @OA\Property(property="title", type="string", example="HR Manager")
+     *                         )
+     *                     )
      *                 ))
      *             ))
      *         )
@@ -86,7 +100,13 @@ class EmployeeController extends Controller
     public function getEmployeesForTreeSearch()
     {
         try {
-            $employees = Employee::select('id', 'subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'status')->get();
+            $employees = Employee::select('id', 'subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'status')
+                ->with([
+                    'employment:id,employee_id,department_id,position_id',
+                    'employment.department:id,name',
+                    'employment.position:id,title',
+                ])
+                ->get();
 
             // Group employees by subsidiary
             $grouped = $employees->groupBy('subsidiary');
@@ -103,12 +123,33 @@ class EmployeeController extends Controller
                             $fullName .= ' '.$emp->last_name_en;
                         }
 
-                        return [
+                        $employeeData = [
                             'key' => "{$emp->id}",
                             'title' => "{$emp->staff_id} - {$fullName}",
                             'status' => $emp->status,
                             'value' => "{$emp->id}",
+                            'department_id' => null,
+                            'position_id' => null,
+                            'employment' => null,
                         ];
+
+                        // Add employment information if available
+                        if ($emp->employment) {
+                            $employeeData['department_id'] = $emp->employment->department_id;
+                            $employeeData['position_id'] = $emp->employment->position_id;
+                            $employeeData['employment'] = [
+                                'department' => $emp->employment->department ? [
+                                    'id' => $emp->employment->department->id,
+                                    'name' => $emp->employment->department->name,
+                                ] : null,
+                                'position' => $emp->employment->position ? [
+                                    'id' => $emp->employment->position->id,
+                                    'title' => $emp->employment->position->title,
+                                ] : null,
+                            ];
+                        }
+
+                        return $employeeData;
                     })->values()->toArray(),
                 ];
             })->values()->toArray();
@@ -743,6 +784,7 @@ class EmployeeController extends Controller
             ->with([
                 'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
                 'employment:id,employee_id,start_date,end_date', // Removed 'active', added 'end_date'
+                'employeeEducation:id,employee_id,school_name,degree,start_date,end_date',
             ]);
 
         // 2) exact match on staff_id
@@ -812,16 +854,20 @@ class EmployeeController extends Controller
     {
         $employee = Employee::with([
             'employment',
+            'employment.department',
+            'employment.position',
             'employeeFundingAllocations',
             'employeeFundingAllocations.positionSlot.grantItem',
             'employeeFundingAllocations.positionSlot.grantItem.grant',
             'employeeFundingAllocations.orgFunded.grant',
-            'employeeFundingAllocations.orgFunded.departmentPosition',
+            'employeeFundingAllocations.orgFunded.department',
+            'employeeFundingAllocations.orgFunded.position',
             'employment.workLocation',
             // 'employment.grantAllocations.grantItemAllocation',
             // 'employment.grantAllocations.grantItemAllocation.grant',
             'employeeBeneficiaries',
             'employeeIdentification',
+            'employeeEducation',
             'employeeChildren',
             'employeeLanguages',
             'leaveBalances',
@@ -993,7 +1039,6 @@ class EmployeeController extends Controller
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
      *             @OA\Property(property="user_id", type="integer", nullable=true, description="Associated user ID"),
-     *             @OA\Property(property="department_position_id", type="integer", description="Department position ID"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
      *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
      *             @OA\Property(property="first_name_en", type="string", example="John", description="Employee first name in English"),
@@ -1082,7 +1127,6 @@ class EmployeeController extends Controller
                 'staff_id' => "required|string|max:50|unique:employees,staff_id,{$id}",
                 'subsidiary' => 'nullable|string|in:SMRU,BHF',
                 'user_id' => 'nullable|integer|exists:users,id',
-                'department_position_id' => 'nullable|integer|exists:department_positions,id',
                 'initial_en' => 'nullable|string|max:10',
                 'initial_th' => 'nullable|string|max:10',
                 'first_name_en' => 'required|string|max:255',
@@ -1871,6 +1915,150 @@ class EmployeeController extends Controller
         }
     }
 
+    /**
+     * @OA\Put(
+     *     path="/employees/{employee}/family-information",
+     *     summary="Update employee family information",
+     *     description="Update the family information of an employee including parents and emergency contact.",
+     *     operationId="updateEmployeeFamilyInformation",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="employee",
+     *         in="path",
+     *         required=true,
+     *         description="ID of the employee",
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\RequestBody(
+     *         required=false,
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="father_name", type="string", maxLength=100, example="James Doe"),
+     *             @OA\Property(property="father_occupation", type="string", maxLength=100, example="Engineer"),
+     *             @OA\Property(property="father_phone", type="string", maxLength=20, example="0812345670"),
+     *             @OA\Property(property="mother_name", type="string", maxLength=100, example="Mary Doe"),
+     *             @OA\Property(property="mother_occupation", type="string", maxLength=100, example="Teacher"),
+     *             @OA\Property(property="mother_phone", type="string", maxLength=20, example="0812345671"),
+     *             @OA\Property(property="spouse_name", type="string", maxLength=100, example="Jane Doe"),
+     *             @OA\Property(property="spouse_phone_number", type="string", maxLength=20, example="0812345673"),
+     *             @OA\Property(property="emergency_contact_name", type="string", maxLength=100, example="John Smith"),
+     *             @OA\Property(property="emergency_contact_relationship", type="string", maxLength=50, example="Brother"),
+     *             @OA\Property(property="emergency_contact_phone", type="string", maxLength=20, example="0812345672")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Employee family information updated successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee family information updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="father_name", type="string", example="James Doe"),
+     *                 @OA\Property(property="father_occupation", type="string", example="Engineer"),
+     *                 @OA\Property(property="father_phone_number", type="string", example="0812345670"),
+     *                 @OA\Property(property="mother_name", type="string", example="Mary Doe"),
+     *                 @OA\Property(property="mother_occupation", type="string", example="Teacher"),
+     *                 @OA\Property(property="mother_phone_number", type="string", example="0812345671"),
+     *                 @OA\Property(property="spouse_name", type="string", example="Jane Doe"),
+     *                 @OA\Property(property="spouse_phone_number", type="string", example="0812345673"),
+     *                 @OA\Property(property="emergency_contact_person_name", type="string", example="John Smith"),
+     *                 @OA\Property(property="emergency_contact_person_relationship", type="string", example="Brother"),
+     *                 @OA\Property(property="emergency_contact_person_phone", type="string", example="0812345672")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employee not found"
+     *     )
+     * )
+     */
+    public function updateEmployeeFamilyInformation(UpdateEmployeeFamilyRequest $request, Employee $employee)
+    {
+        try {
+            $validated = $request->validated();
+
+            $fieldMapping = [
+                'father_name' => 'father_name',
+                'father_occupation' => 'father_occupation',
+                'father_phone' => 'father_phone_number',
+                'mother_name' => 'mother_name',
+                'mother_occupation' => 'mother_occupation',
+                'mother_phone' => 'mother_phone_number',
+                'spouse_name' => 'spouse_name',
+                'spouse_phone_number' => 'spouse_phone_number',
+                'emergency_contact_name' => 'emergency_contact_person_name',
+                'emergency_contact_relationship' => 'emergency_contact_person_relationship',
+                'emergency_contact_phone' => 'emergency_contact_person_phone',
+            ];
+
+            $updateData = [];
+            foreach ($fieldMapping as $inputKey => $column) {
+                if (array_key_exists($inputKey, $validated)) {
+                    $updateData[$column] = $validated[$inputKey];
+                }
+            }
+
+            // Audit
+            $updateData['updated_by'] = auth()->user()->name ?? 'system';
+
+            if (! empty($updateData)) {
+                $employee->update($updateData);
+            }
+
+            // Clear cache to ensure fresh statistics
+            $this->clearEmployeeStatisticsCache();
+
+            $responseData = $employee->only([
+                'father_name',
+                'father_occupation',
+                'father_phone_number',
+                'mother_name',
+                'mother_occupation',
+                'mother_phone_number',
+                'spouse_name',
+                'spouse_phone_number',
+                'emergency_contact_person_name',
+                'emergency_contact_person_relationship',
+                'emergency_contact_person_phone',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee family information updated successfully',
+                'data' => $responseData,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error updating employee family information', [
+                'employee_id' => $employee->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee family information',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     // Add method to check import status
     public function getImportStatus(string $importId)
     {
@@ -2080,4 +2268,7 @@ class EmployeeController extends Controller
             ], 500);
         }
     }
+
+    // Add new method here
+
 }

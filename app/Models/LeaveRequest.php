@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
@@ -22,13 +22,19 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="total_days", type="number"),
  *     @OA\Property(property="reason", type="string"),
  *     @OA\Property(property="status", type="string"),
+ *     @OA\Property(property="supervisor_approved", type="boolean", default=false),
+ *     @OA\Property(property="supervisor_approved_date", type="string", format="date", nullable=true),
+ *     @OA\Property(property="hr_site_admin_approved", type="boolean", default=false),
+ *     @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", nullable=true),
+ *     @OA\Property(property="attachment_notes", type="string", nullable=true),
  *     @OA\Property(property="created_by", type="string", nullable=true),
  *     @OA\Property(property="updated_by", type="string", nullable=true)
  * )
  */
 class LeaveRequest extends Model
 {
-    //
+    use HasFactory;
+
     protected $table = 'leave_requests';
 
     protected $fillable = [
@@ -39,6 +45,11 @@ class LeaveRequest extends Model
         'total_days',
         'reason',
         'status',
+        'supervisor_approved',
+        'supervisor_approved_date',
+        'hr_site_admin_approved',
+        'hr_site_admin_approved_date',
+        'attachment_notes',
         'created_by',
         'updated_by',
     ];
@@ -47,6 +58,10 @@ class LeaveRequest extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'total_days' => 'decimal:2',
+        'supervisor_approved' => 'boolean',
+        'supervisor_approved_date' => 'date',
+        'hr_site_admin_approved' => 'boolean',
+        'hr_site_admin_approved_date' => 'date',
     ];
 
     /**
@@ -63,22 +78,6 @@ class LeaveRequest extends Model
     public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class);
-    }
-
-    /**
-     * Get the approvals for the leave request.
-     */
-    public function approvals(): HasMany
-    {
-        return $this->hasMany(LeaveRequestApproval::class);
-    }
-
-    /**
-     * Get the attachments for the leave request.
-     */
-    public function attachments(): HasMany
-    {
-        return $this->hasMany(LeaveAttachment::class);
     }
 
     /**

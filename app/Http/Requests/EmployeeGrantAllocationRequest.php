@@ -29,7 +29,7 @@ class EmployeeGrantAllocationRequest extends FormRequest
             'active' => 'boolean',
             'allocations' => 'required|array|min:1',
             'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
-            'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+            'allocations.*.fte' => 'required|numeric|min:0|max:100',
         ];
     }
 
@@ -51,10 +51,10 @@ class EmployeeGrantAllocationRequest extends FormRequest
             'allocations.min' => 'At least one allocation is required.',
             'allocations.*.position_slot_id.required' => 'Position slot is required for each allocation.',
             'allocations.*.position_slot_id.exists' => 'Selected position slot does not exist.',
-            'allocations.*.level_of_effort.required' => 'Level of effort is required for each allocation.',
-            'allocations.*.level_of_effort.numeric' => 'Level of effort must be a number.',
-            'allocations.*.level_of_effort.min' => 'Level of effort must be at least 0.',
-            'allocations.*.level_of_effort.max' => 'Level of effort cannot exceed 100.',
+            'allocations.*.fte.required' => 'Level of effort is required for each allocation.',
+            'allocations.*.fte.numeric' => 'Level of effort must be a number.',
+            'allocations.*.fte.min' => 'Level of effort must be at least 0.',
+            'allocations.*.fte.max' => 'Level of effort cannot exceed 100.',
         ];
     }
 }

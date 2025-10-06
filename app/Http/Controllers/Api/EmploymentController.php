@@ -217,28 +217,32 @@ class EmploymentController extends Controller
                 'probation_pass_date',
                 'start_date',
                 'end_date',
-                'department_position_id',
+                'department_id',
+                'position_id',
                 'work_location_id',
                 'position_salary',
                 'probation_salary',
-                'fte',
                 'health_welfare',
+                'health_welfare_percentage',
                 'pvd',
+                'pvd_percentage',
                 'saving_fund',
+                'saving_fund_percentage',
                 'created_at',
                 'updated_at',
                 'created_by',
                 'updated_by',
             ])->with([
                 'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
-                'departmentPosition:id,department,position',
+                'department:id,name',
+                'position:id,title,department_id',
                 'workLocation:id,name',
             ]);
 
             // Conditionally load allocations if requested
             if ($validated['include_allocations'] ?? false) {
                 $query->with([
-                    'employeeFundingAllocations:id,employment_id,allocation_type,level_of_effort,allocated_amount',
+                    'employeeFundingAllocations:id,employment_id,allocation_type,fte,allocated_amount',
                     'employeeFundingAllocations.positionSlot:id,grant_id,position_title',
                     'employeeFundingAllocations.positionSlot.grant:id,name',
                 ]);
@@ -268,11 +272,11 @@ class EmploymentController extends Controller
                 });
             }
 
-            // Apply department filter (by department name from department_positions table)
+            // Apply department filter (by department name from departments table)
             if (! empty($validated['filter_department'])) {
                 $departments = array_map('trim', explode(',', $validated['filter_department']));
-                $query->whereHas('departmentPosition', function ($dq) use ($departments) {
-                    $dq->whereIn('department', $departments);
+                $query->whereHas('department', function ($dq) use ($departments) {
+                    $dq->whereIn('name', $departments);
                 });
             }
 
@@ -506,7 +510,8 @@ class EmploymentController extends Controller
             // Build employment query with relationships - EXACTLY like index() method
             $employmentsQuery = Employment::with([
                 'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
-                'departmentPosition:id,department,position',
+                'department:id,name',
+                'position:id,title,department_id',
                 'workLocation:id,name',
                 'employeeFundingAllocations',
             ])->where('employee_id', $employee->id);
@@ -586,16 +591,18 @@ class EmploymentController extends Controller
      *             @OA\Property(property="probation_pass_date", type="string", format="date", description="Probation pass date", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date"),
      *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
-     *             @OA\Property(property="department_position_id", type="integer", description="Department position ID", nullable=true),
+     *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
+     *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
      *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
      *             @OA\Property(property="work_location_id", type="integer", description="Work location ID", nullable=true),
      *             @OA\Property(property="position_salary", type="number", format="float", description="Position salary"),
      *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
-
-     *             @OA\Property(property="fte", type="number", format="float", description="Full-time equivalent", nullable=true),
      *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", default=false),
+     *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
      *             @OA\Property(property="pvd", type="boolean", description="Provident fund", default=false),
+     *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
      *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", default=false),
+     *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
      *             @OA\Property(
      *                 property="allocations",
      *                 type="array",
@@ -603,13 +610,13 @@ class EmploymentController extends Controller
      *
      *                 @OA\Items(
      *                     type="object",
-     *                     required={"allocation_type", "level_of_effort"},
+     *                     required={"allocation_type", "fte"},
      *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
      *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (for org_funded allocations)", nullable=true),
-     *                     @OA\Property(property="level_of_effort", type="number", format="float", minimum=0, maximum=100, description="Level of effort as percentage (0-100)"),
+     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *                 )
      *             )
@@ -658,7 +665,7 @@ class EmploymentController extends Controller
             // ============================================================================
 
             // Validate that the total effort of all allocations equals exactly 100%
-            $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
             if ($totalEffort != 100) {
                 return response()->json([
                     'success' => false,
@@ -754,7 +761,7 @@ class EmploymentController extends Controller
                             'employment_id' => $employment->id,
                             'position_slot_id' => $allocationData['position_slot_id'],
                             'org_funded_id' => null,
-                            'level_of_effort' => $allocationData['level_of_effort'] / 100, // Convert percentage to decimal
+                            'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
                             'allocation_type' => 'grant',
                             'allocated_amount' => $allocationData['allocated_amount'] ?? null, // Added allocated_amount
                             'start_date' => $validated['start_date'],
@@ -780,7 +787,8 @@ class EmploymentController extends Controller
                         // First, create the org_funded_allocation record
                         $orgFundedAllocation = OrgFundedAllocation::create([
                             'grant_id' => $allocationData['grant_id'],
-                            'department_position_id' => $employment->department_position_id,
+                            'department_id' => $employment->department_id,
+                            'position_id' => $employment->position_id,
                             'description' => 'Auto-created for employment ID: '.$employment->id,
                             'created_by' => $currentUser,
                             'updated_by' => $currentUser,
@@ -794,7 +802,7 @@ class EmploymentController extends Controller
                             'employment_id' => $employment->id,
                             'position_slot_id' => null,
                             'org_funded_id' => $orgFundedAllocation->id, // Use the ID from the created org_funded_allocation
-                            'level_of_effort' => $allocationData['level_of_effort'] / 100, // Convert percentage to decimal
+                            'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
                             'allocation_type' => 'org_funded',
                             'allocated_amount' => $allocationData['allocated_amount'] ?? null, // Added allocated_amount
                             'start_date' => $validated['start_date'],
@@ -837,7 +845,8 @@ class EmploymentController extends Controller
             // Load the created records with their relationships
             $employmentWithRelations = Employment::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'departmentPosition:id,department,position',
+                'department:id,name',
+                'position:id,title,department_id',
                 'workLocation:id,name',
             ])->find($employment->id);
 
@@ -845,14 +854,15 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'orgFunded.grant:id,name,code',
-                'orgFunded.departmentPosition:id,department,position',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,title,department_id',
             ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
             $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
                 'grant:id,name,code',
-                'departmentPosition:id,department,position',
+                'department:id,name',
+                'position:id,title,department_id',
             ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
             // ============================================================================
@@ -990,7 +1000,7 @@ class EmploymentController extends Controller
      *
      *                         @OA\Property(property="id", type="integer"),
      *                         @OA\Property(property="allocation_type", type="string"),
-     *                         @OA\Property(property="level_of_effort", type="number"),
+     *                         @OA\Property(property="fte", type="number"),
      *                         @OA\Property(property="allocated_amount", type="number"),
      *                         @OA\Property(property="start_date", type="string", format="date"),
      *                         @OA\Property(property="end_date", type="string", format="date", nullable=true),
@@ -999,7 +1009,7 @@ class EmploymentController extends Controller
      *                     )
      *                 ),
      *                 @OA\Property(property="total_allocations", type="integer"),
-     *                 @OA\Property(property="total_level_of_effort", type="number")
+     *                 @OA\Property(property="total_fte", type="number")
      *             )
      *         )
      *     ),
@@ -1019,13 +1029,14 @@ class EmploymentController extends Controller
 
             // Get funding allocations with related data
             $fundingAllocations = EmployeeFundingAllocation::with([
-                'positionSlot:id,grant_item_id,slot_number,budget_line_id',
-                'positionSlot.grantItem:id,grant_id,grant_position,grant_salary',
+                'positionSlot:id,grant_item_id,slot_number',
+                'positionSlot.grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
-                'orgFunded:id,grant_id,department_position_id,description',
+
+                'orgFunded:id,grant_id,department_id,position_id,description',
                 'orgFunded.grant:id,name,code',
-                'orgFunded.departmentPosition:id,department,position',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,title,department_id',
             ])
                 ->where('employment_id', $id)
                 ->orderBy('created_at', 'desc')
@@ -1033,15 +1044,15 @@ class EmploymentController extends Controller
 
             // Calculate summary statistics
             $totalAllocations = $fundingAllocations->count();
-            $totalLevelOfEffort = $fundingAllocations->sum('level_of_effort');
+            $totalFte = $fundingAllocations->sum('fte');
 
             // Format the response data
             $formattedAllocations = $fundingAllocations->map(function ($allocation) {
                 $formatted = [
                     'id' => $allocation->id,
                     'allocation_type' => $allocation->allocation_type,
-                    'level_of_effort' => $allocation->level_of_effort,
-                    'level_of_effort_percentage' => ($allocation->level_of_effort * 100).'%',
+                    'fte' => $allocation->fte,
+                    'fte_percentage' => ($allocation->fte * 100).'%',
                     'allocated_amount' => $allocation->allocated_amount,
                     'formatted_allocated_amount' => $allocation->allocated_amount ? '฿'.number_format($allocation->allocated_amount, 2) : null,
                     'start_date' => $allocation->start_date,
@@ -1059,17 +1070,14 @@ class EmploymentController extends Controller
                             'id' => $allocation->positionSlot->grantItem->id,
                             'grant_position' => $allocation->positionSlot->grantItem->grant_position,
                             'grant_salary' => $allocation->positionSlot->grantItem->grant_salary,
+                            'budgetline_code' => $allocation->positionSlot->grantItem->budgetline_code,
                             'grant' => $allocation->positionSlot->grantItem->grant ? [
                                 'id' => $allocation->positionSlot->grantItem->grant->id,
                                 'name' => $allocation->positionSlot->grantItem->grant->name,
                                 'code' => $allocation->positionSlot->grantItem->grant->code,
                             ] : null,
                         ] : null,
-                        'budget_line' => $allocation->positionSlot->budgetLine ? [
-                            'id' => $allocation->positionSlot->budgetLine->id,
-                            'budget_line_code' => $allocation->positionSlot->budgetLine->budget_line_code,
-                            'description' => $allocation->positionSlot->budgetLine->description,
-                        ] : null,
+
                     ];
                     $formatted['org_funded'] = null;
                 } elseif ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
@@ -1081,10 +1089,13 @@ class EmploymentController extends Controller
                             'name' => $allocation->orgFunded->grant->name,
                             'code' => $allocation->orgFunded->grant->code,
                         ] : null,
-                        'department_position' => $allocation->orgFunded->departmentPosition ? [
-                            'id' => $allocation->orgFunded->departmentPosition->id,
-                            'department' => $allocation->orgFunded->departmentPosition->department,
-                            'position' => $allocation->orgFunded->departmentPosition->position,
+                        'department' => $allocation->orgFunded->department ? [
+                            'id' => $allocation->orgFunded->department->id,
+                            'name' => $allocation->orgFunded->department->name,
+                        ] : null,
+                        'position' => $allocation->orgFunded->position ? [
+                            'id' => $allocation->orgFunded->position->id,
+                            'title' => $allocation->orgFunded->position->title,
                         ] : null,
                     ];
                     $formatted['position_slot'] = null;
@@ -1110,8 +1121,8 @@ class EmploymentController extends Controller
                     'funding_allocations' => $formattedAllocations,
                     'summary' => [
                         'total_allocations' => $totalAllocations,
-                        'total_level_of_effort' => $totalLevelOfEffort,
-                        'total_level_of_effort_percentage' => ($totalLevelOfEffort * 100).'%',
+                        'total_fte' => $totalFte,
+                        'total_fte_percentage' => ($totalFte * 100).'%',
                         'allocation_types' => $fundingAllocations->groupBy('allocation_type')->map->count(),
                     ],
                 ],
@@ -1162,15 +1173,18 @@ class EmploymentController extends Controller
      *             @OA\Property(property="probation_pass_date", type="string", format="date", description="Probation pass date", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
-     *             @OA\Property(property="department_position_id", type="integer", description="Department position ID", nullable=true),
+     *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
+     *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
      *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
      *             @OA\Property(property="work_location_id", type="integer", description="Work location ID", nullable=true),
      *             @OA\Property(property="position_salary", type="number", format="float", description="Position salary", nullable=true),
      *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
-     *             @OA\Property(property="fte", type="number", format="float", description="Full-time equivalent", nullable=true),
      *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", nullable=true),
+     *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
      *             @OA\Property(property="pvd", type="boolean", description="Provident fund", nullable=true),
+     *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
      *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", nullable=true),
+     *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
      *             @OA\Property(
      *                 property="allocations",
      *                 type="array",
@@ -1179,13 +1193,13 @@ class EmploymentController extends Controller
      *
      *                 @OA\Items(
      *                     type="object",
-     *                     required={"allocation_type", "level_of_effort"},
+     *                     required={"allocation_type", "fte"},
      *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
      *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (for org_funded allocations)", nullable=true),
-     *                     @OA\Property(property="level_of_effort", type="number", format="float", minimum=0, maximum=100, description="Level of effort as percentage (0-100)"),
+     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *                 )
      *             )
@@ -1237,23 +1251,38 @@ class EmploymentController extends Controller
                 'probation_pass_date' => 'nullable|date',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
-                'department_position_id' => 'nullable|exists:department_positions,id',
+                'department_id' => 'nullable|exists:departments,id',
+                'position_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:positions,id',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if ($request->filled(['department_id', 'position_id'])) {
+                            $position = \App\Models\Position::find($value);
+                            if ($position && $position->department_id != $request->department_id) {
+                                $fail('The selected position must belong to the selected department.');
+                            }
+                        }
+                    },
+                ],
                 'section_department' => 'nullable|string|max:255',
                 'work_location_id' => 'nullable|exists:work_locations,id',
                 'position_salary' => 'nullable|numeric',
                 'probation_salary' => 'nullable|numeric',
-                'fte' => 'nullable|numeric',
                 'health_welfare' => 'nullable|boolean',
+                'health_welfare_percentage' => 'nullable|numeric|min:0|max:100',
                 'pvd' => 'nullable|boolean',
+                'pvd_percentage' => 'nullable|numeric|min:0|max:100',
                 'saving_fund' => 'nullable|boolean',
+                'saving_fund_percentage' => 'nullable|numeric|min:0|max:100',
 
                 // Allocation fields - optional for updates
                 'allocations' => 'nullable|array|min:1',
                 'allocations.*.allocation_type' => 'required_with:allocations|string|in:grant,org_funded',
                 'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
                 'allocations.*.org_funded_id' => 'nullable|integer', // Frontend sends this but we'll ignore it
-                'allocations.*.grant_id' => 'nullable|exists:grants,id', // For org_funded, we need the grant_id
-                'allocations.*.level_of_effort' => 'required_with:allocations|numeric|min:0|max:100',
+                'allocations.*.grant_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:grants,id', // For org_funded, we need the grant_id
+                'allocations.*.fte' => 'required_with:allocations|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
 
@@ -1275,10 +1304,25 @@ class EmploymentController extends Controller
             // Find the existing employment record
             $employment = Employment::findOrFail($id);
 
+            // Additional validation for department_id and position_id relationship
+            $departmentId = $validated['department_id'] ?? $employment->department_id;
+            $positionId = $validated['position_id'] ?? $employment->position_id;
+
+            if ($departmentId && $positionId) {
+                $position = \App\Models\Position::find($positionId);
+                if ($position && $position->department_id != $departmentId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The selected position must belong to the selected department.',
+                        'errors' => ['position_id' => ['The selected position must belong to the selected department.']],
+                    ], 422);
+                }
+            }
+
             // If allocations are provided, validate that the total effort equals exactly 100%
             $allocationsProvided = ! empty($validated['allocations']);
             if ($allocationsProvided) {
-                $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+                $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
                 if ($totalEffort != 100) {
                     return response()->json([
                         'success' => false,
@@ -1383,11 +1427,11 @@ class EmploymentController extends Controller
                                 'employment_id' => $employment->id,
                                 'position_slot_id' => $allocationData['position_slot_id'],
                                 'org_funded_id' => null,
-                                'level_of_effort' => $allocationData['level_of_effort'] / 100, // Convert percentage to decimal
+                                'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
                                 'allocation_type' => 'grant',
                                 'allocated_amount' => $allocationData['allocated_amount'] ?? null,
-                                'start_date' => $employment->start_date,
-                                'end_date' => $employment->end_date ?? null,
+                                'start_date' => $validated['start_date'] ?? $employment->start_date,
+                                'end_date' => $validated['end_date'] ?? $employment->end_date,
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
                             ]);
@@ -1409,7 +1453,8 @@ class EmploymentController extends Controller
                             // First, create the org_funded_allocation record
                             $orgFundedAllocation = OrgFundedAllocation::create([
                                 'grant_id' => $allocationData['grant_id'],
-                                'department_position_id' => $employment->department_position_id,
+                                'department_id' => $employment->department_id,
+                                'position_id' => $employment->position_id,
                                 'description' => 'Auto-created for employment ID: '.$employment->id.' (Updated)',
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
@@ -1423,11 +1468,11 @@ class EmploymentController extends Controller
                                 'employment_id' => $employment->id,
                                 'position_slot_id' => null,
                                 'org_funded_id' => $orgFundedAllocation->id,
-                                'level_of_effort' => $allocationData['level_of_effort'] / 100, // Convert percentage to decimal
+                                'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
                                 'allocation_type' => 'org_funded',
                                 'allocated_amount' => $allocationData['allocated_amount'] ?? null,
-                                'start_date' => $employment->start_date,
-                                'end_date' => $employment->end_date ?? null,
+                                'start_date' => $validated['start_date'] ?? $employment->start_date,
+                                'end_date' => $validated['end_date'] ?? $employment->end_date,
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
                             ]);
@@ -1467,7 +1512,8 @@ class EmploymentController extends Controller
             // Load the updated records with their relationships
             $employmentWithRelations = Employment::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'departmentPosition:id,department,position',
+                'department:id,name',
+                'position:id,title,department_id',
                 'workLocation:id,name',
                 'employeeFundingAllocations',
             ])->find($employment->id);
@@ -1482,14 +1528,16 @@ class EmploymentController extends Controller
                     'employee:id,staff_id,first_name_en,last_name_en',
                     'employment:id,employment_type,start_date',
                     'positionSlot.grantItem.grant:id,name,code',
-                    'positionSlot.budgetLine:id,budget_line_code,description',
+
                     'orgFunded.grant:id,name,code',
-                    'orgFunded.departmentPosition:id,department,position',
+                    'orgFunded.department:id,name',
+                    'orgFunded.position:id,title,department_id',
                 ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
                 $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
                     'grant:id,name,code',
-                    'departmentPosition:id,department,position',
+                    'department:id,name',
+                    'position:id,title,department_id',
                 ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
                 $responseData['funding_allocations'] = $fundingAllocationsWithRelations;

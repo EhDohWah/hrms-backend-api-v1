@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('org_funded_allocations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('grant_id')->constrained('grants')->cascadeOnDelete();
-            $table->foreignId('department_position_id')->constrained('department_positions')->cascadeOnDelete();
+            $table->foreignId('department_id')->constrained('departments')->onDelete('no action');
+            $table->foreignId('position_id')->constrained('positions')->onDelete('no action');
             $table->string('description')->nullable();
             $table->timestamps();
 
@@ -23,7 +24,8 @@ return new class extends Migration
             $table->string('updated_by', 100)->nullable();
 
             // Index for performance
-            $table->index(['grant_id', 'department_position_id']);
+            $table->index(['grant_id', 'department_id', 'position_id']);
+            $table->index(['department_id', 'position_id']);
         });
     }
 

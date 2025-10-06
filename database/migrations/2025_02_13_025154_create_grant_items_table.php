@@ -18,10 +18,18 @@ return new class extends Migration
             $table->decimal('grant_salary', 15, 2)->nullable();
             $table->decimal('grant_benefit', 15, 2)->nullable();
             $table->decimal('grant_level_of_effort', 5, 2)->nullable();
-            $table->string('grant_position_number')->nullable();
+            $table->integer('grant_position_number')->nullable();
+
+            // Budget line code moved from position_slots to grant_items
+            $table->string('budgetline_code')->nullable();
+
             $table->timestamps();
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
+
+            // Add unique constraint for the combination of grant_id, grant_position, and budgetline_code
+            // This prevents duplicate grant items with the same position and budget line code within the same grant
+            $table->unique(['grant_id', 'grant_position', 'budgetline_code'], 'unique_grant_position_budgetline');
         });
 
         // insert the default grant items

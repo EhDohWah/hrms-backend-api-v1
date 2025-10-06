@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('employment_id')->nullable()->constrained('employments');
             $table->foreignId('org_funded_id')->nullable()->constrained('org_funded_allocations');
             $table->foreignId('position_slot_id')->nullable()->constrained('position_slots');
-            $table->decimal('level_of_effort', 4, 2);
+            $table->decimal('fte', 4, 2)->comment('Full-Time Equivalent - represents the actual funding allocation percentage for this employee');
             $table->string('allocation_type', 20); // e.g., 'grant', 'org_funded'
             $table->decimal('allocated_amount', 15, 2)->nullable();
             $table->date('start_date')->nullable();

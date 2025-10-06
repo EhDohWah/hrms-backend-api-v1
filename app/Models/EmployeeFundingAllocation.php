@@ -17,7 +17,7 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="employment_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="org_funded_id", type="integer", format="int64", nullable=true, example=1),
  *     @OA\Property(property="position_slot_id", type="integer", format="int64", nullable=true, example=1),
- *     @OA\Property(property="level_of_effort", type="number", format="float", example=0.5),
+ *     @OA\Property(property="fte", type="number", format="float", example=0.5, description="Full-Time Equivalent - actual funding allocation percentage"),
  *     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, example="grant"),
  *     @OA\Property(property="allocated_amount", type="number", format="float", nullable=true, example=10000),
  *     @OA\Property(property="start_date", type="string", format="date", nullable=true, example="2023-01-01"),
@@ -37,7 +37,7 @@ class EmployeeFundingAllocation extends Model
         'employment_id',
         'org_funded_id',
         'position_slot_id',
-        'level_of_effort',
+        'fte',
         'allocation_type',
         'allocated_amount',
         'start_date',
@@ -93,10 +93,10 @@ class EmployeeFundingAllocation extends Model
 
     public function scopeByEffortRange($query, $minEffort, $maxEffort = null)
     {
-        $query->where('level_of_effort', '>=', $minEffort);
+        $query->where('fte', '>=', $minEffort);
 
         if ($maxEffort !== null) {
-            $query->where('level_of_effort', '<=', $maxEffort);
+            $query->where('fte', '<=', $maxEffort);
         }
 
         return $query;
@@ -107,12 +107,13 @@ class EmployeeFundingAllocation extends Model
         return $query->with([
             'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
             'employment:id,employee_id,start_date,end_date,position_salary',
-            'positionSlot:id,grant_item_id,slot_number,budget_line_id',
-            'positionSlot.grantItem:id,grant_id,grant_position,grant_salary',
+            'positionSlot:id,grant_item_id,slot_number',
+            'positionSlot.grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
             'positionSlot.grantItem.grant:id,name,code',
-            'positionSlot.budgetLine:id,budget_line_code,description',
+            // budgetline_code moved to grant_items for better normalization
             'orgFunded.grant:id,name,code',
-            'orgFunded.departmentPosition:id,department,position',
+            'orgFunded.department:id,name',
+            'orgFunded.position:id,title,department_id',
         ]);
     }
 
@@ -121,7 +122,7 @@ class EmployeeFundingAllocation extends Model
         return $query->active()
             ->select([
                 'id', 'employee_id', 'employment_id', 'allocation_type',
-                'level_of_effort', 'allocated_amount', 'position_slot_id', 'org_funded_id',
+                'fte', 'allocated_amount', 'position_slot_id', 'org_funded_id',
             ])
             ->with([
                 'positionSlot:id,grant_item_id,slot_number',

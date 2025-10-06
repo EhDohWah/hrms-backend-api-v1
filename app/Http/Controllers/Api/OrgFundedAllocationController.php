@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrgFundedAllocationRequest;
+use App\Http\Requests\UpdateOrgFundedAllocationRequest;
 use App\Models\OrgFundedAllocation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,7 +23,7 @@ class OrgFundedAllocationController extends Controller
      *     operationId="getOrgFundedAllocations",
      *     tags={"Org Funded Allocations"},
      *     summary="Get list of organization funded allocations",
-     *     description="Returns paginated list of organization funded allocations with related grant and department position data",
+     *     description="Returns paginated list of organization funded allocations with related grant, department and position data",
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\Response(
@@ -44,7 +46,7 @@ class OrgFundedAllocationController extends Controller
      */
     public function index()
     {
-        $allocations = OrgFundedAllocation::with(['grant', 'departmentPosition'])
+        $allocations = OrgFundedAllocation::with(['grant', 'department', 'position'])
             ->orderByDesc('id')
             ->paginate(20);
 
@@ -64,13 +66,12 @@ class OrgFundedAllocationController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"grant_id", "department_position_id"},
+     *             required={"grant_id", "department_id", "position_id"},
      *
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
-     *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
-     *             @OA\Property(property="description", type="string", description="Optional description"),
-     *             @OA\Property(property="org_funded_salary", type="number", format="decimal", description="Optional organization funded salary"),
-     *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active", default=true)
+     *             @OA\Property(property="department_id", type="integer", description="ID of the department"),
+     *             @OA\Property(property="position_id", type="integer", description="ID of the position"),
+     *             @OA\Property(property="description", type="string", description="Optional description")
      *         )
      *     ),
      *
@@ -86,20 +87,17 @@ class OrgFundedAllocationController extends Controller
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function store(Request $request)
+    public function store(StoreOrgFundedAllocationRequest $request)
     {
-        $validated = $request->validate([
-            'grant_id' => 'required|exists:grants,id',
-            'department_position_id' => 'required|exists:department_positions,id',
-            'description' => 'nullable|string|max:255',
-            'org_funded_salary' => 'nullable|numeric|min:0',
-            'active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $allocation = OrgFundedAllocation::create([
             ...$validated,
             'created_by' => $request->user()->name ?? 'system',
         ]);
+
+        // Load relationships for response
+        $allocation->load(['grant', 'department', 'position']);
 
         return response()->json($allocation, Response::HTTP_CREATED);
     }
@@ -135,7 +133,7 @@ class OrgFundedAllocationController extends Controller
      */
     public function show($id)
     {
-        $allocation = OrgFundedAllocation::with(['grant', 'departmentPosition'])->findOrFail($id);
+        $allocation = OrgFundedAllocation::with(['grant', 'department', 'position'])->findOrFail($id);
 
         return response()->json($allocation);
     }
@@ -164,10 +162,9 @@ class OrgFundedAllocationController extends Controller
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="grant_id", type="integer", description="ID of the grant"),
-     *             @OA\Property(property="department_position_id", type="integer", description="ID of the department position"),
-     *             @OA\Property(property="description", type="string", description="Optional description"),
-     *             @OA\Property(property="org_funded_salary", type="number", format="decimal", description="Optional organization funded salary"),
-     *             @OA\Property(property="active", type="boolean", description="Whether the allocation is active")
+     *             @OA\Property(property="department_id", type="integer", description="ID of the department"),
+     *             @OA\Property(property="position_id", type="integer", description="ID of the position"),
+     *             @OA\Property(property="description", type="string", description="Optional description")
      *         )
      *     ),
      *
@@ -184,22 +181,19 @@ class OrgFundedAllocationController extends Controller
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update(Request $request, $id)
+    public function update(UpdateOrgFundedAllocationRequest $request, $id)
     {
         $allocation = OrgFundedAllocation::findOrFail($id);
 
-        $validated = $request->validate([
-            'grant_id' => 'sometimes|exists:grants,id',
-            'department_position_id' => 'sometimes|exists:department_positions,id',
-            'description' => 'nullable|string|max:255',
-            'org_funded_salary' => 'nullable|numeric|min:0',
-            'active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $allocation->update([
             ...$validated,
             'updated_by' => $request->user()->name ?? 'system',
         ]);
+
+        // Load relationships for response
+        $allocation->load(['grant', 'department', 'position']);
 
         return response()->json($allocation);
     }

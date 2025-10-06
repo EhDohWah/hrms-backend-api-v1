@@ -19,7 +19,7 @@ class EmployeeGrantAllocationResource extends JsonResource
             'employee_id' => $this->employee_id,
             'position_slot_id' => $this->position_slot_id,
             'employment_id' => $this->employment_id,
-            'level_of_effort' => $this->level_of_effort,
+            'fte' => $this->fte,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'active' => $this->active,
@@ -58,13 +58,7 @@ class EmployeeGrantAllocationResource extends JsonResource
                             }),
                         ];
                     }),
-                    'budget_line' => $this->whenLoaded('positionSlot.budgetLine', function () {
-                        return [
-                            'id' => $this->positionSlot->budgetLine->id,
-                            'budget_line_code' => $this->positionSlot->budgetLine->budget_line_code,
-                            'description' => $this->positionSlot->budgetLine->description,
-                        ];
-                    }),
+                    'budgetline_code' => $this->positionSlot->grantItem->budgetline_code ?? null,
                 ];
             }),
 
@@ -94,10 +88,10 @@ class EmployeeGrantAllocationResource extends JsonResource
                 $this->positionSlot->relationLoaded('grantItem'),
                 $this->positionSlot->grantItem->grant_position
             ),
-            'budget_line_code' => $this->when(
+            'budgetline_code' => $this->when(
                 $this->relationLoaded('positionSlot') &&
-                $this->positionSlot->relationLoaded('budgetLine'),
-                $this->positionSlot->budgetLine->budget_line_code
+                $this->positionSlot->relationLoaded('grantItem'),
+                $this->positionSlot->grantItem->budgetline_code
             ),
         ];
     }

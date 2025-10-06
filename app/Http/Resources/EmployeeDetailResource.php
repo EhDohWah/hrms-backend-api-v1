@@ -15,7 +15,7 @@ class EmployeeDetailResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Eager‑loaded relations are assumed:
-        // 'employment.departmentPosition', 'employment.workLocation',
+        // 'employment.department', 'employment.position', 'employment.workLocation',
         // 'employeeGrantAllocations.grantItemAllocation.grant',
         // 'employeeBeneficiaries', 'employeeIdentification'
 
@@ -69,18 +69,23 @@ class EmployeeDetailResource extends JsonResource
                     'end_date' => $this->employment->end_date,
                     'position_salary' => $this->employment->position_salary,
                     'probation_salary' => $this->employment->probation_salary,
-
-                    'fte' => $this->employment->fte,
                     'active' => $this->employment->active,
                     'health_welfare' => $this->employment->health_welfare,
                     'pvd' => $this->employment->pvd,
                     'saving_fund' => $this->employment->saving_fund,
-                    'department_position' => $this->whenLoaded('employment.departmentPosition', function () {
+                    'department' => $this->whenLoaded('employment.department', function () {
                         return [
-                            'id' => $this->employment->departmentPosition->id,
-                            'department' => $this->employment->departmentPosition->department,
-                            'position' => $this->employment->departmentPosition->position,
-                            'report_to' => $this->employment->departmentPosition->report_to,
+                            'id' => $this->employment->department->id,
+                            'name' => $this->employment->department->name,
+                            'description' => $this->employment->department->description,
+                        ];
+                    }),
+                    'position' => $this->whenLoaded('employment.position', function () {
+                        return [
+                            'id' => $this->employment->position->id,
+                            'title' => $this->employment->position->title,
+                            'level' => $this->employment->position->level,
+                            'is_manager' => $this->employment->position->is_manager,
                         ];
                     }),
                     'work_location' => $this->whenLoaded('employment.workLocation', function () {
@@ -98,7 +103,7 @@ class EmployeeDetailResource extends JsonResource
                 return $this->employeeGrantAllocations->map(function ($allocation) {
                     return [
                         'id' => $allocation->id,
-                        'level_of_effort' => $allocation->level_of_effort,
+                        'fte' => $allocation->fte,
                         'start_date' => $allocation->start_date,
                         'end_date' => $allocation->end_date,
                         'active' => $allocation->active,

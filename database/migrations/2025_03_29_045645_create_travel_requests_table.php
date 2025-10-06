@@ -14,19 +14,23 @@ return new class extends Migration
         Schema::create('travel_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('department_position_id')->nullable()->constrained('department_positions')->nullOnDelete();
+            $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('no action'); // Department reference
+            $table->foreignId('position_id')->nullable()->constrained('positions')->onDelete('no action'); // Position reference
             $table->string('destination', 200)->nullable();
             $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
+            $table->date('to_date')->nullable();
             $table->text('purpose')->nullable();
             $table->string('grant', 50)->nullable();
             $table->string('transportation', 100)->nullable();
+            $table->string('transportation_other_text', 200)->nullable(); // Custom text when transportation is 'other'
             $table->string('accommodation', 100)->nullable();
-            $table->string('request_by_signature', 200)->nullable();
-            $table->string('request_by_fullname', 200)->nullable();
+            $table->string('accommodation_other_text', 200)->nullable(); // Custom text when accommodation is 'other'
             $table->date('request_by_date')->nullable();
+            $table->boolean('supervisor_approved')->default(false);
+            $table->date('supervisor_approved_date')->nullable();
+            $table->boolean('hr_acknowledged')->default(false);
+            $table->date('hr_acknowledgement_date')->nullable();
             $table->text('remarks')->nullable();
-            $table->string('status', 50)->default('pending'); // overall status of travel request
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();

@@ -47,7 +47,7 @@ class LeaveRequestReportController extends Controller
      *             @OA\Property(property="start_date", type="string", format="date", example="2025-04-02", description="Start date in format YYYY-MM-DD"),
      *             @OA\Property(property="end_date", type="string", format="date", example="2025-04-31", description="End date in format YYYY-MM-DD"),
      *             @OA\Property(property="work_location", type="string", example="SMRU", description="Work location name (required) - must exist in work_locations table"),
-     *             @OA\Property(property="department", type="string", example="Human Resources", description="Department name (required) - must exist in department_positions table")
+     *             @OA\Property(property="department", type="string", example="Human Resources", description="Department name (required) - must exist in departments table")
      *         )
      *     ),
      *
@@ -179,8 +179,9 @@ class LeaveRequestReportController extends Controller
 
         // Get employees with their employment, department, and work location info
         $query->with([
-            'employment:id,employee_id,department_position_id,work_location_id',
-            'employment.departmentPosition:id,department,position',
+            'employment:id,employee_id,department_id,position_id,work_location_id',
+            'employment.department:id,name',
+            'employment.position:id,title',
             'employment.workLocation:id,name',
         ]);
 
@@ -440,8 +441,9 @@ class LeaveRequestReportController extends Controller
         // Find the employee by staff_id
         $employee = Employee::where('staff_id', $staffId)
             ->with([
-                'employment:id,employee_id,department_position_id,work_location_id',
-                'employment.departmentPosition:id,department,position',
+                'employment:id,employee_id,department_id,position_id,work_location_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
                 'employment.workLocation:id,name',
             ])
             ->first();

@@ -249,7 +249,7 @@ class AllocationChangeLog extends Model
     // Helper methods
     private static function generateCreatedDescription(EmployeeFundingAllocation $allocation): string
     {
-        $effort = round($allocation->level_of_effort * 100, 1);
+        $effort = round($allocation->fte * 100, 1);
         $type = ucfirst($allocation->allocation_type);
 
         return "New {$type} allocation created with {$effort}% level of effort";
@@ -259,9 +259,9 @@ class AllocationChangeLog extends Model
     {
         $descriptions = [];
 
-        if (isset($changes['level_of_effort'])) {
-            $oldEffort = round(($changes['level_of_effort'] ?? 0) * 100, 1);
-            $newEffort = round($changes['level_of_effort'] * 100, 1);
+        if (isset($changes['fte'])) {
+            $oldEffort = round(($changes['fte'] ?? 0) * 100, 1);
+            $newEffort = round($changes['fte'] * 100, 1);
             $descriptions[] = "Level of effort changed from {$oldEffort}% to {$newEffort}%";
         }
 
@@ -281,7 +281,7 @@ class AllocationChangeLog extends Model
 
     private static function generateDeletedDescription(EmployeeFundingAllocation $allocation): string
     {
-        $effort = round($allocation->level_of_effort * 100, 1);
+        $effort = round($allocation->fte * 100, 1);
         $type = ucfirst($allocation->allocation_type);
 
         return "{$type} allocation with {$effort}% level of effort removed";
@@ -313,7 +313,7 @@ class AllocationChangeLog extends Model
 
         return [
             'total_allocations' => $allocations->count(),
-            'total_effort' => $allocations->sum('level_of_effort'),
+            'total_effort' => $allocations->sum('fte'),
             'total_amount' => $allocations->sum('allocated_amount'),
             'by_type' => $allocations->groupBy('allocation_type')->map->count()->toArray(),
             'snapshot_date' => now()->toISOString(),

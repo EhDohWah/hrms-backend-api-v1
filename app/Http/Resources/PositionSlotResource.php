@@ -18,10 +18,10 @@ class PositionSlotResource extends JsonResource
             'id' => $this->id,
             'grant_item_id' => $this->grant_item_id,
             'slot_number' => $this->slot_number,
-            'budget_line_id' => $this->budget_line_id,
-            'budget_line' => new BudgetLineResource($this->whenLoaded('budgetLine')),
+            'budgetline_code' => $this->grantItem?->budgetline_code, // Access through grant item relationship
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'grant_item' => $this->whenLoaded('grantItem'),
         ];
     }
 }

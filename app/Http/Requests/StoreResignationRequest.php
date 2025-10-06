@@ -24,8 +24,8 @@ class StoreResignationRequest extends FormRequest
         return [
             // Core fields as per schema
             'employee_id' => 'required|exists:employees,id',
-            'department_id' => 'nullable|exists:department_positions,id',
-            'position_id' => 'nullable|exists:department_positions,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'position_id' => 'nullable|exists:positions,id',
             'resignation_date' => 'required|date|before_or_equal:today',
             'last_working_date' => 'required|date|after_or_equal:resignation_date',
             'reason' => 'required|string|max:50',

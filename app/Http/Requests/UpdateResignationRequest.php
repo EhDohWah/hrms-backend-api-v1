@@ -24,8 +24,8 @@ class UpdateResignationRequest extends FormRequest
         return [
             // Core fields as per schema
             'employee_id' => 'sometimes|exists:employees,id',
-            'department_id' => 'nullable|exists:department_positions,id',
-            'position_id' => 'nullable|exists:department_positions,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'position_id' => 'nullable|exists:positions,id',
             'resignation_date' => 'sometimes|date|before_or_equal:today',
             'last_working_date' => 'sometimes|date|after_or_equal:resignation_date',
             'reason' => 'sometimes|string|max:50',

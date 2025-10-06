@@ -39,6 +39,7 @@ class PermissionRoleSeeder extends Seeder
             'reports' => $defaultActions,
             'travel_request' => $defaultActions,
             'leave_request' => $defaultActions,
+            'personnel_action' => $defaultActions,
         ];
 
         // Create a permission for each module-action pair.

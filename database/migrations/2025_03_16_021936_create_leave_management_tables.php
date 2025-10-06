@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,7 +28,7 @@ return new class extends Migration
             $table->string('updated_by')->nullable();
         });
 
-        // Leave Requests - Enhanced
+        // Leave Requests - Enhanced with approval fields
         Schema::create('leave_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees');
@@ -37,6 +38,16 @@ return new class extends Migration
             $table->decimal('total_days', 18, 2);
             $table->text('reason')->nullable();
             $table->string('status', 50)->default('pending');
+
+            // Approval fields - directly in the leave_requests table
+            $table->boolean('supervisor_approved')->default(false);
+            $table->date('supervisor_approved_date')->nullable();
+            $table->boolean('hr_site_admin_approved')->default(false);
+            $table->date('hr_site_admin_approved_date')->nullable();
+
+            // Attachment notes as simple text field
+            $table->text('attachment_notes')->nullable();
+
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();
@@ -68,54 +79,11 @@ return new class extends Migration
             $table->index(['employee_id', 'year']);
         });
 
-        // Leave Request Approvals - Enhanced
-        Schema::create('leave_request_approvals', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('leave_request_id')->constrained('leave_requests')->onDelete('cascade');
-            $table->string('approver_role', 100)->nullable();
-            $table->string('approver_name', 200)->nullable();
-            $table->string('approver_signature', 200)->nullable();
-            $table->date('approval_date')->nullable();
-            $table->string('status', 50)->default('pending');
-            $table->dateTime('created_at')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
-
-            // Index for performance
-            $table->index(['leave_request_id', 'status']);
-        });
-
-        // NEW: Leave Attachments Table
-        Schema::create('leave_attachments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('leave_request_id')->constrained('leave_requests')->onDelete('cascade');
-            $table->string('file_name', 255);
-            $table->string('file_path', 500);
-            $table->timestamp('uploaded_at')->useCurrent();
-            $table->dateTime('created_at')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
-
-            // Index for performance
-            $table->index('leave_request_id');
-        });
-
-        // Traditional Leaves - Keep as is
-        Schema::create('traditional_leaves', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 100)->nullable();
-            $table->text('description')->nullable();
-            $table->date('date')->nullable();
-            $table->dateTime('created_at')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->string('created_by')->nullable();
-            $table->string('updated_by')->nullable();
-        });
-
         // Insert leave types data immediately after table creation
         $this->seedLeaveTypes();
+
+        // Migrate existing approval data to new structure
+        $this->migrateApprovalData();
     }
 
     /**
@@ -126,11 +94,8 @@ return new class extends Migration
     public function down()
     {
         // Drop in this order to respect foreign key constraints:
-        Schema::dropIfExists('leave_attachments');
-        Schema::dropIfExists('leave_request_approvals');
         Schema::dropIfExists('leave_balances');
         Schema::dropIfExists('leave_requests');
-        Schema::dropIfExists('traditional_leaves');
         Schema::dropIfExists('leave_types');
     }
 
@@ -242,5 +207,63 @@ return new class extends Migration
         ];
 
         DB::table('leave_types')->insert($leaveTypes);
+    }
+
+    /**
+     * Migrate existing approval data from leave_request_approvals table to leave_requests columns
+     * This method safely handles cases where the old table doesn't exist
+     */
+    private function migrateApprovalData()
+    {
+        // Check if the old approval table exists (in case this is a fresh install)
+        if (! Schema::hasTable('leave_request_approvals')) {
+            return;
+        }
+
+        try {
+            // Migrate approval data to the new structure
+            $approvals = DB::table('leave_request_approvals')
+                ->orderBy('leave_request_id')
+                ->orderBy('created_at')
+                ->get();
+
+            foreach ($approvals->groupBy('leave_request_id') as $leaveRequestId => $requestApprovals) {
+                $updateData = [];
+
+                foreach ($requestApprovals as $approval) {
+                    // Map approval roles to specific fields
+                    $role = strtolower($approval->approver_role ?? '');
+
+                    if (str_contains($role, 'supervisor') || str_contains($role, 'manager')) {
+                        $updateData['supervisor_approved'] = true;
+                        $updateData['supervisor_approved_date'] = $approval->approval_date;
+                    } elseif (str_contains($role, 'hr') || str_contains($role, 'admin') || str_contains($role, 'site')) {
+                        // Consolidate HR and Site Admin approvals into single field
+                        $updateData['hr_site_admin_approved'] = true;
+                        $updateData['hr_site_admin_approved_date'] = $approval->approval_date;
+                    } else {
+                        // Default to supervisor if role is unclear
+                        if (empty($updateData['supervisor_approved'])) {
+                            $updateData['supervisor_approved'] = true;
+                            $updateData['supervisor_approved_date'] = $approval->approval_date;
+                        }
+                    }
+                }
+
+                // Update the leave request with approval data
+                if (! empty($updateData)) {
+                    DB::table('leave_requests')
+                        ->where('id', $leaveRequestId)
+                        ->update($updateData);
+                }
+            }
+
+            // Drop the old approval table after migration
+            Schema::dropIfExists('leave_request_approvals');
+
+        } catch (\Exception $e) {
+            // Log the error but don't fail the migration
+            Log::error('Failed to migrate approval data: '.$e->getMessage());
+        }
     }
 };

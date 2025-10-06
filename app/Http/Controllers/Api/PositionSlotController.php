@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\BudgetLine;
 use App\Models\PositionSlot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,7 +69,7 @@ class PositionSlotController extends Controller
     public function index(Request $request)
     {
         $grantItemId = $request->query('grant_item_id');
-        $query = PositionSlot::with('budgetLine');
+        $query = PositionSlot::query();
         if ($grantItemId) {
             $query->where('grant_item_id', $grantItemId);
         }
@@ -94,9 +93,7 @@ class PositionSlotController extends Controller
      *             required={"grant_item_id", "slot_number"},
      *
      *             @OA\Property(property="grant_item_id", type="integer", example=1, description="Grant item ID"),
-     *             @OA\Property(property="slot_number", type="integer", example=1, description="Slot number"),
-     *             @OA\Property(property="budget_line_id", type="integer", nullable=true, example=1, description="Existing budget line ID"),
-     *             @OA\Property(property="budget_line_code", type="string", nullable=true, example="BL001", description="Budget line code (creates new if not exists)")
+     *             @OA\Property(property="slot_number", type="integer", example=1, description="Slot number")
      *         )
      *     ),
      *
@@ -129,7 +126,7 @@ class PositionSlotController extends Controller
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Budget line is required")
+     *             @OA\Property(property="message", type="string", example="Validation error")
      *         )
      *     ),
      *
@@ -151,36 +148,19 @@ class PositionSlotController extends Controller
         $validated = $request->validate([
             'grant_item_id' => 'required|exists:grant_items,id',
             'slot_number' => 'required|integer|min:1',
-            // Either budget_line_id OR budget_line_code must be provided:
-            'budget_line_id' => 'nullable|exists:budget_lines,id',
-            'budget_line_code' => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
         try {
-            // Create budget line if not exists and code provided
-            if (empty($validated['budget_line_id']) && ! empty($validated['budget_line_code'])) {
-                $budgetLine = BudgetLine::firstOrCreate(
-                    ['budget_line_code' => $validated['budget_line_code']],
-                    ['created_by' => $request->user()?->name ?? 'system']
-                );
-                $budgetLineId = $budgetLine->id;
-            } elseif (! empty($validated['budget_line_id'])) {
-                $budgetLineId = $validated['budget_line_id'];
-            } else {
-                return response()->json(['success' => false, 'message' => 'Budget line is required'], 422);
-            }
-
-            // Create position slot
+            // Create position slot (budget line code now stored in grant_item)
             $slot = PositionSlot::create([
                 'grant_item_id' => $validated['grant_item_id'],
                 'slot_number' => $validated['slot_number'],
-                'budget_line_id' => $budgetLineId,
                 'created_by' => $request->user()?->name ?? 'system',
             ]);
             DB::commit();
 
-            return response()->json(['success' => true, 'data' => $slot->load('budgetLine')], 201);
+            return response()->json(['success' => true, 'data' => $slot], 201);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -242,7 +222,7 @@ class PositionSlotController extends Controller
     // Show a single position slot
     public function show($id)
     {
-        $slot = PositionSlot::with('budgetLine')->findOrFail($id);
+        $slot = PositionSlot::findOrFail($id);
 
         return response()->json(['success' => true, 'data' => $slot]);
     }
@@ -269,9 +249,7 @@ class PositionSlotController extends Controller
      *
      *         @OA\JsonContent(
      *
-     *             @OA\Property(property="slot_number", type="integer", example=2, description="Slot number"),
-     *             @OA\Property(property="budget_line_id", type="integer", nullable=true, example=1, description="Existing budget line ID"),
-     *             @OA\Property(property="budget_line_code", type="string", nullable=true, example="BL002", description="Budget line code (creates new if not exists)")
+     *             @OA\Property(property="slot_number", type="integer", example=2, description="Slot number")
      *         )
      *     ),
      *
@@ -319,21 +297,10 @@ class PositionSlotController extends Controller
         $slot = PositionSlot::findOrFail($id);
         $validated = $request->validate([
             'slot_number' => 'sometimes|required|integer|min:1',
-            'budget_line_id' => 'nullable|exists:budget_lines,id',
-            'budget_line_code' => 'nullable|string|max:255',
         ]);
         DB::beginTransaction();
         try {
-            // Handle new budget line code creation
-            if (empty($validated['budget_line_id']) && ! empty($validated['budget_line_code'])) {
-                $budgetLine = BudgetLine::firstOrCreate(
-                    ['budget_line_code' => $validated['budget_line_code']],
-                    ['created_by' => $request->user()?->name ?? 'system']
-                );
-                $slot->budget_line_id = $budgetLine->id;
-            } elseif (! empty($validated['budget_line_id'])) {
-                $slot->budget_line_id = $validated['budget_line_id'];
-            }
+            // Budget line code is now managed at grant item level
             if (! empty($validated['slot_number'])) {
                 $slot->slot_number = $validated['slot_number'];
             }
@@ -341,7 +308,7 @@ class PositionSlotController extends Controller
             $slot->save();
             DB::commit();
 
-            return response()->json(['success' => true, 'data' => $slot->load('budgetLine')]);
+            return response()->json(['success' => true, 'data' => $slot]);
         } catch (\Exception $e) {
             DB::rollBack();
 

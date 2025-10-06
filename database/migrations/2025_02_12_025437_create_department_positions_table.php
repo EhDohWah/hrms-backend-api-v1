@@ -2,15 +2,29 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * ⚠️ DEPRECATED: This table is legacy and no longer used in the application.
+     * The system now uses separate 'departments' and 'positions' tables.
+     * This migration is kept for historical purposes and data migration utilities only.
+     *
+     * For new installations, this table can be safely skipped.
+     * All references to department_position_id have been removed from the codebase.
      */
     public function up(): void
     {
+        // Skip table creation for fresh installations
+        // Kept only for backward compatibility with migration utility commands
+        if (DB::table('migrations')->where('migration', 'like', '%create_departments_table')->exists()) {
+            return; // Skip if new structure already exists
+        }
+
         Schema::create('department_positions', function (Blueprint $table) {
             $table->id();
             $table->string('department');

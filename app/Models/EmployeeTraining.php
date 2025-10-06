@@ -37,4 +37,10 @@ class EmployeeTraining extends Model
     {
         return $this->belongsTo(Training::class);
     }
+
+    // Relationship: Each employee training belongs to an employee
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
 }

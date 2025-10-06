@@ -20,7 +20,6 @@ class EmployeeGrantAllocationController extends Controller
             $query = EmployeeGrantAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'employment:id,employment_type,start_date',
             ]);
 
@@ -62,7 +61,7 @@ class EmployeeGrantAllocationController extends Controller
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
                 'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
-                'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+                'allocations.*.fte' => 'required|numeric|min:0|max:100',
             ]);
 
             if ($validator->fails()) {
@@ -77,7 +76,7 @@ class EmployeeGrantAllocationController extends Controller
             $currentUser = Auth::user()->name ?? 'system';
 
             // Validate that the total effort of all new allocations equals exactly 100%
-            $totalNewEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            $totalNewEffort = array_sum(array_column($validated['allocations'], 'fte'));
             if ($totalNewEffort != 100) {
                 return response()->json([
                     'success' => false,
@@ -152,7 +151,7 @@ class EmployeeGrantAllocationController extends Controller
                     $allocation = EmployeeGrantAllocation::create([
                         'employee_id' => $validated['employee_id'],
                         'position_slot_id' => $positionSlotId,
-                        'level_of_effort' => $allocationData['level_of_effort'],
+                        'fte' => $allocationData['fte'],
                         'start_date' => $validated['start_date'],
                         'end_date' => $validated['end_date'] ?? null,
                         'created_by' => $currentUser,
@@ -182,7 +181,6 @@ class EmployeeGrantAllocationController extends Controller
             $allocationsWithRelations = EmployeeGrantAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'employment:id,employment_type,start_date',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
@@ -216,7 +214,6 @@ class EmployeeGrantAllocationController extends Controller
             $allocation = EmployeeGrantAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'employment:id,employment_type,start_date',
             ])->findOrFail($id);
 
@@ -250,7 +247,6 @@ class EmployeeGrantAllocationController extends Controller
 
             $allocations = EmployeeGrantAllocation::with([
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'employment:id,employment_type,start_date',
             ])
                 ->where('employee_id', $employeeId)
@@ -258,7 +254,7 @@ class EmployeeGrantAllocationController extends Controller
                 ->orderBy('start_date', 'desc')
                 ->get();
 
-            $totalEffort = $allocations->sum('level_of_effort');
+            $totalEffort = $allocations->sum('fte');
 
             return response()->json([
                 'success' => true,
@@ -289,7 +285,7 @@ class EmployeeGrantAllocationController extends Controller
             $allocation = EmployeeGrantAllocation::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
-                'level_of_effort' => 'sometimes|numeric|min:0|max:100',
+                'fte' => 'sometimes|numeric|min:0|max:100',
                 'start_date' => 'sometimes|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'active' => 'sometimes|boolean',
@@ -312,25 +308,30 @@ class EmployeeGrantAllocationController extends Controller
             DB::beginTransaction();
 
             // If grant-related fields are being updated, update the position slot
-            if (isset($validated['grant_items_id']) || isset($validated['budgetline_id'])) {
+            if (isset($validated['grant_items_id']) || isset($validated['budgetline_code'])) {
                 $grantItemsId = $validated['grant_items_id'] ?? $allocation->positionSlot->grant_item_id;
-                $budgetlineId = $validated['budgetline_id'] ?? $allocation->positionSlot->budget_line_id;
 
-                $positionSlot = $this->findOrCreatePositionSlot($grantItemsId, $budgetlineId, $currentUser);
+                // Budget line code is now managed at grant item level, not position slot level
+                if (isset($validated['budgetline_code'])) {
+                    $grantItem = GrantItem::findOrFail($grantItemsId);
+                    $grantItem->update(['budgetline_code' => $validated['budgetline_code']]);
+                }
+
+                $positionSlot = $this->findOrCreatePositionSlot($grantItemsId, null, $currentUser);
                 $validated['position_slot_id'] = $positionSlot->id;
 
                 // Remove the UI fields from validated data
-                unset($validated['grant_items_id'], $validated['budgetline_id'], $validated['grant_id']);
+                unset($validated['grant_items_id'], $validated['budgetline_code'], $validated['grant_id']);
             }
 
-            // Validate total effort if level_of_effort is being updated
-            if (isset($validated['level_of_effort'])) {
+            // Validate total effort if fte is being updated
+            if (isset($validated['fte'])) {
                 $totalEffort = EmployeeGrantAllocation::where('employee_id', $allocation->employee_id)
                     ->where('active', true)
                     ->where('id', '!=', $id)
-                    ->sum('level_of_effort');
+                    ->sum('fte');
 
-                if (($totalEffort + $validated['level_of_effort']) > 100) {
+                if (($totalEffort + $validated['fte']) > 100) {
                     DB::rollBack();
 
                     return response()->json([
@@ -349,7 +350,6 @@ class EmployeeGrantAllocationController extends Controller
             $allocation->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'employment:id,employment_type,start_date',
             ]);
 
@@ -443,12 +443,12 @@ class EmployeeGrantAllocationController extends Controller
         }
     }
 
-    private function findOrCreatePositionSlot($grantItemId, $budgetLineId, $createdBy)
+    private function findOrCreatePositionSlot($grantItemId, $budgetlineCode, $createdBy)
     {
-        // First, try to find an existing position slot
+        // Find the first available position slot for this grant item
+        // Budget line code is now managed at grant item level
         $positionSlot = PositionSlot::where([
             'grant_item_id' => $grantItemId,
-            'budget_line_id' => $budgetLineId,
         ])->first();
 
         if ($positionSlot) {
@@ -467,7 +467,6 @@ class EmployeeGrantAllocationController extends Controller
         return PositionSlot::create([
             'grant_item_id' => $grantItemId,
             'slot_number' => $nextSlotNumber,
-            'budget_line_id' => $budgetLineId,
             'created_by' => $createdBy,
             'updated_by' => $createdBy,
         ]);
@@ -491,7 +490,7 @@ class EmployeeGrantAllocationController extends Controller
                             'name' => $item->grant_position,
                             'grant_salary' => $item->grant_salary,
                             'grant_benefit' => $item->grant_benefit,
-                            'grant_level_of_effort' => $item->grant_level_of_effort,
+                            'grant_fte' => $item->grant_fte,
                             'position_slots' => $item->positionSlots->map(function ($slot) {
                                 return [
                                     'id' => $slot->id,
@@ -532,7 +531,7 @@ class EmployeeGrantAllocationController extends Controller
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
                 'allocations.*.position_slot_id' => 'required|exists:position_slots,id',
-                'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+                'allocations.*.fte' => 'required|numeric|min:0|max:100',
             ]);
 
             if ($validator->fails()) {
@@ -550,7 +549,7 @@ class EmployeeGrantAllocationController extends Controller
             $employee = Employee::findOrFail($employeeId);
 
             // Validate that total effort equals 100%
-            $totalEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
             if ($totalEffort != 100) {
                 return response()->json([
                     'success' => false,
@@ -576,7 +575,7 @@ class EmployeeGrantAllocationController extends Controller
                 $allocation = EmployeeGrantAllocation::create([
                     'employee_id' => $employeeId,
                     'position_slot_id' => $allocationData['position_slot_id'],
-                    'level_of_effort' => $allocationData['level_of_effort'],
+                    'fte' => $allocationData['fte'],
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'] ?? null,
                     'created_by' => $currentUser,

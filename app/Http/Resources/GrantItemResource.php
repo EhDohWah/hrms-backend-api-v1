@@ -24,6 +24,7 @@ class GrantItemResource extends JsonResource
             'grant_benefit' => $this->grant_benefit,
             'grant_level_of_effort' => $this->grant_level_of_effort,
             'grant_position_number' => $this->grant_position_number,
+            'budgetline_code' => $this->budgetline_code,
             'position_slots' => PositionSlotResource::collection($this->whenLoaded('positionSlots')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

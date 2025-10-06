@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EmployeeFundingAllocationResource;
+use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\OrgFundedAllocation;
 use App\Models\PositionSlot;
@@ -59,15 +61,55 @@ class EmployeeFundingAllocationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EmployeeFundingAllocation::with(['employee', 'employment', 'orgFunded', 'positionSlot']);
+        try {
+            $query = EmployeeFundingAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'employment:id,employment_type,start_date,end_date',
+                'positionSlot.grantItem.grant:id,name,code',
+                'orgFunded.grant:id,name,code',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,name',
+            ]);
 
-        if ($request->has('employee_id')) {
-            $query->where('employee_id', $request->employee_id);
+            // Apply filters
+            if ($request->has('employee_id')) {
+                $query->where('employee_id', $request->employee_id);
+            }
+
+            if ($request->has('allocation_type')) {
+                $query->where('allocation_type', $request->allocation_type);
+            }
+
+            if ($request->has('active')) {
+                $today = Carbon::today();
+                if ($request->boolean('active')) {
+                    $query->where('start_date', '<=', $today)
+                        ->where(function ($q) use ($today) {
+                            $q->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $today);
+                        });
+                } else {
+                    $query->where('end_date', '<', $today);
+                }
+            }
+
+            $allocations = $query->orderByDesc('id')->paginate(20);
+
+            return EmployeeFundingAllocationResource::collection($allocations)
+                ->additional([
+                    'success' => true,
+                    'message' => 'Employee funding allocations retrieved successfully',
+                ])
+                ->response()
+                ->setStatusCode(200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employee funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $allocations = $query->orderByDesc('id')->paginate(20);
-
-        return response()->json($allocations);
     }
 
     /**
@@ -114,7 +156,6 @@ class EmployeeFundingAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date,end_date',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
             ])
                 ->whereHas('positionSlot', function ($query) use ($grantItemId) {
                     $query->where('grant_item_id', $grantItemId);
@@ -134,7 +175,8 @@ class EmployeeFundingAllocationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $allocations,
+                'message' => 'Employee funding allocations retrieved successfully',
+                'data' => EmployeeFundingAllocationResource::collection($allocations),
                 'total_allocations' => $allocations->count(),
                 'active_allocations' => $activeCount,
             ]);
@@ -174,12 +216,12 @@ class EmployeeFundingAllocationController extends Controller
      *
      *                 @OA\Items(
      *                     type="object",
-     *                     required={"allocation_type", "level_of_effort"},
+     *                     required={"allocation_type", "fte"},
      *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (required for grant allocations)", nullable=true),
      *                     @OA\Property(property="org_funded_id", type="integer", description="Org funded allocation ID (required for org_funded allocations)", nullable=true),
-     *                     @OA\Property(property="level_of_effort", type="number", format="float", minimum=0, maximum=100, description="Level of effort as percentage (0-100)"),
+     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true)
      *                 )
      *             )
@@ -271,7 +313,7 @@ class EmployeeFundingAllocationController extends Controller
                 'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
                 'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
                 'allocations.*.org_funded_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
-                'allocations.*.level_of_effort' => 'required|numeric|min:0|max:100',
+                'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
 
@@ -287,7 +329,7 @@ class EmployeeFundingAllocationController extends Controller
             $currentUser = Auth::user()->name ?? 'system';
 
             // Validate that the total effort of all new allocations equals exactly 100%
-            $totalNewEffort = array_sum(array_column($validated['allocations'], 'level_of_effort'));
+            $totalNewEffort = array_sum(array_column($validated['allocations'], 'fte'));
             if ($totalNewEffort != 100) {
                 return response()->json([
                     'success' => false,
@@ -406,7 +448,7 @@ class EmployeeFundingAllocationController extends Controller
                         'employment_id' => $validated['employment_id'],
                         'position_slot_id' => $allocationType === 'grant' ? $allocationData['position_slot_id'] : null,
                         'org_funded_id' => $allocationType === 'org_funded' ? $allocationData['org_funded_id'] : null,
-                        'level_of_effort' => $allocationData['level_of_effort'] / 100, // Convert percentage to decimal
+                        'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
                         'allocation_type' => $allocationType,
                         'allocated_amount' => $allocationData['allocated_amount'] ?? null,
                         'start_date' => $validated['start_date'],
@@ -439,7 +481,7 @@ class EmployeeFundingAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
+                'positionSlot.grantItem.grant:id,name,code',
                 'orgFunded',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
@@ -498,9 +540,36 @@ class EmployeeFundingAllocationController extends Controller
      */
     public function show($id)
     {
-        $allocation = EmployeeFundingAllocation::with(['employee', 'employment', 'orgFunded', 'positionSlot'])->findOrFail($id);
+        try {
+            $allocation = EmployeeFundingAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'employment:id,employment_type,start_date,end_date',
+                'positionSlot.grantItem.grant:id,name,code',
+                'orgFunded.grant:id,name,code',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,name',
+            ])->findOrFail($id);
 
-        return response()->json($allocation);
+            return (new EmployeeFundingAllocationResource($allocation))
+                ->additional([
+                    'success' => true,
+                    'message' => 'Employee funding allocation retrieved successfully',
+                ])
+                ->response()
+                ->setStatusCode(200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee funding allocation not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employee funding allocation',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -531,7 +600,7 @@ class EmployeeFundingAllocationController extends Controller
      *             @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
      *             @OA\Property(property="position_slot_id", type="integer", description="ID of the position slot (required for grant allocations)", nullable=true),
      *             @OA\Property(property="org_funded_id", type="integer", description="ID of the org funded allocation (required for org_funded allocations)", nullable=true),
-     *             @OA\Property(property="level_of_effort", type="number", format="float", minimum=0, maximum=100, description="Level of effort as percentage (0-100)"),
+     *             @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *             @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Start date"),
      *             @OA\Property(property="end_date", type="string", format="date", description="End date (must be after or equal to start_date)", nullable=true)
@@ -616,7 +685,7 @@ class EmployeeFundingAllocationController extends Controller
                 'allocation_type' => 'sometimes|string|in:grant,org_funded',
                 'position_slot_id' => 'required_if:allocation_type,grant|nullable|exists:position_slots,id',
                 'org_funded_id' => 'required_if:allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
-                'level_of_effort' => 'sometimes|numeric|min:0|max:100',
+                'fte' => 'sometimes|numeric|min:0|max:100',
                 'allocated_amount' => 'nullable|numeric|min:0',
                 'start_date' => 'sometimes|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -716,9 +785,9 @@ class EmployeeFundingAllocationController extends Controller
                 }
             }
 
-            // Convert level_of_effort from percentage to decimal if provided
-            if (isset($validated['level_of_effort'])) {
-                $validated['level_of_effort'] = $validated['level_of_effort'] / 100;
+            // Convert fte from percentage to decimal if provided
+            if (isset($validated['fte'])) {
+                $validated['fte'] = $validated['fte'] / 100;
             }
 
             // Add updated_by field
@@ -734,15 +803,16 @@ class EmployeeFundingAllocationController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date',
                 'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.budgetLine:id,budget_line_code,description',
                 'orgFunded',
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Employee funding allocation updated successfully',
-                'data' => $allocation,
-            ], 200);
+            return (new EmployeeFundingAllocationResource($allocation))
+                ->additional([
+                    'success' => true,
+                    'message' => 'Employee funding allocation updated successfully',
+                ])
+                ->response()
+                ->setStatusCode(200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
@@ -788,9 +858,546 @@ class EmployeeFundingAllocationController extends Controller
      */
     public function destroy($id)
     {
-        $allocation = EmployeeFundingAllocation::findOrFail($id);
-        $allocation->delete();
+        try {
+            $allocation = EmployeeFundingAllocation::findOrFail($id);
+            $allocation->delete();
 
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee funding allocation deleted successfully',
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee funding allocation not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete employee funding allocation',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/employee-funding-allocations/employee/{employeeId}",
+     *     operationId="getEmployeeFundingAllocationsByEmployeeId",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Get employee funding allocations by employee ID",
+     *     description="Returns all active funding allocations for a specific employee with total effort calculation",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="employeeId",
+     *         in="path",
+     *         description="Employee ID",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee funding allocations retrieved successfully"),
+     *             @OA\Property(property="employee", type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *                 @OA\Property(property="first_name_en", type="string", example="John"),
+     *                 @OA\Property(property="last_name_en", type="string", example="Doe")
+     *             ),
+     *             @OA\Property(property="total_allocations", type="integer", example=2),
+     *             @OA\Property(property="total_effort", type="number", format="float", example=100.0),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation"))
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=404, description="Employee not found")
+     * )
+     */
+    public function getEmployeeAllocations($employeeId)
+    {
+        try {
+            $employee = Employee::select('id', 'staff_id', 'first_name_en', 'last_name_en')
+                ->findOrFail($employeeId);
+
+            $today = Carbon::today();
+            $allocations = EmployeeFundingAllocation::with([
+                'employment:id,employment_type,start_date,end_date',
+                'positionSlot.grantItem.grant:id,name,code',
+                'orgFunded.grant:id,name,code',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,name',
+            ])
+                ->where('employee_id', $employeeId)
+                ->where('start_date', '<=', $today)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', $today);
+                })
+                ->orderBy('start_date', 'desc')
+                ->get();
+
+            // Calculate total effort (convert decimal to percentage)
+            $totalEffort = $allocations->sum('fte') * 100;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee funding allocations retrieved successfully',
+                'employee' => $employee,
+                'total_allocations' => $allocations->count(),
+                'total_effort' => $totalEffort,
+                'data' => EmployeeFundingAllocationResource::collection($allocations),
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve employee funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/employee-funding-allocations/grant-structure",
+     *     operationId="getGrantStructure",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Get grant structure for allocations",
+     *     description="Returns the complete grant structure with grant items, position slots, and org funded allocations for use in funding allocation forms",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful operation",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Grant structure retrieved successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="grants", type="array", @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="Research Grant 2024"),
+     *                     @OA\Property(property="code", type="string", example="RG2024"),
+     *                     @OA\Property(property="grant_items", type="array", @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="name", type="string", example="Senior Researcher"),
+     *                         @OA\Property(property="grant_salary", type="number", format="float", example=5000.00),
+     *                         @OA\Property(property="grant_benefit", type="number", format="float", example=1000.00),
+     *                         @OA\Property(property="position_slots", type="array", @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="slot_number", type="integer", example=1)
+     *                         ))
+     *                     )),
+     *                     @OA\Property(property="org_funded_allocations", type="array", @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="description", type="string", example="Administrative Support"),
+     *                         @OA\Property(property="department", type="object",
+     *                             @OA\Property(property="id", type="integer"),
+     *                             @OA\Property(property="name", type="string")
+     *                         ),
+     *                         @OA\Property(property="position", type="object",
+     *                             @OA\Property(property="id", type="integer"),
+     *                             @OA\Property(property="title", type="string")
+     *                         )
+     *                     ))
+     *                 ))
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function getGrantStructure()
+    {
+        try {
+            $grants = \App\Models\Grant::with([
+                'grantItems.positionSlots',
+                'orgFundedAllocations.department:id,name',
+                'orgFundedAllocations.position:id,title,department_id',
+            ])->select('id', 'name', 'code')->get();
+
+            $structure = [
+                'grants' => $grants->map(function ($grant) {
+                    return [
+                        'id' => $grant->id,
+                        'name' => $grant->name,
+                        'code' => $grant->code,
+                        'grant_items' => $grant->grantItems->map(function ($item) {
+                            return [
+                                'id' => $item->id,
+                                'name' => $item->grant_position,
+                                'grant_salary' => $item->grant_salary,
+                                'grant_benefit' => $item->grant_benefit,
+                                'grant_fte' => $item->grant_fte,
+                                'budgetline_code' => $item->budgetline_code,
+                                'grant_position_number' => $item->grant_position_number,
+                                'position_slots' => $item->positionSlots->map(function ($slot) {
+                                    return [
+                                        'id' => $slot->id,
+                                        'slot_number' => $slot->slot_number,
+                                    ];
+                                }),
+                            ];
+                        }),
+                        'org_funded_allocations' => $grant->orgFundedAllocations->map(function ($orgFunded) {
+                            return [
+                                'id' => $orgFunded->id,
+                                'description' => $orgFunded->description,
+                                'department' => $orgFunded->department ? [
+                                    'id' => $orgFunded->department->id,
+                                    'name' => $orgFunded->department->name,
+                                ] : null,
+                                'position' => $orgFunded->position ? [
+                                    'id' => $orgFunded->position->id,
+                                    'title' => $orgFunded->position->title,
+                                ] : null,
+                            ];
+                        }),
+                    ];
+                }),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Grant structure retrieved successfully',
+                'data' => $structure,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve grant structure',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/employee-funding-allocations/bulk-deactivate",
+     *     operationId="bulkDeactivateEmployeeFundingAllocations",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Bulk deactivate employee funding allocations",
+     *     description="Deactivates multiple employee funding allocations by setting their end_date to today",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"allocation_ids"},
+     *
+     *             @OA\Property(
+     *                 property="allocation_ids",
+     *                 type="array",
+     *                 description="Array of allocation IDs to deactivate",
+     *
+     *                 @OA\Items(type="integer", example=1)
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Allocations deactivated successfully",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee funding allocations deactivated successfully"),
+     *             @OA\Property(property="deactivated_count", type="integer", example=3)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object", description="Validation errors")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function bulkDeactivate(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'allocation_ids' => 'required|array|min:1',
+                'allocation_ids.*' => 'integer|exists:employee_funding_allocations,id',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $currentUser = Auth::user()->name ?? 'system';
+            $today = Carbon::today();
+
+            $updatedCount = EmployeeFundingAllocation::whereIn('id', $request->allocation_ids)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>', $today);
+                })
+                ->update([
+                    'end_date' => $today,
+                    'updated_by' => $currentUser,
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee funding allocations deactivated successfully',
+                'deactivated_count' => $updatedCount,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to deactivate employee funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/employee-funding-allocations/employee/{employeeId}",
+     *     operationId="updateEmployeeFundingAllocations",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Update all employee funding allocations",
+     *     description="Replaces all existing active allocations for an employee with new allocations. Validates that total effort equals 100% and handles both grant and org_funded allocations.",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="employeeId",
+     *         in="path",
+     *         description="Employee ID",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"employment_id", "start_date", "allocations"},
+     *
+     *             @OA\Property(property="employment_id", type="integer", description="ID of the employment"),
+     *             @OA\Property(property="start_date", type="string", format="date", description="Start date for new allocations"),
+     *             @OA\Property(property="end_date", type="string", format="date", description="End date for new allocations", nullable=true),
+     *             @OA\Property(
+     *                 property="allocations",
+     *                 type="array",
+     *                 description="Array of new funding allocations (total effort must equal 100%)",
+     *
+     *                 @OA\Items(
+     *                     type="object",
+     *                     required={"allocation_type", "fte"},
+     *
+     *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
+     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (required for grant allocations)", nullable=true),
+     *                     @OA\Property(property="org_funded_id", type="integer", description="Org funded allocation ID (required for org_funded allocations)", nullable=true),
+     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
+     *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Allocations updated successfully",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employee funding allocations updated successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
+     *             @OA\Property(property="total_created", type="integer", example=2)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation or business logic error",
+     *
+     *         @OA\JsonContent(
+     *             oneOf={
+     *
+     *                 @OA\Schema(
+     *                     type="object",
+     *
+     *                     @OA\Property(property="success", type="boolean", example=false),
+     *                     @OA\Property(property="message", type="string", example="Validation failed"),
+     *                     @OA\Property(property="errors", type="object", description="Validation errors")
+     *                 ),
+     *
+     *                 @OA\Schema(
+     *                     type="object",
+     *
+     *                     @OA\Property(property="success", type="boolean", example=false),
+     *                     @OA\Property(property="message", type="string", example="Total effort must equal 100%"),
+     *                     @OA\Property(property="current_total", type="number", example=85.5)
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=404, description="Employee not found"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function updateEmployeeAllocations(Request $request, $employeeId)
+    {
+        try {
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'employment_id' => 'required|exists:employments,id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'allocations' => 'required|array|min:1',
+                'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
+                'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
+                'allocations.*.org_funded_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
+                'allocations.*.fte' => 'required|numeric|min:0|max:100',
+                'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            $currentUser = Auth::user()->name ?? 'system';
+
+            // Verify employee exists
+            $employee = Employee::findOrFail($employeeId);
+
+            // Validate that total effort equals 100%
+            $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
+            if ($totalEffort != 100) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Total effort must equal 100%',
+                    'current_total' => $totalEffort,
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $today = Carbon::today();
+
+            // Deactivate all existing active allocations for this employee and employment
+            EmployeeFundingAllocation::where('employee_id', $employeeId)
+                ->where('employment_id', $validated['employment_id'])
+                ->where('start_date', '<=', $today)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', $today);
+                })
+                ->update([
+                    'end_date' => $today->subDay(), // End yesterday to avoid overlap
+                    'updated_by' => $currentUser,
+                    'updated_at' => now(),
+                ]);
+
+            // Create new allocations
+            $createdAllocations = [];
+            foreach ($validated['allocations'] as $allocationData) {
+                $allocation = EmployeeFundingAllocation::create([
+                    'employee_id' => $employeeId,
+                    'employment_id' => $validated['employment_id'],
+                    'position_slot_id' => $allocationData['allocation_type'] === 'grant' ? $allocationData['position_slot_id'] : null,
+                    'org_funded_id' => $allocationData['allocation_type'] === 'org_funded' ? $allocationData['org_funded_id'] : null,
+                    'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
+                    'allocation_type' => $allocationData['allocation_type'],
+                    'allocated_amount' => $allocationData['allocated_amount'] ?? null,
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'] ?? null,
+                    'created_by' => $currentUser,
+                    'updated_by' => $currentUser,
+                ]);
+
+                $createdAllocations[] = $allocation;
+            }
+
+            DB::commit();
+
+            // Load the created allocations with relationships
+            $allocationsWithRelations = EmployeeFundingAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en',
+                'employment:id,employment_type,start_date,end_date',
+                'positionSlot.grantItem.grant:id,name,code',
+                'orgFunded.grant:id,name,code',
+                'orgFunded.department:id,name',
+                'orgFunded.position:id,name',
+            ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee funding allocations updated successfully',
+                'data' => EmployeeFundingAllocationResource::collection($allocationsWithRelations),
+                'total_created' => count($createdAllocations),
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update employee funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

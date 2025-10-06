@@ -100,7 +100,8 @@ class CacheInvalidationObserver
             'Employment' => 'employments',
             'Interview' => 'interviews',
             'JobOffer' => 'job_offers',
-            'DepartmentPosition' => 'department_positions',
+            'Department' => 'departments',
+            'Position' => 'positions',
             'WorkLocation' => 'work_locations',
         ];
 

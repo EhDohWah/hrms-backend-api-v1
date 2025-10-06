@@ -17,7 +17,8 @@ use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
  *     @OA\Property(property="date", type="string", format="date", description="Offer date"),
  *     @OA\Property(property="candidate_name", type="string", description="Name of the candidate"),
  *     @OA\Property(property="position_name", type="string", description="Name of the position"),
- *     @OA\Property(property="salary_detail", type="string", description="Salary details"),
+ *     @OA\Property(property="probation_salary", type="number", format="float", description="Probation period salary"),
+ *     @OA\Property(property="post_probation_salary", type="number", format="float", description="Post-probation salary"),
  *     @OA\Property(property="acceptance_deadline", type="string", format="date", description="Deadline for acceptance"),
  *     @OA\Property(property="acceptance_status", type="string", description="Status of acceptance"),
  *     @OA\Property(property="note", type="string", description="Additional notes"),
@@ -41,7 +42,8 @@ class JobOffer extends Model
         'date',
         'candidate_name',
         'position_name',
-        'salary_detail',
+        'probation_salary',
+        'post_probation_salary',
         'acceptance_deadline',
         'acceptance_status',
         'note',
@@ -57,6 +59,8 @@ class JobOffer extends Model
     protected $casts = [
         'date' => 'date',
         'acceptance_deadline' => 'date',
+        'probation_salary' => 'decimal:2',
+        'post_probation_salary' => 'decimal:2',
     ];
 
     /**

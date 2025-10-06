@@ -143,7 +143,8 @@ class PayrollController extends Controller
         $employeeId = $request->input('employee_id');
         $employee = Employee::with([
             'employment',
-            'employment.departmentPosition',
+            'employment.department:id,name',
+            'employment.position:id,title,department_id',
             'employment.workLocation',
             'employeeFundingAllocations',
             'employeeFundingAllocations.orgFunded',
@@ -221,10 +222,9 @@ class PayrollController extends Controller
      *                         @OA\Property(property="department", type="string", example="IT Department"),
      *                         @OA\Property(property="position", type="string", example="Senior Developer"),
      *                         @OA\Property(property="employment_type", type="string", example="Full-time"),
-     *                         @OA\Property(property="fte_percentage", type="number", format="float", example=1.0),
+     *                         @OA\Property(property="fte_percentage", type="number", format="float", example=50.0, description="FTE percentage (0-100)"),
      *                         @OA\Property(property="funding_source", type="string", example="Grant ABC"),
      *                         @OA\Property(property="funding_type", type="string", example="grant"),
-     *                         @OA\Property(property="loe_percentage", type="number", format="float", example=0.5),
      *                         @OA\Property(
      *                             property="calculations",
      *                             type="object",
@@ -335,7 +335,8 @@ class PayrollController extends Controller
             // Load employee with all necessary relationships
             $employee = Employee::with([
                 'employment',
-                'employment.departmentPosition',
+                'employment.department:id,name',
+                'employment.position:id,title,department_id',
                 'employment.workLocation',
                 'employeeFundingAllocations',
                 'employeeFundingAllocations.orgFunded',
@@ -460,7 +461,7 @@ class PayrollController extends Controller
      *
      *                         @OA\Property(property="allocation_id", type="integer", example=1),
      *                         @OA\Property(property="allocation_type", type="string", example="grant"),
-     *                         @OA\Property(property="level_of_effort", type="number", example=0.5),
+     *                         @OA\Property(property="fte", type="number", example=0.5),
      *                         @OA\Property(
      *                             property="project_grant",
      *                             type="object",
@@ -683,11 +684,16 @@ class PayrollController extends Controller
      *                         type="object",
      *                         @OA\Property(property="id", type="integer", example=1),
      *                         @OA\Property(
-     *                             property="department_position",
+     *                             property="department",
      *                             type="object",
      *                             @OA\Property(property="id", type="integer", example=1),
-     *                             @OA\Property(property="department", type="string", example="IT"),
-     *                             @OA\Property(property="position", type="string", example="Developer")
+     *                             @OA\Property(property="name", type="string", example="IT")
+     *                         ),
+     *                         @OA\Property(
+     *                             property="position",
+     *                             type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="title", type="string", example="Developer")
      *                         )
      *                     )
      *                 )
@@ -797,8 +803,8 @@ class PayrollController extends Controller
             // Apply position filter if provided
             if (! empty($validated['filter_position'])) {
                 $positions = array_map('trim', explode(',', $validated['filter_position']));
-                $query->whereHas('employment.departmentPosition', function ($q) use ($positions) {
-                    $q->whereIn('position', $positions);
+                $query->whereHas('employment.position', function ($q) use ($positions) {
+                    $q->whereIn('title', $positions);
                 });
             }
 
@@ -958,10 +964,16 @@ class PayrollController extends Controller
      *                     type="object",
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(
-     *                         property="department_position",
+     *                         property="department",
      *                         type="object",
-     *                         @OA\Property(property="department", type="string", example="IT"),
-     *                         @OA\Property(property="position", type="string", example="Senior Developer")
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="name", type="string", example="IT")
+     *                     ),
+     *                     @OA\Property(
+     *                         property="position",
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="title", type="string", example="Senior Developer")
      *                     )
      *                 )
      *             ),
@@ -1097,9 +1109,13 @@ class PayrollController extends Controller
                     'subsidiary' => $employee->subsidiary,
                     'employment' => [
                         'id' => $firstPayroll->employment->id,
-                        'department_position' => [
-                            'department' => $firstPayroll->employment->departmentPosition->department ?? null,
-                            'position' => $firstPayroll->employment->departmentPosition->position ?? null,
+                        'department' => [
+                            'id' => $firstPayroll->employment->department->id ?? null,
+                            'name' => $firstPayroll->employment->department->name ?? null,
+                        ],
+                        'position' => [
+                            'id' => $firstPayroll->employment->position->id ?? null,
+                            'title' => $firstPayroll->employment->position->title ?? null,
                         ],
                     ],
                 ];
@@ -1164,7 +1180,7 @@ class PayrollController extends Controller
      *                     @OA\Property(property="allocation_id", type="integer", example=1),
      *                     @OA\Property(property="employment_id", type="integer", example=1),
      *                     @OA\Property(property="allocation_type", type="string", example="grant"),
-     *                     @OA\Property(property="level_of_effort", type="number", example=0.2),
+     *                     @OA\Property(property="fte", type="number", example=0.2),
      *                     @OA\Property(property="funding_source", type="string", example="Maternal Mortality Reduction Grant"),
      *                     @OA\Property(property="salary_by_fte", type="number", example=5000),
      *                     @OA\Property(property="compensation_refund", type="number", example=0),
@@ -1231,7 +1247,7 @@ class PayrollController extends Controller
                 'allocation_calculations.*.allocation_id' => 'required|exists:employee_funding_allocations,id',
                 'allocation_calculations.*.employment_id' => 'required|exists:employments,id',
                 'allocation_calculations.*.allocation_type' => 'required|string|in:grant,organization',
-                'allocation_calculations.*.level_of_effort' => 'required|numeric|min:0|max:1',
+                'allocation_calculations.*.fte' => 'required|numeric|min:0|max:1',
                 'allocation_calculations.*.salary_by_fte' => 'required|numeric|min:0',
                 'allocation_calculations.*.compensation_refund' => 'required|numeric|min:0',
                 'allocation_calculations.*.thirteen_month_salary' => 'required|numeric|min:0',
@@ -2077,7 +2093,7 @@ class PayrollController extends Controller
         $adjustedGrossSalary = $salaryCalculation['gross_salary'] + $annualIncrease;
 
         // Calculate salary by FTE using Level of Effort (Payroll table: gross_salary_by_FTE)
-        $grossSalaryByFTE = $adjustedGrossSalary * $allocation->level_of_effort;
+        $grossSalaryByFTE = $adjustedGrossSalary * $allocation->fte;
 
         // Calculate compensation/refund for mid-month starts
         $compensationRefund = $this->calculateCompensationRefund($employment, $payPeriodDate, $grossSalaryByFTE);
@@ -2122,15 +2138,14 @@ class PayrollController extends Controller
             'allocation_id' => $allocation->id,
             'staff_id' => $employee->staff_id,
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
-            'department' => $employment->departmentPosition->department ?? 'N/A',
-            'position' => $employment->departmentPosition->position ?? 'N/A',
+            'department' => $employment->department->name ?? 'N/A',
+            'position' => $employment->position->title ?? 'N/A',
             'employment_type' => $employment->employment_type,
-            'fte_percentage' => $employment->fte ?? 1.0,
+            'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
             'position_salary' => $employment->position_salary,
             'probation_salary' => $employment->probation_salary,
             'funding_source' => $this->getFundingSourceName($allocation),
             'funding_type' => $allocation->allocation_type,
-            'loe_percentage' => $allocation->level_of_effort,
             'salary_breakdown' => $salaryCalculation, // Show probation transition details
             'calculations' => [
                 // Using Payroll table field names
@@ -2187,7 +2202,7 @@ class PayrollController extends Controller
         $annualIncrease = $baseSalary * $defaultIncreaseRate;
 
         // Cap increase based on position level (this could be configurable)
-        $maxIncrease = $this->getMaxIncreaseByPosition($employment->departmentPosition);
+        $maxIncrease = $this->getMaxIncreaseByPosition($employment->position);
 
         return round(min($annualIncrease, $maxIncrease), 2);
     }
@@ -2510,27 +2525,27 @@ class PayrollController extends Controller
     /**
      * Get maximum salary increase based on position level
      */
-    private function getMaxIncreaseByPosition($departmentPosition): float
+    private function getMaxIncreaseByPosition($position): float
     {
         // This could be configurable in database
         // For now, using default caps based on position level
 
-        if (! $departmentPosition) {
+        if (! $position) {
             return 5000.0; // Default max increase
         }
 
-        $position = strtolower($departmentPosition->position ?? '');
+        $positionTitle = strtolower($position->title ?? '');
 
         // Simple position-based caps (this should be configurable)
-        if (str_contains($position, 'senior') || str_contains($position, 'lead')) {
+        if (str_contains($positionTitle, 'senior') || str_contains($positionTitle, 'lead')) {
             return 8000.0;
         }
 
-        if (str_contains($position, 'manager') || str_contains($position, 'director')) {
+        if (str_contains($positionTitle, 'manager') || str_contains($positionTitle, 'director')) {
             return 15000.0;
         }
 
-        if (str_contains($position, 'junior') || str_contains($position, 'intern')) {
+        if (str_contains($positionTitle, 'junior') || str_contains($positionTitle, 'intern')) {
             return 3000.0;
         }
 

@@ -25,7 +25,7 @@ class LeaveRequestReportRequest extends FormRequest
             'start_date' => 'required|date_format:Y-m-d',
             'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
             'work_location' => 'required|string|max:255|exists:work_locations,name',
-            'department' => 'required|string|max:255|exists:department_positions,department',
+            'department' => 'required|string|max:255|exists:departments,name',
         ];
     }
 

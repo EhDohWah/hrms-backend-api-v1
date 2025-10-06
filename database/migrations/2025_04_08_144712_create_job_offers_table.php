@@ -17,7 +17,8 @@ return new class extends Migration
             $table->date('date');
             $table->string('candidate_name');
             $table->string('position_name');
-            $table->string('salary_detail');
+            $table->decimal('probation_salary', 10, 2)->nullable();
+            $table->decimal('post_probation_salary', 10, 2)->nullable();
             $table->date('acceptance_deadline');
             $table->string('acceptance_status');
             $table->text('note');

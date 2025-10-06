@@ -53,6 +53,11 @@ class Grant extends Model
         return $this->hasMany(GrantItem::class, 'grant_id');
     }
 
+    public function orgFundedAllocations()
+    {
+        return $this->hasMany(OrgFundedAllocation::class, 'grant_id');
+    }
+
     public function subsidiaryHubFunds()
     {
         return $this->hasMany(SubsidiaryHubFund::class, 'hub_grant_id');
@@ -257,6 +262,7 @@ class Grant extends Model
                 'grant_benefit',
                 'grant_level_of_effort',
                 'grant_position_number',
+                'budgetline_code',
                 'created_at',
                 'updated_at',
             ]);

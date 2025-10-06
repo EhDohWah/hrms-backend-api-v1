@@ -25,10 +25,28 @@ class JobOfferRequest extends FormRequest
             'date' => 'required|date',
             'candidate_name' => 'required|string',
             'position_name' => 'required|string',
-            'salary_detail' => 'required|string',
+            'probation_salary' => 'required|numeric|min:0',
+            'post_probation_salary' => 'required|numeric|min:0',
             'acceptance_deadline' => 'required|date',
             'acceptance_status' => 'required|string',
             'note' => 'required|string',
+        ];
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'probation_salary.required' => 'The probation salary is required.',
+            'probation_salary.numeric' => 'The probation salary must be a valid number.',
+            'probation_salary.min' => 'The probation salary must be at least 0.',
+            'post_probation_salary.required' => 'The post-probation salary is required.',
+            'post_probation_salary.numeric' => 'The post-probation salary must be a valid number.',
+            'post_probation_salary.min' => 'The post-probation salary must be at least 0.',
         ];
     }
 }

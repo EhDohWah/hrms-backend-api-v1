@@ -109,7 +109,7 @@ class FundingAllocationService
             'employment_id' => $employment->id,
             'position_slot_id' => $data['position_slot_id'],
             'org_funded_id' => null,
-            'level_of_effort' => $data['level_of_effort'] / 100, // Convert percentage to decimal
+            'fte' => $data['fte'] / 100, // Convert percentage to decimal
             'allocation_type' => 'grant',
             'allocated_amount' => $data['allocated_amount'] ?? null,
             'start_date' => $employment->start_date,
@@ -133,7 +133,8 @@ class FundingAllocationService
         // Create org_funded_allocation record first
         $orgFundedAllocation = OrgFundedAllocation::create([
             'grant_id' => $data['grant_id'],
-            'department_position_id' => $employment->department_position_id,
+            'department_id' => $employment->department_id,
+            'position_id' => $employment->position_id,
             'description' => 'Auto-created for employment ID: '.$employment->id,
             'created_by' => $currentUser,
             'updated_by' => $currentUser,
@@ -145,7 +146,7 @@ class FundingAllocationService
             'employment_id' => $employment->id,
             'position_slot_id' => null,
             'org_funded_id' => $orgFundedAllocation->id,
-            'level_of_effort' => $data['level_of_effort'] / 100, // Convert percentage to decimal
+            'fte' => $data['fte'] / 100, // Convert percentage to decimal
             'allocation_type' => 'org_funded',
             'allocated_amount' => $data['allocated_amount'] ?? null,
             'start_date' => $employment->start_date,
@@ -236,7 +237,7 @@ class FundingAllocationService
      */
     private function validateTotalEffort(array $allocations): void
     {
-        $totalEffort = array_sum(array_column($allocations, 'level_of_effort'));
+        $totalEffort = array_sum(array_column($allocations, 'fte'));
         if ($totalEffort != 100) {
             throw new \InvalidArgumentException("Total effort of all allocations must equal exactly 100%. Current total: {$totalEffort}%");
         }
@@ -299,7 +300,7 @@ class FundingAllocationService
 
         $summary = [
             'total_allocations' => $allocations->count(),
-            'total_effort' => $allocations->sum('level_of_effort'),
+            'total_effort' => $allocations->sum('fte'),
             'funding_sources' => [],
             'by_type' => $allocations->groupBy('allocation_type')->map->count()->toArray(),
         ];
@@ -308,7 +309,7 @@ class FundingAllocationService
             $fundingSource = [
                 'id' => $allocation->id,
                 'type' => $allocation->allocation_type,
-                'effort_percentage' => $allocation->level_of_effort * 100,
+                'effort_percentage' => $allocation->fte * 100,
                 'allocated_amount' => $allocation->allocated_amount,
             ];
 

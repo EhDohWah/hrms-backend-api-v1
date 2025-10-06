@@ -213,7 +213,7 @@ class ResignationController extends Controller
                 'per_page' => 'integer|min:1|max:100',
                 'search' => 'nullable|string|max:255',
                 'acknowledgement_status' => 'nullable|in:Pending,Acknowledged,Rejected',
-                'department_id' => 'nullable|exists:department_positions,id',
+                'department_id' => 'nullable|exists:departments,id',
                 'reason' => 'nullable|string|max:50',
                 'sort_by' => 'nullable|in:resignation_date,last_working_date,acknowledgement_status,created_at',
                 'sort_order' => 'nullable|in:asc,desc',

@@ -56,26 +56,19 @@ class JobOfferFactory extends Factory
             'Under Review',
         ];
 
-        $salaryRanges = [
-            '$45,000 - $60,000 per annum',
-            '$50,000 - $70,000 per annum',
-            '$60,000 - $80,000 per annum',
-            '$70,000 - $90,000 per annum',
-            '$80,000 - $100,000 per annum',
-            '$90,000 - $120,000 per annum',
-            '$100,000 - $130,000 per annum',
-            '$110,000 - $150,000 per annum',
-        ];
-
         $offerDate = $this->faker->dateTimeBetween('-6 months', 'now');
         $acceptanceDeadline = $this->faker->dateTimeBetween($offerDate, '+30 days');
+
+        $probationSalary = $this->faker->numberBetween(25000, 80000);
+        $postProbationSalary = $probationSalary + $this->faker->numberBetween(2000, 10000);
 
         return [
             'custom_offer_id' => $this->generateCustomOfferId(),
             'date' => $offerDate,
             'candidate_name' => $this->faker->name(),
             'position_name' => $this->faker->randomElement($positions),
-            'salary_detail' => $this->faker->randomElement($salaryRanges),
+            'probation_salary' => $probationSalary,
+            'post_probation_salary' => $postProbationSalary,
             'acceptance_deadline' => $acceptanceDeadline,
             'acceptance_status' => $this->faker->randomElement($statuses),
             'note' => $this->faker->optional(0.7)->sentence(10) ?? 'Standard job offer with competitive benefits package.',

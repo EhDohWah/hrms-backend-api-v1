@@ -102,7 +102,8 @@ class JobOfferController extends Controller
      *                     @OA\Property(property="date", type="string", format="date", example="2024-01-15"),
      *                     @OA\Property(property="candidate_name", type="string", example="John Doe"),
      *                     @OA\Property(property="position_name", type="string", example="Software Developer"),
-     *                     @OA\Property(property="salary_detail", type="string", example="$75,000 per annum"),
+     *                     @OA\Property(property="probation_salary", type="number", format="float", example=35000.00, description="Salary during probation period"),
+     *                     @OA\Property(property="post_probation_salary", type="number", format="float", example=40000.00, description="Salary after probation period"),
      *                     @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30"),
      *                     @OA\Property(property="acceptance_status", type="string", example="Pending"),
      *                     @OA\Property(property="note", type="string", example="Additional benefits included"),
@@ -266,7 +267,18 @@ class JobOfferController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *
-     *         @OA\JsonContent(ref="#/components/schemas/JobOffer")
+     *         @OA\JsonContent(
+     *             required={"date", "candidate_name", "position_name", "probation_salary", "post_probation_salary", "acceptance_deadline", "acceptance_status", "note"},
+     *
+     *             @OA\Property(property="date", type="string", format="date", example="2024-01-15", description="Job offer date"),
+     *             @OA\Property(property="candidate_name", type="string", example="John Doe", description="Name of the candidate"),
+     *             @OA\Property(property="position_name", type="string", example="Software Developer", description="Position being offered"),
+     *             @OA\Property(property="probation_salary", type="number", format="float", example=35000.00, description="Monthly salary during probation period"),
+     *             @OA\Property(property="post_probation_salary", type="number", format="float", example=40000.00, description="Monthly salary after probation period"),
+     *             @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30", description="Deadline for candidate to accept the offer"),
+     *             @OA\Property(property="acceptance_status", type="string", example="Pending", description="Current status of the offer"),
+     *             @OA\Property(property="note", type="string", example="Standard job offer with competitive benefits package", description="Additional notes about the offer")
+     *         )
      *     ),
      *
      *     @OA\Response(
@@ -439,7 +451,18 @@ class JobOfferController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *
-     *         @OA\JsonContent(ref="#/components/schemas/JobOffer")
+     *         @OA\JsonContent(
+     *             required={"date", "candidate_name", "position_name", "probation_salary", "post_probation_salary", "acceptance_deadline", "acceptance_status", "note"},
+     *
+     *             @OA\Property(property="date", type="string", format="date", example="2024-01-15", description="Job offer date"),
+     *             @OA\Property(property="candidate_name", type="string", example="John Doe", description="Name of the candidate"),
+     *             @OA\Property(property="position_name", type="string", example="Software Developer", description="Position being offered"),
+     *             @OA\Property(property="probation_salary", type="number", format="float", example=35000.00, description="Monthly salary during probation period"),
+     *             @OA\Property(property="post_probation_salary", type="number", format="float", example=40000.00, description="Monthly salary after probation period"),
+     *             @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30", description="Deadline for candidate to accept the offer"),
+     *             @OA\Property(property="acceptance_status", type="string", example="Pending", description="Current status of the offer"),
+     *             @OA\Property(property="note", type="string", example="Standard job offer with competitive benefits package", description="Additional notes about the offer")
+     *         )
      *     ),
      *
      *     @OA\Response(
@@ -686,8 +709,8 @@ class JobOfferController extends Controller
                 'date' => $jobOffer->date ? $this->formatDateWithSuperscript($jobOffer->date) : now()->format('dS F, Y'),
                 'position' => $jobOffer->position_name,
                 'subject' => 'Job Offer',
-                'probation_salary' => $jobOffer->salary_detail,
-                'post_probation_salary' => $jobOffer->salary_detail,
+                'probation_salary' => $jobOffer->probation_salary ? number_format($jobOffer->probation_salary, 2) : 'N/A',
+                'post_probation_salary' => $jobOffer->post_probation_salary ? number_format($jobOffer->post_probation_salary, 2) : 'N/A',
                 'acceptance_deadline' => $jobOffer->acceptance_deadline ? $this->formatDateWithSuperscript($jobOffer->acceptance_deadline) : 'N/A',
                 'employee_name' => $jobOffer->candidate_name,
             ];
@@ -751,7 +774,8 @@ class JobOfferController extends Controller
      *                 @OA\Property(property="date", type="string", format="date", example="2024-01-15"),
      *                 @OA\Property(property="candidate_name", type="string", example="John Doe"),
      *                 @OA\Property(property="position_name", type="string", example="Software Developer"),
-     *                 @OA\Property(property="salary_detail", type="string", example="$75,000 per annum"),
+     *                 @OA\Property(property="probation_salary", type="number", format="float", example=35000.00, description="Salary during probation period"),
+     *                 @OA\Property(property="post_probation_salary", type="number", format="float", example=40000.00, description="Salary after probation period"),
      *                 @OA\Property(property="acceptance_deadline", type="string", format="date", example="2024-01-30"),
      *                 @OA\Property(property="acceptance_status", type="string", example="Pending"),
      *                 @OA\Property(property="note", type="string", example="Additional benefits included"),

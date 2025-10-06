@@ -79,8 +79,8 @@
 <div class="content">
     <p>
         The Shoklo Malaria Research Unit (SMRU) is delighted to offer you the position of <strong>{{ $position }}</strong>.
-        The monthly basic salary will be <strong>{{ $probation_salary }}</strong> during the probation period and
-        <strong>{{ $post_probation_salary }}</strong> after passing the probation period.
+        The monthly basic salary will be <strong>THB {{ $probation_salary }}</strong> during the probation period and
+        <strong>THB {{ $post_probation_salary }}</strong> after passing the probation period.
         There is a probationary period of <strong>3 months</strong> from the commencement date.
     </p>
 

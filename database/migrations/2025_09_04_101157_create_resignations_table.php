@@ -17,9 +17,9 @@ return new class extends Migration
             // Core fields as per schema
             $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
             $table->unsignedBigInteger('department_id')->nullable();
-            $table->foreign('department_id')->references('id')->on('department_positions')->onDelete('no action');
+            $table->foreign('department_id')->references('id')->on('departments')->onDelete('no action');
             $table->unsignedBigInteger('position_id')->nullable();
-            $table->foreign('position_id')->references('id')->on('department_positions')->onDelete('no action');
+            $table->foreign('position_id')->references('id')->on('positions')->onDelete('no action');
             $table->date('resignation_date');
             $table->date('last_working_date');
             $table->string('reason', 50);

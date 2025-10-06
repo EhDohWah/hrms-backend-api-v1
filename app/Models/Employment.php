@@ -16,18 +16,19 @@ use Illuminate\Support\Facades\Auth;
  *   @OA\Property(property="employment_type", type="string"),
  *   @OA\Property(property="start_date", type="string", format="date"),
  *   @OA\Property(property="end_date", type="string", format="date", nullable=true),
- *   @OA\Property(property="probation_pass_date", type="string", format="date", nullable=true),
+ *   @OA\Property(property="probation_pass_date", type="string", format="date", nullable=true, description="Typically 3 months after start_date - marks the end of probation period"),
  *   @OA\Property(property="pay_method", type="string", nullable=true),
- *   @OA\Property(property="department_position_id", type="integer", format="int64", nullable=true),
  *   @OA\Property(property="section_department", type="string", nullable=true),
  *   @OA\Property(property="work_location_id", type="integer", format="int64", nullable=true),
  *   @OA\Property(property="position_salary", type="number", format="float"),
  *   @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
 
- *   @OA\Property(property="fte", type="number", format="float", nullable=true),
  *   @OA\Property(property="health_welfare", type="boolean", default=false),
+ *   @OA\Property(property="health_welfare_percentage", type="number", format="float", nullable=true, description="Health & Welfare percentage (0-100)"),
  *   @OA\Property(property="pvd", type="boolean", default=false),
+ *   @OA\Property(property="pvd_percentage", type="number", format="float", nullable=true, description="PVD percentage (0-100)"),
  *   @OA\Property(property="saving_fund", type="boolean", default=false),
+ *   @OA\Property(property="saving_fund_percentage", type="number", format="float", nullable=true, description="Saving Fund percentage (0-100)"),
  *   @OA\Property(property="created_by", type="string", nullable=true),
  *   @OA\Property(property="updated_by", type="string", nullable=true),
  *   @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
@@ -46,15 +47,18 @@ class Employment extends Model
         'end_date',
         'probation_pass_date',
         'pay_method',
-        'department_position_id',
+        'department_id',
+        'position_id',
         'section_department',
         'work_location_id',
         'position_salary',
         'probation_salary',
-        'fte',
         'health_welfare',
+        'health_welfare_percentage',
         'pvd',
+        'pvd_percentage',
         'saving_fund',
+        'saving_fund_percentage',
         'created_by',
         'updated_by',
     ];
@@ -66,10 +70,12 @@ class Employment extends Model
         'probation_pass_date' => 'date:Y-m-d',
         'position_salary' => 'decimal:2',
         'probation_salary' => 'decimal:2',
-        'fte' => 'decimal:2',
         'health_welfare' => 'boolean',
+        'health_welfare_percentage' => 'decimal:2',
         'pvd' => 'boolean',
+        'pvd_percentage' => 'decimal:2',
         'saving_fund' => 'boolean',
+        'saving_fund_percentage' => 'decimal:2',
     ];
 
     /**
@@ -119,12 +125,11 @@ class Employment extends Model
             'start_date' => $this->start_date,
             'probation_end_date' => $this->probation_pass_date,
             'pay_method' => $this->pay_method,
-            'department_position_id' => $this->department_position_id,
+            'department_id' => $this->department_id,
+            'position_id' => $this->position_id,
             'work_location_id' => $this->work_location_id,
             'position_salary' => $this->position_salary,
             'probation_salary' => $this->probation_salary,
-
-            'fte' => $this->fte,
             'health_welfare' => $this->health_welfare,
             'pvd' => $this->pvd,
             'saving_fund' => $this->saving_fund,
@@ -146,13 +151,12 @@ class Employment extends Model
     {
         $fieldMap = [
             'position_salary' => 'Salary adjustment',
-            'department_position_id' => 'Position change',
+            'department_id' => 'Department change',
+            'position_id' => 'Position change',
             'work_location_id' => 'Location change',
             'employment_type' => 'Employment type change',
             'probation_pass_date' => 'Probation period update',
             'pay_method' => 'Payment method change',
-            'fte' => 'FTE adjustment',
-
             'health_welfare' => 'Health welfare benefit change',
             'pvd' => 'PVD benefit change',
             'saving_fund' => 'Saving fund benefit change',
@@ -187,12 +191,11 @@ class Employment extends Model
             'start_date' => $this->start_date,
             'probation_end_date' => $this->probation_pass_date,
             'pay_method' => $this->pay_method,
-            'department_position_id' => $this->department_position_id,
+            'department_id' => $this->department_id,
+            'position_id' => $this->position_id,
             'work_location_id' => $this->work_location_id,
             'position_salary' => $this->position_salary,
             'probation_salary' => $this->probation_salary,
-
-            'fte' => $this->fte,
             'health_welfare' => $this->health_welfare,
             'pvd' => $this->pvd,
             'saving_fund' => $this->saving_fund,
@@ -226,9 +229,14 @@ class Employment extends Model
         return $this->hasMany(EmploymentHistory::class, 'employment_id');
     }
 
-    public function departmentPosition()
+    public function department()
     {
-        return $this->belongsTo(DepartmentPosition::class);
+        return $this->belongsTo(Department::class);
+    }
+
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
     }
 
     public function workLocation()
@@ -243,9 +251,9 @@ class Employment extends Model
         return $query->where('employment_type', $type);
     }
 
-    public function scopeByDepartment($query, int $departmentPositionId)
+    public function scopeByDepartment($query, int $departmentId)
     {
-        return $query->where('department_position_id', $departmentPositionId);
+        return $query->where('department_id', $departmentId);
     }
 
     // — Accessors —
@@ -304,7 +312,7 @@ class Employment extends Model
             'employeeFundingAllocations' => function ($q) {
                 $q->with(['positionSlot.grantItem.grant', 'orgFunded.grant'])
                     ->orderBy('allocation_type')
-                    ->orderBy('level_of_effort', 'desc');
+                    ->orderBy('fte', 'desc');
             },
         ]);
     }
@@ -313,11 +321,12 @@ class Employment extends Model
     {
         return $query->with([
             'employee:id,staff_id,first_name_en,last_name_en,subsidiary,status',
-            'departmentPosition:id,department,position',
+            'department:id,name',
+            'position:id,title,department_id',
             'employeeFundingAllocations' => function ($q) {
                 $q->active()
                     ->with(['positionSlot.grantItem.grant:id,name,code', 'orgFunded.grant:id,name,code'])
-                    ->select(['id', 'employment_id', 'allocation_type', 'level_of_effort', 'allocated_amount']);
+                    ->select(['id', 'employment_id', 'allocation_type', 'fte', 'allocated_amount']);
             },
         ]);
     }

@@ -24,7 +24,8 @@ return [
         'job_offers' => 'job_offer',
         'employments' => 'employment',
         'reports' => 'reports',
-        'department_positions' => 'dept_pos',
+        'departments' => 'dept',
+        'positions' => 'pos',
         'work_locations' => 'work_loc',
     ],
 

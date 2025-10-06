@@ -121,7 +121,8 @@
                 <th>Candidate Name</th>
                 <th>Offer Date</th>
                 <th>Position</th>
-                <th>Salary Details</th>
+                <th>Probation Salary</th>
+                <th>Post-Probation Salary</th>
                 <th>Acceptance Deadline</th>
                 <th>Acceptance Status</th>
             </tr>
@@ -134,14 +135,15 @@
                         <td>{{ $jobOffer->candidate_name }}</td>
                         <td>{{ \Carbon\Carbon::parse($jobOffer->date)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->position_name ?? 'N/A' }}</td>
-                        <td>{{ $jobOffer->salary_detail ?? 'N/A' }}</td>
+                        <td>{{ $jobOffer->probation_salary ? 'THB ' . number_format($jobOffer->probation_salary, 2) : 'N/A' }}</td>
+                        <td>{{ $jobOffer->post_probation_salary ? 'THB ' . number_format($jobOffer->post_probation_salary, 2) : 'N/A' }}</td>
                         <td>{{ \Carbon\Carbon::parse($jobOffer->acceptance_deadline)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->acceptance_status ?? 'N/A' }}</td>
                     </tr>
                 @endforeach
             @else
                 <tr>
-                    <td colspan="7" class="no-data">
+                    <td colspan="8" class="no-data">
                         No job offer records found for the selected date range.
                     </td>
                 </tr>

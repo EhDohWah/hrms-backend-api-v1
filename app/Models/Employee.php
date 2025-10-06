@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\DB;
  *     @OA\Property(property="staff_id", type="string", maxLength=50),
  *     @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, default="SMRU"),
  *     @OA\Property(property="user_id", type="integer", nullable=true),
- *     @OA\Property(property="department_position_id", type="integer", nullable=true),
  *     @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
  *     @OA\Property(property="initial_th", type="string", maxLength=10, nullable=true),
  *     @OA\Property(property="first_name_en", type="string", maxLength=255),
@@ -215,7 +214,7 @@ class Employee extends Model
         return $this->hasMany(TaxCalculationLog::class);
     }
 
-    public function employeeEducation()
+    public function employeeEducation(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(EmployeeEducation::class);
     }

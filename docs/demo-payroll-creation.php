@@ -43,12 +43,12 @@ $employment = Employment::create([
     'employment_type' => 'Full-time',
     'start_date' => '2025-01-01',
     'pay_method' => 'Bank Transfer',
-    'department_position_id' => 1, // Assumes exists
+    'department_id' => 1, // Assumes exists
+    'position_id' => 1, // Assumes exists
     'work_location_id' => 1, // Assumes exists
     'position_salary' => 50000.00,
     'probation_salary' => 45000.00,
     'probation_pass_date' => '2025-04-01',
-    'fte' => 1.00,
     'health_welfare' => true,
     'pvd' => true,
     'saving_fund' => false,
@@ -67,7 +67,7 @@ $grantAllocation = EmployeeFundingAllocation::create([
     'employee_id' => $employee->id,
     'employment_id' => $employment->id,
     'position_slot_id' => 1, // Assumes exists
-    'level_of_effort' => 0.60,
+    'fte' => 0.60,
     'allocation_type' => 'grant',
     'allocated_amount' => 30000.00,
     'start_date' => '2025-01-01',
@@ -81,7 +81,7 @@ $orgAllocation = EmployeeFundingAllocation::create([
     'employee_id' => $employee->id,
     'employment_id' => $employment->id,
     'org_funded_id' => 1, // Assumes exists
-    'level_of_effort' => 0.40,
+    'fte' => 0.40,
     'allocation_type' => 'org_funded',
     'allocated_amount' => 20000.00,
     'start_date' => '2025-01-01',
@@ -90,12 +90,12 @@ $orgAllocation = EmployeeFundingAllocation::create([
     'updated_by' => 'demo-script',
 ]);
 
-echo '✅ Grant Allocation: '.($grantAllocation->level_of_effort * 100)."% LOE (฿{$grantAllocation->allocated_amount})\n";
-echo '✅ Org Allocation: '.($orgAllocation->level_of_effort * 100)."% LOE (฿{$orgAllocation->allocated_amount})\n";
+echo '✅ Grant Allocation: '.($grantAllocation->fte * 100)."% FTE (฿{$grantAllocation->allocated_amount})\n";
+echo '✅ Org Allocation: '.($orgAllocation->fte * 100)."% FTE (฿{$orgAllocation->allocated_amount})\n";
 
-// Verify total LOE = 100%
-$totalLOE = $employee->employeeFundingAllocations()->sum('level_of_effort');
-echo '✅ Total LOE: '.($totalLOE * 100).'% '.($totalLOE == 1.00 ? '✓' : '❌')."\n\n";
+// Verify total FTE = 100%
+$totalFTE = $employee->employeeFundingAllocations()->sum('fte');
+echo '✅ Total FTE: '.($totalFTE * 100).'% '.($totalFTE == 1.00 ? '✓' : '❌')."\n\n";
 
 // Step 4: Calculate Payroll Using Tax Service
 echo "🧮 Calculating Payroll with Tax Service...\n";
@@ -143,7 +143,7 @@ $payroll = Payroll::create([
 
     // Salary Information
     'gross_salary' => $payrollData['gross_salary'],
-    'gross_salary_by_FTE' => $payrollData['gross_salary'] * $employment->fte,
+    'gross_salary_by_FTE' => $payrollData['gross_salary'], // FTE now tracked in funding allocations
     'net_salary' => $payrollData['net_salary'],
     'total_income' => $payrollData['total_income'],
 
@@ -184,7 +184,7 @@ echo "📊 PAYROLL SUMMARY\n";
 echo "==================\n";
 echo "Employee: {$employee->first_name_en} {$employee->last_name_en} (ID: {$employee->id})\n";
 echo "Staff ID: {$employee->staff_id}\n";
-echo "Employment: {$employment->employment_type} (FTE: {$employment->fte})\n";
+echo "Employment: {$employment->employment_type} (Total FTE: {$totalFTE})\n";
 echo "Pay Period: {$payroll->pay_period_date}\n\n";
 
 echo "💰 COMPENSATION BREAKDOWN\n";

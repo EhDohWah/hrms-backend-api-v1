@@ -167,7 +167,7 @@ class PayrollService
                 $advancePreviews[] = [
                     'allocation_id' => $allocation->id,
                     'allocation_type' => $allocation->allocation_type,
-                    'level_of_effort' => $allocation->level_of_effort,
+                    'fte' => $allocation->fte,
                     'project_grant' => [
                         'id' => $projectGrant->id,
                         'code' => $projectGrant->code,
@@ -440,13 +440,12 @@ class PayrollService
             'allocation_id' => $allocation->id,
             'staff_id' => $employee->staff_id,
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
-            'department' => $employment->departmentPosition->department ?? 'N/A',
-            'position' => $employment->departmentPosition->position ?? 'N/A',
+            'department' => $employment->department->name ?? 'N/A',
+            'position' => $employment->position->title ?? 'N/A',
             'employment_type' => $employment->employment_type,
-            'fte_percentage' => $employment->fte ?? 1.0,
+            'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
             'funding_source' => $this->getFundingSourceName($allocation),
             'funding_type' => $allocation->allocation_type,
-            'loe_percentage' => $allocation->level_of_effort,
             'calculations' => [
                 // ===== PAYROLL FIELDS (matching database schema) =====
                 'gross_salary' => $grossSalary,
@@ -638,7 +637,7 @@ class PayrollService
     private function calculateGrossSalaryCurrentYearByFTE($employment, EmployeeFundingAllocation $allocation, Carbon $payPeriodDate, float $adjustedGrossSalary): float
     {
         // Apply Level of Effort percentage
-        $grossSalaryByFTE = $adjustedGrossSalary * $allocation->level_of_effort;
+        $grossSalaryByFTE = $adjustedGrossSalary * $allocation->fte;
 
         // Apply pro-rating if employee started mid-month
         $startDate = Carbon::parse($employment->start_date);

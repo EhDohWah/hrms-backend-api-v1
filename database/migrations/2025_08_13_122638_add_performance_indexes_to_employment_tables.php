@@ -26,8 +26,9 @@ return new class extends Migration
             // Index for work location filtering
             $table->index('work_location_id', 'idx_employments_work_location_id');
 
-            // Index for department position filtering
-            $table->index('department_position_id', 'idx_employments_department_position_id');
+            // Index for department and position filtering
+            $table->index('department_id', 'idx_employments_department_id');
+            $table->index('position_id', 'idx_employments_position_id');
 
             // Index for employment type filtering
             $table->index('employment_type', 'idx_employments_employment_type');
@@ -73,15 +74,6 @@ return new class extends Migration
                 $table->index('name', 'idx_work_locations_name');
             }
         });
-
-        // Add indexes to department_positions table
-        Schema::table('department_positions', function (Blueprint $table) {
-            // Index for department filtering
-            $table->index('department', 'idx_department_positions_department');
-
-            // Index for position filtering
-            $table->index('position', 'idx_department_positions_position');
-        });
     }
 
     /**
@@ -95,7 +87,8 @@ return new class extends Migration
             $table->dropIndex('idx_employments_start_date');
             $table->dropIndex('idx_employments_end_date');
             $table->dropIndex('idx_employments_work_location_id');
-            $table->dropIndex('idx_employments_department_position_id');
+            $table->dropIndex('idx_employments_department_id');
+            $table->dropIndex('idx_employments_position_id');
             $table->dropIndex('idx_employments_employment_type');
             $table->dropIndex('idx_employments_active_period');
         });
@@ -125,12 +118,6 @@ return new class extends Migration
             if (Schema::hasIndex('work_locations', 'idx_work_locations_name')) {
                 $table->dropIndex('idx_work_locations_name');
             }
-        });
-
-        // Remove department_positions indexes
-        Schema::table('department_positions', function (Blueprint $table) {
-            $table->dropIndex('idx_department_positions_department');
-            $table->dropIndex('idx_department_positions_position');
         });
     }
 };

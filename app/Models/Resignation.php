@@ -140,12 +140,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *     ),
  *     @OA\Property(
  *         property="department",
- *         ref="#/components/schemas/DepartmentPosition",
+ *         ref="#/components/schemas/Department",
  *         description="Employee's department information"
  *     ),
  *     @OA\Property(
  *         property="position",
- *         ref="#/components/schemas/DepartmentPosition",
+ *         ref="#/components/schemas/Position",
  *         description="Employee's position information"
  *     ),
  *     @OA\Property(
@@ -215,10 +215,10 @@ class Resignation extends Model
         static::creating(function ($resignation) {
             // Auto-populate department and position from employee if not provided
             if ($resignation->employee_id && (! $resignation->department_id || ! $resignation->position_id)) {
-                $employee = Employee::with(['employment.departmentPosition'])->find($resignation->employee_id);
-                if ($employee && $employee->employment && $employee->employment->departmentPosition) {
-                    $resignation->department_id = $resignation->department_id ?? $employee->employment->departmentPosition->id;
-                    $resignation->position_id = $resignation->position_id ?? $employee->employment->departmentPosition->id;
+                $employee = Employee::with(['employment.department', 'employment.position'])->find($resignation->employee_id);
+                if ($employee && $employee->employment) {
+                    $resignation->department_id = $resignation->department_id ?? $employee->employment->department_id;
+                    $resignation->position_id = $resignation->position_id ?? $employee->employment->position_id;
                 }
             }
         });
@@ -234,12 +234,12 @@ class Resignation extends Model
 
     public function department(): BelongsTo
     {
-        return $this->belongsTo(DepartmentPosition::class, 'department_id');
+        return $this->belongsTo(Department::class, 'department_id');
     }
 
     public function position(): BelongsTo
     {
-        return $this->belongsTo(DepartmentPosition::class, 'position_id');
+        return $this->belongsTo(Position::class, 'position_id');
     }
 
     public function acknowledgedBy(): BelongsTo

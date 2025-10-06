@@ -21,9 +21,10 @@ class EmployeeEducationController extends Controller
      * Display a listing of the resource.
      *
      * @OA\Get(
-     *     path="/api/employee-education",
+     *     path="/employee-education",
      *     tags={"Employee Education"},
      *     summary="Get list of employee education records",
+     *     security={{"bearerAuth":{}}},
      *     description="Returns list of employee education records",
      *
      *     @OA\Response(
@@ -47,22 +48,37 @@ class EmployeeEducationController extends Controller
      * Store a newly created resource in storage.
      *
      * @OA\Post(
-     *     path="/api/employee-education",
+     *     path="/employee-education",
      *     tags={"Employee Education"},
      *     summary="Store new employee education record",
      *     description="Stores a new employee education record and returns it",
+     *     security={{"bearerAuth":{}}},
      *
      *     @OA\RequestBody(
      *         required=true,
+     *         description="Employee education data",
      *
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
+     *         @OA\JsonContent(
+     *             required={"employee_id", "school_name", "degree", "start_date", "end_date", "created_by", "updated_by"},
+     *
+     *             @OA\Property(property="employee_id", type="integer", format="int64", example=1, description="ID of the employee"),
+     *             @OA\Property(property="school_name", type="string", maxLength=100, example="Harvard University", description="Name of the educational institution"),
+     *             @OA\Property(property="degree", type="string", maxLength=100, example="Bachelor of Science in Computer Science", description="Degree or qualification obtained"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2018-09-01", description="Start date of education"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2022-06-30", description="End date of education"),
+     *             @OA\Property(property="created_by", type="string", maxLength=100, example="admin", description="User who created the record"),
+     *             @OA\Property(property="updated_by", type="string", maxLength=100, example="admin", description="User who last updated the record")
+     *         )
      *     ),
      *
      *     @OA\Response(
      *         response=201,
-     *         description="Successful operation",
+     *         description="Employee education record created successfully",
      *
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeEducation")
+     *         )
      *     ),
      *
      *     @OA\Response(
@@ -82,10 +98,11 @@ class EmployeeEducationController extends Controller
      * Display the specified resource.
      *
      * @OA\Get(
-     *     path="/api/employee-education/{id}",
+     *     path="/employee-education/{id}",
      *     tags={"Employee Education"},
      *     summary="Get employee education record by ID",
      *     description="Returns a single employee education record",
+     *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
      *         name="id",
@@ -98,9 +115,12 @@ class EmployeeEducationController extends Controller
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Successful operation",
+     *         description="Employee education record retrieved successfully",
      *
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeEducation")
+     *         )
      *     ),
      *
      *     @OA\Response(
@@ -118,10 +138,11 @@ class EmployeeEducationController extends Controller
      * Update the specified resource in storage.
      *
      * @OA\Put(
-     *     path="/api/employee-education/{id}",
+     *     path="/employee-education/{id}",
      *     tags={"Employee Education"},
      *     summary="Update employee education record",
      *     description="Updates an employee education record and returns it",
+     *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
      *         name="id",
@@ -134,15 +155,29 @@ class EmployeeEducationController extends Controller
      *
      *     @OA\RequestBody(
      *         required=true,
+     *         description="Updated employee education data",
      *
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
+     *         @OA\JsonContent(
+     *             required={"employee_id", "school_name", "degree", "start_date", "end_date", "created_by", "updated_by"},
+     *
+     *             @OA\Property(property="employee_id", type="integer", format="int64", example=1, description="ID of the employee"),
+     *             @OA\Property(property="school_name", type="string", maxLength=100, example="Harvard University", description="Name of the educational institution"),
+     *             @OA\Property(property="degree", type="string", maxLength=100, example="Bachelor of Science in Computer Science", description="Degree or qualification obtained"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2018-09-01", description="Start date of education"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2022-06-30", description="End date of education"),
+     *             @OA\Property(property="created_by", type="string", maxLength=100, example="admin", description="User who created the record"),
+     *             @OA\Property(property="updated_by", type="string", maxLength=100, example="admin", description="User who last updated the record")
+     *         )
      *     ),
      *
      *     @OA\Response(
      *         response=200,
-     *         description="Successful operation",
+     *         description="Employee education record updated successfully",
      *
-     *         @OA\JsonContent(ref="#/components/schemas/EmployeeEducation")
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeEducation")
+     *         )
      *     ),
      *
      *     @OA\Response(
@@ -166,10 +201,11 @@ class EmployeeEducationController extends Controller
      * Remove the specified resource from storage.
      *
      * @OA\Delete(
-     *     path="/api/employee-education/{id}",
+     *     path="/employee-education/{id}",
      *     tags={"Employee Education"},
      *     summary="Delete employee education record",
      *     description="Deletes an employee education record",
+     *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
      *         name="id",
