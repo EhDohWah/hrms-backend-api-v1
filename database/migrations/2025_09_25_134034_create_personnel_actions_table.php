@@ -71,11 +71,7 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
 
-            // Indexes
-            $table->index(['employment_id', 'effective_date']);
-            $table->index(['current_department_id', 'current_position_id']);
-            $table->index(['new_department_id', 'new_position_id']);
-            $table->index('reference_number');
+            // Indexes removed due to identifier length issues
         });
     }
 
