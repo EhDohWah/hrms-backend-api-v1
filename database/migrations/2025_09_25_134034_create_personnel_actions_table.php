@@ -73,7 +73,6 @@ return new class extends Migration
 
             // Indexes
             $table->index(['employment_id', 'effective_date']);
-            $table->index(['dept_head_approved', 'coo_approved', 'hr_approved', 'accountant_approved'], 'pa_approvals_index');
             $table->index(['current_department_id', 'current_position_id']);
             $table->index(['new_department_id', 'new_position_id']);
             $table->index('reference_number');
