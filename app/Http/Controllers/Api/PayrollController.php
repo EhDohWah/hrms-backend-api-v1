@@ -56,7 +56,7 @@ class PayrollController extends Controller
      *                     type="object",
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(
-     *                         property="workLocation",
+     *                         property="site",
      *                         type="object",
      *                         @OA\Property(property="id", type="integer", example=1),
      *                         @OA\Property(property="name", type="string", example="Main Office")
@@ -71,21 +71,22 @@ class PayrollController extends Controller
      *
      *                         @OA\Property(property="id", type="integer", example=1),
      *                         @OA\Property(
-     *                             property="orgFunded",
+     *                             property="grantItem",
      *                             type="object",
      *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="grant_position", type="string", example="Senior Developer"),
      *                             @OA\Property(
      *                                 property="grant",
      *                                 type="object",
      *                                 @OA\Property(property="id", type="integer", example=1),
-     *                                 @OA\Property(property="name", type="string", example="Annual Bonus")
+     *                                 @OA\Property(property="name", type="string", example="Research Grant")
      *                             )
      *                         ),
      *                         @OA\Property(
-     *                             property="positionSlot",
+     *                             property="grant",
      *                             type="object",
      *                             @OA\Property(property="id", type="integer", example=1),
-     *                             @OA\Property(property="title", type="string", example="Senior Developer")
+     *                             @OA\Property(property="name", type="string", example="Org Funded Grant")
      *                         )
      *                     )
      *                 )
@@ -145,11 +146,11 @@ class PayrollController extends Controller
             'employment',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
-            'employment.workLocation',
+            'employment.site',
             'employeeFundingAllocations',
-            'employeeFundingAllocations.orgFunded',
-            'employeeFundingAllocations.orgFunded.grant',
-            'employeeFundingAllocations.positionSlot',
+            'employeeFundingAllocations.grantItem',
+            'employeeFundingAllocations.grantItem.grant',
+            'employeeFundingAllocations.grant',
         ])->find($employeeId);
 
         if (! $employee) {
@@ -323,6 +324,7 @@ class PayrollController extends Controller
                 ], 422);
             }
 
+            // Get Employee ID and pay period date
             $employeeId = $request->input('employee_id');
 
             // Use provided pay_period_date or set to null for basic employee data
@@ -330,6 +332,7 @@ class PayrollController extends Controller
                 ? Carbon::parse($request->input('pay_period_date'))
                 : null;
 
+            // Check if pay period date is provided
             $includeCalculations = ! is_null($payPeriodDate);
 
             // Load employee with all necessary relationships
@@ -337,11 +340,11 @@ class PayrollController extends Controller
                 'employment',
                 'employment.department:id,name',
                 'employment.position:id,title,department_id',
-                'employment.workLocation',
+                'employment.site',
                 'employeeFundingAllocations',
-                'employeeFundingAllocations.orgFunded',
-                'employeeFundingAllocations.orgFunded.grant',
-                'employeeFundingAllocations.positionSlot',
+                'employeeFundingAllocations.grantItem',
+                'employeeFundingAllocations.grantItem.grant',
+                'employeeFundingAllocations.grant',
                 'employeeChildren',
             ])->find($employeeId);
 
@@ -408,8 +411,8 @@ class PayrollController extends Controller
     /**
      * @OA\Get(
      *     path="/payrolls/preview-advances",
-     *     summary="Preview inter-subsidiary advances for employee payroll",
-     *     description="Preview inter-subsidiary advances that would be created for an employee's payroll before actual creation",
+     *     summary="Preview inter-organization advances for employee payroll",
+     *     description="Preview inter-organization advances that would be created for an employee's payroll before actual creation",
      *     tags={"Payrolls"},
      *     security={{"bearerAuth":{}}},
      *
@@ -449,7 +452,7 @@ class PayrollController extends Controller
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="staff_id", type="string", example="0001"),
      *                     @OA\Property(property="name", type="string", example="John Doe"),
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU")
+     *                     @OA\Property(property="organization", type="string", example="SMRU")
      *                 ),
      *                 @OA\Property(property="pay_period_date", type="string", format="date", example="2025-01-01"),
      *                 @OA\Property(
@@ -468,7 +471,7 @@ class PayrollController extends Controller
      *                             @OA\Property(property="id", type="integer", example=2),
      *                             @OA\Property(property="code", type="string", example="BHF001"),
      *                             @OA\Property(property="name", type="string", example="BHF Research Grant"),
-     *                             @OA\Property(property="subsidiary", type="string", example="BHF")
+     *                             @OA\Property(property="organization", type="string", example="BHF")
      *                         ),
      *                         @OA\Property(
      *                             property="hub_grant",
@@ -476,10 +479,10 @@ class PayrollController extends Controller
      *                             @OA\Property(property="id", type="integer", example=2),
      *                             @OA\Property(property="code", type="string", example="S22001"),
      *                             @OA\Property(property="name", type="string", example="General Fund"),
-     *                             @OA\Property(property="subsidiary", type="string", example="BHF")
+     *                             @OA\Property(property="organization", type="string", example="BHF")
      *                         ),
-     *                         @OA\Property(property="from_subsidiary", type="string", example="BHF"),
-     *                         @OA\Property(property="to_subsidiary", type="string", example="SMRU"),
+     *                         @OA\Property(property="from_organization", type="string", example="BHF"),
+     *                         @OA\Property(property="to_organization", type="string", example="SMRU"),
      *                         @OA\Property(property="estimated_amount", type="number", example=25000),
      *                         @OA\Property(property="formatted_amount", type="string", example="฿25,000.00")
      *                     )
@@ -530,7 +533,7 @@ class PayrollController extends Controller
 
             // Use PayrollService to preview advances
             $payrollService = new PayrollService;
-            $advancePreview = $payrollService->previewInterSubsidiaryAdvances($employee, $payPeriodDate);
+            $advancePreview = $payrollService->previewInterOrganizationAdvances($employee, $payPeriodDate);
 
             return response()->json([
                 'success' => true,
@@ -552,7 +555,7 @@ class PayrollController extends Controller
      *     path="/payrolls",
      *     operationId="getPayrolls",
      *     summary="List all payrolls with pagination, filtering, and search",
-     *     description="Returns a paginated list of payrolls with comprehensive filtering, searching, and sorting capabilities. Supports filtering by subsidiary, department, date range, searching by employee details, and various sorting options.",
+     *     description="Returns a paginated list of payrolls with comprehensive filtering, searching, and sorting capabilities. Supports filtering by organization, department, date range, searching by employee details, and various sorting options.",
      *     tags={"Payrolls"},
      *     security={{"bearerAuth":{}}},
      *
@@ -584,9 +587,9 @@ class PayrollController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filter_subsidiary",
+     *         name="filter_organization",
      *         in="query",
-     *         description="Filter payrolls by subsidiary (comma-separated for multiple values)",
+     *         description="Filter payrolls by organization (comma-separated for multiple values)",
      *         required=false,
      *
      *         @OA\Schema(type="string", example="SMRU,BHF")
@@ -634,7 +637,7 @@ class PayrollController extends Controller
      *         description="Sort by field",
      *         required=false,
      *
-     *         @OA\Schema(type="string", enum={"subsidiary", "department", "staff_id", "employee_name", "basic_salary", "payslip_date", "created_at", "last_7_days", "last_month", "recently_added"}, example="created_at")
+     *         @OA\Schema(type="string", enum={"organization", "department", "staff_id", "employee_name", "basic_salary", "payslip_date", "created_at", "last_7_days", "last_month", "recently_added"}, example="created_at")
      *     ),
      *
      *     @OA\Parameter(
@@ -677,7 +680,7 @@ class PayrollController extends Controller
      *                         @OA\Property(property="staff_id", type="string", example="EMP001"),
      *                         @OA\Property(property="first_name_en", type="string", example="John"),
      *                         @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                         @OA\Property(property="subsidiary", type="string", example="SMRU")
+     *                         @OA\Property(property="organization", type="string", example="SMRU")
      *                     ),
      *                     @OA\Property(
      *                         property="employment",
@@ -713,7 +716,7 @@ class PayrollController extends Controller
      *                 property="filters",
      *                 type="object",
      *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"}),
+     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"}),
      *                     @OA\Property(property="department", type="array", @OA\Items(type="string"), example={"IT"}),
      *                     @OA\Property(property="payslip_date", type="string", example="2025-01-01,2025-01-31")
      *                 )
@@ -762,12 +765,12 @@ class PayrollController extends Controller
                 'page' => 'integer|min:1',
                 'per_page' => 'integer|min:1|max:100',
                 'search' => 'string|nullable|max:255',
-                'filter_subsidiary' => 'string|nullable',
+                'filter_organization' => 'string|nullable',
                 'filter_department' => 'string|nullable',
                 'filter_position' => 'string|nullable',
                 'filter_date_range' => 'string|nullable',
                 'filter_payslip_date' => 'string|nullable', // Legacy parameter
-                'sort_by' => 'string|nullable|in:subsidiary,department,staff_id,employee_name,basic_salary,payslip_date,created_at,last_7_days,last_month,recently_added',
+                'sort_by' => 'string|nullable|in:organization,department,staff_id,employee_name,basic_salary,payslip_date,created_at,last_7_days,last_month,recently_added',
                 'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
@@ -790,9 +793,9 @@ class PayrollController extends Controller
                 });
             }
 
-            // Apply subsidiary filter if provided
-            if (! empty($validated['filter_subsidiary'])) {
-                $query->bySubsidiary($validated['filter_subsidiary']);
+            // Apply organization filter if provided
+            if (! empty($validated['filter_organization'])) {
+                $query->byOrganization($validated['filter_organization']);
             }
 
             // Apply department filter if provided
@@ -849,8 +852,8 @@ class PayrollController extends Controller
             if (! empty($validated['search'])) {
                 $appliedFilters['search'] = $validated['search'];
             }
-            if (! empty($validated['filter_subsidiary'])) {
-                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            if (! empty($validated['filter_organization'])) {
+                $appliedFilters['organization'] = explode(',', $validated['filter_organization']);
             }
             if (! empty($validated['filter_department'])) {
                 $appliedFilters['department'] = explode(',', $validated['filter_department']);
@@ -958,7 +961,7 @@ class PayrollController extends Controller
      *                 @OA\Property(property="staff_id", type="string", example="EMP001"),
      *                 @OA\Property(property="first_name_en", type="string", example="John"),
      *                 @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                 @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                 @OA\Property(property="organization", type="string", example="SMRU"),
      *                 @OA\Property(
      *                     property="employment",
      *                     type="object",
@@ -1106,7 +1109,7 @@ class PayrollController extends Controller
                     'staff_id' => $employee->staff_id,
                     'first_name_en' => $employee->first_name_en,
                     'last_name_en' => $employee->last_name_en,
-                    'subsidiary' => $employee->subsidiary,
+                    'organization' => $employee->organization,
                     'employment' => [
                         'id' => $firstPayroll->employment->id,
                         'department' => [
@@ -1156,8 +1159,8 @@ class PayrollController extends Controller
     /**
      * @OA\Post(
      *     path="/payrolls",
-     *     summary="Create payroll records with automatic inter-subsidiary advance detection",
-     *     description="Create payroll records for an employee based on their funding allocations. Automatically creates inter-subsidiary advances when needed.",
+     *     summary="Create payroll records with automatic inter-organization advance detection",
+     *     description="Create payroll records for an employee based on their funding allocations. Automatically creates inter-organization advances when needed.",
      *     tags={"Payrolls"},
      *     security={{"bearerAuth":{}}},
      *
@@ -1212,14 +1215,14 @@ class PayrollController extends Controller
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Payroll records created successfully with 1 inter-subsidiary advance(s)"),
+     *             @OA\Property(property="message", type="string", example="Payroll records created successfully with 1 inter-organization advance(s)"),
      *             @OA\Property(
      *                 property="data",
      *                 type="object",
      *                 @OA\Property(property="employee_id", type="integer", example=1),
      *                 @OA\Property(property="pay_period_date", type="string", example="2025-08-31"),
      *                 @OA\Property(property="payroll_records", type="array", @OA\Items(ref="#/components/schemas/Payroll")),
-     *                 @OA\Property(property="inter_subsidiary_advances", type="array", @OA\Items(ref="#/components/schemas/InterSubsidiaryAdvance")),
+     *                 @OA\Property(property="inter_organization_advances", type="array", @OA\Items(ref="#/components/schemas/InterOrganizationAdvance")),
      *                 @OA\Property(
      *                     property="summary",
      *                     type="object",
@@ -1342,8 +1345,8 @@ class PayrollController extends Controller
                 $createdPayrolls[] = $payroll;
                 $totalNetSalary += $payroll->net_salary;
 
-                // Check if inter-subsidiary advance is needed using PayrollService
-                $advance = $payrollService->createInterSubsidiaryAdvanceIfNeeded($employee, $allocation, $payroll, $payPeriodDate);
+                // Check if inter-organization advance is needed using PayrollService
+                $advance = $payrollService->createInterOrganizationAdvanceIfNeeded($employee, $allocation, $payroll, $payPeriodDate);
 
                 if ($advance) {
                     $createdAdvances[] = $advance;
@@ -1363,12 +1366,12 @@ class PayrollController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Payroll records created successfully'.
-                    (count($createdAdvances) > 0 ? ' with '.count($createdAdvances).' inter-subsidiary advance(s)' : ''),
+                    (count($createdAdvances) > 0 ? ' with '.count($createdAdvances).' inter-organization advance(s)' : ''),
                 'data' => [
                     'employee_id' => $employeeId,
                     'pay_period_date' => $payPeriodDate->format('Y-m-d'),
                     'payroll_records' => $createdPayrolls,
-                    'inter_subsidiary_advances' => $createdAdvances,
+                    'inter_organization_advances' => $createdAdvances,
                     'summary' => [
                         'total_payrolls_created' => count($createdPayrolls),
                         'total_advances_created' => count($createdAdvances),
@@ -2142,7 +2145,7 @@ class PayrollController extends Controller
             'position' => $employment->position->title ?? 'N/A',
             'employment_type' => $employment->employment_type,
             'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
-            'position_salary' => $employment->position_salary,
+            'pass_probation_salary' => $employment->pass_probation_salary,
             'probation_salary' => $employment->probation_salary,
             'funding_source' => $this->getFundingSourceName($allocation),
             'funding_type' => $allocation->allocation_type,
@@ -2180,7 +2183,7 @@ class PayrollController extends Controller
             return 0.0;
         }
 
-        $baseSalary = $employment->position_salary;
+        $baseSalary = $employment->pass_probation_salary;
         $defaultIncreaseRate = 0.01; // 1% default increase
 
         // Calculate service period to determine pro-rated increase
@@ -2337,9 +2340,9 @@ class PayrollController extends Controller
      */
     private function calculateProRatedSalaryForProbation($employment, Carbon $payPeriodDate): array
     {
-        $probationPassDate = $employment->probation_pass_date ? Carbon::parse($employment->probation_pass_date) : null;
-        $probationSalary = $employment->probation_salary ?? $employment->position_salary;
-        $positionSalary = $employment->position_salary;
+        $probationPassDate = $employment->pass_probation_date ? Carbon::parse($employment->pass_probation_date) : null;
+        $probationSalary = $employment->probation_salary ?? $employment->pass_probation_salary;
+        $positionSalary = $employment->pass_probation_salary;
 
         // Get pay period boundaries
         $payPeriodStart = $payPeriodDate->copy()->startOfMonth();
@@ -2392,7 +2395,7 @@ class PayrollController extends Controller
             'calculation_method' => "Pro-rated: {$probationDays} days probation (฿{$probationSalary}) + {$positionDays} days position (฿{$positionSalary})",
             'probation_end_date' => $probationPassDate->format('Y-m-d'),
             'daily_probation_salary' => round($dailyProbationSalary, 2),
-            'daily_position_salary' => round($dailyPositionSalary, 2),
+            'daily_pass_probation_salary' => round($dailyPositionSalary, 2),
         ];
     }
 
@@ -2412,15 +2415,11 @@ class PayrollController extends Controller
      */
     private function getFundingSourceName(EmployeeFundingAllocation $allocation): string
     {
-        if ($allocation->allocation_type === 'grant' && $allocation->orgFunded && $allocation->orgFunded->grant) {
-            return $allocation->orgFunded->grant->name ?? 'Grant';
+        if ($allocation->grantItem && $allocation->grantItem->grant) {
+            return $allocation->grantItem->grant->name ?? 'Grant';
         }
 
-        if ($allocation->positionSlot) {
-            return $allocation->positionSlot->title ?? 'Position Slot';
-        }
-
-        return ucfirst($allocation->allocation_type);
+        return 'Grant';
     }
 
     /**
@@ -2457,7 +2456,7 @@ class PayrollController extends Controller
         }
 
         // Check if probation period has passed
-        if ($employment->probation_pass_date && $payPeriodDate->lt(Carbon::parse($employment->probation_pass_date))) {
+        if ($employment->pass_probation_date && $payPeriodDate->lt(Carbon::parse($employment->pass_probation_date))) {
             return false;
         }
 
@@ -2482,7 +2481,7 @@ class PayrollController extends Controller
         }
 
         // Check if probation period has passed
-        if ($employment->probation_pass_date && $payPeriodDate->lt(Carbon::parse($employment->probation_pass_date))) {
+        if ($employment->pass_probation_date && $payPeriodDate->lt(Carbon::parse($employment->pass_probation_date))) {
             return false;
         }
 
@@ -2550,5 +2549,258 @@ class PayrollController extends Controller
         }
 
         return 5000.0; // Default max increase
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/payrolls/budget-history",
+     *     summary="Get budget history for grant-centric view",
+     *     description="Returns payroll data grouped by employee and grant allocation for budget history analysis",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="start_date",
+     *         in="query",
+     *         required=true,
+     *         description="Start date (YYYY-MM format)",
+     *
+     *         @OA\Schema(type="string", example="2024-01")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="end_date",
+     *         in="query",
+     *         required=true,
+     *         description="End date (YYYY-MM format)",
+     *
+     *         @OA\Schema(type="string", example="2024-06")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="organization",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by organization",
+     *
+     *         @OA\Schema(type="string")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="department",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by department",
+     *
+     *         @OA\Schema(type="string")
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         required=false,
+     *         description="Page number",
+     *
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         required=false,
+     *         description="Items per page",
+     *
+     *         @OA\Schema(type="integer", default=50)
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Budget history retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function getBudgetHistory(Request $request)
+    {
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'start_date' => 'required|date_format:Y-m',
+            'end_date' => 'required|date_format:Y-m|after_or_equal:start_date',
+            'organization' => 'nullable|string',
+            'department' => 'nullable|string',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:200',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $startDate = Carbon::createFromFormat('Y-m', $request->start_date)->startOfMonth();
+            $endDate = Carbon::createFromFormat('Y-m', $request->end_date)->endOfMonth();
+
+            // Validate date range (max 6 months)
+            // Calculate months difference using the start of both months
+            $startMonth = Carbon::createFromFormat('Y-m', $request->start_date)->startOfMonth();
+            $endMonth = Carbon::createFromFormat('Y-m', $request->end_date)->startOfMonth();
+            $monthsDiff = $startMonth->diffInMonths($endMonth) + 1;
+
+            if ($monthsDiff > 6) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Date range cannot exceed 6 months',
+                ], 422);
+            }
+
+            // Build query with optimized relationships
+            $query = Payroll::query()
+                ->select([
+                    'id',
+                    'employment_id',
+                    'employee_funding_allocation_id',
+                    'gross_salary',
+                    'net_salary',
+                    'pay_period_date',
+                ])
+                ->with([
+                    'employment.employee:id,staff_id,first_name_en,last_name_en,organization',
+                    'employment.department:id,name',
+                    'employeeFundingAllocation:id,fte,grant_item_id',
+                    'employeeFundingAllocation.grantItem:id,grant_id',
+                    'employeeFundingAllocation.grantItem.grant:id,name,code',
+                ])
+                ->whereBetween('pay_period_date', [$startDate, $endDate]);
+
+            // Apply filters
+            if ($request->filled('organization')) {
+                $query->whereHas('employment.employee', function ($q) use ($request) {
+                    $q->where('organization', $request->organization);
+                });
+            }
+
+            if ($request->filled('department')) {
+                $query->whereHas('employment.department', function ($q) use ($request) {
+                    $q->where('name', $request->department);
+                });
+            }
+
+            // Get all payrolls for the date range
+            $payrolls = $query->get();
+
+            // Group by employment_id and employee_funding_allocation_id
+            $grouped = [];
+
+            foreach ($payrolls as $payroll) {
+                $employmentId = $payroll->employment_id;
+                $allocationId = $payroll->employee_funding_allocation_id;
+                $key = "{$employmentId}_{$allocationId}";
+
+                if (! isset($grouped[$key])) {
+                    // Get grant name
+                    $grantName = 'N/A';
+                    if ($payroll->employeeFundingAllocation) {
+                        if ($payroll->employeeFundingAllocation->grantItem && $payroll->employeeFundingAllocation->grantItem->grant) {
+                            $grantName = $payroll->employeeFundingAllocation->grantItem->grant->name;
+                        }
+                    }
+
+                    $grouped[$key] = [
+                        'employment_id' => $employmentId,
+                        'employee_funding_allocation_id' => $allocationId,
+                        'employee_name' => $this->getEmployeeNameFromPayroll($payroll),
+                        'staff_id' => $payroll->employment->employee->staff_id ?? 'N/A',
+                        'organization' => $payroll->employment->employee->organization ?? 'N/A',
+                        'department' => $payroll->employment->department->name ?? 'N/A',
+                        'grant_name' => $grantName,
+                        'fte' => $payroll->employeeFundingAllocation->fte ?? 0,
+                        'monthly_data' => [],
+                    ];
+                }
+
+                // Add monthly data
+                $monthKey = Carbon::parse($payroll->pay_period_date)->format('Y-m');
+                $grouped[$key]['monthly_data'][$monthKey] = [
+                    'gross_salary' => $payroll->gross_salary,
+                    'net_salary' => $payroll->net_salary,
+                ];
+            }
+
+            // Convert to array and paginate
+            $data = array_values($grouped);
+            $perPage = $request->input('per_page', 50);
+            $page = $request->input('page', 1);
+            $total = count($data);
+
+            // Manual pagination
+            $offset = ($page - 1) * $perPage;
+            $paginatedData = array_slice($data, $offset, $perPage);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Budget history retrieved successfully',
+                'data' => $paginatedData,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'last_page' => ceil($total / $perPage),
+                    'from' => $offset + 1,
+                    'to' => min($offset + $perPage, $total),
+                ],
+                'date_range' => [
+                    'start_date' => $startDate->format('Y-m'),
+                    'end_date' => $endDate->format('Y-m'),
+                    'months' => $this->generateMonthsList($startDate, $endDate),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve budget history',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate list of months between start and end date
+     */
+    private function generateMonthsList(Carbon $startDate, Carbon $endDate): array
+    {
+        $months = [];
+        $current = $startDate->copy();
+
+        while ($current->lte($endDate)) {
+            $months[] = [
+                'key' => $current->format('Y-m'),
+                'label' => $current->format('M Y'),
+            ];
+            $current->addMonth();
+        }
+
+        return $months;
+    }
+
+    /**
+     * Get employee name from payroll record
+     */
+    private function getEmployeeNameFromPayroll($payroll): string
+    {
+        if ($payroll->employment && $payroll->employment->employee) {
+            $firstName = $payroll->employment->employee->first_name_en ?? '';
+            $lastName = $payroll->employment->employee->last_name_en ?? '';
+
+            return trim("{$firstName} {$lastName}") ?: 'N/A';
+        }
+
+        return 'N/A';
     }
 }

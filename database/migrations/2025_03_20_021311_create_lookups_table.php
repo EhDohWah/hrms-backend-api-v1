@@ -28,8 +28,8 @@ return new class extends Migration
             ['type' => 'gender', 'value' => 'F', 'created_at' => now(), 'updated_at' => now()],
 
             // Subsidiary options
-            ['type' => 'subsidiary', 'value' => 'SMRU', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'subsidiary', 'value' => 'BHF', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'organization', 'value' => 'SMRU', 'created_at' => now(), 'updated_at' => now()],
+            ['type' => 'organization', 'value' => 'BHF', 'created_at' => now(), 'updated_at' => now()],
 
             // Employee status
             ['type' => 'employee_status', 'value' => 'Expats (Local)', 'created_at' => now(), 'updated_at' => now()],

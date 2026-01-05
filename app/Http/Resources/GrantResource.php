@@ -18,7 +18,7 @@ class GrantResource extends JsonResource
             'id' => $this->id,
             'code' => $this->code,
             'name' => $this->name,
-            'subsidiary' => $this->subsidiary,
+            'organization' => $this->organization,
             'description' => $this->description,
             'end_date' => $this->end_date,
             'grant_items' => GrantItemResource::collection($this->whenLoaded('grantItems')),

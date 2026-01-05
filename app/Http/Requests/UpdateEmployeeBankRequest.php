@@ -55,18 +55,18 @@ class UpdateEmployeeBankRequest extends FormRequest
         $validator->after(function ($validator) {
             // If any bank field is provided, ensure account name and number are also provided
             $bankFields = ['bank_name', 'bank_branch', 'bank_account_name', 'bank_account_number'];
-            $providedFields = array_filter($bankFields, fn($field) => $this->filled($field));
-            
+            $providedFields = array_filter($bankFields, fn ($field) => $this->filled($field));
+
             // If at least one bank field is provided, require account name and number
-            if (!empty($providedFields)) {
-                if (!$this->filled('bank_account_name')) {
-                    $validator->errors()->add('bank_account_name', 
+            if (! empty($providedFields)) {
+                if (! $this->filled('bank_account_name')) {
+                    $validator->errors()->add('bank_account_name',
                         'Bank account name is required when providing bank information.'
                     );
                 }
-                
-                if (!$this->filled('bank_account_number')) {
-                    $validator->errors()->add('bank_account_number', 
+
+                if (! $this->filled('bank_account_number')) {
+                    $validator->errors()->add('bank_account_number',
                         'Bank account number is required when providing bank information.'
                     );
                 }

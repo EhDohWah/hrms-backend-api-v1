@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
+use App\Models\LeaveRequestItem;
 use App\Models\LeaveType;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -110,8 +111,8 @@ class LeaveManagementController extends Controller
 
             // Build optimized query with eager loading
             $query = LeaveRequest::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
-                'leaveType:id,name,requires_attachment',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
+                'items.leaveType:id,name,requires_attachment',
             ]);
 
             // Apply search filter
@@ -136,7 +137,9 @@ class LeaveManagementController extends Controller
             // Apply leave types filter
             if (! empty($validated['leave_types'])) {
                 $leaveTypeIds = explode(',', $validated['leave_types']);
-                $query->whereIn('leave_type_id', $leaveTypeIds);
+                $query->whereHas('items', function ($q) use ($leaveTypeIds) {
+                    $q->whereIn('leave_type_id', $leaveTypeIds);
+                });
             }
 
             // Apply status filter
@@ -237,11 +240,11 @@ class LeaveManagementController extends Controller
     {
         try {
             $leaveRequest = LeaveRequest::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'employee.employment:id,employee_id,department_id,position_id',
                 'employee.employment.department:id,name',
                 'employee.employment.position:id,title',
-                'leaveType:id,name,default_duration,description,requires_attachment',
+                'items.leaveType:id,name,default_duration,description,requires_attachment',
             ])->findOrFail($id);
 
             return response()->json([
@@ -260,11 +263,12 @@ class LeaveManagementController extends Controller
     }
 
     /**
-     * Store a newly created leave request from paper form data with validation and balance checking
+     * Store a newly created leave request with multiple leave types
      *
      * @OA\Post(
      *     path="/leaves/requests",
-     *     summary="Create a new leave request",
+     *     summary="Create a new leave request with multiple leave types",
+     *     description="Create a leave request that can include multiple leave types in a single submission. Each leave type is validated separately for balance availability.",
      *     tags={"Leave Management"},
      *     security={{"bearerAuth":{}}},
      *
@@ -272,59 +276,104 @@ class LeaveManagementController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"employee_id", "leave_type_id", "start_date", "end_date", "total_days"},
+     *             required={"employee_id", "start_date", "end_date", "items"},
      *
-     *             @OA\Property(property="employee_id", type="integer", example=1, description="ID of the employee requesting leave"),
-     *             @OA\Property(property="leave_type_id", type="integer", example=2, description="ID of the leave type"),
-     *             @OA\Property(property="start_date", type="string", format="date", example="2024-12-01", description="Start date of leave"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-05", description="End date of leave"),
-     *             @OA\Property(property="total_days", type="number", format="float", example=5, description="Total number of leave days"),
-     *             @OA\Property(property="reason", type="string", example="Family vacation", description="Reason for leave request"),
+     *             @OA\Property(property="employee_id", type="integer", example=123, description="ID of the employee requesting leave"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-15", description="Start date of leave"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2025-01-17", description="End date of leave"),
+     *             @OA\Property(property="reason", type="string", example="Family emergency and medical checkup", description="Reason for leave request"),
      *             @OA\Property(property="status", type="string", enum={"pending", "approved", "declined"}, example="pending", description="Leave request status from paper form"),
+     *             @OA\Property(
+     *                 property="items",
+     *                 type="array",
+     *                 description="Array of leave types with their respective days (minimum 1 item required)",
+     *
+     *                 @OA\Items(
+     *                     type="object",
+     *                     required={"leave_type_id", "days"},
+     *
+     *                     @OA\Property(property="leave_type_id", type="integer", example=1, description="ID of the leave type"),
+     *                     @OA\Property(property="days", type="number", format="float", example=2, description="Number of days for this leave type")
+     *                 ),
+     *                 example={
+     *                     {"leave_type_id": 1, "days": 2},
+     *                     {"leave_type_id": 2, "days": 1.5}
+     *                 }
+     *             ),
      *             @OA\Property(property="supervisor_approved", type="boolean", example=false, description="Supervisor approval status"),
-     *             @OA\Property(property="supervisor_approved_date", type="string", format="date", example="2024-11-25", description="Supervisor approval date from paper form"),
+     *             @OA\Property(property="supervisor_approved_date", type="string", format="date", example="2025-01-10", description="Supervisor approval date from paper form"),
      *             @OA\Property(property="hr_site_admin_approved", type="boolean", example=false, description="HR/Site Admin approval status"),
-     *             @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", example="2024-11-26", description="HR/Site Admin approval date from paper form"),
+     *             @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", example="2025-01-12", description="HR/Site Admin approval date from paper form"),
      *             @OA\Property(property="attachment_notes", type="string", example="Medical certificate attached", description="Notes about attachments from paper form")
      *         )
      *     ),
      *
      *     @OA\Response(
      *         response=201,
-     *         description="Leave request created successfully",
+     *         description="Leave request created successfully with multiple leave types",
      *
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Leave request created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/LeaveRequest")
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="employee_id", type="integer", example=123),
+     *                 @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
+     *                 @OA\Property(property="end_date", type="string", format="date", example="2025-01-17"),
+     *                 @OA\Property(property="total_days", type="number", example=3.5, description="Automatically calculated from items"),
+     *                 @OA\Property(property="status", type="string", example="approved"),
+     *                 @OA\Property(property="employee", type="object",
+     *                     @OA\Property(property="id", type="integer", example=123),
+     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
+     *                     @OA\Property(property="first_name_en", type="string", example="John"),
+     *                     @OA\Property(property="last_name_en", type="string", example="Doe")
+     *                 ),
+     *                 @OA\Property(property="items", type="array",
+     *
+     *                     @OA\Items(
+     *                         type="object",
+     *
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="leave_request_id", type="integer", example=1),
+     *                         @OA\Property(property="leave_type_id", type="integer", example=1),
+     *                         @OA\Property(property="days", type="number", example=2),
+     *                         @OA\Property(property="leave_type", type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="name", type="string", example="Annual Leave"),
+     *                             @OA\Property(property="requires_attachment", type="boolean", example=false)
+     *                         )
+     *                     )
+     *                 )
+     *             )
      *         )
      *     ),
      *
      *     @OA\Response(
      *         response=422,
-     *         description="Validation error",
+     *         description="Validation error or duplicate leave types",
      *
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object", example={"employee_id": {"The employee id field is required."}})
+     *             @OA\Property(property="message", type="string", example="Duplicate leave types are not allowed in a single request"),
+     *             @OA\Property(property="errors", type="object", example={"items": {"The items field is required."}})
      *         )
      *     ),
      *
      *     @OA\Response(
      *         response=400,
-     *         description="Insufficient leave balance",
+     *         description="Insufficient leave balance for one or more leave types",
      *
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Insufficient leave balance. You cannot request more days than available."),
+     *             @OA\Property(property="message", type="string", example="Insufficient balance for Sick Leave: Insufficient leave balance."),
      *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="available_days", type="number", example=5),
-     *                 @OA\Property(property="requested_days", type="number", example=10),
-     *                 @OA\Property(property="shortfall", type="number", example=5)
+     *                 @OA\Property(property="leave_type", type="string", example="Sick Leave"),
+     *                 @OA\Property(property="available_days", type="number", example=0.5),
+     *                 @OA\Property(property="requested_days", type="number", example=1.5),
+     *                 @OA\Property(property="shortfall", type="number", example=1)
      *             )
      *         )
      *     )
@@ -336,12 +385,15 @@ class LeaveManagementController extends Controller
             // Validate request data
             $validated = $request->validate([
                 'employee_id' => 'required|exists:employees,id',
-                'leave_type_id' => 'required|exists:leave_types,id',
                 'start_date' => 'required|date|after_or_equal:today',
                 'end_date' => 'required|date|after_or_equal:start_date',
-                'total_days' => 'required|numeric|min:0.5',
                 'reason' => 'nullable|string|max:1000',
                 'status' => 'nullable|string|in:pending,approved,declined',
+
+                // Items array for multiple leave types
+                'items' => 'required|array|min:1',
+                'items.*.leave_type_id' => 'required|exists:leave_types,id',
+                'items.*.days' => 'required|numeric|min:0.5',
 
                 // Approval fields from paper forms
                 'supervisor_approved' => 'nullable|boolean',
@@ -355,40 +407,60 @@ class LeaveManagementController extends Controller
 
             DB::beginTransaction();
 
-            // Check leave type requirements
-            $leaveType = LeaveType::findOrFail($validated['leave_type_id']);
-            if ($leaveType->requires_attachment && empty($validated['attachment_notes'])) {
+            // Validate no duplicate leave types in items
+            $leaveTypeIds = array_column($validated['items'], 'leave_type_id');
+            if (count($leaveTypeIds) !== count(array_unique($leaveTypeIds))) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This leave type requires attachment notes',
+                    'message' => 'Duplicate leave types are not allowed in a single request',
                 ], 422);
             }
 
-            // Only check balance if status is approved, or if no status provided (pending)
+            // Calculate total days from items
+            $totalDays = array_sum(array_column($validated['items'], 'days'));
+
+            // Check if any leave type requires attachment
+            $leaveTypes = LeaveType::whereIn('id', $leaveTypeIds)->get()->keyBy('id');
+            $requiresAttachment = $leaveTypes->contains('requires_attachment', true);
+
+            if ($requiresAttachment && empty($validated['attachment_notes'])) {
+                $requiringTypes = $leaveTypes->filter(fn ($type) => $type->requires_attachment)->pluck('name')->join(', ');
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "This request includes leave types that require attachment notes: {$requiringTypes}",
+                ], 422);
+            }
+
+            // Only check balance if status is approved
             $status = $validated['status'] ?? 'pending';
             if ($status === 'approved') {
-                $balanceCheck = $this->checkLeaveBalance(
-                    $validated['employee_id'],
-                    $validated['leave_type_id'],
-                    $validated['total_days']
-                );
+                // Check balance for EACH leave type
+                foreach ($validated['items'] as $item) {
+                    $balanceCheck = $this->checkLeaveBalance(
+                        $validated['employee_id'],
+                        $item['leave_type_id'],
+                        $item['days']
+                    );
 
-                if (! $balanceCheck['valid']) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => $balanceCheck['message'],
-                        'data' => $balanceCheck,
-                    ], 400);
+                    if (! $balanceCheck['valid']) {
+                        $leaveTypeName = $leaveTypes[$item['leave_type_id']]->name ?? 'Unknown';
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Insufficient balance for {$leaveTypeName}: {$balanceCheck['message']}",
+                            'data' => array_merge($balanceCheck, ['leave_type' => $leaveTypeName]),
+                        ], 400);
+                    }
                 }
             }
 
             // Create leave request with approval data
             $leaveRequest = LeaveRequest::create([
                 'employee_id' => $validated['employee_id'],
-                'leave_type_id' => $validated['leave_type_id'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
-                'total_days' => $validated['total_days'],
+                'total_days' => $totalDays,
                 'reason' => $validated['reason'],
                 'status' => $status,
                 'supervisor_approved' => $validated['supervisor_approved'] ?? false,
@@ -399,9 +471,24 @@ class LeaveManagementController extends Controller
                 'created_by' => auth()->user()->name ?? 'System',
             ]);
 
-            // Handle status change for balance updates
+            // Create leave request items
+            foreach ($validated['items'] as $item) {
+                LeaveRequestItem::create([
+                    'leave_request_id' => $leaveRequest->id,
+                    'leave_type_id' => $item['leave_type_id'],
+                    'days' => $item['days'],
+                ]);
+            }
+
+            // Deduct balances if approved
             if ($status === 'approved') {
-                $this->handleStatusChange($leaveRequest, 'pending', 'approved');
+                foreach ($validated['items'] as $item) {
+                    $this->deductLeaveBalance(
+                        $validated['employee_id'],
+                        $item['leave_type_id'],
+                        $item['days']
+                    );
+                }
             }
 
             DB::commit();
@@ -412,7 +499,7 @@ class LeaveManagementController extends Controller
             // Load relationships for response
             $leaveRequest->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'leaveType:id,name',
+                'items.leaveType:id,name',
             ]);
 
             return response()->json([
@@ -434,31 +521,47 @@ class LeaveManagementController extends Controller
     }
 
     /**
-     * Update the specified leave request with approval information from paper forms
+     * Update the specified leave request with multiple leave types and approval information
      *
      * @OA\Put(
      *     path="/leaves/requests/{id}",
-     *     summary="Update a leave request with approval data from paper forms",
-     *     description="Updates a leave request including approval information entered from completed paper forms",
+     *     summary="Update a leave request with multiple leave types and approval data",
+     *     description="Updates a leave request including leave type items, dates, status, and approval information. When items array is provided, old items are replaced with new ones and balances are recalculated.",
      *     tags={"Leave Management"},
      *     security={{"bearerAuth":{}}},
      *
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer"), description="Leave Request ID"),
      *
      *     @OA\RequestBody(
      *         required=true,
      *
      *         @OA\JsonContent(
      *
-     *             @OA\Property(property="start_date", type="string", format="date", example="2024-12-01", description="Start date of leave"),
-     *             @OA\Property(property="end_date", type="string", format="date", example="2024-12-05", description="End date of leave"),
-     *             @OA\Property(property="total_days", type="number", format="float", example=5, description="Total number of leave days"),
+     *             @OA\Property(property="start_date", type="string", format="date", example="2025-01-15", description="Start date of leave"),
+     *             @OA\Property(property="end_date", type="string", format="date", example="2025-01-17", description="End date of leave"),
      *             @OA\Property(property="reason", type="string", example="Updated vacation reason", description="Reason for leave request"),
      *             @OA\Property(property="status", type="string", enum={"pending", "approved", "declined", "cancelled"}, example="approved", description="Leave request status"),
+     *             @OA\Property(
+     *                 property="items",
+     *                 type="array",
+     *                 description="Optional: Array of leave types with days. If provided, replaces existing items and recalculates total_days.",
+     *
+     *                 @OA\Items(
+     *                     type="object",
+     *                     required={"leave_type_id", "days"},
+     *
+     *                     @OA\Property(property="leave_type_id", type="integer", example=1, description="ID of the leave type"),
+     *                     @OA\Property(property="days", type="number", format="float", example=3, description="Number of days for this leave type")
+     *                 ),
+     *                 example={
+     *                     {"leave_type_id": 1, "days": 3},
+     *                     {"leave_type_id": 3, "days": 2}
+     *                 }
+     *             ),
      *             @OA\Property(property="supervisor_approved", type="boolean", example=true, description="Supervisor approval status"),
-     *             @OA\Property(property="supervisor_approved_date", type="string", format="date", example="2024-11-25", description="Supervisor approval date from paper form"),
+     *             @OA\Property(property="supervisor_approved_date", type="string", format="date", example="2025-01-10", description="Supervisor approval date from paper form"),
      *             @OA\Property(property="hr_site_admin_approved", type="boolean", example=true, description="HR/Site Admin approval status"),
-     *             @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", example="2024-11-26", description="HR/Site Admin approval date from paper form"),
+     *             @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", example="2025-01-12", description="HR/Site Admin approval date from paper form"),
      *             @OA\Property(property="attachment_notes", type="string", example="Updated medical certificate attached", description="Notes about attachments from paper form")
      *         )
      *     ),
@@ -471,13 +574,50 @@ class LeaveManagementController extends Controller
      *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Leave request updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/LeaveRequest")
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="employee_id", type="integer", example=123),
+     *                 @OA\Property(property="total_days", type="number", example=5, description="Recalculated if items were updated"),
+     *                 @OA\Property(property="status", type="string", example="approved"),
+     *                 @OA\Property(property="items", type="array",
+     *
+     *                     @OA\Items(
+     *                         type="object",
+     *
+     *                         @OA\Property(property="id", type="integer"),
+     *                         @OA\Property(property="leave_type_id", type="integer"),
+     *                         @OA\Property(property="days", type="number"),
+     *                         @OA\Property(property="leave_type", type="object",
+     *                             @OA\Property(property="id", type="integer"),
+     *                             @OA\Property(property="name", type="string")
+     *                         )
+     *                     )
+     *                 )
+     *             )
      *         )
      *     ),
      *
      *     @OA\Response(response=404, description="Leave request not found"),
-     *     @OA\Response(response=422, description="Validation error"),
-     *     @OA\Response(response=400, description="Insufficient leave balance")
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error or duplicate leave types",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Duplicate leave types are not allowed in a single request")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=400,
+     *         description="Insufficient leave balance",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Insufficient balance for Annual Leave: Insufficient leave balance.")
+     *         )
      *     )
      * )
      */
@@ -487,9 +627,13 @@ class LeaveManagementController extends Controller
             $validated = $request->validate([
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
-                'total_days' => 'nullable|numeric|min:0.5',
                 'reason' => 'nullable|string|max:1000',
                 'status' => 'nullable|in:pending,approved,declined,cancelled',
+
+                // Items array for updating leave types
+                'items' => 'nullable|array|min:1',
+                'items.*.leave_type_id' => 'required_with:items|exists:leave_types,id',
+                'items.*.days' => 'required_with:items|numeric|min:0.5',
 
                 // Approval fields from paper forms
                 'supervisor_approved' => 'nullable|boolean',
@@ -503,35 +647,105 @@ class LeaveManagementController extends Controller
 
             DB::beginTransaction();
 
-            $leaveRequest = LeaveRequest::findOrFail($id);
+            $leaveRequest = LeaveRequest::with('items')->findOrFail($id);
             $oldStatus = $leaveRequest->status;
             $newStatus = $validated['status'] ?? $oldStatus;
 
-            // Check balance if status is changing to approved
-            if ($oldStatus !== $newStatus && $newStatus === 'approved') {
-                $balanceCheck = $this->checkLeaveBalance(
-                    $leaveRequest->employee_id,
-                    $leaveRequest->leave_type_id,
-                    $leaveRequest->total_days,
-                    $id // Exclude current request from calculation
-                );
-
-                if (! $balanceCheck['valid']) {
+            // If items are provided, handle item updates
+            if (isset($validated['items'])) {
+                // Validate no duplicate leave types
+                $leaveTypeIds = array_column($validated['items'], 'leave_type_id');
+                if (count($leaveTypeIds) !== count(array_unique($leaveTypeIds))) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Cannot approve request: '.$balanceCheck['message'],
-                        'data' => $balanceCheck,
-                    ], 400);
+                        'message' => 'Duplicate leave types are not allowed in a single request',
+                    ], 422);
+                }
+
+                // If currently approved, restore old balances first
+                if ($oldStatus === 'approved') {
+                    foreach ($leaveRequest->items as $item) {
+                        $this->restoreLeaveBalanceForItem(
+                            $leaveRequest->employee_id,
+                            $item->leave_type_id,
+                            $item->days
+                        );
+                    }
+                }
+
+                // Delete old items and create new ones
+                $leaveRequest->items()->delete();
+
+                foreach ($validated['items'] as $item) {
+                    LeaveRequestItem::create([
+                        'leave_request_id' => $leaveRequest->id,
+                        'leave_type_id' => $item['leave_type_id'],
+                        'days' => $item['days'],
+                    ]);
+                }
+
+                // Recalculate total days
+                $leaveRequest->total_days = array_sum(array_column($validated['items'], 'days'));
+            }
+
+            // Check balance if status is changing to approved
+            if ($newStatus === 'approved') {
+                $items = isset($validated['items'])
+                    ? $validated['items']
+                    : $leaveRequest->items->map(fn ($item) => [
+                        'leave_type_id' => $item->leave_type_id,
+                        'days' => $item->days,
+                    ])->toArray();
+
+                foreach ($items as $item) {
+                    $balanceCheck = $this->checkLeaveBalance(
+                        $leaveRequest->employee_id,
+                        $item['leave_type_id'],
+                        $item['days'],
+                        $id
+                    );
+
+                    if (! $balanceCheck['valid']) {
+                        DB::rollBack();
+                        $leaveType = LeaveType::find($item['leave_type_id']);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Insufficient balance for {$leaveType->name}: {$balanceCheck['message']}",
+                            'data' => $balanceCheck,
+                        ], 400);
+                    }
                 }
             }
 
             // Handle status change for balance updates
             if ($oldStatus !== $newStatus) {
-                $this->handleStatusChange($leaveRequest, $oldStatus, $newStatus);
+                if ($oldStatus === 'approved' && in_array($newStatus, ['declined', 'cancelled', 'pending'])) {
+                    // Restore balances (if not already done)
+                    if (! isset($validated['items'])) {
+                        foreach ($leaveRequest->items as $item) {
+                            $this->restoreLeaveBalanceForItem(
+                                $leaveRequest->employee_id,
+                                $item->leave_type_id,
+                                $item->days
+                            );
+                        }
+                    }
+                } elseif ($oldStatus !== 'approved' && $newStatus === 'approved') {
+                    // Deduct balances
+                    foreach ($leaveRequest->fresh()->items as $item) {
+                        $this->deductLeaveBalance(
+                            $leaveRequest->employee_id,
+                            $item->leave_type_id,
+                            $item->days
+                        );
+                    }
+                }
             }
 
-            // Update the leave request with all validated data
-            $leaveRequest->update(array_merge($validated, [
+            // Update the leave request with all validated data (except items)
+            $updateData = collect($validated)->except(['items'])->toArray();
+            $leaveRequest->update(array_merge($updateData, [
                 'updated_by' => auth()->user()->name ?? 'System',
             ]));
 
@@ -542,7 +756,7 @@ class LeaveManagementController extends Controller
 
             $leaveRequest->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'leaveType:id,name',
+                'items.leaveType:id,name',
             ]);
 
             return response()->json([
@@ -594,13 +808,20 @@ class LeaveManagementController extends Controller
         try {
             DB::beginTransaction();
 
-            $leaveRequest = LeaveRequest::findOrFail($id);
+            $leaveRequest = LeaveRequest::with('items')->findOrFail($id);
 
             // Restore balance if the request was approved
             if ($leaveRequest->status === 'approved') {
-                $this->restoreLeaveBalance($leaveRequest);
+                foreach ($leaveRequest->items as $item) {
+                    $this->restoreLeaveBalanceForItem(
+                        $leaveRequest->employee_id,
+                        $item->leave_type_id,
+                        $item->days
+                    );
+                }
             }
 
+            // Delete will cascade to items automatically
             $leaveRequest->delete();
 
             DB::commit();
@@ -679,6 +900,62 @@ class LeaveManagementController extends Controller
                 ],
             ], 200);
 
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve leave types',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all leave types for dropdown selection (non-paginated)
+     *
+     * @OA\Get(
+     *     path="/leaves/types/dropdown",
+     *     summary="Get all leave types for dropdown selection",
+     *     description="Returns all active leave types sorted by name, optimized for dropdown/select components (no pagination)",
+     *     tags={"Leave Management"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Leave types retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Leave types retrieved successfully"),
+     *             @OA\Property(property="data", type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="Annual Leave"),
+     *                     @OA\Property(property="default_duration", type="number", format="float", example=15),
+     *                     @OA\Property(property="description", type="string", example="Annual vacation leave"),
+     *                     @OA\Property(property="requires_attachment", type="boolean", example=false)
+     *                 )
+     *             ),
+     *             @OA\Property(property="total", type="integer", example=14, description="Total number of leave types")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function getTypesForDropdown()
+    {
+        try {
+            $leaveTypes = LeaveType::orderBy('name', 'asc')->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Leave types retrieved successfully',
+                'data' => $leaveTypes,
+                'total' => $leaveTypes->count(),
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -868,7 +1145,7 @@ class LeaveManagementController extends Controller
             $leaveType = LeaveType::findOrFail($id);
 
             // Check if leave type is being used
-            $inUse = LeaveRequest::where('leave_type_id', $id)->exists() ||
+            $inUse = LeaveRequestItem::where('leave_type_id', $id)->exists() ||
                      LeaveBalance::where('leave_type_id', $id)->exists();
 
             if ($inUse) {
@@ -926,7 +1203,7 @@ class LeaveManagementController extends Controller
 
             $perPage = $validated['per_page'] ?? 10;
             $query = LeaveBalance::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'leaveType:id,name',
             ]);
 
@@ -1203,7 +1480,7 @@ class LeaveManagementController extends Controller
                 'employee_id' => $employee->id,
                 'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
                 'staff_id' => $employee->staff_id,
-                'subsidiary' => $employee->subsidiary,
+                'organization' => $employee->organization,
                 'leave_type_id' => $leaveType->id,
                 'leave_type_name' => $leaveType->name,
                 'total_days' => (float) $leaveBalance->total_days,
@@ -1341,6 +1618,8 @@ class LeaveManagementController extends Controller
 
     /**
      * Restore leave balance when request is deleted with safety checks
+     *
+     * @deprecated Use restoreLeaveBalanceForItem instead
      */
     private function restoreLeaveBalance(LeaveRequest $leaveRequest)
     {
@@ -1353,6 +1632,56 @@ class LeaveManagementController extends Controller
         if ($leaveBalance) {
             // Ensure used_days doesn't go below 0
             $leaveBalance->used_days = max(0, $leaveBalance->used_days - $leaveRequest->total_days);
+            $leaveBalance->remaining_days = $leaveBalance->total_days - $leaveBalance->used_days;
+            $leaveBalance->save();
+        }
+    }
+
+    /**
+     * Deduct leave balance for a specific leave type
+     */
+    private function deductLeaveBalance(int $employeeId, int $leaveTypeId, float $days): void
+    {
+        $currentYear = Carbon::now()->year;
+        $leaveBalance = LeaveBalance::where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->where('year', $currentYear)
+            ->first();
+
+        if ($leaveBalance) {
+            $newUsedDays = $leaveBalance->used_days + $days;
+            $newRemainingDays = $leaveBalance->total_days - $newUsedDays;
+
+            // Safety check
+            if ($newRemainingDays >= 0) {
+                $leaveBalance->used_days = $newUsedDays;
+                $leaveBalance->remaining_days = $newRemainingDays;
+                $leaveBalance->save();
+            } else {
+                Log::warning('Attempted to create negative balance for leave type', [
+                    'employee_id' => $employeeId,
+                    'leave_type_id' => $leaveTypeId,
+                    'days' => $days,
+                ]);
+                throw new \Exception('Operation would result in negative leave balance');
+            }
+        }
+    }
+
+    /**
+     * Restore leave balance for a specific leave type
+     */
+    private function restoreLeaveBalanceForItem(int $employeeId, int $leaveTypeId, float $days): void
+    {
+        $currentYear = Carbon::now()->year;
+        $leaveBalance = LeaveBalance::where('employee_id', $employeeId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->where('year', $currentYear)
+            ->first();
+
+        if ($leaveBalance) {
+            // Ensure used_days doesn't go below 0
+            $leaveBalance->used_days = max(0, $leaveBalance->used_days - $days);
             $leaveBalance->remaining_days = $leaveBalance->total_days - $leaveBalance->used_days;
             $leaveBalance->save();
         }

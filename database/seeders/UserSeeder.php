@@ -14,67 +14,61 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Admin user
+        $this->command->info('');
+        $this->command->info('========================================');
+        $this->command->info('🔧 Creating core system users...');
+        $this->command->info('========================================');
+
+        // 1. ADMIN USER - Auto-permissions
         $admin = User::firstOrCreate(
             ['email' => 'admin@hrms.com'],
             [
-                'name' => 'Admin User',
-                'password' => Hash::make('password'), // Change the password as needed.
+                'name' => 'System Administrator',
+                'password' => Hash::make('password'),
                 'last_login_at' => now(),
-                'created_by' => 'Seeder',
-                'updated_by' => 'Seeder',
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'status' => 'active',
             ]
         );
-        $admin->assignRole('Admin');
+        $admin->assignRole('admin');
         $admin->syncPermissions(Permission::all());
+        $this->command->info('✓ Admin user created (admin@hrms.com)');
+        $this->command->info('  - Role: System Administrator');
+        $this->command->info('  - Permissions: ALL ('.Permission::count().' permissions)');
 
-        // Create HR Manager user
+        // 2. HR MANAGER - Auto-permissions
         $hrManager = User::firstOrCreate(
             ['email' => 'hrmanager@hrms.com'],
             [
                 'name' => 'HR Manager',
                 'password' => Hash::make('password'),
                 'last_login_at' => now(),
-                'created_by' => 'Seeder',
-                'updated_by' => 'Seeder',
+                'created_by' => 'system',
+                'updated_by' => 'system',
+                'status' => 'active',
             ]
         );
-        $hrManager->assignRole('HR-Manager');
+        $hrManager->assignRole('hr-manager');
         $hrManager->syncPermissions(Permission::all());
-        // Create HR Assistant user
-        $hrAssistant = User::firstOrCreate(
-            ['email' => 'hrassistant@hrms.com'],
-            [
-                'name' => 'HR Assistant',
-                'password' => Hash::make('password'),
-                'last_login_at' => now(),
-                'created_by' => 'Seeder',
-                'updated_by' => 'Seeder',
-            ]
-        );
-        $hrAssistant->assignRole('HR-Assistant');
-        $hrAssistant->syncPermissions(Permission::all());
+        $this->command->info('');
+        $this->command->info('✓ HR Manager created (hrmanager@hrms.com)');
+        $this->command->info('  - Role: HR Manager');
+        $this->command->info('  - Permissions: ALL ('.Permission::count().' permissions)');
 
-        // Create Employee user
-        $employee = User::firstOrCreate(
-            ['email' => 'employee@hrms.com'],
-            [
-                'name' => 'Employee User',
-                'password' => Hash::make('password'),
-                'last_login_at' => now(),
-                'created_by' => 'Seeder',
-                'updated_by' => 'Seeder',
-            ]
-        );
-        $employee->assignRole('Employee');
-        // assign permission to the employee
-        $employee->syncPermissions([
-            'user.read',
-            'user.update',
-            'attendance.create', 'attendance.read', 'attendance.update',
-            'travel_request.create', 'travel_request.read', 'travel_request.update',
-            'leave_request.create', 'leave_request.read', 'leave_request.update',
-        ]);
-
+        $this->command->info('');
+        $this->command->info('========================================');
+        $this->command->info('User Seeder Complete!');
+        $this->command->info('');
+        $this->command->info('Core users created: 2');
+        $this->command->info('  - admin@hrms.com (password: password)');
+        $this->command->info('  - hrmanager@hrms.com (password: password)');
+        $this->command->info('');
+        $this->command->info('NOTES:');
+        $this->command->info('- Admin and HR Manager have ALL permissions automatically');
+        $this->command->info('- Additional users should be created via User Management UI');
+        $this->command->info('- Other roles can be created via Role Management UI');
+        $this->command->info('- Permissions for other users assigned via UI by Admin/HR Manager');
+        $this->command->info('========================================');
     }
 }

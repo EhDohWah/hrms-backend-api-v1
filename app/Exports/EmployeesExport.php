@@ -27,7 +27,7 @@ class EmployeesExport implements FromCollection
             $identification = $employee->employeeIdentification[0] ?? null;
 
             return [
-                'org' => $employee->subsidiary,
+                'org' => $employee->organization,
                 'staff_id' => $employee->staff_id,
                 'initial' => $employee->initial_en,
                 'first_name' => $employee->first_name_en,

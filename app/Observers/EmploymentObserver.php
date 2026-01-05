@@ -55,7 +55,7 @@ class EmploymentObserver
             'employment_id' => $employment->id,
             'employee_id' => $employment->employee_id,
             'start_date' => $employment->start_date,
-            'position_salary' => $employment->position_salary,
+            'pass_probation_salary' => $employment->pass_probation_salary,
         ]);
     }
 
@@ -79,12 +79,12 @@ class EmploymentObserver
         }
 
         // Validate probation dates if changed
-        if ($employment->isDirty(['probation_pass_date', 'start_date'])) {
+        if ($employment->isDirty(['pass_probation_date', 'start_date'])) {
             $this->validateProbationDates($employment);
         }
 
         // Validate salary amounts if changed
-        if ($employment->isDirty(['position_salary', 'probation_salary'])) {
+        if ($employment->isDirty(['pass_probation_salary', 'probation_salary'])) {
             $this->validateSalaryAmounts($employment);
         }
 
@@ -165,24 +165,24 @@ class EmploymentObserver
      */
     private function validateProbationDates(Employment $employment): void
     {
-        if (! $employment->probation_pass_date) {
+        if (! $employment->pass_probation_date) {
             return; // No probation date to validate
         }
 
         $startDate = Carbon::parse($employment->start_date);
-        $probationDate = Carbon::parse($employment->probation_pass_date);
+        $probationDate = Carbon::parse($employment->pass_probation_date);
 
         // Probation pass date must be after start date (probation period ends after employment begins)
         if ($probationDate->lte($startDate)) {
             throw new \InvalidArgumentException(
-                'Probation pass date must be after employment start date'
+                'Pass probation date must be after employment start date'
             );
         }
 
         // Probation pass date should typically be within 6 months of start date (flexible for exceptional cases)
         if ($probationDate->gt($startDate->copy()->addMonths(6))) {
             throw new \InvalidArgumentException(
-                'Probation pass date should typically be within 6 months of employment start date'
+                'Pass probation date should typically be within 6 months of employment start date'
             );
         }
 
@@ -191,7 +191,7 @@ class EmploymentObserver
             $endDate = Carbon::parse($employment->end_date);
             if ($probationDate->gte($endDate)) {
                 throw new \InvalidArgumentException(
-                    'Probation pass date must be before employment end date'
+                    'Pass probation date must be before employment end date'
                 );
             }
         }
@@ -202,17 +202,17 @@ class EmploymentObserver
      */
     private function validateSalaryAmounts(Employment $employment): void
     {
-        // Position salary must be positive
-        if ($employment->position_salary <= 0) {
-            throw new \InvalidArgumentException('Position salary must be greater than zero');
+        // Pass probation salary must be positive
+        if ($employment->pass_probation_salary <= 0) {
+            throw new \InvalidArgumentException('Pass probation salary must be greater than zero');
         }
 
         // Position salary should be reasonable (not too high)
         $maxSalary = 1000000; // Reasonable maximum monthly salary
 
-        if ($employment->position_salary > $maxSalary) {
+        if ($employment->pass_probation_salary > $maxSalary) {
             throw new \InvalidArgumentException(
-                "Position salary ({$employment->position_salary}) exceeds maximum threshold ({$maxSalary}). Please verify amount."
+                "Pass probation salary ({$employment->pass_probation_salary}) exceeds maximum threshold ({$maxSalary}). Please verify amount."
             );
         }
 
@@ -222,12 +222,12 @@ class EmploymentObserver
                 throw new \InvalidArgumentException('Probation salary must be greater than zero');
             }
 
-            // Probation salary should typically be less than or equal to position salary
-            if ($employment->probation_salary > $employment->position_salary) {
-                Log::warning('Probation salary is higher than position salary', [
+            // Probation salary should typically be less than or equal to pass probation salary
+            if ($employment->probation_salary > $employment->pass_probation_salary) {
+                Log::warning('Probation salary is higher than pass probation salary', [
                     'employment_id' => $employment->id ?? 'new',
                     'probation_salary' => $employment->probation_salary,
-                    'position_salary' => $employment->position_salary,
+                    'pass_probation_salary' => $employment->pass_probation_salary,
                 ]);
             }
         }

@@ -21,7 +21,7 @@ class EmployeeFactory extends Factory
     {
         return [
             'staff_id' => 'EMP'.$this->faker->unique()->numberBetween(1000, 9999),
-            'subsidiary' => $this->faker->randomElement(['SMRU', 'BHF']),
+            'organization' => $this->faker->randomElement(['SMRU', 'BHF']),
             'first_name_en' => $this->faker->firstName(),
             'last_name_en' => $this->faker->lastName(),
             'first_name_th' => null,
@@ -45,22 +45,22 @@ class EmployeeFactory extends Factory
     }
 
     /**
-     * Indicate that the employee is from SMRU subsidiary.
+     * Indicate that the employee is from SMRU organization.
      */
     public function smru(): static
     {
         return $this->state(fn (array $attributes) => [
-            'subsidiary' => 'SMRU',
+            'organization' => 'SMRU',
         ]);
     }
 
     /**
-     * Indicate that the employee is from BHF subsidiary.
+     * Indicate that the employee is from BHF organization.
      */
     public function bhf(): static
     {
         return $this->state(fn (array $attributes) => [
-            'subsidiary' => 'BHF',
+            'organization' => 'BHF',
         ]);
     }
 

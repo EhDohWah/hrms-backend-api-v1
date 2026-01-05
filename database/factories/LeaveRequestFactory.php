@@ -28,7 +28,6 @@ class LeaveRequestFactory extends Factory
 
         return [
             'employee_id' => Employee::factory(),
-            'leave_type_id' => LeaveType::factory(),
             'start_date' => $startDate->format('Y-m-d'),
             'end_date' => $endDate->format('Y-m-d'),
             'total_days' => $totalDays,
@@ -106,12 +105,33 @@ class LeaveRequestFactory extends Factory
 
     /**
      * Indicate that the leave request is for a specific leave type.
+     *
+     * @deprecated Use withItems() instead for multi-leave-type support
      */
     public function forLeaveType(LeaveType $leaveType): static
     {
-        return $this->state(fn (array $attributes) => [
-            'leave_type_id' => $leaveType->id,
-        ]);
+        // This method is deprecated but kept for backward compatibility
+        // Items should be created separately using LeaveRequestItem factory
+        return $this->state(fn (array $attributes) => []);
+    }
+
+    /**
+     * Add leave request items after creating the request.
+     * This should be used after the factory creates the leave request.
+     *
+     * Example: LeaveRequest::factory()->withItems(...)
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (LeaveRequest $leaveRequest) {
+            // Create a single default item if no items exist
+            if ($leaveRequest->items()->count() === 0) {
+                $leaveRequest->items()->create([
+                    'leave_type_id' => LeaveType::factory()->create()->id,
+                    'days' => $leaveRequest->total_days,
+                ]);
+            }
+        });
     }
 
     /**

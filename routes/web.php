@@ -1,10 +1,7 @@
 <?php
 
 use App\Events\MyTestEvent;
-use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
-
-Broadcast::routes(['middleware' => ['auth:api']]); // this is for web routes
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,7 +16,7 @@ Route::get('/leave-request', function () {
 });
 
 Route::get('/broadcast-test', function () {
-    event(new MyTestEvent('Hello, this is a Pusher test event!'));
+    event(new MyTestEvent('Hello, this is a Reverb test event!'));
 
-    return response()->json(['success' => true, 'message' => 'Test event broadcasted']);
+    return response()->json(['success' => true, 'message' => 'Test event broadcasted via Reverb']);
 });

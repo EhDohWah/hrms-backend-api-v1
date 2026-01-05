@@ -225,7 +225,7 @@ class ResignationController extends Controller
 
             // Build the query with eager loading
             $query = Resignation::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'acknowledgedBy:id,name',
                 'department:id,department',
                 'position:id,position',
@@ -456,7 +456,7 @@ class ResignationController extends Controller
             $resignation = Resignation::create($validated);
 
             $resignation->load([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'department:id,department',
                 'position:id,position',
                 'acknowledgedBy:id,name',
@@ -565,7 +565,7 @@ class ResignationController extends Controller
     {
         try {
             $resignation = Resignation::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'acknowledgedBy:id,name',
                 'department:id,department',
                 'position:id,position',
@@ -1116,7 +1116,7 @@ class ResignationController extends Controller
                     'full_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
                     'department' => $employee->employment->departmentPosition->department ?? null,
                     'position' => $employee->employment->departmentPosition->position ?? null,
-                    'subsidiary' => $employee->subsidiary,
+                    'organization' => $employee->organization,
                 ];
             });
 

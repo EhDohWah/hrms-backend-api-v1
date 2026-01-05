@@ -23,16 +23,16 @@ class StoreEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // make sure 'subsidiary' is validated before you rely on it in the Rule
-            'subsidiary' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
+            // make sure 'organization' is validated before you rely on it in the Rule
+            'organization' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
 
             'staff_id' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('employees')      // table name
-                    ->where(fn ($query) =>     // add a WHERE subsidiary = input('subsidiary')
-                        $query->where('subsidiary', $this->input('subsidiary'))
+                    ->where(fn ($query) =>     // add a WHERE organization = input('organization')
+                        $query->where('organization', $this->input('organization'))
                     ),
             ],
 

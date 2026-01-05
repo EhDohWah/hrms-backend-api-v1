@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
@@ -13,22 +14,39 @@ use OpenApi\Annotations as OA;
  * @OA\Schema(
  *     schema="LeaveRequest",
  *     type="object",
+ *     description="Leave request with support for multiple leave types",
  *
- *     @OA\Property(property="id", type="integer"),
- *     @OA\Property(property="employee_id", type="integer"),
- *     @OA\Property(property="leave_type_id", type="integer"),
- *     @OA\Property(property="start_date", type="string", format="date"),
- *     @OA\Property(property="end_date", type="string", format="date"),
- *     @OA\Property(property="total_days", type="number"),
- *     @OA\Property(property="reason", type="string"),
- *     @OA\Property(property="status", type="string"),
- *     @OA\Property(property="supervisor_approved", type="boolean", default=false),
- *     @OA\Property(property="supervisor_approved_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="hr_site_admin_approved", type="boolean", default=false),
- *     @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="attachment_notes", type="string", nullable=true),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true)
+ *     @OA\Property(property="id", type="integer", example=1),
+ *     @OA\Property(property="employee_id", type="integer", example=123),
+ *     @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
+ *     @OA\Property(property="end_date", type="string", format="date", example="2025-01-17"),
+ *     @OA\Property(property="total_days", type="number", example=3.5, description="Sum of all item days"),
+ *     @OA\Property(property="reason", type="string", example="Family emergency and medical checkup"),
+ *     @OA\Property(property="status", type="string", example="approved", enum={"pending", "approved", "declined", "cancelled"}),
+ *     @OA\Property(property="supervisor_approved", type="boolean", default=false, example=true),
+ *     @OA\Property(property="supervisor_approved_date", type="string", format="date", nullable=true, example="2025-01-10"),
+ *     @OA\Property(property="hr_site_admin_approved", type="boolean", default=false, example=true),
+ *     @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", nullable=true, example="2025-01-12"),
+ *     @OA\Property(property="attachment_notes", type="string", nullable=true, example="Medical certificate attached"),
+ *     @OA\Property(property="created_by", type="string", nullable=true, example="System"),
+ *     @OA\Property(property="updated_by", type="string", nullable=true, example="John Doe"),
+ *     @OA\Property(
+ *         property="items",
+ *         type="array",
+ *         description="Leave type items with individual days allocation",
+ *
+ *         @OA\Items(ref="#/components/schemas/LeaveRequestItem")
+ *     ),
+ *
+ *     @OA\Property(
+ *         property="employee",
+ *         type="object",
+ *         description="Employee information",
+ *         @OA\Property(property="id", type="integer", example=123),
+ *         @OA\Property(property="staff_id", type="string", example="EMP001"),
+ *         @OA\Property(property="first_name_en", type="string", example="John"),
+ *         @OA\Property(property="last_name_en", type="string", example="Doe")
+ *     )
  * )
  */
 class LeaveRequest extends Model
@@ -39,7 +57,6 @@ class LeaveRequest extends Model
 
     protected $fillable = [
         'employee_id',
-        'leave_type_id',
         'start_date',
         'end_date',
         'total_days',
@@ -74,10 +91,20 @@ class LeaveRequest extends Model
 
     /**
      * Get the leave type that owns the leave request.
+     *
+     * @deprecated Use items() relationship instead for multi-leave-type support
      */
     public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class);
+    }
+
+    /**
+     * Get the leave request items (multiple leave types per request).
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(LeaveRequestItem::class, 'leave_request_id');
     }
 
     /**
@@ -114,8 +141,8 @@ class LeaveRequest extends Model
                     'thisMonth' => LeaveRequest::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count(),
                     'thisYear' => LeaveRequest::whereYear('created_at', $currentYear)->count(),
                 ],
-                'leaveTypeBreakdown' => DB::table('leave_requests')
-                    ->join('leave_types', 'leave_requests.leave_type_id', '=', 'leave_types.id')
+                'leaveTypeBreakdown' => DB::table('leave_request_items')
+                    ->join('leave_types', 'leave_request_items.leave_type_id', '=', 'leave_types.id')
                     ->select('leave_types.name', DB::raw('count(*) as count'))
                     ->groupBy('leave_types.id', 'leave_types.name')
                     ->orderBy('count', 'desc')

@@ -15,13 +15,13 @@ class UpdateEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'subsidiary' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
+            'organization' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
             'staff_id' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('employees')
-                    ->where(fn ($query) => $query->where('subsidiary', $this->input('subsidiary'))
+                    ->where(fn ($query) => $query->where('organization', $this->input('organization'))
                     )
                     ->ignore($this->route('employee')->id), // Cleanest way!
             ],

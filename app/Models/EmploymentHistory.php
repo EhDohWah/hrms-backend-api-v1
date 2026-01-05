@@ -7,19 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * @OA\Schema(
  *     schema="EmploymentHistory",
- *     required={"employment_id", "employee_id", "employment_type_id", "start_date", "position_id", "department_id", "work_location_id", "position_salary"},
+ *     required={"employment_id", "employee_id", "employment_type_id", "start_date", "position_id", "department_id", "site_id", "pass_probation_salary"},
  *
  *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
  *     @OA\Property(property="employment_id", type="integer", format="int64"),
  *     @OA\Property(property="employee_id", type="integer", format="int64"),
  *     @OA\Property(property="employment_type_id", type="integer", format="int64"),
  *     @OA\Property(property="start_date", type="string", format="date"),
- *     @OA\Property(property="probation_pass_date", type="string", format="date", nullable=true),
+ *     @OA\Property(property="pass_probation_date", type="string", format="date", nullable=true),
  *     @OA\Property(property="end_date", type="string", format="date", nullable=true),
  *     @OA\Property(property="position_id", type="integer", format="int64"),
  *     @OA\Property(property="department_id", type="integer", format="int64"),
- *     @OA\Property(property="work_location_id", type="integer", format="int64"),
- *     @OA\Property(property="position_salary", type="number", format="float"),
+ *     @OA\Property(property="site_id", type="integer", format="int64"),
+ *     @OA\Property(property="pass_probation_salary", type="number", format="float"),
  *     @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
  *     @OA\Property(property="supervisor_id", type="integer", format="int64", nullable=true),
  *     @OA\Property(property="active", type="boolean", default=true),
@@ -42,10 +42,12 @@ class EmploymentHistory extends Model
         'employment_type',
         'start_date',
         'end_date',
-        'probation_pass_date',
+        'pass_probation_date',
         'pay_method',
-        'work_location_id',
-        'position_salary',
+        'site_id',
+        'department_id',
+        'position_id',
+        'pass_probation_salary',
         'probation_salary',
         'active',
         'health_welfare',
@@ -80,9 +82,17 @@ class EmploymentHistory extends Model
         return $this->belongsTo(Position::class);
     }
 
+    public function site()
+    {
+        return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * Alias for site() relationship for backward compatibility
+     */
     public function workLocation()
     {
-        return $this->belongsTo(WorkLocation::class);
+        return $this->site();
     }
 
     public function supervisor()

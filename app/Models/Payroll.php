@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use OpenApi\Annotations as OA;
 
@@ -41,6 +42,8 @@ use OpenApi\Annotations as OA;
  */
 class Payroll extends Model
 {
+    use LogsActivity;
+
     protected $table = 'payrolls';
 
     protected $fillable = [
@@ -127,9 +130,26 @@ class Payroll extends Model
             'employment_id',
             'employee_funding_allocation_id',
             'gross_salary',
+            'gross_salary_by_FTE',
+            'compensation_refund',
+            'thirteen_month_salary',
+            'thirteen_month_salary_accured',
+            'pvd',
+            'saving_fund',
+            'employer_social_security',
+            'employee_social_security',
+            'employer_health_welfare',
+            'employee_health_welfare',
+            'tax',
             'net_salary',
+            'total_salary',
+            'total_pvd',
+            'total_saving_fund',
+            'salary_bonus',
             'total_income',
+            'employer_contribution',
             'total_deduction',
+            'notes',
             'pay_period_date',
             'created_at',
             'updated_at',
@@ -139,10 +159,13 @@ class Payroll extends Model
     public function scopeWithOptimizedRelations($query)
     {
         return $query->with([
-            'employment.employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
+            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
-            'employeeFundingAllocation:id,employee_id,allocation_type,fte',
+            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',
+            'employeeFundingAllocation.grantItem:id,grant_id,grant_position,budgetline_code',
+            'employeeFundingAllocation.grantItem.grant:id,name,code',
         ]);
     }
 
@@ -154,7 +177,7 @@ class Payroll extends Model
         $subsidiaries = array_map('trim', array_filter($subsidiaries));
 
         return $query->whereHas('employment.employee', function ($q) use ($subsidiaries) {
-            $q->whereIn('subsidiary', $subsidiaries);
+            $q->whereIn('organization', $subsidiaries);
         });
     }
 
@@ -194,10 +217,10 @@ class Payroll extends Model
     public function scopeOrderByField($query, $sortBy, $sortOrder = 'desc')
     {
         switch ($sortBy) {
-            case 'subsidiary':
+            case 'organization':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
                     ->join('employees', 'employments.employee_id', '=', 'employees.id')
-                    ->orderBy('employees.subsidiary', $sortOrder)
+                    ->orderBy('employees.organization', $sortOrder)
                     ->select('payrolls.*');
 
             case 'department':
@@ -234,13 +257,13 @@ class Payroll extends Model
     // Helper methods for filter options
     public static function getUniqueSubsidiaries()
     {
-        return \App\Models\Employee::select('subsidiary')
+        return \App\Models\Employee::select('organization')
             ->distinct()
-            ->whereNotNull('subsidiary')
-            ->where('subsidiary', '!=', '')
+            ->whereNotNull('organization')
+            ->where('organization', '!=', '')
             ->whereHas('employment.payrolls')
-            ->orderBy('subsidiary')
-            ->pluck('subsidiary');
+            ->orderBy('organization')
+            ->pluck('organization');
     }
 
     public static function getUniqueDepartments()
@@ -264,10 +287,37 @@ class Payroll extends Model
     public function scopeWithEmployeeInfo($query)
     {
         return $query->with([
-            'employment.employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
+            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
-            'employeeFundingAllocation:id,employee_id,allocation_type,fte',
+            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',
+            'employeeFundingAllocation.grantItem:id,grant_id,grant_position,budgetline_code',
+            'employeeFundingAllocation.grantItem.grant:id,name,code',
         ]);
+    }
+
+    /**
+     * Get the display name for activity logs
+     */
+    public function getActivityLogName(): string
+    {
+        $period = $this->pay_period_date
+            ? $this->pay_period_date->format('M Y')
+            : '';
+        $employeeName = '';
+
+        if ($this->employment && $this->employment->employee) {
+            $employeeName = trim(
+                ($this->employment->employee->first_name_en ?? '').' '.
+                ($this->employment->employee->last_name_en ?? '')
+            );
+        }
+
+        if ($period && $employeeName) {
+            return "{$period} - {$employeeName}";
+        }
+
+        return $period ?: $employeeName ?: "Payroll #{$this->id}";
     }
 }

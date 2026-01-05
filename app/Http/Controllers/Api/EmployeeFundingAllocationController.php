@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\EmployeeFundingAllocationResource;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
-use App\Models\OrgFundedAllocation;
-use App\Models\PositionSlot;
+use App\Models\Grant;
+use App\Models\GrantItem;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -64,11 +64,10 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $query = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,name',
+                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'grantItem.grant:id,name,code',
             ]);
 
             // Apply filters
@@ -155,11 +154,9 @@ class EmployeeFundingAllocationController extends Controller
             $allocations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date,end_date',
-                'positionSlot.grantItem.grant:id,name,code',
+                'grantItem.grant:id,name,code',
             ])
-                ->whereHas('positionSlot', function ($query) use ($grantItemId) {
-                    $query->where('grant_item_id', $grantItemId);
-                })
+                ->where('grant_item_id', $grantItemId)
                 ->where('allocation_type', 'grant')
                 ->orderByDesc('id')
                 ->get();
@@ -310,9 +307,8 @@ class EmployeeFundingAllocationController extends Controller
                 'start_date' => 'required|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
-                'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
-                'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
-                'allocations.*.org_funded_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
+                'allocations.*.allocation_type' => 'sometimes|string|in:grant',
+                'allocations.*.grant_item_id' => 'required|exists:grant_items,id',
                 'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
@@ -363,56 +359,35 @@ class EmployeeFundingAllocationController extends Controller
 
             foreach ($validated['allocations'] as $index => $allocationData) {
                 try {
-                    $allocationType = $allocationData['allocation_type'];
+                    $allocationType = 'grant';
 
-                    // Validate allocation type specific requirements
-                    if ($allocationType === 'grant') {
-                        if (empty($allocationData['position_slot_id'])) {
-                            $errors[] = "Allocation #{$index}: position_slot_id is required for grant allocations";
+                    if (empty($allocationData['grant_item_id'])) {
+                        $errors[] = "Allocation #{$index}: grant_item_id is required for grant allocations";
 
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        // Get the position slot with its grant item for capacity checking
-                        $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                        if (! $positionSlot) {
-                            $errors[] = "Allocation #{$index}: Position slot not found";
+                    // Get the grant item for capacity checking
+                    $grantItem = GrantItem::find($allocationData['grant_item_id']);
+                    if (! $grantItem) {
+                        $errors[] = "Allocation #{$index}: Grant item not found";
 
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        $grantItem = $positionSlot->grantItem;
-                        if ($grantItem && $grantItem->grant_position_number > 0) {
-                            // Check current active allocations (based on dates)
-                            $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
-                                $query->where('grant_item_id', $grantItem->id);
+                    if ($grantItem->grant_position_number > 0) {
+                        // Check current active allocations (based on dates)
+                        $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
+                            ->where('allocation_type', 'grant')
+                            ->where('start_date', '<=', $today)
+                            ->where(function ($query) use ($today) {
+                                $query->whereNull('end_date')
+                                    ->orWhere('end_date', '>=', $today);
                             })
-                                ->where('allocation_type', 'grant')
-                                ->where('start_date', '<=', $today)
-                                ->where(function ($query) use ($today) {
-                                    $query->whereNull('end_date')
-                                        ->orWhere('end_date', '>=', $today);
-                                })
-                                ->count();
+                            ->count();
 
-                            if ($currentAllocations >= $grantItem->grant_position_number) {
-                                $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
-
-                                continue;
-                            }
-                        }
-
-                    } elseif ($allocationType === 'org_funded') {
-                        if (empty($allocationData['org_funded_id'])) {
-                            $errors[] = "Allocation #{$index}: org_funded_id is required for org_funded allocations";
-
-                            continue;
-                        }
-
-                        // Verify org funded allocation exists
-                        $orgFunded = OrgFundedAllocation::find($allocationData['org_funded_id']);
-                        if (! $orgFunded) {
-                            $errors[] = "Allocation #{$index}: Org funded allocation not found";
+                        if ($currentAllocations >= $grantItem->grant_position_number) {
+                            $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
 
                             continue;
                         }
@@ -430,11 +405,7 @@ class EmployeeFundingAllocationController extends Controller
                                 ->orWhere('end_date', '>=', $today);
                         });
 
-                    if ($allocationType === 'grant') {
-                        $existingAllocation->where('position_slot_id', $allocationData['position_slot_id']);
-                    } elseif ($allocationType === 'org_funded') {
-                        $existingAllocation->where('org_funded_id', $allocationData['org_funded_id']);
-                    }
+                    $existingAllocation->where('grant_item_id', $allocationData['grant_item_id']);
 
                     if ($existingAllocation->exists()) {
                         $errors[] = "Allocation #{$index}: Already exists for this employee, employment, and {$allocationType} allocation";
@@ -446,10 +417,9 @@ class EmployeeFundingAllocationController extends Controller
                     $allocation = EmployeeFundingAllocation::create([
                         'employee_id' => $validated['employee_id'],
                         'employment_id' => $validated['employment_id'],
-                        'position_slot_id' => $allocationType === 'grant' ? $allocationData['position_slot_id'] : null,
-                        'org_funded_id' => $allocationType === 'org_funded' ? $allocationData['org_funded_id'] : null,
+                        'grant_item_id' => $allocationData['grant_item_id'],
                         'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
-                        'allocation_type' => $allocationType,
+                        'allocation_type' => 'grant',
                         'allocated_amount' => $allocationData['allocated_amount'] ?? null,
                         'start_date' => $validated['start_date'],
                         'end_date' => $validated['end_date'] ?? null,
@@ -480,9 +450,7 @@ class EmployeeFundingAllocationController extends Controller
             $allocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded',
+                'grantItem.grant:id,name,code',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
             $response = [
@@ -515,7 +483,7 @@ class EmployeeFundingAllocationController extends Controller
      *     operationId="getEmployeeFundingAllocation",
      *     tags={"Employee Funding Allocations"},
      *     summary="Get employee funding allocation by ID",
-     *     description="Returns a single employee funding allocation with related data including employee, employment, orgFunded, and positionSlot relationships",
+     *     description="Returns a single employee funding allocation with related data including employee, employment, grantItem, and grant relationships",
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\Parameter(
@@ -543,11 +511,10 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $allocation = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,name',
+                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'grantItem.grant:id,name,code',
             ])->findOrFail($id);
 
             return (new EmployeeFundingAllocationResource($allocation))
@@ -682,9 +649,9 @@ class EmployeeFundingAllocationController extends Controller
             $validator = Validator::make($request->all(), [
                 'employee_id' => 'sometimes|exists:employees,id',
                 'employment_id' => 'sometimes|exists:employments,id',
-                'allocation_type' => 'sometimes|string|in:grant,org_funded',
-                'position_slot_id' => 'required_if:allocation_type,grant|nullable|exists:position_slots,id',
-                'org_funded_id' => 'required_if:allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
+                'allocation_type' => 'sometimes|string|in:grant',
+                'grant_item_id' => 'required|exists:grant_items,id',
+                'grant_id' => 'nullable',
                 'fte' => 'sometimes|numeric|min:0|max:100',
                 'allocated_amount' => 'nullable|numeric|min:0',
                 'start_date' => 'sometimes|date',
@@ -704,84 +671,46 @@ class EmployeeFundingAllocationController extends Controller
 
             DB::beginTransaction();
 
-            // If allocation type is being changed, validate type-specific requirements
-            if (isset($validated['allocation_type'])) {
-                $allocationType = $validated['allocation_type'];
+            $validated['allocation_type'] = 'grant';
 
-                if ($allocationType === 'grant') {
-                    if (empty($validated['position_slot_id'])) {
-                        DB::rollBack();
+            if (empty($validated['grant_item_id'])) {
+                DB::rollBack();
 
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'position_slot_id is required for grant allocations',
-                        ], 422);
-                    }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'grant_item_id is required for grant allocations',
+                ], 422);
+            }
 
-                    // Get the position slot with its grant item for capacity checking
-                    $positionSlot = PositionSlot::with('grantItem')->find($validated['position_slot_id']);
-                    if (! $positionSlot) {
-                        DB::rollBack();
+            $grantItem = GrantItem::find($validated['grant_item_id']);
+            if (! $grantItem) {
+                DB::rollBack();
 
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Position slot not found',
-                        ], 422);
-                    }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Grant item not found',
+                ], 422);
+            }
 
-                    $grantItem = $positionSlot->grantItem;
-                    if ($grantItem && $grantItem->grant_position_number > 0) {
-                        // Check current active allocations (exclude current allocation)
-                        $today = Carbon::today();
-                        $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
-                            $query->where('grant_item_id', $grantItem->id);
-                        })
-                            ->where('allocation_type', 'grant')
-                            ->where('id', '!=', $id) // Exclude current allocation
-                            ->where('start_date', '<=', $today)
-                            ->where(function ($query) use ($today) {
-                                $query->whereNull('end_date')
-                                    ->orWhere('end_date', '>=', $today);
-                            })
-                            ->count();
+            if ($grantItem->grant_position_number > 0) {
+                $today = Carbon::today();
+                $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
+                    ->where('allocation_type', 'grant')
+                    ->where('id', '!=', $id) // Exclude current allocation
+                    ->where('start_date', '<=', $today)
+                    ->where(function ($query) use ($today) {
+                        $query->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $today);
+                    })
+                    ->count();
 
-                        if ($currentAllocations >= $grantItem->grant_position_number) {
-                            DB::rollBack();
+                if ($currentAllocations >= $grantItem->grant_position_number) {
+                    DB::rollBack();
 
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}",
-                            ], 422);
-                        }
-                    }
-
-                } elseif ($allocationType === 'org_funded') {
-                    if (empty($validated['org_funded_id'])) {
-                        DB::rollBack();
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'org_funded_id is required for org_funded allocations',
-                        ], 422);
-                    }
-
-                    // Verify org funded allocation exists
-                    $orgFunded = OrgFundedAllocation::find($validated['org_funded_id']);
-                    if (! $orgFunded) {
-                        DB::rollBack();
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Org funded allocation not found',
-                        ], 422);
-                    }
-                }
-
-                // Clear the opposite field when changing allocation type
-                if ($allocationType === 'grant') {
-                    $validated['org_funded_id'] = null;
-                } elseif ($allocationType === 'org_funded') {
-                    $validated['position_slot_id'] = null;
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}",
+                    ], 422);
                 }
             }
 
@@ -802,8 +731,7 @@ class EmployeeFundingAllocationController extends Controller
             $allocation->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'employment:id,employment_type,start_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded',
+                'grantItem.grant:id,name,code',
             ]);
 
             return (new EmployeeFundingAllocationResource($allocation))
@@ -932,11 +860,11 @@ class EmployeeFundingAllocationController extends Controller
 
             $today = Carbon::today();
             $allocations = EmployeeFundingAllocation::with([
-                'employment:id,employment_type,start_date,end_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,name',
+                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'grantItem.grant:id,name,code',
+                'grant:id,name,code',
             ])
                 ->where('employee_id', $employeeId)
                 ->where('start_date', '<=', $today)
@@ -1035,9 +963,7 @@ class EmployeeFundingAllocationController extends Controller
     {
         try {
             $grants = \App\Models\Grant::with([
-                'grantItems.positionSlots',
-                'orgFundedAllocations.department:id,name',
-                'orgFundedAllocations.position:id,title,department_id',
+                'grantItems',
             ])->select('id', 'name', 'code')->get();
 
             $structure = [
@@ -1055,26 +981,6 @@ class EmployeeFundingAllocationController extends Controller
                                 'grant_fte' => $item->grant_fte,
                                 'budgetline_code' => $item->budgetline_code,
                                 'grant_position_number' => $item->grant_position_number,
-                                'position_slots' => $item->positionSlots->map(function ($slot) {
-                                    return [
-                                        'id' => $slot->id,
-                                        'slot_number' => $slot->slot_number,
-                                    ];
-                                }),
-                            ];
-                        }),
-                        'org_funded_allocations' => $grant->orgFundedAllocations->map(function ($orgFunded) {
-                            return [
-                                'id' => $orgFunded->id,
-                                'description' => $orgFunded->description,
-                                'department' => $orgFunded->department ? [
-                                    'id' => $orgFunded->department->id,
-                                    'name' => $orgFunded->department->name,
-                                ] : null,
-                                'position' => $orgFunded->position ? [
-                                    'id' => $orgFunded->position->id,
-                                    'title' => $orgFunded->position->title,
-                                ] : null,
                             ];
                         }),
                     ];
@@ -1296,8 +1202,8 @@ class EmployeeFundingAllocationController extends Controller
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
                 'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
-                'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
-                'allocations.*.org_funded_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:org_funded_allocations,id',
+                'allocations.*.grant_item_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:grant_items,id',
+                'allocations.*.grant_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:grants,id',
                 'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
@@ -1350,10 +1256,10 @@ class EmployeeFundingAllocationController extends Controller
                 $allocation = EmployeeFundingAllocation::create([
                     'employee_id' => $employeeId,
                     'employment_id' => $validated['employment_id'],
-                    'position_slot_id' => $allocationData['allocation_type'] === 'grant' ? $allocationData['position_slot_id'] : null,
-                    'org_funded_id' => $allocationData['allocation_type'] === 'org_funded' ? $allocationData['org_funded_id'] : null,
+                    'grant_item_id' => $allocationData['grant_item_id'],
+                    'grant_id' => null,
                     'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
-                    'allocation_type' => $allocationData['allocation_type'],
+                    'allocation_type' => 'grant',
                     'allocated_amount' => $allocationData['allocated_amount'] ?? null,
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'] ?? null,
@@ -1369,11 +1275,10 @@ class EmployeeFundingAllocationController extends Controller
             // Load the created allocations with relationships
             $allocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,name',
+                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'grantItem.grant:id,name,code',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
             return response()->json([

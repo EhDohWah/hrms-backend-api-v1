@@ -86,10 +86,10 @@ class JobOfferFactory extends Factory
         $month = date('m');
         $day = date('d');
         $subsidiaries = ['SMRU', 'BHF', 'MORU', 'SHOKLO'];
-        $subsidiary = $this->faker->randomElement($subsidiaries);
+        $organization = $this->faker->randomElement($subsidiaries);
         $counter = $this->faker->numberBetween(1, 9999);
 
-        return sprintf('%s%s%s-%s-%04d', $year, $month, $day, $subsidiary, $counter);
+        return sprintf('%s%s%s-%s-%04d', $year, $month, $day, $organization, $counter);
     }
 
     /**

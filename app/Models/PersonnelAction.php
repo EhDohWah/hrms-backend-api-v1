@@ -113,7 +113,12 @@ class PersonnelAction extends Model
 
     public function currentWorkLocation(): BelongsTo
     {
-        return $this->belongsTo(WorkLocation::class, 'current_work_location_id');
+        return $this->belongsTo(Site::class, 'current_work_location_id');
+    }
+
+    public function currentSite(): BelongsTo
+    {
+        return $this->currentWorkLocation();
     }
 
     // New State Relationships
@@ -129,7 +134,12 @@ class PersonnelAction extends Model
 
     public function newWorkLocation(): BelongsTo
     {
-        return $this->belongsTo(WorkLocation::class, 'new_work_location_id');
+        return $this->belongsTo(Site::class, 'new_work_location_id');
+    }
+
+    public function newSite(): BelongsTo
+    {
+        return $this->newWorkLocation();
     }
 
     // Helper methods
@@ -162,8 +172,8 @@ class PersonnelAction extends Model
             $this->current_employee_no = $employment->employee->staff_id ?? null;
             $this->current_department_id = $employment->department_id;
             $this->current_position_id = $employment->position_id;
-            $this->current_salary = $employment->position_salary;
-            $this->current_work_location_id = $employment->work_location_id;
+            $this->current_salary = $employment->pass_probation_salary;
+            $this->current_work_location_id = $employment->site_id;
             $this->current_employment_date = $employment->start_date;
         }
     }

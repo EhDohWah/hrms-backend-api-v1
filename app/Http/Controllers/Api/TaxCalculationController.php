@@ -17,18 +17,18 @@ use OpenApi\Annotations as OA;
 
 /**
  * Thai Personal Income Tax Calculation Controller
- * 
+ *
  * This controller implements the complete Thai Personal Income Tax system following
  * Thai Revenue Department regulations and official 2025 tax brackets.
- * 
+ *
  * THAI REVENUE DEPARTMENT COMPLIANCE:
- * 
+ *
  * 1. CALCULATION SEQUENCE (MANDATORY):
  *    - Step 1: Employment Income Deductions (50% of income, max ฿100,000) - APPLIED FIRST
  *    - Step 2: Personal Allowances (฿60,000 + spouse + children + parents) - APPLIED SECOND
  *    - Step 3: Progressive Tax (8 brackets: 0%, 5%, 10%, 15%, 20%, 25%, 30%, 35%)
  *    - Step 4: Social Security (5% rate, ฿750 monthly cap) - CALCULATED SEPARATELY
- * 
+ *
  * 2. OFFICIAL 2025 TAX BRACKETS:
  *    - ฿0 - ฿150,000: 0% (tax-exempt)
  *    - ฿150,001 - ฿300,000: 5%
@@ -38,33 +38,32 @@ use OpenApi\Annotations as OA;
  *    - ฿1,000,001 - ฿2,000,000: 25%
  *    - ฿2,000,001 - ฿5,000,000: 30%
  *    - ฿5,000,001+: 35%
- * 
+ *
  * 3. PERSONAL ALLOWANCES (2025):
  *    - Personal: ฿60,000 per taxpayer
  *    - Spouse: ฿60,000 (if spouse has no income)
  *    - Children: ฿30,000 first child, ฿60,000 subsequent (born 2018+)
  *    - Parents: ฿30,000 per eligible parent (age 60+, income < ฿30,000)
  *    - Senior Citizen: ฿190,000 additional (taxpayer age 65+)
- * 
+ *
  * 4. SOCIAL SECURITY FUND:
  *    - Rate: 5% (mandatory, non-negotiable)
  *    - Salary Range: ฿1,650 - ฿15,000 monthly
  *    - Maximum: ฿750 monthly, ฿9,000 annually
  *    - Employer Matching: Required
- * 
+ *
  * 5. COMPLIANCE FEATURES:
  *    - Comprehensive audit logging
  *    - Thai Revenue Department validation
  *    - Official report generation
  *    - Law reference documentation
- * 
+ *
  * LAW REFERENCES:
  * - Revenue Code Section 42(1): Employment deductions
  * - Revenue Code Section 42(2-6): Personal allowances
  * - Revenue Code Section 48: Progressive tax rates
  * - Social Security Act: SSF contributions
- * 
- * @package App\Http\Controllers\Api
+ *
  * @version 1.0 - Thai Revenue Department Compliant
  */
 class TaxCalculationController extends Controller
@@ -170,8 +169,10 @@ class TaxCalculationController extends Controller
      *                     property="tax_breakdown",
      *                     type="array",
      *                     description="Progressive tax calculation by bracket",
+     *
      *                     @OA\Items(
      *                         type="object",
+     *
      *                         @OA\Property(property="bracket_order", type="integer", example=2, description="Tax bracket order"),
      *                         @OA\Property(property="income_range", type="string", example="฿150,001 - ฿300,000", description="Income range for this bracket"),
      *                         @OA\Property(property="tax_rate", type="string", example="5%", description="Tax rate for this bracket"),
@@ -245,8 +246,8 @@ class TaxCalculationController extends Controller
             // Add additional income and deductions if provided (for backward compatibility)
             $additionalIncome = $request->get('additional_income', []);
             $additionalDeductions = $request->get('additional_deductions', []);
-            
-            if (!empty($additionalIncome) || !empty($additionalDeductions)) {
+
+            if (! empty($additionalIncome) || ! empty($additionalDeductions)) {
                 $payrollData['additional_income'] = $additionalIncome;
                 $payrollData['additional_deductions'] = $additionalDeductions;
                 $payrollData['note'] = 'Additional income and deductions provided but not calculated in new method. Use legacy endpoint if needed.';

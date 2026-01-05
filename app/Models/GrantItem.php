@@ -65,9 +65,9 @@ class GrantItem extends Model
         return $this->belongsTo(Grant::class, 'grant_id');
     }
 
-    public function positionSlots()
+    public function employeeFundingAllocations()
     {
-        return $this->hasMany(PositionSlot::class);
+        return $this->hasMany(EmployeeFundingAllocation::class);
     }
 
     /**

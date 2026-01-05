@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  *
  *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
  *     @OA\Property(property="staff_id", type="string", maxLength=50),
- *     @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, default="SMRU"),
+ *     @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}, default="SMRU"),
  *     @OA\Property(property="user_id", type="integer", nullable=true),
  *     @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
  *     @OA\Property(property="initial_th", type="string", maxLength=10, nullable=true),
@@ -59,11 +60,11 @@ use Illuminate\Support\Facades\DB;
  */
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'user_id',
-        'subsidiary',
+        'organization',
         'staff_id',
         'initial_en',
         'initial_th',
@@ -245,7 +246,7 @@ class Employee extends Model
     {
         return $query->select([
             'employees.id',
-            'employees.subsidiary',
+            'employees.organization',
             'employees.staff_id',
             'employees.initial_en',
             'employees.first_name_en',
@@ -269,13 +270,13 @@ class Employee extends Model
         ]);
     }
 
-    public function scopeBySubsidiary($query, $subsidiaries)
+    public function scopeByOrganization($query, $organizations)
     {
-        if (is_string($subsidiaries)) {
-            $subsidiaries = explode(',', $subsidiaries);
+        if (is_string($organizations)) {
+            $organizations = explode(',', $organizations);
         }
 
-        return $query->whereIn('subsidiary', array_filter($subsidiaries));
+        return $query->whereIn('organization', array_filter($organizations));
     }
 
     public function scopeByStatus($query, $statuses)
@@ -359,11 +360,21 @@ class Employee extends Model
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
                     ->whereBetween('employments.start_date', [$threeMonthsAgo, $now])
                     ->count(),
-                'subsidiaryCount' => [
-                    'SMRU_count' => Employee::where('subsidiary', 'SMRU')->count(),
-                    'BHF_count' => Employee::where('subsidiary', 'BHF')->count(),
+                'organizationCount' => [
+                    'SMRU_count' => Employee::where('organization', 'SMRU')->count(),
+                    'BHF_count' => Employee::where('organization', 'BHF')->count(),
                 ],
             ];
         });
+    }
+
+    /**
+     * Get the display name for activity logs
+     */
+    public function getActivityLogName(): string
+    {
+        $fullName = trim(($this->first_name_en ?? '').' '.($this->last_name_en ?? ''));
+
+        return $fullName ?: ($this->staff_id ?? "Employee #{$this->id}");
     }
 }

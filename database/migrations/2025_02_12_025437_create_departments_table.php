@@ -28,12 +28,13 @@ return new class extends Migration
             ['name' => 'Administration', 'description' => 'Administrative operations and support services', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Finance', 'description' => 'Financial management and accounting operations', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Grant', 'description' => 'Grant management and funding oversight', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Human Resources', 'description' => 'HR operations and employee management', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Logistics', 'description' => 'Logistics and transportation operations', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'HR', 'description' => 'Human Resources operations and employee management', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Logistic', 'description' => 'Logistics and transportation operations', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Procurement & Store', 'description' => 'Procurement and inventory management', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Data management', 'description' => 'Data operations and management systems', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Data Management', 'description' => 'Data operations and management systems', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'IT', 'description' => 'Information Technology services and support', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Clinical', 'description' => 'Clinical services and healthcare delivery', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Medical', 'description' => 'Medical services and physician oversight', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Research/Study', 'description' => 'Research operations and clinical studies', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Training', 'description' => 'Training programs and capacity building', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Research/Study M&E', 'description' => 'Research monitoring and evaluation', 'created_at' => now(), 'updated_at' => now()],
@@ -44,6 +45,7 @@ return new class extends Migration
             ['name' => 'Public Engagement', 'description' => 'Public engagement and community outreach', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'TB', 'description' => 'Tuberculosis prevention and treatment programs', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Media Group', 'description' => 'Media and communications management', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Referral', 'description' => 'Patient referral services and coordination', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 

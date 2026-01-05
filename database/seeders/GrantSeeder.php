@@ -111,16 +111,16 @@ class GrantSeeder extends Seeder
         $this->command->info('- Total Ending Soon: '.Grant::endingSoon()->count());
         $this->command->info('- Total Grants: '.Grant::count());
 
-        // Show grants by subsidiary
+        // Show grants by organization
         $this->command->info('');
         $this->command->info('Grants by Subsidiary:');
-        $subsidiaryStats = Grant::selectRaw('subsidiary, COUNT(*) as count')
-            ->groupBy('subsidiary')
-            ->orderBy('subsidiary')
+        $organizationStats = Grant::selectRaw('organization, COUNT(*) as count')
+            ->groupBy('organization')
+            ->orderBy('organization')
             ->get();
 
-        foreach ($subsidiaryStats as $stat) {
-            $this->command->info("- {$stat->subsidiary}: {$stat->count} grants");
+        foreach ($organizationStats as $stat) {
+            $this->command->info("- {$stat->organization}: {$stat->count} grants");
         }
     }
 }

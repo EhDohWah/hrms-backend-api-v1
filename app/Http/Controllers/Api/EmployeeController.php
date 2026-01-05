@@ -27,8 +27,10 @@ use App\Models\EmploymentHistory;
 use App\Models\GrantItem;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
+use App\Models\Site;
 use App\Models\TravelRequest;
-use App\Models\WorkLocation;
+use App\Models\User;
+use App\Notifications\EmployeeActionNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +52,7 @@ class EmployeeController extends Controller
      * @OA\Get(
      *     path="/employees/tree-search",
      *     summary="Get all employees for tree search",
-     *     description="Returns a list of all employees organized by subsidiary for tree-based search",
+     *     description="Returns a list of all employees organized by organization for tree-based search",
      *     operationId="getEmployeesForTreeSearch",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
@@ -64,9 +66,9 @@ class EmployeeController extends Controller
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
      *             @OA\Property(property="data", type="array", @OA\Items(
-     *                 @OA\Property(property="key", type="string", example="subsidiary-SMRU"),
+     *                 @OA\Property(property="key", type="string", example="organization-SMRU"),
      *                 @OA\Property(property="title", type="string", example="SMRU"),
-     *                 @OA\Property(property="value", type="string", example="subsidiary-SMRU"),
+     *                 @OA\Property(property="value", type="string", example="organization-SMRU"),
      *                 @OA\Property(property="children", type="array", @OA\Items(
      *                     @OA\Property(property="key", type="string", example="34"),
      *                     @OA\Property(property="title", type="string", example="0001 - John Doe"),
@@ -100,7 +102,7 @@ class EmployeeController extends Controller
     public function getEmployeesForTreeSearch()
     {
         try {
-            $employees = Employee::select('id', 'subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'status')
+            $employees = Employee::select('id', 'organization', 'staff_id', 'first_name_en', 'last_name_en', 'status')
                 ->with([
                     'employment:id,employee_id,department_id,position_id',
                     'employment.department:id,name',
@@ -108,16 +110,16 @@ class EmployeeController extends Controller
                 ])
                 ->get();
 
-            // Group employees by subsidiary
-            $grouped = $employees->groupBy('subsidiary');
+            // Group employees by organization
+            $grouped = $employees->groupBy('organization');
 
-            // Map each subsidiary into a parent node with its employees as children
-            $treeData = $grouped->map(function ($subsidiaryEmployees, $subsidiary) {
+            // Map each organization into a parent node with its employees as children
+            $treeData = $grouped->map(function ($organizationEmployees, $organization) {
                 return [
-                    'key' => "subsidiary-{$subsidiary}",
-                    'title' => $subsidiary,
-                    'value' => "subsidiary-{$subsidiary}",
-                    'children' => $subsidiaryEmployees->map(function ($emp) {
+                    'key' => "organization-{$organization}",
+                    'title' => $organization,
+                    'value' => "organization-{$organization}",
+                    'children' => $organizationEmployees->map(function ($emp) {
                         $fullName = $emp->first_name_en;
                         if ($emp->last_name_en && $emp->last_name_en !== '-') {
                             $fullName .= ' '.$emp->last_name_en;
@@ -371,6 +373,232 @@ class EmployeeController extends Controller
         ], 202);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/uploads/employee/template",
+     *     operationId="downloadEmployeeTemplate",
+     *     summary="Download Employee Import Excel Template",
+     *     description="Downloads an Excel template file with headers, validation rules, and sample data for employee bulk import",
+     *     tags={"Employees"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Excel template file download",
+     *
+     *         @OA\MediaType(
+     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+     *
+     *             @OA\Schema(
+     *                 type="string",
+     *                 format="binary"
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to generate template",
+     *
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to generate template"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function downloadEmployeeTemplate()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            
+            // Remove default sheet and create employee data sheet
+            $spreadsheet->removeSheetByIndex(0);
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle('Employee Data');
+
+            // Define all columns based on EmployeesImport
+            $columns = [
+                'A' => ['header' => 'org', 'width' => 10, 'validation' => 'String - NULLABLE - Max 10 chars - Organization code'],
+                'B' => ['header' => 'staff_id', 'width' => 15, 'validation' => 'String - NOT NULL - Max 50 chars - Must be unique'],
+                'C' => ['header' => 'initial', 'width' => 10, 'validation' => 'String - NULLABLE - Max 10 chars - Initial (EN)'],
+                'D' => ['header' => 'first_name', 'width' => 20, 'validation' => 'String - NOT NULL - Max 255 chars - First name (EN)'],
+                'E' => ['header' => 'last_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Last name (EN)'],
+                'F' => ['header' => 'initial_th', 'width' => 10, 'validation' => 'String - NULLABLE - Max 20 chars - Initial (TH)'],
+                'G' => ['header' => 'first_name_th', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - First name (TH)'],
+                'H' => ['header' => 'last_name_th', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Last name (TH)'],
+                'I' => ['header' => 'gender', 'width' => 10, 'validation' => 'String - NOT NULL - Values: M, F'],
+                'J' => ['header' => 'date_of_birth', 'width' => 15, 'validation' => 'Date - NOT NULL - Format: YYYY-MM-DD or Excel date'],
+                'K' => ['header' => 'age', 'width' => 10, 'validation' => 'Formula - AUTO CALCULATED - Do not edit'],
+                'L' => ['header' => 'status', 'width' => 15, 'validation' => 'String - NULLABLE - Max 20 chars - Employment status'],
+                'M' => ['header' => 'nationality', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'N' => ['header' => 'religion', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'O' => ['header' => 'id_type', 'width' => 15, 'validation' => 'String - NULLABLE - Values: 10 years ID, Burmese ID, CI, Borderpass, Thai ID, Passport, Other'],
+                'P' => ['header' => 'id_no', 'width' => 20, 'validation' => 'String - NULLABLE - ID number'],
+                'Q' => ['header' => 'social_security_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'R' => ['header' => 'tax_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'S' => ['header' => 'driver_license', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'T' => ['header' => 'bank_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'U' => ['header' => 'bank_branch', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'V' => ['header' => 'bank_acc_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'W' => ['header' => 'bank_acc_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'X' => ['header' => 'mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'Y' => ['header' => 'current_address', 'width' => 30, 'validation' => 'Text - NULLABLE'],
+                'Z' => ['header' => 'permanent_address', 'width' => 30, 'validation' => 'Text - NULLABLE'],
+                'AA' => ['header' => 'marital_status', 'width' => 15, 'validation' => 'String - NULLABLE - Values: Single, Married, Divorced, Widowed'],
+                'AB' => ['header' => 'spouse_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
+                'AC' => ['header' => 'spouse_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AD' => ['header' => 'emergency_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'AE' => ['header' => 'relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
+                'AF' => ['header' => 'emergency_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AG' => ['header' => 'father_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
+                'AH' => ['header' => 'father_occupation', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
+                'AI' => ['header' => 'father_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AJ' => ['header' => 'mother_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
+                'AK' => ['header' => 'mother_occupation', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
+                'AL' => ['header' => 'mother_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AM' => ['header' => 'kin1_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Beneficiary 1'],
+                'AN' => ['header' => 'kin1_relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 255 chars'],
+                'AO' => ['header' => 'kin1_mobile', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AP' => ['header' => 'kin2_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Beneficiary 2'],
+                'AQ' => ['header' => 'kin2_relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 255 chars'],
+                'AR' => ['header' => 'kin2_mobile', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AS' => ['header' => 'military_status', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
+                'AT' => ['header' => 'remark', 'width' => 30, 'validation' => 'String - NULLABLE - Max 255 chars'],
+            ];
+
+            // Set column widths and headers
+            foreach ($columns as $col => $data) {
+                $sheet->getColumnDimension($col)->setWidth($data['width']);
+                $sheet->setCellValue($col . '1', $data['header']);
+                $sheet->setCellValue($col . '2', $data['validation']);
+            }
+
+            // Style header row
+            $headerStyle = [
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '4472C4']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            ];
+            $sheet->getStyle('A1:AT1')->applyFromArray($headerStyle);
+            $sheet->getRowDimension(1)->setRowHeight(25);
+
+            // Style validation row
+            $validationStyle = [
+                'font' => ['italic' => true, 'size' => 9, 'color' => ['rgb' => '666666']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF9E6']],
+                'alignment' => ['wrapText' => true],
+            ];
+            $sheet->getStyle('A2:AT2')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(2)->setRowHeight(30);
+
+            // Add sample data (2 rows)
+            $sampleData = [
+                ['SMRU', 'EMP001', 'Mr.', 'John', 'Doe', 'นาย', 'จอห์น', 'โด', 'M', '1990-01-15', '', 'Active', 'Thai', 'Buddhist', 'Thai ID', '1234567890123', 'SS123456', 'TAX123456', 'DL123456', 'Bangkok Bank', 'Headquarters', 'John Doe', '1234567890', '0812345678', '123 Main St, Bangkok', '456 Home St, Bangkok', 'Single', '', '', 'Jane Doe', 'Sister', '0823456789', 'Robert Doe', 'Engineer', '0834567890', 'Mary Doe', 'Teacher', '0845678901', 'Jane Doe', 'Sister', '0823456789', '', '', '', '', '', '', 'Completed', 'New employee'],
+                ['BHF', 'EMP002', 'Ms.', 'Sarah', 'Smith', 'นางสาว', 'ซาร่าห์', 'สมิธ', 'F', '1985-05-20', '', 'Active', 'American', 'Christian', 'Passport', 'P1234567', 'SS234567', 'TAX234567', '', 'Kasikorn Bank', 'Silom Branch', 'Sarah Smith', '0987654321', '0898765432', '789 Office Rd, Bangkok', '321 Apartment, Bangkok', 'Married', 'Tom Smith', '0887654321', 'Emergency Contact', 'Friend', '0876543210', 'David Smith', 'Doctor', '0865432109', 'Linda Smith', 'Nurse', '0854321098', 'Tom Smith', 'Spouse', '0887654321', '', '', '', '', '', '', 'Exempt', 'Senior staff'],
+            ];
+
+            foreach ($sampleData as $rowIndex => $rowData) {
+                $rowNum = $rowIndex + 3;
+                $colIndex = 0;
+                foreach ($columns as $col => $colData) {
+                    if ($colIndex < count($rowData)) {
+                        $value = $rowData[$colIndex];
+                        $sheet->setCellValue($col . $rowNum, $value);
+                        
+                        // Add age formula for column K
+                        if ($col === 'K' && isset($rowData[9])) {
+                            $sheet->setCellValue($col . $rowNum, '=DATEDIF(J' . $rowNum . ',TODAY(),"Y")');
+                        }
+                    }
+                    $colIndex++;
+                }
+            }
+
+            // Add data validation for dropdowns
+            // Gender dropdown (column I)
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('I' . $row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setAllowBlank(false);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Gender');
+                $validation->setError('Please select M or F');
+                $validation->setPromptTitle('Gender');
+                $validation->setPrompt('Select M (Male) or F (Female)');
+                $validation->setFormula1('"M,F"');
+            }
+
+            // ID Type dropdown (column O)
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('O' . $row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setAllowBlank(true);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid ID Type');
+                $validation->setError('Please select from the list');
+                $validation->setPromptTitle('ID Type');
+                $validation->setPrompt('Select ID type');
+                $validation->setFormula1('"10 years ID,Burmese ID,CI,Borderpass,Thai ID,Passport,Other"');
+            }
+
+            // Marital Status dropdown (column AA)
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('AA' . $row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setAllowBlank(true);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Marital Status');
+                $validation->setError('Please select from the list');
+                $validation->setPromptTitle('Marital Status');
+                $validation->setPrompt('Select marital status');
+                $validation->setFormula1('"Single,Married,Divorced,Widowed"');
+            }
+
+            // Freeze header rows
+            $sheet->freezePane('A3');
+
+            // Set active sheet
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // Generate filename with timestamp
+            $filename = 'employee_import_template_' . date('Y-m-d_His') . '.xlsx';
+
+            // Create writer and save to temporary file
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            
+            // Create temporary file
+            $tempFile = tempnam(sys_get_temp_dir(), 'employee_template_');
+            $writer->save($tempFile);
+            
+            // Return file download response with proper CORS headers
+            return response()->download($tempFile, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ])->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function exportEmployees()
     {
         return Excel::download(new EmployeesExport, 'employees.xlsx');
@@ -406,9 +634,9 @@ class EmployeeController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filter_subsidiary",
+     *         name="filter_organization",
      *         in="query",
-     *         description="Filter by subsidiary (comma-separated for multiple values)",
+     *         description="Filter by organization (comma-separated for multiple values)",
      *         required=false,
      *
      *         @OA\Schema(type="string", example="SMRU,BHF")
@@ -465,7 +693,7 @@ class EmployeeController extends Controller
      *         description="Sort by field",
      *         required=false,
      *
-     *         @OA\Schema(type="string", enum={"subsidiary", "staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status", "age", "id_type"}, example="first_name_en")
+     *         @OA\Schema(type="string", enum={"organization", "staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status", "age", "id_type"}, example="first_name_en")
      *     ),
      *
      *     @OA\Parameter(
@@ -522,7 +750,7 @@ class EmployeeController extends Controller
      *                 property="filters",
      *                 type="object",
      *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"}),
+     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"}),
      *                     @OA\Property(property="status", type="array", @OA\Items(type="string"), example={"Expats"}),
      *                     @OA\Property(property="gender", type="array", @OA\Items(type="string"), example={"Male"}),
      *                     @OA\Property(property="age", type="integer", example=30),
@@ -565,13 +793,13 @@ class EmployeeController extends Controller
             $validated = $request->validate([
                 'page' => 'integer|min:1',
                 'per_page' => 'integer|min:1|max:100',
-                'filter_subsidiary' => 'string|nullable',
+                'filter_organization' => 'string|nullable',
                 'filter_status' => 'string|nullable',
                 'filter_gender' => 'string|nullable',
                 'filter_age' => 'integer|nullable',
                 'filter_id_type' => 'string|nullable',
                 'filter_staff_id' => 'string|nullable',
-                'sort_by' => 'string|nullable|in:subsidiary,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
+                'sort_by' => 'string|nullable|in:organization,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
                 'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
@@ -584,8 +812,8 @@ class EmployeeController extends Controller
                 ->withOptimizedRelations();
 
             // Apply filters if provided
-            if (! empty($validated['filter_subsidiary'])) {
-                $query->bySubsidiary($validated['filter_subsidiary']);
+            if (! empty($validated['filter_organization'])) {
+                $query->byOrganization($validated['filter_organization']);
             }
 
             if (! empty($validated['filter_status'])) {
@@ -613,7 +841,7 @@ class EmployeeController extends Controller
             $sortOrder = $validated['sort_order'] ?? 'desc';
 
             // Validate sort field and apply sorting
-            if (in_array($sortBy, ['subsidiary', 'staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
+            if (in_array($sortBy, ['organization', 'staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
                 $query->orderBy('employees.'.$sortBy, $sortOrder);
             } elseif ($sortBy === 'age') {
                 // Sort by age means sort by date_of_birth in reverse order
@@ -631,8 +859,8 @@ class EmployeeController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (! empty($validated['filter_subsidiary'])) {
-                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            if (! empty($validated['filter_organization'])) {
+                $appliedFilters['organization'] = explode(',', $validated['filter_organization']);
             }
             if (! empty($validated['filter_status'])) {
                 $appliedFilters['status'] = explode(',', $validated['filter_status']);
@@ -711,7 +939,7 @@ class EmployeeController extends Controller
      *                     type="object",
      *
      *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="organization", type="string", example="SMRU"),
      *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
      *                     @OA\Property(property="initial_en", type="string", example="Mr."),
      *                     @OA\Property(property="first_name_en", type="string", example="John"),
@@ -769,7 +997,7 @@ class EmployeeController extends Controller
         // 1) base query: Remove 'active' from employment selection
         $query = Employee::select([
             'id',
-            'subsidiary',
+            'organization',
             'staff_id',
             'initial_en',
             'first_name_en',
@@ -856,15 +1084,14 @@ class EmployeeController extends Controller
             'employment',
             'employment.department',
             'employment.position',
+            'employment.site',
             'employeeFundingAllocations',
-            'employeeFundingAllocations.positionSlot.grantItem',
-            'employeeFundingAllocations.positionSlot.grantItem.grant',
-            'employeeFundingAllocations.orgFunded.grant',
-            'employeeFundingAllocations.orgFunded.department',
-            'employeeFundingAllocations.orgFunded.position',
-            'employment.workLocation',
-            // 'employment.grantAllocations.grantItemAllocation',
-            // 'employment.grantAllocations.grantItemAllocation.grant',
+            'employeeFundingAllocations.grantItem',
+            'employeeFundingAllocations.grantItem.grant',
+            'employeeFundingAllocations.grant',
+            'employeeFundingAllocations.employment',
+            'employeeFundingAllocations.employment.department',
+            'employeeFundingAllocations.employment.position',
             'employeeBeneficiaries',
             'employeeIdentification',
             'employeeEducation',
@@ -904,9 +1131,9 @@ class EmployeeController extends Controller
      *         description="Employee data",
      *
      *         @OA\JsonContent(
-     *             required={"subsidiary","staff_id","first_name_en","gender","date_of_birth","status"},
+     *             required={"organization","staff_id","first_name_en","gender","date_of_birth","status"},
      *
-     *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
+     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee organization"),
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
      *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
@@ -988,6 +1215,15 @@ class EmployeeController extends Controller
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('created', $employee, $performedBy));
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee created successfully',
@@ -1037,7 +1273,7 @@ class EmployeeController extends Controller
      *             required={"staff_id","first_name_en","last_name_en","gender","date_of_birth","status"},
      *
      *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
-     *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee subsidiary"),
+     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee organization"),
      *             @OA\Property(property="user_id", type="integer", nullable=true, description="Associated user ID"),
      *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
      *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
@@ -1125,7 +1361,7 @@ class EmployeeController extends Controller
 
             $validated = $request->validate([
                 'staff_id' => "required|string|max:50|unique:employees,staff_id,{$id}",
-                'subsidiary' => 'nullable|string|in:SMRU,BHF',
+                'organization' => 'nullable|string|in:SMRU,BHF',
                 'user_id' => 'nullable|integer|exists:users,id',
                 'initial_en' => 'nullable|string|max:10',
                 'initial_th' => 'nullable|string|max:10',
@@ -1170,6 +1406,17 @@ class EmployeeController extends Controller
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Refresh employee to get latest data
+                $employee->refresh();
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1264,6 +1511,14 @@ class EmployeeController extends Controller
             TravelRequest::where('employee_id', $id)->delete();
             Employment::where('employee_id', $id)->delete();
 
+            // Store employee data before deletion for notification
+            $employeeData = (object) [
+                'id' => $employee->id,
+                'staff_id' => $employee->staff_id,
+                'first_name_en' => $employee->first_name_en,
+                'last_name_en' => $employee->last_name_en,
+            ];
+
             // Delete the employee
             $employee->delete();
 
@@ -1271,6 +1526,15 @@ class EmployeeController extends Controller
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('deleted', $employeeData, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1334,7 +1598,7 @@ class EmployeeController extends Controller
      */
     public function getSiteRecords()
     {
-        $sites = WorkLocation::all();
+        $sites = Site::all();
 
         return response()->json([
             'success' => true,
@@ -1373,9 +1637,9 @@ class EmployeeController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="subsidiary",
+     *         name="organization",
      *         in="query",
-     *         description="Employee subsidiary to filter by",
+     *         description="Employee organization to filter by",
      *         required=false,
      *
      *         @OA\Schema(type="string", enum={"SMRU", "BHF"})
@@ -1417,7 +1681,7 @@ class EmployeeController extends Controller
         $validated = $request->validate([
             'staff_id' => 'nullable|string|max:50',
             'status' => 'nullable|in:Expats,Local ID,Local non ID',
-            'subsidiary' => 'nullable|in:SMRU,BHF',
+            'organization' => 'nullable|in:SMRU,BHF',
         ]);
 
         $query = Employee::query();
@@ -1430,8 +1694,8 @@ class EmployeeController extends Controller
             $query->where('status', $validated['status']);
         }
 
-        if (! empty($validated['subsidiary'])) {
-            $query->where('subsidiary', $validated['subsidiary']);
+        if (! empty($validated['organization'])) {
+            $query->where('organization', $validated['organization']);
         }
 
         $employees = $query->get();
@@ -1694,9 +1958,9 @@ class EmployeeController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"subsidiary", "staff_id", "first_name_en", "gender", "date_of_birth", "status"},
+     *             required={"organization", "staff_id", "first_name_en", "gender", "date_of_birth", "status"},
      *
-     *             @OA\Property(property="subsidiary", type="string", enum={"SMRU", "BHF"}),
+     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}),
      *             @OA\Property(property="staff_id", type="string", maxLength=50),
      *             @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
      *             @OA\Property(property="initial_th", type="string", maxLength=10, nullable=true),
@@ -1749,6 +2013,17 @@ class EmployeeController extends Controller
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Refresh employee to get latest data
+                $employee->refresh();
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1894,6 +2169,17 @@ class EmployeeController extends Controller
             // Reload employee with relations if needed for API response
             $employee->load('employeeIdentification', 'employeeLanguages');
 
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Refresh employee to get latest data
+                $employee->refresh();
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee personal information updated successfully',
@@ -2033,6 +2319,17 @@ class EmployeeController extends Controller
                 'emergency_contact_person_relationship',
                 'emergency_contact_person_phone',
             ]);
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Refresh employee to get latest data
+                $employee->refresh();
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -2236,6 +2533,17 @@ class EmployeeController extends Controller
                 'bank_account_name',
                 'bank_account_number',
             ]);
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Refresh employee to get latest data
+                $employee->refresh();
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,

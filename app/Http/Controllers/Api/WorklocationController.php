@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\WorkLocation;
+use App\Models\Site;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -33,7 +33,7 @@ class WorklocationController extends Controller
      *             type="object",
      *
      *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/WorkLocation"))
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Site"))
      *         )
      *     ),
      *
@@ -45,7 +45,7 @@ class WorklocationController extends Controller
      */
     public function index()
     {
-        $worklocations = WorkLocation::all();
+        $worklocations = Site::all();
 
         return response()->json([
             'status' => 'success',
@@ -81,7 +81,7 @@ class WorklocationController extends Controller
      *             type="object",
      *
      *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation"),
+     *             @OA\Property(property="data", ref="#/components/schemas/Site"),
      *             @OA\Property(property="message", type="string", example="Work location created successfully")
      *         )
      *     ),
@@ -106,7 +106,7 @@ class WorklocationController extends Controller
             ], 422);
         }
 
-        $worklocation = WorkLocation::create([
+        $worklocation = Site::create([
             'name' => $request->name,
             'type' => $request->type,
             'created_by' => Auth::user()->name,
@@ -146,7 +146,7 @@ class WorklocationController extends Controller
      *             type="object",
      *
      *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation")
+     *             @OA\Property(property="data", ref="#/components/schemas/Site")
      *         )
      *     ),
      *
@@ -158,7 +158,7 @@ class WorklocationController extends Controller
      */
     public function show($id)
     {
-        $worklocation = WorkLocation::find($id);
+        $worklocation = Site::find($id);
 
         if (! $worklocation) {
             return response()->json([
@@ -209,7 +209,7 @@ class WorklocationController extends Controller
      *             type="object",
      *
      *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/WorkLocation"),
+     *             @OA\Property(property="data", ref="#/components/schemas/Site"),
      *             @OA\Property(property="message", type="string", example="Work location updated successfully")
      *         )
      *     ),
@@ -222,7 +222,7 @@ class WorklocationController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $worklocation = WorkLocation::find($id);
+        $worklocation = Site::find($id);
 
         if (! $worklocation) {
             return response()->json([
@@ -294,7 +294,7 @@ class WorklocationController extends Controller
      */
     public function destroy($id)
     {
-        $worklocation = WorkLocation::find($id);
+        $worklocation = Site::find($id);
 
         if (! $worklocation) {
             return response()->json([

@@ -17,7 +17,7 @@ use OpenApi\Annotations as OA;
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="Research Grant 2023"),
  *     @OA\Property(property="code", type="string", example="RG-2023-001"),
- *     @OA\Property(property="subsidiary", type="string", example="Main Campus"),
+ *     @OA\Property(property="organization", type="string", example="Main Campus"),
  *     @OA\Property(property="description", type="string", nullable=true, example="Funding for research activities"),
  *     @OA\Property(property="end_date", type="string", format="date", nullable=true, example="2023-12-31"),
  *     @OA\Property(property="status", type="string", example="Active", enum={"Active", "Expired", "Ending Soon"}),
@@ -38,7 +38,7 @@ class Grant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code', 'name', 'subsidiary', 'description', 'end_date', 'created_by', 'updated_by',
+        'code', 'name', 'organization', 'description', 'end_date', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
@@ -53,19 +53,19 @@ class Grant extends Model
         return $this->hasMany(GrantItem::class, 'grant_id');
     }
 
-    public function orgFundedAllocations()
+    public function employeeFundingAllocations()
     {
-        return $this->hasMany(OrgFundedAllocation::class, 'grant_id');
+        return $this->hasMany(EmployeeFundingAllocation::class, 'grant_id');
     }
 
-    public function subsidiaryHubFunds()
+    public function organizationHubFunds()
     {
         return $this->hasMany(SubsidiaryHubFund::class, 'hub_grant_id');
     }
 
     public function interSubsidiaryAdvances()
     {
-        return $this->hasMany(InterSubsidiaryAdvance::class, 'via_grant_id');
+        return $this->hasMany(InterOrganizationAdvance::class, 'via_grant_id');
     }
 
     // Scopes
@@ -99,7 +99,7 @@ class Grant extends Model
             $q->where('code', 'LIKE', "%{$term}%")
                 ->orWhere('name', 'LIKE', "%{$term}%")
                 ->orWhere('description', 'LIKE', "%{$term}%")
-                ->orWhere('subsidiary', 'LIKE', "%{$term}%");
+                ->orWhere('organization', 'LIKE', "%{$term}%");
         });
     }
 
@@ -109,7 +109,7 @@ class Grant extends Model
             $subsidiaries = explode(',', $subsidiaries);
         }
 
-        return $query->whereIn('subsidiary', array_filter($subsidiaries));
+        return $query->whereIn('organization', array_filter($subsidiaries));
     }
 
     public function scopeByCodes($query, $codes)
@@ -200,14 +200,14 @@ class Grant extends Model
     }
 
     // Helpers to fetch distinct filter options
-    public static function getUniqueSubsidiaries()
+    public static function getUniqueOrganizations()
     {
-        return self::select('subsidiary')
+        return self::select('organization')
             ->distinct()
-            ->whereNotNull('subsidiary')
-            ->where('subsidiary', '!=', '')
-            ->orderBy('subsidiary')
-            ->pluck('subsidiary');
+            ->whereNotNull('organization')
+            ->where('organization', '!=', '')
+            ->orderBy('organization')
+            ->pluck('organization');
     }
 
     public static function getUniqueCodes($limit = 200)
@@ -229,13 +229,13 @@ class Grant extends Model
             'active' => self::active()->count(),
             'expired' => self::expired()->count(),
             'ending_soon' => self::endingSoon()->count(),
-            'by_subsidiary' => self::select('subsidiary')
+            'by_organization' => self::select('organization')
                 ->selectRaw('COUNT(*) as count')
-                ->whereNotNull('subsidiary')
-                ->groupBy('subsidiary')
-                ->orderBy('subsidiary')
+                ->whereNotNull('organization')
+                ->groupBy('organization')
+                ->orderBy('organization')
                 ->get()
-                ->pluck('count', 'subsidiary')
+                ->pluck('count', 'organization')
                 ->toArray(),
         ];
     }
@@ -243,7 +243,7 @@ class Grant extends Model
     // Query optimization scopes
     public function scopeForPagination($query)
     {
-        return $query->select(['id', 'code', 'name', 'subsidiary', 'description', 'end_date', 'created_at', 'updated_at', 'created_by', 'updated_by']);
+        return $query->select(['id', 'code', 'name', 'organization', 'description', 'end_date', 'created_at', 'updated_at', 'created_by', 'updated_by']);
     }
 
     public function scopeWithItemsCount($query)
@@ -270,19 +270,19 @@ class Grant extends Model
     }
 
     // Hub Grant Helper Methods
-    public static function getHubGrantForSubsidiary(string $subsidiary): ?Grant
+    public static function getHubGrantForOrganization(string $organization): ?Grant
     {
         $hubGrantCodes = [
             'SMRU' => 'S0031',  // Other Fund
             'BHF' => 'S22001',  // General Fund
         ];
 
-        if (! isset($hubGrantCodes[$subsidiary])) {
+        if (! isset($hubGrantCodes[$organization])) {
             return null;
         }
 
-        return self::where('subsidiary', $subsidiary)
-            ->where('code', $hubGrantCodes[$subsidiary])
+        return self::where('organization', $organization)
+            ->where('code', $hubGrantCodes[$organization])
             ->first();
     }
 

@@ -164,11 +164,11 @@ class LeaveRequestReportController extends Controller
             'employees.staff_id',
             'employees.first_name_en',
             'employees.last_name_en',
-            'employees.subsidiary',
+            'employees.organization',
         ]);
 
-        // Apply work location filter - filter by employees whose employment has the specified work location
-        $query->whereHas('employment.workLocation', function ($q) use ($request) {
+        // Apply site filter - filter by employees whose employment has the specified site
+        $query->whereHas('employment.site', function ($q) use ($request) {
             $q->where('name', $request->input('work_location'));
         });
 
@@ -177,12 +177,12 @@ class LeaveRequestReportController extends Controller
             $q->where('department', $request->input('department'));
         });
 
-        // Get employees with their employment, department, and work location info
+        // Get employees with their employment, department, and site info
         $query->with([
-            'employment:id,employee_id,department_id,position_id,work_location_id',
+            'employment:id,employee_id,department_id,position_id,site_id',
             'employment.department:id,name',
             'employment.position:id,title',
-            'employment.workLocation:id,name',
+            'employment.site:id,name',
         ]);
 
         $employees = $query->get();
@@ -441,10 +441,10 @@ class LeaveRequestReportController extends Controller
         // Find the employee by staff_id
         $employee = Employee::where('staff_id', $staffId)
             ->with([
-                'employment:id,employee_id,department_id,position_id,work_location_id',
+                'employment:id,employee_id,department_id,position_id,site_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
-                'employment.workLocation:id,name',
+                'employment.site:id,name',
             ])
             ->first();
 
@@ -476,7 +476,7 @@ class LeaveRequestReportController extends Controller
         $employee = $this->calculateEmployeeLeaveData($employee, $startDate, $endDate);
 
         // Add employment details to the employee for template
-        $employee->work_location = $employee->employment->workLocation->name ?? '';
+        $employee->work_location = $employee->employment->site->name ?? '';
         $employee->department = $employee->employment->departmentPosition->department ?? '';
 
         // Get leave type entitlements

@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Carbon\Carbon;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +12,7 @@ use OpenApi\Annotations as OA;
  *     schema="EmployeeParent",
  *     title="Employee Parent",
  *     description="Employee Parent model for Thai tax allowance calculations",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="name", type="string", example="สมใจ ใจดี"),
@@ -67,7 +67,9 @@ class EmployeeParent extends Model
     ];
 
     public const THAI_PARENT_ALLOWANCE_AGE_REQUIREMENT = 60;
+
     public const THAI_PARENT_ALLOWANCE_INCOME_LIMIT = 30000; // Annual income limit for allowance eligibility
+
     public const THAI_PARENT_ALLOWANCE_AMOUNT = 30000; // Allowance amount per eligible parent
 
     // Relationships
@@ -109,17 +111,17 @@ class EmployeeParent extends Model
 
         // Check age requirement (60+ years old)
         if ($this->age < self::THAI_PARENT_ALLOWANCE_AGE_REQUIREMENT) {
-            $eligibility['reasons'][] = "Parent must be at least " . self::THAI_PARENT_ALLOWANCE_AGE_REQUIREMENT . " years old";
+            $eligibility['reasons'][] = 'Parent must be at least '.self::THAI_PARENT_ALLOWANCE_AGE_REQUIREMENT.' years old';
         }
 
         // Check income requirement (annual income < 30,000 baht)
         if ($this->annual_income >= self::THAI_PARENT_ALLOWANCE_INCOME_LIMIT) {
-            $eligibility['reasons'][] = "Parent's annual income must be less than ฿" . number_format(self::THAI_PARENT_ALLOWANCE_INCOME_LIMIT);
+            $eligibility['reasons'][] = "Parent's annual income must be less than ฿".number_format(self::THAI_PARENT_ALLOWANCE_INCOME_LIMIT);
         }
 
         // Check if parent is marked as dependent
-        if (!$this->is_dependent) {
-            $eligibility['reasons'][] = "Parent must be marked as dependent";
+        if (! $this->is_dependent) {
+            $eligibility['reasons'][] = 'Parent must be marked as dependent';
         }
 
         // If all requirements are met
@@ -143,7 +145,7 @@ class EmployeeParent extends Model
         return [
             'name' => 'required|string|max:100',
             'date_of_birth' => 'required|date|before:today',
-            'relationship_type' => 'required|in:' . implode(',', array_keys(self::RELATIONSHIP_TYPES)),
+            'relationship_type' => 'required|in:'.implode(',', array_keys(self::RELATIONSHIP_TYPES)),
             'annual_income' => 'required|numeric|min:0|max:999999.99',
             'id_card_number' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',

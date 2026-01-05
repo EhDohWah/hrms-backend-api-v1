@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  *     description="Lookup model for various system reference data",
  *
  *     @OA\Property(property="id", type="integer", format="int64", description="Lookup ID"),
- *     @OA\Property(property="type", type="string", description="Type of lookup (gender, subsidiary, etc.)"),
+ *     @OA\Property(property="type", type="string", description="Type of lookup (gender, organization, etc.)"),
  *     @OA\Property(property="value", type="string", description="Display value"),
  *     @OA\Property(property="created_by", type="string", nullable=true, description="User who created the record"),
  *     @OA\Property(property="updated_by", type="string", nullable=true, description="User who last updated the record"),

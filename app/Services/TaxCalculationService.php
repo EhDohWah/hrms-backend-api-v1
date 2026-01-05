@@ -2,21 +2,23 @@
 
 namespace App\Services;
 
-use App\Models\TaxBracket;
-use App\Models\TaxSetting;
 use App\Models\Employee;
 use App\Models\Employment;
+use App\Models\TaxBracket;
 use App\Models\TaxCalculationLog;
+use App\Models\TaxSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class TaxCalculationService
 {
     protected $year;
+
     protected $taxSettings = null;  // Initialize as null for lazy loading
+
     protected $taxBrackets = null;  // Initialize as null for lazy loading
 
-    public function __construct(int $year = null)
+    public function __construct(?int $year = null)
     {
         $this->year = $year ?: date('Y');
         // REMOVED: $this->loadTaxConfiguration(); - Don't load data in constructor!
@@ -39,12 +41,12 @@ class TaxCalculationService
     {
         // Cache for 1 hour to reduce database queries
         $cacheKey = "tax_config_{$this->year}";
-        
-        $this->taxSettings = Cache::remember($cacheKey . '_settings', 3600, function() {
+
+        $this->taxSettings = Cache::remember($cacheKey.'_settings', 3600, function () {
             return TaxSetting::selected()->forYear($this->year)->get();
         });
-        
-        $this->taxBrackets = Cache::remember($cacheKey . '_brackets', 3600, function() {
+
+        $this->taxBrackets = Cache::remember($cacheKey.'_brackets', 3600, function () {
             return TaxBracket::getBracketsForYear($this->year);
         });
     }
@@ -56,33 +58,33 @@ class TaxCalculationService
     public function calculateEmployeeTax(float $grossSalary, array $employeeData = []): array
     {
         $this->ensureConfigurationLoaded();
-        
+
         // Handle mid-year employment: use actual working months for annual income calculation
         $monthsWorking = $employeeData['months_working_this_year'] ?? 12;
         $annualIncome = $grossSalary * $monthsWorking;
-        
+
         // Calculate employment deductions (50% of income, max 100k)
         $employmentDeductions = $this->calculateEmploymentDeductions($annualIncome);
-        
+
         // Calculate personal allowances with detailed breakdown based on selected settings
         $personalAllowancesBreakdown = $this->getDetailedPersonalAllowancesBreakdown($employeeData);
         $personalAllowances = $personalAllowancesBreakdown['total'];
-        
+
         // Calculate social security and provident fund
         $socialSecurity = $this->calculateSocialSecurityFromSalary($grossSalary);
         $providentFund = $this->calculateProvidentFundFromEmployeeData($annualIncome, $employeeData);
-        
+
         // Calculate taxable income
         $totalDeductions = $employmentDeductions + $personalAllowances + $socialSecurity['annual'] + $providentFund;
         $taxableIncome = max(0, $annualIncome - $totalDeductions);
-        
+
         // Calculate progressive income tax
         $annualTax = $this->calculateProgressiveIncomeTax($taxableIncome);
         $monthlyTax = $annualTax / 12;
-        
+
         // Calculate net salary
         $netSalary = $grossSalary - $monthlyTax - $socialSecurity['monthly'];
-        
+
         return [
             'gross_salary' => $grossSalary,
             'annual_gross_salary' => $annualIncome,
@@ -102,7 +104,7 @@ class TaxCalculationService
             'employee_data_used' => $employeeData,
             'calculation_method' => 'Thai Revenue Department sequence: (1) Employment deductions 50% max ฿100,000, (2) Personal allowances by individual settings, (3) Progressive tax 8-bracket 0%-35%, (4) Social Security 5% max ฿750/month',
             'tax_year' => $this->year,
-            'selected_settings_count' => $this->taxSettings->count()
+            'selected_settings_count' => $this->taxSettings->count(),
         ];
     }
 
@@ -112,29 +114,29 @@ class TaxCalculationService
     public function calculatePayroll(int $employeeId, float $grossSalary, array $additionalIncome = [], array $additionalDeductions = []): array
     {
         $this->ensureConfigurationLoaded(); // Load configuration only when needed
-        
+
         $employee = Employee::with(['employment', 'employeeChildren'])->findOrFail($employeeId);
-        
+
         // Calculate total income
         $totalIncome = $this->calculateTotalIncome($grossSalary, $additionalIncome);
-        
+
         // Calculate deductions
         $deductions = $this->calculateDeductions($employee, $grossSalary, $additionalDeductions);
-        
+
         // Calculate taxable income
         $taxableIncome = $this->calculateTaxableIncome($totalIncome, $deductions);
-        
+
         // Calculate income tax (annual, then convert to monthly)
         $annualIncomeTax = $this->calculateProgressiveIncomeTax($taxableIncome);
         $incomeTax = $annualIncomeTax / 12; // Monthly tax for net salary calculation
-        
+
         // Calculate social security contributions
         $socialSecurity = $this->calculateSocialSecurity($grossSalary);
-        
+
         // Calculate net salary (Monthly gross - monthly deductions that actually come out of paycheck)
         $monthlyProvidentFund = $deductions['provident_fund_deduction'] / 12; // Convert annual to monthly
         $netSalary = $grossSalary - $incomeTax - $socialSecurity['employee_contribution'] - $monthlyProvidentFund - $deductions['additional_deductions'];
-        
+
         $calculationData = [
             'gross_salary' => $grossSalary,
             'total_income' => $totalIncome,
@@ -147,7 +149,7 @@ class TaxCalculationService
             'calculation_date' => Carbon::now(),
             'tax_year' => $this->year,
             'is_thai_compliant' => true,
-            'compliance_notes' => 'Calculation follows Thai Revenue Department sequence: Employment deductions first, then personal allowances'
+            'compliance_notes' => 'Calculation follows Thai Revenue Department sequence: Employment deductions first, then personal allowances',
         ];
 
         // Log calculation for audit trail
@@ -169,11 +171,11 @@ class TaxCalculationService
     private function calculateTotalIncome(float $grossSalary, array $additionalIncome = []): float
     {
         $total = $grossSalary;
-        
+
         foreach ($additionalIncome as $income) {
             $total += floatval($income['amount'] ?? 0);
         }
-        
+
         return $total;
     }
 
@@ -185,13 +187,13 @@ class TaxCalculationService
     private function calculateDeductions(Employee $employee, float $grossSalary, array $additionalDeductions = []): array
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         // STEP 1: Employment Income Deductions (Applied FIRST per Thai law)
         $employmentDeductions = $this->calculateEmploymentDeductions($grossSalary);
-        
+
         // STEP 2: Personal Allowances (Applied AFTER employment deductions)
         $personalAllowances = $this->calculatePersonalAllowances($employee);
-        
+
         // Additional deductions
         $additionalDeductionsTotal = 0;
         foreach ($additionalDeductions as $deduction) {
@@ -205,23 +207,23 @@ class TaxCalculationService
             'employment_deduction_rate' => $employmentDeductions['rate'],
             'employment_deduction_calculated' => $employmentDeductions['calculated'],
             'employment_deduction_max' => $employmentDeductions['max_allowed'],
-            
+
             // Personal allowances (applied second)
             'personal_allowances' => $personalAllowances['total'],
             'personal_allowance' => $personalAllowances['personal'],
             'spouse_allowance' => $personalAllowances['spouse'],
             'child_allowance' => $personalAllowances['child'],
             'parent_allowance' => $personalAllowances['parent'],
-            
+
             // Other deductions
             'social_security_deduction' => 0, // Calculated separately
             'provident_fund_deduction' => $this->getProvidentFundDeduction($grossSalary),
             'additional_deductions' => $additionalDeductionsTotal,
-            
+
             // Total annual deductions for tax calculation (employment + personal allowances)
-            'total_deductions' => $employmentDeductions['total'] + $personalAllowances['total']
+            'total_deductions' => $employmentDeductions['total'] + $personalAllowances['total'],
         ];
-        
+
         return $deductions;
     }
 
@@ -232,8 +234,9 @@ class TaxCalculationService
     {
         $rate = $this->getSelectedSettingValue('EMPLOYMENT_DEDUCTION_RATE', 50);
         $max = $this->getSelectedSettingValue('EMPLOYMENT_DEDUCTION_MAX', 100000);
-        
+
         $calculated = $annualIncome * ($rate / 100);
+
         return min($calculated, $max);
     }
 
@@ -245,12 +248,12 @@ class TaxCalculationService
     {
         $breakdown = [];
         $totalAllowances = 0;
-        
+
         // Personal Allowance - always applied if selected
         $personalAmount = 0;
         $personalApplied = false;
         $personalReason = '';
-        
+
         if ($this->isSettingSelected('PERSONAL_ALLOWANCE')) {
             $personalAmount = $this->getSelectedSettingValue('PERSONAL_ALLOWANCE', 60000);
             $personalApplied = true;
@@ -259,7 +262,7 @@ class TaxCalculationService
         } else {
             $personalReason = 'Personal allowance setting not selected';
         }
-        
+
         $breakdown['personal_allowance'] = [
             'setting_key' => 'PERSONAL_ALLOWANCE',
             'setting_name' => 'Personal Allowance',
@@ -267,15 +270,15 @@ class TaxCalculationService
             'amount' => $personalAmount,
             'applied' => $personalApplied,
             'reason' => $personalReason,
-            'formatted_amount' => '฿' . number_format($personalAmount, 0)
+            'formatted_amount' => '฿'.number_format($personalAmount, 0),
         ];
-        
+
         // Spouse Allowance - only if married and setting selected
         $spouseAmount = 0;
         $spouseApplied = false;
         $spouseReason = '';
         $hasSpouse = $employeeData['has_spouse'] ?? false;
-        
+
         if ($this->isSettingSelected('SPOUSE_ALLOWANCE')) {
             if ($hasSpouse) {
                 $spouseAmount = $this->getSelectedSettingValue('SPOUSE_ALLOWANCE', 60000);
@@ -288,7 +291,7 @@ class TaxCalculationService
         } else {
             $spouseReason = 'Spouse allowance setting not selected';
         }
-        
+
         $breakdown['spouse_allowance'] = [
             'setting_key' => 'SPOUSE_ALLOWANCE',
             'setting_name' => 'Spouse Allowance',
@@ -297,15 +300,15 @@ class TaxCalculationService
             'applied' => $spouseApplied,
             'reason' => $spouseReason,
             'employee_has_spouse' => $hasSpouse,
-            'formatted_amount' => '฿' . number_format($spouseAmount, 0)
+            'formatted_amount' => '฿'.number_format($spouseAmount, 0),
         ];
-        
+
         // Child Allowance (First Child) - only if has children and setting selected
         $firstChildAmount = 0;
         $firstChildApplied = false;
         $firstChildReason = '';
         $children = $employeeData['children'] ?? 0;
-        
+
         if ($this->isSettingSelected('CHILD_ALLOWANCE')) {
             if ($children > 0) {
                 $firstChildAmount = $this->getSelectedSettingValue('CHILD_ALLOWANCE', 30000);
@@ -318,7 +321,7 @@ class TaxCalculationService
         } else {
             $firstChildReason = 'Child allowance setting not selected';
         }
-        
+
         $breakdown['child_allowance'] = [
             'setting_key' => 'CHILD_ALLOWANCE',
             'setting_name' => 'Child Allowance (First Child)',
@@ -327,14 +330,14 @@ class TaxCalculationService
             'applied' => $firstChildApplied,
             'reason' => $firstChildReason,
             'children_count' => $children,
-            'formatted_amount' => '฿' . number_format($firstChildAmount, 0)
+            'formatted_amount' => '฿'.number_format($firstChildAmount, 0),
         ];
-        
+
         // Subsequent Children Allowance - only if has more than 1 child and setting selected
         $subsequentChildrenAmount = 0;
         $subsequentChildrenApplied = false;
         $subsequentChildrenReason = '';
-        
+
         if ($this->isSettingSelected('CHILD_ALLOWANCE_SUBSEQUENT')) {
             if ($children > 1) {
                 $subsequentChildren = $children - 1;
@@ -348,7 +351,7 @@ class TaxCalculationService
         } else {
             $subsequentChildrenReason = 'Subsequent children allowance setting not selected';
         }
-        
+
         $breakdown['subsequent_children_allowance'] = [
             'setting_key' => 'CHILD_ALLOWANCE_SUBSEQUENT',
             'setting_name' => 'Subsequent Children Allowance',
@@ -357,15 +360,15 @@ class TaxCalculationService
             'applied' => $subsequentChildrenApplied,
             'reason' => $subsequentChildrenReason,
             'subsequent_children_count' => max(0, $children - 1),
-            'formatted_amount' => '฿' . number_format($subsequentChildrenAmount, 0)
+            'formatted_amount' => '฿'.number_format($subsequentChildrenAmount, 0),
         ];
-        
+
         // Parent Allowance - only if has eligible parents and setting selected
         $parentAmount = 0;
         $parentApplied = false;
         $parentReason = '';
         $eligibleParents = $employeeData['eligible_parents'] ?? 0;
-        
+
         if ($this->isSettingSelected('PARENT_ALLOWANCE')) {
             if ($eligibleParents > 0) {
                 $parentAmount = $this->getSelectedSettingValue('PARENT_ALLOWANCE', 30000) * $eligibleParents;
@@ -378,7 +381,7 @@ class TaxCalculationService
         } else {
             $parentReason = 'Parent allowance setting not selected';
         }
-        
+
         $breakdown['parent_allowance'] = [
             'setting_key' => 'PARENT_ALLOWANCE',
             'setting_name' => 'Parent Allowance',
@@ -387,33 +390,34 @@ class TaxCalculationService
             'applied' => $parentApplied,
             'reason' => $parentReason,
             'eligible_parents_count' => $eligibleParents,
-            'formatted_amount' => '฿' . number_format($parentAmount, 0)
+            'formatted_amount' => '฿'.number_format($parentAmount, 0),
         ];
-        
+
         // Add summary
         $breakdown['summary'] = [
             'total_allowances' => $totalAllowances,
-            'formatted_total' => '฿' . number_format($totalAllowances, 0),
-            'selected_settings_applied' => array_filter($breakdown, function($item) {
+            'formatted_total' => '฿'.number_format($totalAllowances, 0),
+            'selected_settings_applied' => array_filter($breakdown, function ($item) {
                 return isset($item['applied']) && $item['applied'] === true;
             }),
-            'selected_settings_not_applicable' => array_filter($breakdown, function($item) {
-                return isset($item['is_selected']) && $item['is_selected'] === true && 
+            'selected_settings_not_applicable' => array_filter($breakdown, function ($item) {
+                return isset($item['is_selected']) && $item['is_selected'] === true &&
                        isset($item['applied']) && $item['applied'] === false;
-            })
+            }),
         ];
-        
+
         $breakdown['total'] = $totalAllowances;
-        
+
         return $breakdown;
     }
-    
+
     /**
      * Calculate personal allowances from employee data using only selected settings (simplified version)
      */
     private function calculatePersonalAllowancesFromData(array $employeeData): float
     {
         $breakdown = $this->getDetailedPersonalAllowancesBreakdown($employeeData);
+
         return $breakdown['total'];
     }
 
@@ -422,16 +426,16 @@ class TaxCalculationService
      */
     private function calculateSocialSecurityFromSalary(float $monthlySalary): array
     {
-        if (!$this->isSettingSelected('SSF_RATE')) {
+        if (! $this->isSettingSelected('SSF_RATE')) {
             return ['monthly' => 0, 'annual' => 0];
         }
-        
+
         $rate = $this->getSelectedSettingValue('SSF_RATE', 5);
         $monthlyContribution = min($monthlySalary * ($rate / 100), 750); // Max 750 per month
-        
+
         return [
             'monthly' => $monthlyContribution,
-            'annual' => $monthlyContribution * 12
+            'annual' => $monthlyContribution * 12,
         ];
     }
 
@@ -444,36 +448,37 @@ class TaxCalculationService
     private function calculateProvidentFundFromEmployeeData(float $annualIncome, array $employeeData): float
     {
         $employeeStatus = $employeeData['employee_status'] ?? 'Expats';
-        
+
         // Determine which fund to use based on employee status
         $rateKey = '';
         $maxKey = '';
-        
+
         switch ($employeeStatus) {
             case 'Local ID': // Thai Citizens
                 $rateKey = 'PVD_FUND_RATE';
                 $maxKey = 'PVD_FUND_MAX';
                 break;
-                
+
             case 'Local non ID': // Non-Thai Citizens
                 $rateKey = 'SAVING_FUND_RATE';
                 $maxKey = 'SAVING_FUND_MAX';
                 break;
-                
+
             case 'Expats': // Expatriates
             default:
                 return 0; // No provident fund for expats
         }
-        
+
         // Check if the respective fund is selected
-        if (!$this->isSettingSelected($rateKey)) {
+        if (! $this->isSettingSelected($rateKey)) {
             return 0;
         }
-        
+
         $rate = $this->getSelectedSettingValue($rateKey, 7.5);
         $maxAmount = $this->getSelectedSettingValue($maxKey, 500000);
-        
+
         $calculatedAmount = $annualIncome * ($rate / 100);
+
         return min($calculatedAmount, $maxAmount);
     }
 
@@ -491,6 +496,7 @@ class TaxCalculationService
     private function getSelectedSettingValue(string $settingKey, float $defaultValue = 0): float
     {
         $setting = $this->taxSettings->where('setting_key', $settingKey)->where('is_selected', true)->first();
+
         return $setting ? (float) $setting->setting_value : $defaultValue;
     }
 
@@ -516,19 +522,19 @@ class TaxCalculationService
     private function calculateAllowancesWithEmployeeData($allowances, array $employeeData): array
     {
         $breakdown = [];
-        
+
         foreach ($allowances as $allowance) {
             $amount = 0;
             $reason = '';
             $applied = false;
-            
+
             switch ($allowance->setting_key) {
                 case TaxSetting::KEY_PERSONAL_ALLOWANCE:
                     $amount = $allowance->setting_value;
                     $reason = 'Applied to all employees';
                     $applied = true;
                     break;
-                    
+
                 case TaxSetting::KEY_SPOUSE_ALLOWANCE:
                     if ($employeeData['has_spouse'] ?? false) {
                         $amount = $allowance->setting_value;
@@ -539,20 +545,20 @@ class TaxCalculationService
                         $applied = false;
                     }
                     break;
-                    
+
                 case TaxSetting::KEY_CHILD_ALLOWANCE:
                     $children = $employeeData['children'] ?? 0;
                     if ($children > 0) {
                         // First child gets regular allowance
                         $amount = $allowance->setting_value;
-                        $reason = "First child allowance";
+                        $reason = 'First child allowance';
                         $applied = true;
                     } else {
                         $reason = 'No children - not applied';
                         $applied = false;
                     }
                     break;
-                    
+
                 case TaxSetting::KEY_CHILD_ALLOWANCE_SUBSEQUENT:
                     $children = $employeeData['children'] ?? 0;
                     if ($children > 1) {
@@ -566,7 +572,7 @@ class TaxCalculationService
                         $applied = false;
                     }
                     break;
-                    
+
                 case TaxSetting::KEY_PARENT_ALLOWANCE:
                     $eligibleParents = $employeeData['eligible_parents'] ?? 0;
                     if ($eligibleParents > 0) {
@@ -578,24 +584,24 @@ class TaxCalculationService
                         $applied = false;
                     }
                     break;
-                    
+
                 default:
                     $amount = $allowance->setting_value;
                     $reason = 'Standard allowance';
                     $applied = true;
                     break;
             }
-            
+
             $breakdown[] = [
                 'setting_key' => $allowance->setting_key,
                 'name' => $allowance->description ?? $allowance->setting_key,
                 'amount' => $amount,
                 'reason' => $reason,
                 'applied' => $applied,
-                'setting_value' => $allowance->setting_value
+                'setting_value' => $allowance->setting_value,
             ];
         }
-        
+
         return $breakdown;
     }
 
@@ -605,13 +611,13 @@ class TaxCalculationService
     private function calculateDeductionsWithEmployeeData($deductions, float $grossSalary, array $employeeData): array
     {
         $breakdown = [];
-        
+
         foreach ($deductions as $deduction) {
             $amount = 0;
             $reason = '';
             $type = 'annual'; // or 'monthly'
             $applied = false;
-            
+
             switch ($deduction->setting_key) {
                 case TaxSetting::KEY_EMPLOYMENT_DEDUCTION_RATE:
                     // Employment deduction: 50% of annual income, max ฿100,000
@@ -619,10 +625,10 @@ class TaxCalculationService
                     $calculated = $annualIncome * ($deduction->setting_value / 100);
                     $maxDeduction = TaxSetting::getValue(TaxSetting::KEY_EMPLOYMENT_DEDUCTION_MAX, $this->year) ?? 100000;
                     $amount = min($calculated, $maxDeduction);
-                    $reason = "{$deduction->setting_value}% of annual income (max ฿" . number_format($maxDeduction) . ")";
+                    $reason = "{$deduction->setting_value}% of annual income (max ฿".number_format($maxDeduction).')';
                     $applied = true;
                     break;
-                    
+
                 case TaxSetting::KEY_SSF_RATE:
                     // Social Security Fund: 5% of monthly salary, max ฿750/month
                     $monthlyContribution = min($grossSalary * ($deduction->setting_value / 100), 750);
@@ -631,7 +637,7 @@ class TaxCalculationService
                     $type = 'annual';
                     $applied = true;
                     break;
-                    
+
                 case TaxSetting::KEY_PF_MIN_RATE:
                 case TaxSetting::KEY_PF_MAX_RATE:
                     // Provident Fund contribution from employee data
@@ -645,14 +651,14 @@ class TaxCalculationService
                         $applied = false;
                     }
                     break;
-                    
+
                 default:
                     $amount = $deduction->setting_value;
                     $reason = 'Standard deduction';
                     $applied = true;
                     break;
             }
-            
+
             $breakdown[] = [
                 'setting_key' => $deduction->setting_key,
                 'name' => $deduction->description ?? $deduction->setting_key,
@@ -660,14 +666,12 @@ class TaxCalculationService
                 'reason' => $reason,
                 'type' => $type,
                 'applied' => $applied,
-                'setting_value' => $deduction->setting_value
+                'setting_value' => $deduction->setting_value,
             ];
         }
-        
+
         return $breakdown;
     }
-
-
 
     /**
      * Calculate personal allowances (Applied AFTER employment deductions)
@@ -675,16 +679,16 @@ class TaxCalculationService
     private function calculatePersonalAllowances(Employee $employee): array
     {
         $this->ensureConfigurationLoaded();
-        
+
         $allowances = [
             'personal' => $this->getPersonalAllowance(),
             'spouse' => $this->getSpouseAllowance($employee),
             'child' => $this->getChildAllowance($employee),
             'parent' => $this->getParentAllowance($employee),
         ];
-        
+
         $allowances['total'] = array_sum($allowances);
-        
+
         return $allowances;
     }
 
@@ -694,6 +698,7 @@ class TaxCalculationService
     private function getPersonalAllowance(): float
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
+
         return $this->getSetting(TaxSetting::KEY_PERSONAL_ALLOWANCE, TaxSetting::THAI_2025_PERSONAL_ALLOWANCE);
     }
 
@@ -703,13 +708,13 @@ class TaxCalculationService
     private function getSpouseAllowance(Employee $employee): float
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         $isMarried = in_array(strtolower($employee->marital_status ?? ''), ['married', 'แต่งงาน']);
-        
-        if (!$isMarried) {
+
+        if (! $isMarried) {
             return 0;
         }
-        
+
         // In Thai law, spouse allowance is only available if spouse has no income
         // For now, we'll assume eligibility - this could be enhanced with spouse income tracking
         return $this->getSetting(TaxSetting::KEY_SPOUSE_ALLOWANCE, TaxSetting::THAI_2025_SPOUSE_ALLOWANCE);
@@ -723,17 +728,17 @@ class TaxCalculationService
     private function getChildAllowance(Employee $employee): float
     {
         $this->ensureConfigurationLoaded();
-        
+
         $children = $employee->employeeChildren;
         $totalAllowance = 0;
-        
+
         if ($children->isEmpty()) {
             return 0;
         }
-        
+
         // Sort children by birth date (oldest first)
         $sortedChildren = $children->sortBy('date_of_birth');
-        
+
         foreach ($sortedChildren as $index => $child) {
             if ($index === 0) {
                 // First child gets standard allowance
@@ -747,13 +752,13 @@ class TaxCalculationService
                     $totalAllowance += $this->getSetting(TaxSetting::KEY_CHILD_ALLOWANCE, TaxSetting::THAI_2025_CHILD_ALLOWANCE);
                 }
             }
-            
+
             // Thai law typically limits child allowances to 3 children
             if ($index >= 2) {
                 break;
             }
         }
-        
+
         return $totalAllowance;
     }
 
@@ -765,14 +770,12 @@ class TaxCalculationService
     private function getParentAllowance(Employee $employee): float
     {
         $this->ensureConfigurationLoaded();
-        
-        $eligibleParents = $employee->eligible_parents_count;   
+
+        $eligibleParents = $employee->eligible_parents_count;
         $allowancePerParent = $this->getSetting(TaxSetting::KEY_PARENT_ALLOWANCE, TaxSetting::THAI_2025_PARENT_ALLOWANCE);
-        
+
         return $eligibleParents * $allowancePerParent;
     }
-
-
 
     /**
      * Calculate personal expense deduction
@@ -780,13 +783,13 @@ class TaxCalculationService
     private function getPersonalExpenseDeduction(float $grossSalary): float
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         $rate = $this->getSetting(TaxSetting::KEY_PERSONAL_EXPENSE_RATE, 0.40); // 40%
         $maxAmount = $this->getSetting(TaxSetting::KEY_PERSONAL_EXPENSE_MAX, 60000);
-        
+
         $yearlyGross = $grossSalary * 12;
         $calculated = $yearlyGross * ($rate / 100);
-        
+
         return min($calculated, $maxAmount);
     }
 
@@ -798,10 +801,10 @@ class TaxCalculationService
     {
         // Use fixed 7.5% rate as per your verification calculation
         $pfRate = 7.5; // Fixed rate to match ฿27,000 for ฿30,000 salary
-        
+
         $yearlyGross = $grossSalary * 12;
         $contribution = $yearlyGross * ($pfRate / 100);
-        
+
         return $contribution;
     }
 
@@ -814,12 +817,12 @@ class TaxCalculationService
         $yearlyIncome = $totalIncome * 12;
         $employmentAndPersonalDeductions = $deductions['total_deductions']; // Employment + Personal allowances
         $providentFundDeduction = $deductions['provident_fund_deduction']; // Annual PF
-        
+
         // Calculate Social Security annual deduction (also tax deductible)
         $socialSecurityAnnual = $this->calculateSocialSecurity($totalIncome)['annual_employee_contribution'];
-        
+
         $totalTaxDeductions = $employmentAndPersonalDeductions + $providentFundDeduction + $socialSecurityAnnual;
-        
+
         return max(0, $yearlyIncome - $totalTaxDeductions);
     }
 
@@ -830,7 +833,7 @@ class TaxCalculationService
     public function calculateProgressiveIncomeTax(float $taxableIncome): float
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         if ($taxableIncome <= 0 || $this->taxBrackets->isEmpty()) {
             return 0;
         }
@@ -854,7 +857,7 @@ class TaxCalculationService
 
             // Calculate income in this bracket
             $incomeInBracket = min($taxableIncome - $processedIncome, $bracketMax - $bracketMin);
-            
+
             // Only process if there's income in this bracket
             if ($incomeInBracket > 0 && $taxableIncome > $bracketMin) {
                 $tax = $incomeInBracket * ($taxRate / 100);
@@ -877,20 +880,20 @@ class TaxCalculationService
     private function calculateSocialSecurity(float $grossSalary): array
     {
         $this->ensureConfigurationLoaded();
-        
+
         // Thai Social Security Fund settings (fixed by law)
         $ssfRate = $this->getSetting(TaxSetting::KEY_SSF_RATE, TaxSetting::THAI_2025_SSF_RATE);
         $minSalary = $this->getSetting(TaxSetting::KEY_SSF_MIN_SALARY, TaxSetting::THAI_2025_SSF_MIN_SALARY);
         $maxSalary = $this->getSetting(TaxSetting::KEY_SSF_MAX_SALARY, TaxSetting::THAI_2025_SSF_MAX_SALARY);
         $maxMonthly = $this->getSetting(TaxSetting::KEY_SSF_MAX_MONTHLY, TaxSetting::THAI_2025_SSF_MAX_MONTHLY);
-        
+
         // Apply salary range limits
         $effectiveSalary = max($minSalary, min($grossSalary, $maxSalary));
-        
+
         // Calculate contribution (5% of effective salary, capped at ฿750)
         $employeeContribution = min($effectiveSalary * ($ssfRate / 100), $maxMonthly);
         $employerContribution = $employeeContribution; // Employer matches employee contribution
-        
+
         return [
             'gross_salary' => $grossSalary,
             'effective_salary' => $effectiveSalary,
@@ -914,7 +917,7 @@ class TaxCalculationService
     private function getTaxBreakdown(float $taxableIncome): array
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         $breakdown = [];
         $processedIncome = 0;
 
@@ -934,7 +937,7 @@ class TaxCalculationService
 
             // Calculate income in this bracket
             $incomeInBracket = min($taxableIncome - $processedIncome, $bracketMax - $bracketMin);
-            
+
             if ($incomeInBracket > 0 && $taxableIncome > $bracketMin) {
                 $taxInBracket = $incomeInBracket * ($taxRate / 100);
 
@@ -942,15 +945,15 @@ class TaxCalculationService
 
                 $breakdown[] = [
                     'bracket_order' => $bracket->bracket_order,
-                    'income_range' => '฿' . number_format($bracket->min_income) . ' - ฿' . $maxIncomeDisplay,
-                    'tax_rate' => $taxRate . '%',
+                    'income_range' => '฿'.number_format($bracket->min_income).' - ฿'.$maxIncomeDisplay,
+                    'tax_rate' => $taxRate.'%',
                     'taxable_income_in_bracket' => $incomeInBracket,
-                    'formatted_taxable_income' => '฿' . number_format($incomeInBracket),
+                    'formatted_taxable_income' => '฿'.number_format($incomeInBracket),
                     'tax_amount' => $taxInBracket,
-                    'formatted_tax_amount' => '฿' . number_format($taxInBracket, 2),
+                    'formatted_tax_amount' => '฿'.number_format($taxInBracket, 2),
                     'monthly_tax' => $taxInBracket / 12,
-                    'formatted_monthly_tax' => '฿' . number_format($taxInBracket / 12, 2),
-                    'calculation_method' => '฿' . number_format($incomeInBracket) . ' × ' . $taxRate . '% = ฿' . number_format($taxInBracket, 2)
+                    'formatted_monthly_tax' => '฿'.number_format($taxInBracket / 12, 2),
+                    'calculation_method' => '฿'.number_format($incomeInBracket).' × '.$taxRate.'% = ฿'.number_format($taxInBracket, 2),
                 ];
 
                 $processedIncome += $incomeInBracket;
@@ -960,20 +963,20 @@ class TaxCalculationService
         // Add summary
         $totalTax = array_sum(array_column($breakdown, 'tax_amount'));
         $totalMonthlyTax = $totalTax / 12;
-        
+
         return [
             'brackets' => $breakdown,
             'summary' => [
                 'total_taxable_income' => $taxableIncome,
-                'formatted_taxable_income' => '฿' . number_format($taxableIncome),
+                'formatted_taxable_income' => '฿'.number_format($taxableIncome),
                 'total_annual_tax' => $totalTax,
-                'formatted_annual_tax' => '฿' . number_format($totalTax, 2),
+                'formatted_annual_tax' => '฿'.number_format($totalTax, 2),
                 'total_monthly_tax' => $totalMonthlyTax,
-                'formatted_monthly_tax' => '฿' . number_format($totalMonthlyTax, 2),
+                'formatted_monthly_tax' => '฿'.number_format($totalMonthlyTax, 2),
                 'effective_tax_rate' => $taxableIncome > 0 ? ($totalTax / $taxableIncome) * 100 : 0,
-                'formatted_effective_rate' => $taxableIncome > 0 ? number_format(($totalTax / $taxableIncome) * 100, 2) . '%' : '0%',
-                'brackets_used' => count($breakdown)
-            ]
+                'formatted_effective_rate' => $taxableIncome > 0 ? number_format(($totalTax / $taxableIncome) * 100, 2).'%' : '0%',
+                'brackets_used' => count($breakdown),
+            ],
         ];
     }
 
@@ -992,19 +995,19 @@ class TaxCalculationService
     public function calculateAnnualTax(int $employeeId, array $monthlyPayrolls): array
     {
         $this->ensureConfigurationLoaded(); // Ensure configuration is loaded
-        
+
         $totalIncome = array_sum(array_column($monthlyPayrolls, 'total_income'));
         $totalDeductions = array_sum(array_column($monthlyPayrolls, 'total_deductions'));
         $totalTaxPaid = array_sum(array_column($monthlyPayrolls, 'income_tax'));
-        
+
         $employee = Employee::with(['employment', 'employeeChildren'])->findOrFail($employeeId);
         $deductions = $this->calculateDeductions($employee, 0, []);
-        
+
         $taxableIncome = max(0, $totalIncome - $deductions['total_deductions']);
         $actualTaxLiability = $this->calculateProgressiveIncomeTax($taxableIncome);
-        
+
         $taxDifference = $actualTaxLiability - $totalTaxPaid;
-        
+
         return [
             'total_income' => $totalIncome,
             'total_deductions' => $deductions['total_deductions'],
@@ -1013,7 +1016,7 @@ class TaxCalculationService
             'tax_paid' => $totalTaxPaid,
             'tax_difference' => $taxDifference,
             'refund_due' => $taxDifference < 0 ? abs($taxDifference) : 0,
-            'additional_tax_due' => $taxDifference > 0 ? $taxDifference : 0
+            'additional_tax_due' => $taxDifference > 0 ? $taxDifference : 0,
         ];
     }
 
@@ -1024,48 +1027,48 @@ class TaxCalculationService
     {
         $errors = [];
 
-        if (!isset($inputs['employee_id']) || !is_numeric($inputs['employee_id'])) {
+        if (! isset($inputs['employee_id']) || ! is_numeric($inputs['employee_id'])) {
             $errors[] = 'Valid employee ID is required';
         }
 
-        if (!isset($inputs['gross_salary']) || !is_numeric($inputs['gross_salary']) || $inputs['gross_salary'] < 0) {
+        if (! isset($inputs['gross_salary']) || ! is_numeric($inputs['gross_salary']) || $inputs['gross_salary'] < 0) {
             $errors[] = 'Valid gross salary amount is required';
         }
 
-        if (isset($inputs['additional_income']) && !is_array($inputs['additional_income'])) {
+        if (isset($inputs['additional_income']) && ! is_array($inputs['additional_income'])) {
             $errors[] = 'Additional income must be an array';
         }
 
-        if (isset($inputs['additional_deductions']) && !is_array($inputs['additional_deductions'])) {
+        if (isset($inputs['additional_deductions']) && ! is_array($inputs['additional_deductions'])) {
             $errors[] = 'Additional deductions must be an array';
         }
 
         return $errors;
     }
-    
+
     /**
      * Validate calculation against Thai Revenue Department compliance
      */
     public function validateThaiCompliance(array $calculationData): array
     {
         $this->ensureConfigurationLoaded();
-        
+
         $errors = [];
         $warnings = [];
         $isCompliant = true;
-        
+
         // Check if employment deductions were applied first
-        if (!isset($calculationData['deductions']['employment_deductions'])) {
+        if (! isset($calculationData['deductions']['employment_deductions'])) {
             $errors[] = 'Employment deductions must be calculated first per Thai Revenue Department sequence';
             $isCompliant = false;
         }
-        
+
         // Check if personal allowances were applied second
-        if (!isset($calculationData['deductions']['personal_allowances'])) {
+        if (! isset($calculationData['deductions']['personal_allowances'])) {
             $errors[] = 'Personal allowances must be calculated after employment deductions';
             $isCompliant = false;
         }
-        
+
         // Validate Social Security calculation
         if (isset($calculationData['social_security'])) {
             $ssf = $calculationData['social_security'];
@@ -1073,29 +1076,29 @@ class TaxCalculationService
                 $errors[] = 'Social Security Fund rate must be exactly 5% for Thai compliance';
                 $isCompliant = false;
             }
-            
+
             if ($ssf['max_monthly_contribution'] != 750) {
                 $errors[] = 'Maximum monthly SSF contribution must be ฿750 for Thai compliance';
                 $isCompliant = false;
             }
         }
-        
+
         // Check tax brackets compliance
         $bracketValidation = TaxBracket::validateThaiCompliance($this->year);
-        if (!$bracketValidation['is_compliant']) {
+        if (! $bracketValidation['is_compliant']) {
             $errors = array_merge($errors, $bracketValidation['errors']);
             $isCompliant = false;
         }
         $warnings = array_merge($warnings, $bracketValidation['warnings'] ?? []);
-        
+
         // Check tax settings compliance
         $settingsValidation = TaxSetting::validateThaiCompliance($this->year);
-        if (!$settingsValidation['is_compliant']) {
+        if (! $settingsValidation['is_compliant']) {
             $errors = array_merge($errors, $settingsValidation['errors']);
             $isCompliant = false;
         }
         $warnings = array_merge($warnings, $settingsValidation['warnings'] ?? []);
-        
+
         return [
             'is_compliant' => $isCompliant,
             'errors' => $errors,
@@ -1112,25 +1115,25 @@ class TaxCalculationService
     public function generateThaiTaxReport(int $employeeId, array $calculationData): array
     {
         $this->ensureConfigurationLoaded();
-        
+
         $employee = Employee::with(['employeeChildren'])->findOrFail($employeeId);
         $compliance = $this->validateThaiCompliance($calculationData);
-        
+
         return [
             'report_title' => 'Thai Personal Income Tax Calculation Report',
             'report_date' => now()->format('d/m/Y H:i:s'),
             'tax_year' => $this->year,
             'employee_info' => [
                 'staff_id' => $employee->staff_id,
-                'name' => $employee->first_name_en . ' ' . $employee->last_name_en,
+                'name' => $employee->first_name_en.' '.$employee->last_name_en,
                 'tax_number' => $employee->tax_number,
             ],
-            
+
             // Thai Revenue Department Sequence
             'calculation_sequence' => [
                 'step_1' => [
                     'title' => 'Employment Income Deductions (Applied First)',
-                    'rate' => $calculationData['deductions']['employment_deduction_rate'] . '%',
+                    'rate' => $calculationData['deductions']['employment_deduction_rate'].'%',
                     'calculated' => number_format($calculationData['deductions']['employment_deduction_calculated'], 2),
                     'maximum_allowed' => number_format($calculationData['deductions']['employment_deduction_max'], 2),
                     'actual_deduction' => number_format($calculationData['deductions']['employment_deductions'], 2),
@@ -1158,11 +1161,11 @@ class TaxCalculationService
                     'title' => 'Social Security Contributions (Separate from Income Tax)',
                     'employee_contribution' => number_format($calculationData['social_security']['employee_contribution'], 2),
                     'employer_contribution' => number_format($calculationData['social_security']['employer_contribution'], 2),
-                    'rate' => $calculationData['social_security']['ssf_rate'] . '%',
+                    'rate' => $calculationData['social_security']['ssf_rate'].'%',
                     'law_reference' => 'Social Security Act',
                 ],
             ],
-            
+
             'summary' => [
                 'gross_salary_monthly' => number_format($calculationData['gross_salary'], 2),
                 'gross_salary_annual' => number_format($calculationData['total_income'], 2),
@@ -1175,9 +1178,9 @@ class TaxCalculationService
                 'social_security_employee' => number_format($calculationData['social_security']['employee_contribution'], 2),
                 'net_salary' => number_format($calculationData['net_salary'], 2),
             ],
-            
+
             'compliance_status' => $compliance,
-            
+
             'thai_law_references' => [
                 'Revenue Code Section 42(1)' => 'Employment income deductions - 50% of gross income, maximum ฿100,000',
                 'Revenue Code Section 42(2)' => 'Personal allowance - ฿60,000 per taxpayer',
@@ -1188,7 +1191,7 @@ class TaxCalculationService
                 'Revenue Code Section 48' => 'Progressive tax rates - 0%, 5%, 10%, 15%, 20%, 25%, 30%, 35%',
                 'Social Security Act' => 'SSF contributions - 5% rate, ฿750 monthly maximum',
             ],
-            
+
             'generated_by' => 'HRMS Thai Tax Compliance System',
             'system_version' => '1.0 - Thai Revenue Department Compliant',
         ];
@@ -1197,7 +1200,7 @@ class TaxCalculationService
     /**
      * Log calculation for audit trail
      */
-    private function logCalculation(int $employeeId, array $calculationData, array $inputParameters, string $calculatedBy = null): void
+    private function logCalculation(int $employeeId, array $calculationData, array $inputParameters, ?string $calculatedBy = null): void
     {
         try {
             TaxCalculationLog::logPayrollCalculation(
@@ -1221,9 +1224,9 @@ class TaxCalculationService
     public function clearCache(): void
     {
         $cacheKey = "tax_config_{$this->year}";
-        Cache::forget($cacheKey . '_settings');
-        Cache::forget($cacheKey . '_brackets');
-        
+        Cache::forget($cacheKey.'_settings');
+        Cache::forget($cacheKey.'_brackets');
+
         // Reset local properties to force reload
         $this->taxSettings = null;
         $this->taxBrackets = null;

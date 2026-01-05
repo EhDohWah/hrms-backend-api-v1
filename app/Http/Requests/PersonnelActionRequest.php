@@ -32,7 +32,7 @@ class PersonnelActionRequest extends FormRequest
             'current_employee_no' => 'nullable|string|max:255',
             'current_department_id' => 'nullable|exists:departments,id',
             'current_position_id' => 'nullable|exists:positions,id',
-            'current_work_location_id' => 'nullable|exists:work_locations,id',
+            'current_work_location_id' => 'nullable|exists:sites,id',
             'current_salary' => 'nullable|numeric|min:0',
             'current_employment_date' => 'nullable|date',
 
@@ -51,7 +51,7 @@ class PersonnelActionRequest extends FormRequest
                     }
                 },
             ],
-            'new_work_location_id' => 'nullable|exists:work_locations,id',
+            'new_work_location_id' => 'nullable|exists:sites,id',
             'new_salary' => 'nullable|numeric|min:0',
             'new_work_schedule' => 'nullable|string|max:255',
             'new_report_to' => 'nullable|string|max:255',
@@ -84,7 +84,7 @@ class PersonnelActionRequest extends FormRequest
             'transfer_type.in' => 'Selected transfer type is invalid.',
             'new_department_id.exists' => 'Selected department does not exist.',
             'new_position_id.exists' => 'Selected position does not exist or does not belong to the selected department.',
-            'new_work_location_id.exists' => 'Selected work location does not exist.',
+            'new_work_location_id.exists' => 'Selected site does not exist.',
             'new_salary.numeric' => 'New salary must be a valid number.',
             'new_salary.min' => 'New salary must be greater than or equal to 0.',
             'current_salary.numeric' => 'Current salary must be a valid number.',

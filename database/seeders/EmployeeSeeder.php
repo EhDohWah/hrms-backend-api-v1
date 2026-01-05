@@ -25,7 +25,7 @@ class EmployeeSeeder extends Seeder
         for ($i = 0; $i < 100; $i++) {
             Employee::create([
                 'staff_id' => str_pad($i + 1, 4, '0', STR_PAD_LEFT),
-                'subsidiary' => $faker->randomElement(['SMRU', 'BHF']),
+                'organization' => $faker->randomElement(['SMRU', 'BHF']),
 
                 // Name fields (both English and Thai)
                 'initial_en' => $faker->randomElement(['Mr.', 'Ms.', 'Dr.']),

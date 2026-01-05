@@ -108,7 +108,7 @@ class PersonnelActionService
         $updateData = array_filter([
             'position_id' => $action->new_position_id,
             'department_id' => $action->new_department_id,
-            'position_salary' => $action->new_salary,
+            'pass_probation_salary' => $action->new_salary,
             'work_location_id' => $action->new_work_location_id,
             'updated_by' => Auth::user()?->name ?? 'Personnel Action',
         ], fn ($value) => $value !== null);
@@ -124,7 +124,7 @@ class PersonnelActionService
         $updateData = array_filter([
             'position_id' => $action->new_position_id,
             'department_id' => $action->new_department_id,
-            'position_salary' => $action->new_salary,
+            'pass_probation_salary' => $action->new_salary,
             'updated_by' => Auth::user()?->name ?? 'Personnel Action',
         ], fn ($value) => $value !== null);
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeChild;
+use App\Models\User;
+use App\Notifications\EmployeeActionNotification;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -104,6 +106,16 @@ class EmployeeChildrenController extends Controller
         ]);
 
         $employeeChild = EmployeeChild::create($validatedData);
+
+        // Send notification to all users about employee update
+        $performedBy = auth()->user();
+        if ($performedBy && $employeeChild->employee) {
+            $employee = $employeeChild->employee;
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -252,6 +264,16 @@ class EmployeeChildrenController extends Controller
 
         $employeeChild->update($validatedData);
 
+        // Send notification to all users about employee update
+        $performedBy = auth()->user();
+        if ($performedBy && $employeeChild->employee) {
+            $employee = $employeeChild->employee;
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => $employeeChild,
@@ -306,7 +328,19 @@ class EmployeeChildrenController extends Controller
     public function destroy($id)
     {
         $employeeChild = EmployeeChild::findOrFail($id);
+        // Store employee reference before deletion
+        $employee = $employeeChild->employee;
+        $performedBy = auth()->user();
+
         $employeeChild->delete();
+
+        // Send notification to all users about employee update
+        if ($performedBy && $employee) {
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
 
         return response()->json([
             'status' => 'success',

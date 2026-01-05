@@ -7,6 +7,8 @@ use App\Http\Requests\StoreEmployeeEducationRequest;
 use App\Http\Requests\UpdateEmployeeEducationRequest;
 use App\Http\Resources\EmployeeEducationResource;
 use App\Models\EmployeeEducation;
+use App\Models\User;
+use App\Notifications\EmployeeActionNotification;
 use OpenApi\Annotations as OA;
 
 /**
@@ -90,6 +92,16 @@ class EmployeeEducationController extends Controller
     public function store(StoreEmployeeEducationRequest $request)
     {
         $employeeEducation = EmployeeEducation::create($request->validated());
+
+        // Send notification to all users about employee update
+        $performedBy = auth()->user();
+        if ($performedBy && $employeeEducation->employee) {
+            $employee = $employeeEducation->employee;
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
 
         return new EmployeeEducationResource($employeeEducation);
     }
@@ -194,6 +206,16 @@ class EmployeeEducationController extends Controller
     {
         $employeeEducation->update($request->validated());
 
+        // Send notification to all users about employee update
+        $performedBy = auth()->user();
+        if ($performedBy && $employeeEducation->employee) {
+            $employee = $employeeEducation->employee;
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
+
         return new EmployeeEducationResource($employeeEducation);
     }
 
@@ -228,7 +250,19 @@ class EmployeeEducationController extends Controller
      */
     public function destroy(EmployeeEducation $employeeEducation)
     {
+        // Store employee reference before deletion
+        $employee = $employeeEducation->employee;
+        $performedBy = auth()->user();
+
         $employeeEducation->delete();
+
+        // Send notification to all users about employee update
+        if ($performedBy && $employee) {
+            $users = User::all();
+            foreach ($users as $user) {
+                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
+            }
+        }
 
         return response()->json(null, 204);
     }

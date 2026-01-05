@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmploymentRequest;
+use App\Http\Requests\UpdateProbationStatusRequest;
+use App\Http\Resources\EmployeeFundingAllocationResource;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
-use App\Models\OrgFundedAllocation;
-use App\Models\PositionSlot;
+use App\Models\Grant;
+use App\Models\GrantItem;
+use App\Services\EmployeeFundingAllocationService;
 use App\Traits\HasCacheManagement;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -27,6 +30,10 @@ class EmploymentController extends Controller
 {
     use HasCacheManagement;
 
+    public function __construct(
+        private readonly EmployeeFundingAllocationService $employeeFundingAllocationService
+    ) {}
+
     /**
      * Override model name for cache management
      */
@@ -41,7 +48,7 @@ class EmploymentController extends Controller
      * @OA\Get(
      *     path="/employments",
      *     summary="Get employment records with advanced filtering and pagination",
-     *     description="Returns a paginated list of employment records with filtering by subsidiary, employment type, and work location. Supports sorting by staff ID, employee name, work location, and start date.",
+     *     description="Returns a paginated list of employment records with filtering by organization, employment type, and work location. Supports sorting by staff ID, employee name, work location, and start date.",
      *     operationId="getEmployments",
      *     tags={"Employments"},
      *     security={{"bearerAuth":{}}},
@@ -65,9 +72,9 @@ class EmploymentController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filter_subsidiary",
+     *         name="filter_organization",
      *         in="query",
-     *         description="Filter employments by employee subsidiary (comma-separated for multiple values)",
+     *         description="Filter employments by employee organization (comma-separated for multiple values)",
      *         required=false,
      *
      *         @OA\Schema(type="string", example="SMRU,BHF")
@@ -83,12 +90,12 @@ class EmploymentController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filter_work_location",
+     *         name="filter_site",
      *         in="query",
-     *         description="Filter by work location name (comma-separated for multiple values)",
+     *         description="Filter by site name (comma-separated for multiple values)",
      *         required=false,
      *
-     *         @OA\Schema(type="string", example="Main Office,Branch Office")
+     *         @OA\Schema(type="string", example="Headquarters,Branch Office")
      *     ),
      *
      *     @OA\Parameter(
@@ -106,7 +113,7 @@ class EmploymentController extends Controller
      *         description="Sort by field",
      *         required=false,
      *
-     *         @OA\Schema(type="string", enum={"staff_id", "employee_name", "work_location", "start_date"}, example="start_date")
+     *         @OA\Schema(type="string", enum={"staff_id", "employee_name", "site", "start_date"}, example="start_date")
      *     ),
      *
      *     @OA\Parameter(
@@ -151,9 +158,9 @@ class EmploymentController extends Controller
      *                 @OA\Property(
      *                     property="applied_filters",
      *                     type="object",
-     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"}),
+     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"}),
      *                     @OA\Property(property="employment_type", type="array", @OA\Items(type="string"), example={"Full-Time"}),
-     *                     @OA\Property(property="work_location", type="array", @OA\Items(type="string"), example={"Main Office"}),
+     *                     @OA\Property(property="site", type="array", @OA\Items(type="string"), example={"Headquarters"}),
      *                     @OA\Property(property="department", type="array", @OA\Items(type="string"), example={"Administration"})
      *                 )
      *             )
@@ -193,11 +200,11 @@ class EmploymentController extends Controller
             $validated = $request->validate([
                 'page' => 'integer|min:1',
                 'per_page' => 'integer|min:1|max:100',
-                'filter_subsidiary' => 'string|nullable',
+                'filter_organization' => 'string|nullable',
                 'filter_employment_type' => 'string|nullable',
-                'filter_work_location' => 'string|nullable',
+                'filter_site' => 'string|nullable',
                 'filter_department' => 'string|nullable',
-                'sort_by' => 'string|nullable|in:staff_id,employee_name,work_location,start_date',
+                'sort_by' => 'string|nullable|in:staff_id,employee_name,site,start_date',
                 'sort_order' => 'string|nullable|in:asc,desc',
                 'include_allocations' => 'boolean', // New parameter for conditional loading
             ]);
@@ -214,45 +221,44 @@ class EmploymentController extends Controller
                 'employee_id',
                 'employment_type',
                 'pay_method',
-                'probation_pass_date',
+                'pass_probation_date',
                 'start_date',
                 'end_date',
                 'department_id',
                 'position_id',
-                'work_location_id',
-                'position_salary',
+                'site_id',
+                'pass_probation_salary',
                 'probation_salary',
                 'health_welfare',
-                'health_welfare_percentage',
                 'pvd',
-                'pvd_percentage',
                 'saving_fund',
-                'saving_fund_percentage',
+                'status',
+                // NOTE: probation_status removed - use probation_records table
                 'created_at',
                 'updated_at',
                 'created_by',
                 'updated_by',
             ])->with([
-                'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
+                'employee:id,staff_id,organization,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title,department_id',
-                'workLocation:id,name',
+                'site:id,name',
             ]);
 
             // Conditionally load allocations if requested
             if ($validated['include_allocations'] ?? false) {
                 $query->with([
-                    'employeeFundingAllocations:id,employment_id,allocation_type,fte,allocated_amount',
-                    'employeeFundingAllocations.positionSlot:id,grant_id,position_title',
-                    'employeeFundingAllocations.positionSlot.grant:id,name',
+                    'employeeFundingAllocations:id,employment_id,allocation_type,fte,allocated_amount,grant_item_id',
+                    'employeeFundingAllocations.grantItem:id,grant_id,grant_position',
+                    'employeeFundingAllocations.grantItem.grant:id,name',
                 ]);
             }
 
-            // Apply subsidiary filter (through employee relationship)
-            if (! empty($validated['filter_subsidiary'])) {
-                $subsidiaries = array_map('trim', explode(',', $validated['filter_subsidiary']));
+            // Apply organization filter (through employee relationship)
+            if (! empty($validated['filter_organization'])) {
+                $subsidiaries = array_map('trim', explode(',', $validated['filter_organization']));
                 $query->whereHas('employee', function ($q) use ($subsidiaries) {
-                    $q->whereIn('subsidiary', $subsidiaries);
+                    $q->whereIn('organization', $subsidiaries);
                 });
             }
 
@@ -262,13 +268,13 @@ class EmploymentController extends Controller
                 $query->whereIn('employment_type', $employmentTypes);
             }
 
-            // Apply work location filter (by work location name or ID)
-            if (! empty($validated['filter_work_location'])) {
-                $workLocations = array_map('trim', explode(',', $validated['filter_work_location']));
-                $query->where(function ($q) use ($workLocations) {
-                    $q->whereHas('workLocation', function ($wq) use ($workLocations) {
-                        $wq->whereIn('name', $workLocations);
-                    })->orWhereIn('work_location_id', array_filter($workLocations, 'is_numeric'));
+            // Apply site filter (by site name or ID)
+            if (! empty($validated['filter_site'])) {
+                $sites = array_map('trim', explode(',', $validated['filter_site']));
+                $query->where(function ($q) use ($sites) {
+                    $q->whereHas('site', function ($sq) use ($sites) {
+                        $sq->whereIn('name', $sites);
+                    })->orWhereIn('site_id', array_filter($sites, 'is_numeric'));
                 });
             }
 
@@ -298,13 +304,13 @@ class EmploymentController extends Controller
                     ])->orderBy('sort_employee_name', $sortOrder);
                     break;
 
-                case 'work_location':
+                case 'site':
                     $query->addSelect([
-                        'sort_location_name' => DB::table('work_locations')
+                        'sort_site_name' => DB::table('sites')
                             ->select('name')
-                            ->whereColumn('work_locations.id', 'employments.work_location_id')
+                            ->whereColumn('sites.id', 'employments.site_id')
                             ->limit(1),
-                    ])->orderBy('sort_location_name', $sortOrder);
+                    ])->orderBy('sort_site_name', $sortOrder);
                     break;
 
                 case 'start_date':
@@ -315,9 +321,9 @@ class EmploymentController extends Controller
 
             // Use the new caching system instead of manual cache management
             $filters = array_filter([
-                'filter_subsidiary' => $validated['filter_subsidiary'] ?? null,
+                'filter_organization' => $validated['filter_organization'] ?? null,
                 'filter_employment_type' => $validated['filter_employment_type'] ?? null,
-                'filter_work_location' => $validated['filter_work_location'] ?? null,
+                'filter_site' => $validated['filter_site'] ?? null,
                 'filter_department' => $validated['filter_department'] ?? null,
                 'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
@@ -329,23 +335,38 @@ class EmploymentController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (! empty($validated['filter_subsidiary'])) {
-                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            if (! empty($validated['filter_organization'])) {
+                $appliedFilters['organization'] = explode(',', $validated['filter_organization']);
             }
             if (! empty($validated['filter_employment_type'])) {
                 $appliedFilters['employment_type'] = explode(',', $validated['filter_employment_type']);
             }
-            if (! empty($validated['filter_work_location'])) {
-                $appliedFilters['work_location'] = explode(',', $validated['filter_work_location']);
+            if (! empty($validated['filter_site'])) {
+                $appliedFilters['site'] = explode(',', $validated['filter_site']);
             }
             if (! empty($validated['filter_department'])) {
                 $appliedFilters['department'] = explode(',', $validated['filter_department']);
             }
 
+            // Fetch global benefit percentages from benefit_settings table
+            $globalBenefits = [
+                'health_welfare_percentage' => \App\Models\BenefitSetting::getActiveSetting('health_welfare_percentage'),
+                'pvd_percentage' => \App\Models\BenefitSetting::getActiveSetting('pvd_percentage'),
+                'saving_fund_percentage' => \App\Models\BenefitSetting::getActiveSetting('saving_fund_percentage'),
+            ];
+
+            // Add global benefit percentages to each employment item
+            $items = $employments->items();
+            foreach ($items as $item) {
+                $item->health_welfare_percentage = $globalBenefits['health_welfare_percentage'];
+                $item->pvd_percentage = $globalBenefits['pvd_percentage'];
+                $item->saving_fund_percentage = $globalBenefits['saving_fund_percentage'];
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employments retrieved successfully',
-                'data' => $employments->items(),
+                'data' => $items,
                 'pagination' => [
                     'current_page' => $employments->currentPage(),
                     'per_page' => $employments->perPage(),
@@ -421,7 +442,7 @@ class EmploymentController extends Controller
      *                     type="object",
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="organization", type="string", example="SMRU"),
      *                     @OA\Property(property="first_name_en", type="string", example="John"),
      *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
      *                     @OA\Property(property="full_name", type="string", example="John Doe")
@@ -497,7 +518,7 @@ class EmploymentController extends Controller
 
             // First, find the employee by staff ID
             $employee = Employee::where('staff_id', $staffId)
-                ->select('id', 'staff_id', 'subsidiary', 'first_name_en', 'last_name_en')
+                ->select('id', 'staff_id', 'organization', 'first_name_en', 'last_name_en')
                 ->first();
 
             if (! $employee) {
@@ -509,10 +530,10 @@ class EmploymentController extends Controller
 
             // Build employment query with relationships - EXACTLY like index() method
             $employmentsQuery = Employment::with([
-                'employee:id,staff_id,subsidiary,first_name_en,last_name_en',
+                'employee:id,staff_id,organization,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title,department_id',
-                'workLocation:id,name',
+                'site:id,name',
                 'employeeFundingAllocations',
             ])->where('employee_id', $employee->id);
 
@@ -546,7 +567,7 @@ class EmploymentController extends Controller
                 'employee_summary' => [
                     'staff_id' => $employee->staff_id,
                     'full_name' => $employeeData['full_name'],
-                    'subsidiary' => $employee->subsidiary,
+                    'organization' => $employee->organization,
                 ],
                 'statistics' => [
                     'total_employments' => $totalEmployments,
@@ -576,26 +597,26 @@ class EmploymentController extends Controller
      *     operationId="createEmploymentWithFundingAllocations",
      *     tags={"Employments"},
      *     summary="Create employment record with funding allocations",
-     *     description="Creates an employment record and associated funding allocations. For org_funded allocations, creates org_funded_allocation records first, then creates employee_funding_allocations for both grant and org_funded types.",
+     *     description="Creates an employment record and associated funding allocations using grant items for all funding sources.",
      *     security={{"bearerAuth":{}}},
      *
      *     @OA\RequestBody(
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"employee_id", "employment_type", "start_date", "position_salary", "allocations"},
+     *             required={"employee_id", "employment_type", "start_date", "pass_probation_salary", "allocations"},
      *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
      *             @OA\Property(property="employment_type", type="string", description="Type of employment"),
      *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
-     *             @OA\Property(property="probation_pass_date", type="string", format="date", description="Probation pass date", nullable=true),
+     *             @OA\Property(property="pass_probation_date", type="string", format="date", description="First day employee receives pass_probation_salary - typically 3 months after start_date", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date"),
      *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
      *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
      *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
      *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
-     *             @OA\Property(property="work_location_id", type="integer", description="Work location ID", nullable=true),
-     *             @OA\Property(property="position_salary", type="number", format="float", description="Position salary"),
+     *             @OA\Property(property="site_id", type="integer", description="Site ID", nullable=true),
+     *             @OA\Property(property="pass_probation_salary", type="number", format="float", description="Pass probation salary"),
      *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
      *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", default=false),
      *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
@@ -603,6 +624,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
      *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", default=false),
      *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
+     *             @OA\Property(property="status", type="boolean", default=true, description="Employment status: true=Active, false=Inactive", nullable=true),
      *             @OA\Property(
      *                 property="allocations",
      *                 type="array",
@@ -612,10 +634,8 @@ class EmploymentController extends Controller
      *                     type="object",
      *                     required={"allocation_type", "fte"},
      *
-     *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
-     *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
-     *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (for org_funded allocations)", nullable=true),
+     *                     @OA\Property(property="allocation_type", type="string", enum={"grant"}, description="Type of allocation"),
+     *                     @OA\Property(property="grant_item_id", type="integer", description="Grant item ID (required for allocations)", nullable=false),
      *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *                 )
@@ -634,8 +654,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="message", type="string", example="Employment and funding allocations created successfully"),
      *             @OA\Property(property="data", type="object",
      *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
-     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
-     *                 @OA\Property(property="org_funded_allocations", type="array", @OA\Items(ref="#/components/schemas/OrgFundedAllocation"))
+     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation"))
      *             ),
      *             @OA\Property(property="summary", type="object",
      *                 @OA\Property(property="employment_created", type="boolean"),
@@ -659,6 +678,12 @@ class EmploymentController extends Controller
             // ============================================================================
             $validated = $request->validated();
             $currentUser = Auth::user()->name ?? 'system';
+
+            // Auto-calculate pass_probation_date if not provided
+            // Default is 3 months after start_date
+            if (! isset($validated['pass_probation_date']) && isset($validated['start_date'])) {
+                $validated['pass_probation_date'] = Carbon::parse($validated['start_date'])->addMonths(3)->format('Y-m-d');
+            }
 
             // ============================================================================
             // SECTION 2: BUSINESS LOGIC VALIDATION
@@ -696,7 +721,6 @@ class EmploymentController extends Controller
             // ============================================================================
             DB::beginTransaction();
 
-            $createdOrgFundedAllocations = [];
             $createdFundingAllocations = [];
             $errors = [];
             $warnings = [];
@@ -714,32 +738,43 @@ class EmploymentController extends Controller
 
             $employment = Employment::create($employmentData);
 
+            // Create initial probation record
+            // NOTE: Probation status is now tracked in probation_records table, not employments.probation_status
+            if ($employment->pass_probation_date) {
+                app(\App\Services\ProbationRecordService::class)->createInitialRecord($employment);
+            }
+
+            // Determine effective start date for salary calculations
+            $startDate = Carbon::parse($validated['start_date']);
+
             // ============================================================================
             // SECTION 5: PROCESS ALLOCATIONS
             // ============================================================================
             foreach ($validated['allocations'] as $index => $allocationData) {
                 try {
-                    $allocationType = $allocationData['allocation_type'];
+                    $allocationType = 'grant';
 
                     // ============================================================================
                     // SECTION 5A: HANDLE GRANT ALLOCATIONS
                     // ============================================================================
                     if ($allocationType === 'grant') {
-                        // Validate position slot exists
-                        $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                        if (! $positionSlot) {
+                        // Validate grant item exists
+                        if (empty($allocationData['grant_item_id'])) {
+                            $errors[] = "Allocation #{$index}: grant_item_id is required for grant allocations";
 
-                            $errors[] = "Allocation #{$index}: Position slot not found";
+                            continue;
+                        }
+
+                        $grantItem = GrantItem::find($allocationData['grant_item_id']);
+                        if (! $grantItem) {
+                            $errors[] = "Allocation #{$index}: Grant item not found";
 
                             continue;
                         }
 
                         // Check grant capacity constraints using date-based logic
-                        $grantItem = $positionSlot->grantItem;
-                        if ($grantItem && $grantItem->grant_position_number > 0) {
-                            $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
-                                $query->where('grant_item_id', $grantItem->id);
-                            })
+                        if ($grantItem->grant_position_number > 0) {
+                            $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
                                 ->where('allocation_type', 'grant')
                                 ->where('start_date', '<=', $today)
                                 ->where(function ($query) use ($today) {
@@ -755,61 +790,27 @@ class EmploymentController extends Controller
                             }
                         }
 
+                        $fteDecimal = $allocationData['fte'] / 100;
+                        $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
+                            $employment,
+                            $fteDecimal,
+                            $startDate
+                        );
+
                         // Create grant funding allocation
-                        $fundingAllocation = EmployeeFundingAllocation::create([
+                        $fundingAllocation = EmployeeFundingAllocation::create(array_merge([
                             'employee_id' => $employment->employee_id,
                             'employment_id' => $employment->id,
-                            'position_slot_id' => $allocationData['position_slot_id'],
-                            'org_funded_id' => null,
-                            'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
+                            'grant_item_id' => $allocationData['grant_item_id'],
+                            'grant_id' => null,
+                            'fte' => $fteDecimal,
                             'allocation_type' => 'grant',
-                            'allocated_amount' => $allocationData['allocated_amount'] ?? null, // Added allocated_amount
+                            'status' => 'active',
                             'start_date' => $validated['start_date'],
                             'end_date' => $validated['end_date'] ?? null,
                             'created_by' => $currentUser,
                             'updated_by' => $currentUser,
-                        ]);
-
-                        $createdFundingAllocations[] = $fundingAllocation;
-                    }
-
-                    // ============================================================================
-                    // SECTION 5B: HANDLE ORG FUNDED ALLOCATIONS
-                    // ============================================================================
-                    elseif ($allocationType === 'org_funded') {
-                        // For org_funded, we need grant_id to create the OrgFundedAllocation
-                        if (empty($allocationData['grant_id'])) {
-                            $errors[] = "Allocation #{$index}: grant_id is required for org_funded allocations";
-
-                            continue;
-                        }
-
-                        // First, create the org_funded_allocation record
-                        $orgFundedAllocation = OrgFundedAllocation::create([
-                            'grant_id' => $allocationData['grant_id'],
-                            'department_id' => $employment->department_id,
-                            'position_id' => $employment->position_id,
-                            'description' => 'Auto-created for employment ID: '.$employment->id,
-                            'created_by' => $currentUser,
-                            'updated_by' => $currentUser,
-                        ]);
-
-                        $createdOrgFundedAllocations[] = $orgFundedAllocation;
-
-                        // Then, create the employee funding allocation referencing the org_funded_allocation
-                        $fundingAllocation = EmployeeFundingAllocation::create([
-                            'employee_id' => $employment->employee_id,
-                            'employment_id' => $employment->id,
-                            'position_slot_id' => null,
-                            'org_funded_id' => $orgFundedAllocation->id, // Use the ID from the created org_funded_allocation
-                            'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
-                            'allocation_type' => 'org_funded',
-                            'allocated_amount' => $allocationData['allocated_amount'] ?? null, // Added allocated_amount
-                            'start_date' => $validated['start_date'],
-                            'end_date' => $validated['end_date'] ?? null,
-                            'created_by' => $currentUser,
-                            'updated_by' => $currentUser,
-                        ]);
+                        ], $salaryContext));
 
                         $createdFundingAllocations[] = $fundingAllocation;
                     }
@@ -847,23 +848,16 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title,department_id',
-                'workLocation:id,name',
+                'site:id,name',
             ])->find($employment->id);
 
             $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date',
-                'positionSlot.grantItem.grant:id,name,code',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,title,department_id',
+                'employment:id,employment_type,start_date,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'grantItem.grant:id,name,code',
             ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
-
-            $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
-                'grant:id,name,code',
-                'department:id,name',
-                'position:id,title,department_id',
-            ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
 
             // ============================================================================
             // SECTION 8: RETURN SUCCESS RESPONSE
@@ -874,11 +868,9 @@ class EmploymentController extends Controller
                 'data' => [
                     'employment' => $employmentWithRelations,
                     'funding_allocations' => $fundingAllocationsWithRelations,
-                    'org_funded_allocations' => $orgFundedAllocationsWithRelations,
                 ],
                 'summary' => [
                     'employment_created' => true,
-                    'org_funded_created' => count($createdOrgFundedAllocations),
                     'funding_allocations_created' => count($createdFundingAllocations),
                 ],
             ];
@@ -898,6 +890,437 @@ class EmploymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employment and funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/employments/upload",
+     *     summary="Upload employment data from Excel file",
+     *     description="Upload an Excel file containing employment records. The import is processed asynchronously in the background with chunk processing and duplicate checking. Existing employments will be updated, new ones will be created.",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *
+     *             @OA\Schema(
+     *
+     *                 @OA\Property(
+     *                     property="file",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Excel file to upload (xlsx, xls, csv)"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=202,
+     *         description="Employment data import started successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Employment import started successfully. You will receive a notification when the import is complete."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="import_id", type="string", example="employment_import_abc123"),
+     *                 @OA\Property(property="status", type="string", example="processing")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Import failed",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to start employment import"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function upload(Request $request)
+    {
+        try {
+            // Validate file
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('file');
+
+        try {
+            // Generate unique import ID
+            $importId = 'employment_import_'.uniqid();
+
+            // Get authenticated user
+            $userId = auth()->id();
+
+            // Queue the import
+            $import = new \App\Imports\EmploymentsImport($importId, $userId);
+            $import->queue($file);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employment import started successfully. You will receive a notification when the import is complete.',
+                'data' => [
+                    'import_id' => $importId,
+                    'status' => 'processing',
+                ],
+            ], 202);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start employment import',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Download employment import template
+     *
+     * @OA\Get(
+     *     path="/downloads/employment-template",
+     *     summary="Download employment import template",
+     *     description="Downloads an Excel template for bulk employment import with validation rules and sample data",
+     *     operationId="downloadEmploymentTemplate",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Template file downloaded successfully",
+     *
+     *         @OA\MediaType(
+     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=500, description="Failed to generate template")
+     * )
+     */
+    public function downloadEmploymentTemplate()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Employment Import');
+
+            // ============================================
+            // SECTION 1: DEFINE HEADERS
+            // ============================================
+            $headers = [
+                'staff_id',
+                'employment_type',
+                'start_date',
+                'pass_probation_salary',
+                'pass_probation_date',
+                'probation_salary',
+                'end_date',
+                'pay_method',
+                'site',
+                'department_id',
+                'section_department_id',
+                'position_id',
+                'health_welfare',
+                'health_welfare_percentage',
+                'pvd',
+                'pvd_percentage',
+                'saving_fund',
+                'saving_fund_percentage',
+                'status',
+            ];
+
+            // ============================================
+            // SECTION 2: DEFINE VALIDATION RULES
+            // ============================================
+            $validationRules = [
+                'String - NOT NULL - Employee staff ID (must exist in system)',
+                'String - NOT NULL - Values: Full-time, Part-time, Contract, Temporary',
+                'Date (YYYY-MM-DD) - NOT NULL - Employment start date',
+                'Decimal(10,2) - NOT NULL - Regular salary after probation',
+                'Date (YYYY-MM-DD) - NULLABLE - Probation end date (default: 3 months after start)',
+                'Decimal(10,2) - NULLABLE - Salary during probation period',
+                'Date (YYYY-MM-DD) - NULLABLE - Employment end date (for contracts)',
+                'String - NULLABLE - Values: Monthly, Weekly, Daily, Hourly, Bank Transfer, Cash, Cheque',
+                'String - NULLABLE - Site/work location name (must exist in sites table)',
+                'Integer - NULLABLE - Department ID (must exist in departments table)',
+                'Integer - NULLABLE - Section department ID (must exist in section_departments table)',
+                'Integer - NULLABLE - Position ID (must exist in positions table)',
+                'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0)',
+                'Decimal(5,2) - NULLABLE - Health welfare percentage (0-100)',
+                'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0)',
+                'Decimal(5,2) - NULLABLE - PVD percentage (0-100, typically 7.5)',
+                'Boolean (1/0) - NULLABLE - Saving fund enabled (default: 0)',
+                'Decimal(5,2) - NULLABLE - Saving fund percentage (0-100, typically 7.5)',
+                'Boolean (1/0) - NULLABLE - Employment status: 1=Active, 0=Inactive (default: 1)',
+            ];
+
+            // ============================================
+            // SECTION 3: WRITE HEADERS (Row 1)
+            // ============================================
+            $col = 1;
+            foreach ($headers as $header) {
+                $cell = $sheet->getCellByColumnAndRow($col, 1);
+                $cell->setValue($header);
+
+                // Style header
+                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('4472C4');
+                $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
+                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $col++;
+            }
+
+            // ============================================
+            // SECTION 4: WRITE VALIDATION RULES (Row 2)
+            // ============================================
+            $col = 1;
+            foreach ($validationRules as $rule) {
+                $cell = $sheet->getCellByColumnAndRow($col, 2);
+                $cell->setValue($rule);
+
+                // Style validation row
+                $cell->getStyle()->getFont()->setItalic(true)->setSize(9);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('E7E6E6');
+                $cell->getStyle()->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+
+                $col++;
+            }
+
+            // Set row height for validation rules
+            $sheet->getRowDimension(2)->setRowHeight(60);
+
+            // ============================================
+            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)
+            // ============================================
+            $sampleData = [
+                [
+                    'EMP001', 'Full-time', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
+                    'Monthly', 'Headquarters', '1', '', '5', '1', '5.00', '1', '7.50', '0', '', '1',
+                ],
+                [
+                    'EMP002', 'Part-time', '2025-02-01', '30000.00', '2025-05-01', '', '',
+                    'Hourly', 'Branch Office', '2', '3', '8', '0', '', '1', '7.50', '1', '7.50', '1',
+                ],
+                [
+                    'EMP003', 'Contract', '2025-03-01', '60000.00', '', '', '2025-12-31',
+                    'Bank Transfer', 'Remote', '', '', '10', '1', '5.00', '0', '', '0', '', '1',
+                ],
+            ];
+
+            $row = 3;
+            foreach ($sampleData as $data) {
+                $col = 1;
+                foreach ($data as $value) {
+                    $sheet->getCellByColumnAndRow($col, $row)->setValue($value);
+                    $col++;
+                }
+                $row++;
+            }
+
+            // ============================================
+            // SECTION 6: ADD DATA VALIDATION
+            // ============================================
+
+            // Employment Type dropdown (Column B, rows 6+)
+            $employmentTypeValidation = $sheet->getCell('B6')->getDataValidation();
+            $employmentTypeValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $employmentTypeValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+            $employmentTypeValidation->setAllowBlank(false);
+            $employmentTypeValidation->setShowInputMessage(true);
+            $employmentTypeValidation->setShowErrorMessage(true);
+            $employmentTypeValidation->setFormula1('"Full-time,Part-time,Contract,Temporary"');
+            $employmentTypeValidation->setPromptTitle('Employment Type');
+            $employmentTypeValidation->setPrompt('Select employment type');
+            $employmentTypeValidation->setErrorTitle('Invalid Employment Type');
+            $employmentTypeValidation->setError('Please select a valid employment type');
+
+            // Apply to rows 6-1000
+            for ($i = 6; $i <= 1000; $i++) {
+                $sheet->getCell("B{$i}")->setDataValidation(clone $employmentTypeValidation);
+            }
+
+            // Pay Method dropdown (Column H, rows 6+)
+            $payMethodValidation = $sheet->getCell('H6')->getDataValidation();
+            $payMethodValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $payMethodValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+            $payMethodValidation->setAllowBlank(true);
+            $payMethodValidation->setShowInputMessage(true);
+            $payMethodValidation->setFormula1('"Monthly,Weekly,Daily,Hourly,Bank Transfer,Cash,Cheque"');
+            $payMethodValidation->setPromptTitle('Pay Method');
+            $payMethodValidation->setPrompt('Select pay method');
+
+            for ($i = 6; $i <= 1000; $i++) {
+                $sheet->getCell("H{$i}")->setDataValidation(clone $payMethodValidation);
+            }
+
+            // Boolean fields (1/0) validation
+            $booleanColumns = ['M', 'O', 'Q', 'S']; // health_welfare, pvd, saving_fund, status
+            foreach ($booleanColumns as $column) {
+                $booleanValidation = $sheet->getCell("{$column}6")->getDataValidation();
+                $booleanValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $booleanValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $booleanValidation->setAllowBlank(true);
+                $booleanValidation->setFormula1('"1,0"');
+                $booleanValidation->setPromptTitle('Boolean Value');
+                $booleanValidation->setPrompt('Enter 1 for Yes/True or 0 for No/False');
+
+                for ($i = 6; $i <= 1000; $i++) {
+                    $sheet->getCell("{$column}{$i}")->setDataValidation(clone $booleanValidation);
+                }
+            }
+
+            // ============================================
+            // SECTION 7: SET COLUMN WIDTHS
+            // ============================================
+            $columnWidths = [
+                'A' => 15,  // staff_id
+                'B' => 15,  // employment_type
+                'C' => 15,  // start_date
+                'D' => 20,  // pass_probation_salary
+                'E' => 20,  // pass_probation_date
+                'F' => 18,  // probation_salary
+                'G' => 15,  // end_date
+                'H' => 18,  // pay_method
+                'I' => 20,  // site
+                'J' => 15,  // department_id
+                'K' => 22,  // section_department_id
+                'L' => 15,  // position_id
+                'M' => 18,  // health_welfare
+                'N' => 25,  // health_welfare_percentage
+                'O' => 12,  // pvd
+                'P' => 18,  // pvd_percentage
+                'Q' => 15,  // saving_fund
+                'R' => 25,  // saving_fund_percentage
+                'S' => 12,  // status
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            // ============================================
+            // SECTION 8: ADD INSTRUCTIONS SHEET
+            // ============================================
+            $instructionsSheet = $spreadsheet->createSheet();
+            $instructionsSheet->setTitle('Instructions');
+
+            $instructions = [
+                ['Employment Import Template - Instructions'],
+                [''],
+                ['IMPORTANT NOTES:'],
+                ['1. Required Fields (Cannot be empty):'],
+                ['   - staff_id: Employee staff ID (must exist in system)'],
+                ['   - employment_type: Full-time, Part-time, Contract, or Temporary'],
+                ['   - start_date: Employment start date (YYYY-MM-DD format)'],
+                ['   - pass_probation_salary: Regular salary after probation'],
+                [''],
+                ['2. Date Format: All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)'],
+                [''],
+                ['3. Boolean Fields: Use 1 for Yes/True, 0 for No/False'],
+                ['   - health_welfare, pvd, saving_fund, status'],
+                [''],
+                ['4. Foreign Keys (Must exist in database):'],
+                ['   - staff_id: Must match an existing employee'],
+                ['   - site: Must match an existing site name'],
+                ['   - department_id: Must be a valid department ID'],
+                ['   - section_department_id: Must be a valid section department ID'],
+                ['   - position_id: Must be a valid position ID'],
+                [''],
+                ['5. Salary Fields: Enter as decimal numbers (e.g., 50000.00)'],
+                [''],
+                ['6. Probation Date: If not provided, defaults to 3 months after start_date'],
+                [''],
+                ['7. Benefit Percentages:'],
+                ['   - Typical PVD: 7.5%'],
+                ['   - Typical Saving Fund: 7.5%'],
+                ['   - Health Welfare: Varies (typically 5%)'],
+                [''],
+                ['8. Status: 1 = Active, 0 = Inactive (default is 1)'],
+                [''],
+                ['9. This import creates/updates EMPLOYMENT records only'],
+                ['   Funding allocations must be added separately via the UI'],
+                [''],
+                ['10. Existing employments (matched by staff_id) will be UPDATED'],
+                ['    New staff_ids will create NEW employment records'],
+            ];
+
+            $row = 1;
+            foreach ($instructions as $instruction) {
+                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
+                if ($row === 1) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
+                } elseif ($row === 3 || strpos($instruction[0], ':') !== false) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
+                }
+                $row++;
+            }
+
+            $instructionsSheet->getColumnDimension('A')->setWidth(80);
+
+            // Set active sheet back to main sheet
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // ============================================
+            // SECTION 9: GENERATE AND DOWNLOAD FILE
+            // ============================================
+            $filename = 'employment_import_template_'.date('Y-m-d_His').'.xlsx';
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'employment_template_');
+            $writer->save($tempFile);
+
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Cache-Control' => 'max-age=0',
+            ];
+
+            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate employment template',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -944,6 +1367,11 @@ class EmploymentController extends Controller
         try {
             $employment = Employment::findOrFail($id);
 
+            // Add global benefit percentages from benefit_settings table
+            $employment->health_welfare_percentage = \App\Models\BenefitSetting::getActiveSetting('health_welfare_percentage');
+            $employment->pvd_percentage = \App\Models\BenefitSetting::getActiveSetting('pvd_percentage');
+            $employment->saving_fund_percentage = \App\Models\BenefitSetting::getActiveSetting('saving_fund_percentage');
+
             return response()->json([
                 'success' => true,
                 'data' => $employment,
@@ -954,6 +1382,443 @@ class EmploymentController extends Controller
                 'success' => false,
                 'message' => 'Employment not found',
             ], 404);
+        }
+    }
+
+    /**
+     * Manually complete probation for an employment record.
+     *
+     * @OA\Post(
+     *     path="/employments/{id}/complete-probation",
+     *     summary="Complete probation period manually",
+     *     description="Manually triggers probation completion, updating funding allocations from probation_salary to pass_probation_salary",
+     *     operationId="completeProbation",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID of employment record",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Probation completed successfully",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Probation completed successfully and funding allocations updated"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
+     *                 @OA\Property(
+     *                     property="updated_allocations",
+     *                     type="array",
+     *
+     *                     @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=404, description="Employment not found"),
+     *     @OA\Response(response=400, description="Invalid request or probation already completed"),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Unauthorized - Only HR or Admin can complete probation")
+     * )
+     */
+    public function completeProbation($id)
+    {
+        try {
+            // Find the employment record
+            $employment = Employment::with('employeeFundingAllocations')->findOrFail($id);
+
+            // Use ProbationTransitionService to handle the completion
+            $probationService = app(\App\Services\ProbationTransitionService::class);
+            $result = $probationService->handleProbationCompletion($employment, now());
+
+            if (! $result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Probation completed successfully and funding allocations updated',
+                'data' => [
+                    'employment' => $result['employment'],
+                    'updated_allocations' => $result['employment']->employeeFundingAllocations,
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employment not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete probation',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update probation status (pass/fail) for an employment record.
+     *
+     * @OA\Post(
+     *     path="/employments/{id}/probation-status",
+     *     summary="Update probation status for an employment",
+     *     description="Allows HR to manually mark probation as passed or failed with optional reason/notes.",
+     *     operationId="updateProbationStatus",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer"),
+     *         description="Employment ID"
+     *     ),
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"action"},
+     *
+     *             @OA\Property(property="action", type="string", enum={"passed","failed"}),
+     *             @OA\Property(property="decision_date", type="string", format="date", nullable=true),
+     *             @OA\Property(property="reason", type="string", nullable=true),
+     *             @OA\Property(property="notes", type="string", nullable=true)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=200, description="Probation status updated successfully"),
+     *     @OA\Response(response=404, description="Employment not found"),
+     *     @OA\Response(response=422, description="Unable to update probation status"),
+     *     @OA\Response(response=500, description="Server error updating probation status")
+     * )
+     */
+    public function updateProbationStatus(UpdateProbationStatusRequest $request, int $id)
+    {
+        try {
+            $employment = Employment::with(['activeAllocations', 'probationHistory'])->findOrFail($id);
+
+            $validated = $request->validated();
+            $action = $validated['action'];
+            $decisionDate = isset($validated['decision_date'])
+                ? Carbon::parse($validated['decision_date'])
+                : now();
+
+            $probationService = app(\App\Services\ProbationTransitionService::class);
+
+            if ($action === 'passed') {
+                $result = $probationService->handleProbationCompletion($employment, $decisionDate);
+            } else {
+                $result = $probationService->handleManualProbationFailure(
+                    $employment,
+                    $decisionDate,
+                    $validated['reason'] ?? null,
+                    $validated['notes'] ?? null
+                );
+            }
+
+            if (! $result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Unable to update probation status',
+                ], 422);
+            }
+
+            $employment->refresh();
+            $historySummary = app(\App\Services\ProbationRecordService::class)->getHistory($employment);
+
+            return response()->json([
+                'success' => true,
+                'message' => $action === 'passed'
+                    ? 'Probation marked as passed successfully.'
+                    : 'Probation marked as failed successfully.',
+                'data' => [
+                    'employment' => $employment,
+                    'probation_history' => $historySummary,
+                ],
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employment not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update probation status: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate funding allocation amount in real-time based on FTE and salary.
+     *
+     * @OA\Post(
+     *     path="/employments/calculate-allocation",
+     *     summary="Calculate funding allocation amount in real-time",
+     *     description="Calculates the allocated amount for a funding allocation based on FTE percentage and the employment's salary (probation_salary or pass_probation_salary). This endpoint is used for real-time calculation in the frontend as users enter FTE percentages.",
+     *     operationId="calculateAllocationAmount",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Calculation parameters",
+     *
+     *         @OA\JsonContent(
+     *             required={"employment_id", "fte"},
+     *
+     *             @OA\Property(property="employment_id", type="integer", example=123, description="ID of the employment record"),
+     *             @OA\Property(property="fte", type="number", format="float", example=60, description="FTE percentage (0-100)")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Calculation successful",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Allocation amount calculated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="employment_id", type="integer", example=123),
+     *                 @OA\Property(property="fte", type="number", format="float", example=60, description="FTE as percentage"),
+     *                 @OA\Property(property="fte_decimal", type="number", format="float", example=0.60, description="FTE as decimal for database storage"),
+     *                 @OA\Property(property="base_salary", type="number", format="float", example=50000, description="Base salary used for calculation (probation_salary or pass_probation_salary)"),
+     *                 @OA\Property(property="salary_type", type="string", example="probation_salary", description="Which salary field was used"),
+     *                 @OA\Property(property="allocated_amount", type="number", format="float", example=30000, description="Calculated allocated amount"),
+     *                 @OA\Property(property="formatted_amount", type="string", example="฿30,000.00", description="Formatted currency string"),
+     *                 @OA\Property(property="calculation_formula", type="string", example="(50000 × 60) / 100 = 30000", description="Human-readable formula")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Employment not found",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Employment not found")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(property="fte", type="array", @OA\Items(type="string", example="The fte must be between 0 and 100."))
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function calculateAllocationAmount(Request $request)
+    {
+        try {
+            // ============================================================================
+            // VALIDATION
+            // ============================================================================
+            $validator = Validator::make($request->all(), [
+                'employment_id' => 'nullable|exists:employments,id',
+                'fte' => 'required|numeric|min:0|max:100',
+                'probation_salary' => 'nullable|numeric|min:0',
+                'pass_probation_salary' => 'nullable|numeric|min:0',
+                'pass_probation_date' => 'nullable|date',
+                'start_date' => 'nullable|date',
+                'calculation_date' => 'nullable|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $fte = $request->input('fte');
+            $calculationDate = $request->input('calculation_date')
+                ? Carbon::parse($request->input('calculation_date'))
+                : Carbon::now();
+
+            // ============================================================================
+            // DETERMINE SALARY SOURCE (Existing Employment OR Raw Data)
+            // ============================================================================
+            $employmentId = $request->input('employment_id');
+            $probationSalary = null;
+            $passProbationSalary = null;
+            $passProbationDate = null;
+            $startDate = null;
+
+            if ($employmentId) {
+                // Use existing employment data
+                $employment = Employment::findOrFail($employmentId);
+                $probationSalary = $employment->probation_salary;
+                $passProbationSalary = $employment->pass_probation_salary;
+                $passProbationDate = $employment->pass_probation_date
+                    ? Carbon::parse($employment->pass_probation_date)
+                    : null;
+                $startDate = $employment->start_date
+                    ? Carbon::parse($employment->start_date)
+                    : null;
+            } else {
+                // Use raw salary data from request (for new employment before saving)
+                $probationSalary = $request->input('probation_salary');
+                $passProbationSalary = $request->input('pass_probation_salary');
+                $passProbationDate = $request->input('pass_probation_date')
+                    ? Carbon::parse($request->input('pass_probation_date'))
+                    : null;
+                $startDate = $request->input('start_date')
+                    ? Carbon::parse($request->input('start_date'))
+                    : null;
+
+                // Validate that we have at least one salary
+                if (! $probationSalary && ! $passProbationSalary) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Either employment_id or salary data must be provided',
+                        'errors' => ['salary' => ['Either probation_salary or pass_probation_salary is required']],
+                    ], 422);
+                }
+            }
+
+            // ============================================================================
+            // DATE-BASED SALARY SELECTION LOGIC
+            // ============================================================================
+            $baseSalary = null;
+            $salaryType = null;
+            $salaryTypeLabel = null;
+            $isProbationPeriod = false;
+
+            // If pass_probation_date exists, use date comparison
+            if ($passProbationDate) {
+                if ($calculationDate->lt($passProbationDate)) {
+                    // Before probation completion date
+                    $isProbationPeriod = true;
+                    if ($probationSalary) {
+                        $baseSalary = $probationSalary;
+                        $salaryType = 'probation_salary';
+                        $salaryTypeLabel = 'Probation Salary';
+                    } else {
+                        // Fallback to pass_probation_salary if probation_salary not set
+                        $baseSalary = $passProbationSalary;
+                        $salaryType = 'pass_probation_salary';
+                        $salaryTypeLabel = 'Pass Probation Salary (Fallback)';
+                    }
+                } else {
+                    // After or on probation completion date
+                    $isProbationPeriod = false;
+                    $baseSalary = $passProbationSalary;
+                    $salaryType = 'pass_probation_salary';
+                    $salaryTypeLabel = 'Pass Probation Salary';
+                }
+            } else {
+                // No pass_probation_date set - use probation_salary if available, else pass_probation_salary
+                $isProbationPeriod = false; // Assume not in probation if date not set
+                if ($probationSalary) {
+                    $baseSalary = $probationSalary;
+                    $salaryType = 'probation_salary';
+                    $salaryTypeLabel = 'Probation Salary';
+                } else {
+                    $baseSalary = $passProbationSalary;
+                    $salaryType = 'pass_probation_salary';
+                    $salaryTypeLabel = 'Pass Probation Salary';
+                }
+            }
+
+            // Final validation
+            if (! $baseSalary || $baseSalary <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid salary found for calculation',
+                    'errors' => ['salary' => ['A valid salary amount is required for allocation calculation']],
+                ], 422);
+            }
+
+            // ============================================================================
+            // CALCULATE ALLOCATION
+            // ============================================================================
+            $fteDecimal = $fte / 100;
+            $allocatedAmount = round($baseSalary * $fteDecimal, 2);
+
+            // Format currency (Thai Baht)
+            $formattedBaseSalary = '฿'.number_format($baseSalary, 2);
+            $formattedAmount = '฿'.number_format($allocatedAmount, 2);
+
+            // Build calculation formula
+            $calculationFormula = "{$formattedBaseSalary} × {$fte}% = {$formattedAmount}";
+
+            // ============================================================================
+            // RETURN RESPONSE
+            // ============================================================================
+            return response()->json([
+                'success' => true,
+                'message' => 'Allocation amount calculated successfully',
+                'data' => [
+                    'employment_id' => $employmentId,
+                    'fte' => floatval($fte),
+                    'fte_decimal' => $fteDecimal,
+                    'base_salary' => floatval($baseSalary),
+                    'salary_type' => $salaryType,
+                    'salary_type_label' => $salaryTypeLabel,
+                    'allocated_amount' => $allocatedAmount,
+                    'formatted_amount' => $formattedAmount,
+                    'formatted_base_salary' => $formattedBaseSalary,
+                    'calculation_formula' => $calculationFormula,
+                    'calculation_date' => $calculationDate->format('Y-m-d'),
+                    'pass_probation_date' => $passProbationDate ? $passProbationDate->format('Y-m-d') : null,
+                    'start_date' => $startDate ? $startDate->format('Y-m-d') : null,
+                    'is_probation_period' => $isProbationPeriod,
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employment not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to calculate allocation amount',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -1004,8 +1869,8 @@ class EmploymentController extends Controller
      *                         @OA\Property(property="allocated_amount", type="number"),
      *                         @OA\Property(property="start_date", type="string", format="date"),
      *                         @OA\Property(property="end_date", type="string", format="date", nullable=true),
-     *                         @OA\Property(property="position_slot", type="object", nullable=true),
-     *                         @OA\Property(property="org_funded", type="object", nullable=true)
+     *                         @OA\Property(property="grant_item", type="object", nullable=true, description="Grant item details (for grant allocations)"),
+     *                         @OA\Property(property="grant", type="object", nullable=true, description="Grant details (for org_funded allocations)")
      *                     )
      *                 ),
      *                 @OA\Property(property="total_allocations", type="integer"),
@@ -1024,19 +1889,17 @@ class EmploymentController extends Controller
         try {
             // Find the employment record with employee information
             $employment = Employment::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
             ])->findOrFail($id);
 
             // Get funding allocations with related data
             $fundingAllocations = EmployeeFundingAllocation::with([
-                'positionSlot:id,grant_item_id,slot_number',
-                'positionSlot.grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
-                'positionSlot.grantItem.grant:id,name,code',
-
-                'orgFunded:id,grant_id,department_id,position_id,description',
-                'orgFunded.grant:id,name,code',
-                'orgFunded.department:id,name',
-                'orgFunded.position:id,title,department_id',
+                'grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
+                'grantItem.grant:id,name,code',
+                'grant:id,name,code',
+                'employment:id,department_id,position_id',
+                'employment.department:id,name',
+                'employment.position:id,title,department_id',
             ])
                 ->where('employment_id', $id)
                 ->orderBy('created_at', 'desc')
@@ -1046,66 +1909,8 @@ class EmploymentController extends Controller
             $totalAllocations = $fundingAllocations->count();
             $totalFte = $fundingAllocations->sum('fte');
 
-            // Format the response data
-            $formattedAllocations = $fundingAllocations->map(function ($allocation) {
-                $formatted = [
-                    'id' => $allocation->id,
-                    'allocation_type' => $allocation->allocation_type,
-                    'fte' => $allocation->fte,
-                    'fte_percentage' => ($allocation->fte * 100).'%',
-                    'allocated_amount' => $allocation->allocated_amount,
-                    'formatted_allocated_amount' => $allocation->allocated_amount ? '฿'.number_format($allocation->allocated_amount, 2) : null,
-                    'start_date' => $allocation->start_date,
-                    'end_date' => $allocation->end_date,
-                    'created_at' => $allocation->created_at,
-                    'created_by' => $allocation->created_by,
-                ];
-
-                // Add grant/position slot information based on allocation type
-                if ($allocation->allocation_type === 'grant' && $allocation->positionSlot) {
-                    $formatted['position_slot'] = [
-                        'id' => $allocation->positionSlot->id,
-                        'slot_number' => $allocation->positionSlot->slot_number,
-                        'grant_item' => $allocation->positionSlot->grantItem ? [
-                            'id' => $allocation->positionSlot->grantItem->id,
-                            'grant_position' => $allocation->positionSlot->grantItem->grant_position,
-                            'grant_salary' => $allocation->positionSlot->grantItem->grant_salary,
-                            'budgetline_code' => $allocation->positionSlot->grantItem->budgetline_code,
-                            'grant' => $allocation->positionSlot->grantItem->grant ? [
-                                'id' => $allocation->positionSlot->grantItem->grant->id,
-                                'name' => $allocation->positionSlot->grantItem->grant->name,
-                                'code' => $allocation->positionSlot->grantItem->grant->code,
-                            ] : null,
-                        ] : null,
-
-                    ];
-                    $formatted['org_funded'] = null;
-                } elseif ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
-                    $formatted['org_funded'] = [
-                        'id' => $allocation->orgFunded->id,
-                        'description' => $allocation->orgFunded->description,
-                        'grant' => $allocation->orgFunded->grant ? [
-                            'id' => $allocation->orgFunded->grant->id,
-                            'name' => $allocation->orgFunded->grant->name,
-                            'code' => $allocation->orgFunded->grant->code,
-                        ] : null,
-                        'department' => $allocation->orgFunded->department ? [
-                            'id' => $allocation->orgFunded->department->id,
-                            'name' => $allocation->orgFunded->department->name,
-                        ] : null,
-                        'position' => $allocation->orgFunded->position ? [
-                            'id' => $allocation->orgFunded->position->id,
-                            'title' => $allocation->orgFunded->position->title,
-                        ] : null,
-                    ];
-                    $formatted['position_slot'] = null;
-                } else {
-                    $formatted['position_slot'] = null;
-                    $formatted['org_funded'] = null;
-                }
-
-                return $formatted;
-            });
+            // Format the response data using Resource
+            $formattedAllocations = EmployeeFundingAllocationResource::collection($fundingAllocations);
 
             return response()->json([
                 'success' => true,
@@ -1116,7 +1921,7 @@ class EmploymentController extends Controller
                         'id' => $employment->employee->id,
                         'staff_id' => $employment->employee->staff_id,
                         'name' => $employment->employee->first_name_en.' '.$employment->employee->last_name_en,
-                        'subsidiary' => $employment->employee->subsidiary,
+                        'organization' => $employment->employee->organization,
                     ],
                     'funding_allocations' => $formattedAllocations,
                     'summary' => [
@@ -1170,14 +1975,14 @@ class EmploymentController extends Controller
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee", nullable=true),
      *             @OA\Property(property="employment_type", type="string", description="Type of employment", nullable=true),
      *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
-     *             @OA\Property(property="probation_pass_date", type="string", format="date", description="Probation pass date", nullable=true),
+     *             @OA\Property(property="pass_probation_date", type="string", format="date", description="First day employee receives pass_probation_salary - typically 3 months after start_date", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
      *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
      *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
      *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
-     *             @OA\Property(property="work_location_id", type="integer", description="Work location ID", nullable=true),
-     *             @OA\Property(property="position_salary", type="number", format="float", description="Position salary", nullable=true),
+     *             @OA\Property(property="site_id", type="integer", description="Site ID", nullable=true),
+     *             @OA\Property(property="pass_probation_salary", type="number", format="float", description="Pass probation salary", nullable=true),
      *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
      *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", nullable=true),
      *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
@@ -1185,6 +1990,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
      *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", nullable=true),
      *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
+     *             @OA\Property(property="status", type="boolean", description="Employment status: true=Active, false=Inactive", nullable=true),
      *             @OA\Property(
      *                 property="allocations",
      *                 type="array",
@@ -1196,9 +2002,8 @@ class EmploymentController extends Controller
      *                     required={"allocation_type", "fte"},
      *
      *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (for grant allocations)", nullable=true),
-     *                     @OA\Property(property="org_funded_id", type="integer", description="Temporary org_funded_id from frontend (will be ignored)", nullable=true),
-     *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (for org_funded allocations)", nullable=true),
+     *                     @OA\Property(property="grant_item_id", type="integer", description="Grant item ID (required for grant allocations)", nullable=true),
+     *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (required for org_funded allocations)", nullable=true),
      *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *                 )
@@ -1217,8 +2022,7 @@ class EmploymentController extends Controller
      *             @OA\Property(property="message", type="string", example="Employment and funding allocations updated successfully"),
      *             @OA\Property(property="data", type="object",
      *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
-     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")),
-     *                 @OA\Property(property="org_funded_allocations", type="array", @OA\Items(ref="#/components/schemas/OrgFundedAllocation"))
+     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation"))
      *             ),
      *             @OA\Property(property="summary", type="object",
      *                 @OA\Property(property="employment_updated", type="boolean"),
@@ -1248,7 +2052,7 @@ class EmploymentController extends Controller
                 'employee_id' => 'nullable|exists:employees,id',
                 'employment_type' => 'nullable|string',
                 'pay_method' => 'nullable|string',
-                'probation_pass_date' => 'nullable|date',
+                'pass_probation_date' => 'nullable|date',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'department_id' => 'nullable|exists:departments,id',
@@ -1266,8 +2070,8 @@ class EmploymentController extends Controller
                     },
                 ],
                 'section_department' => 'nullable|string|max:255',
-                'work_location_id' => 'nullable|exists:work_locations,id',
-                'position_salary' => 'nullable|numeric',
+                'site_id' => 'nullable|exists:sites,id',
+                'pass_probation_salary' => 'nullable|numeric',
                 'probation_salary' => 'nullable|numeric',
                 'health_welfare' => 'nullable|boolean',
                 'health_welfare_percentage' => 'nullable|numeric|min:0|max:100',
@@ -1278,10 +2082,8 @@ class EmploymentController extends Controller
 
                 // Allocation fields - optional for updates
                 'allocations' => 'nullable|array|min:1',
-                'allocations.*.allocation_type' => 'required_with:allocations|string|in:grant,org_funded',
-                'allocations.*.position_slot_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:position_slots,id',
-                'allocations.*.org_funded_id' => 'nullable|integer', // Frontend sends this but we'll ignore it
-                'allocations.*.grant_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:grants,id', // For org_funded, we need the grant_id
+                'allocations.*.allocation_type' => 'sometimes|string|in:grant',
+                'allocations.*.grant_item_id' => 'required_with:allocations|nullable|exists:grant_items,id',
                 'allocations.*.fte' => 'required_with:allocations|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
@@ -1303,6 +2105,18 @@ class EmploymentController extends Controller
 
             // Find the existing employment record
             $employment = Employment::findOrFail($id);
+
+            // Store old start_date to check if it changed
+            $oldStartDate = $employment->start_date;
+
+            // If start_date is being changed and pass_probation_date is not explicitly provided,
+            // recalculate pass_probation_date (3 months from new start_date)
+            if (isset($validated['start_date']) && ! isset($validated['pass_probation_date'])) {
+                $newStartDate = Carbon::parse($validated['start_date']);
+                if (! $oldStartDate || ! $newStartDate->eq(Carbon::parse($oldStartDate))) {
+                    $validated['pass_probation_date'] = $newStartDate->copy()->addMonths(3)->format('Y-m-d');
+                }
+            }
 
             // Additional validation for department_id and position_id relationship
             $departmentId = $validated['department_id'] ?? $employment->department_id;
@@ -1347,7 +2161,6 @@ class EmploymentController extends Controller
             // ============================================================================
             DB::beginTransaction();
 
-            $createdOrgFundedAllocations = [];
             $createdFundingAllocations = [];
             $removedAllocationsCount = 0;
             $errors = [];
@@ -1356,55 +2169,89 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 4: UPDATE EMPLOYMENT RECORD
             // ============================================================================
+
+            // Store original values before update
+            $original = $employment->getOriginal();
+
             $employmentData = collect($validated)->except('allocations')->toArray();
             if (! empty($employmentData)) {
                 $employmentData['updated_by'] = $currentUser;
                 $employment->update($employmentData);
             }
 
+            // Refresh employment to get updated values
+            $employment = $employment->fresh();
+
+            // ============================================================================
+            // SECTION 4A: HANDLE PROBATION STATUS CHANGES
+            // ============================================================================
+            $probationService = app(\App\Services\ProbationTransitionService::class);
+
+            // Check for probation extension
+            if (isset($validated['pass_probation_date']) &&
+                isset($original['pass_probation_date']) &&
+                $validated['pass_probation_date'] !== $original['pass_probation_date']) {
+
+                $probationService->handleProbationExtension(
+                    $employment,
+                    $original['pass_probation_date'],
+                    $validated['pass_probation_date']
+                );
+            }
+
+            // Check for early termination (employment ended before probation completion)
+            if (isset($validated['end_date']) &&
+                $employment->pass_probation_date &&
+                Carbon::parse($validated['end_date'])->lt($employment->pass_probation_date)) {
+
+                $result = $probationService->handleEarlyTermination($employment);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Employment terminated during probation. Allocations marked as terminated.',
+                    'data' => $employment->fresh(['activeAllocations', 'terminatedAllocations']),
+                    'probation_result' => $result,
+                ]);
+            }
+
             // ============================================================================
             // SECTION 5: HANDLE FUNDING ALLOCATIONS (if provided)
             // ============================================================================
             if ($allocationsProvided) {
-                // Remove existing funding allocations and their related org_funded records
+                // Remove existing funding allocations
                 $existingAllocations = EmployeeFundingAllocation::where('employment_id', $employment->id)->get();
                 $removedAllocationsCount = $existingAllocations->count();
-
-                // Collect org_funded IDs to clean up
-                $orgFundedIdsToDelete = $existingAllocations->whereNotNull('org_funded_id')->pluck('org_funded_id')->toArray();
 
                 // Delete existing allocations
                 EmployeeFundingAllocation::where('employment_id', $employment->id)->delete();
 
-                // Delete orphaned org_funded_allocations
-                if (! empty($orgFundedIdsToDelete)) {
-                    OrgFundedAllocation::whereIn('id', $orgFundedIdsToDelete)->delete();
-                }
-
                 // Process new allocations
                 $today = Carbon::today();
+                $allocationStartDate = isset($validated['start_date'])
+                    ? Carbon::parse($validated['start_date'])
+                    : ($employment->start_date instanceof Carbon ? $employment->start_date : Carbon::parse($employment->start_date));
+
                 foreach ($validated['allocations'] as $index => $allocationData) {
                     try {
-                        $allocationType = $allocationData['allocation_type'];
+                        $allocationType = 'grant';
 
                         // ============================================================================
                         // SECTION 5A: HANDLE GRANT ALLOCATIONS
                         // ============================================================================
                         if ($allocationType === 'grant') {
-                            // Validate position slot exists
-                            $positionSlot = PositionSlot::with('grantItem')->find($allocationData['position_slot_id']);
-                            if (! $positionSlot) {
-                                $errors[] = "Allocation #{$index}: Position slot not found";
+                            // Validate grant item exists
+                            $grantItem = GrantItem::find($allocationData['grant_item_id']);
+                            if (! $grantItem) {
+                                $errors[] = "Allocation #{$index}: Grant item not found";
 
                                 continue;
                             }
 
                             // Check grant capacity constraints using date-based logic
-                            $grantItem = $positionSlot->grantItem;
                             if ($grantItem && $grantItem->grant_position_number > 0) {
-                                $currentAllocations = EmployeeFundingAllocation::whereHas('positionSlot', function ($query) use ($grantItem) {
-                                    $query->where('grant_item_id', $grantItem->id);
-                                })
+                                $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
                                     ->where('allocation_type', 'grant')
                                     ->where('employment_id', '!=', $employment->id) // Exclude current employment
                                     ->where('start_date', '<=', $today)
@@ -1421,57 +2268,24 @@ class EmploymentController extends Controller
                                 }
                             }
 
+                            $fteDecimal = $allocationData['fte'] / 100;
+                            $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
+                                $employment,
+                                $fteDecimal,
+                                $allocationStartDate
+                            );
+
                             // Create grant funding allocation
                             $fundingAllocation = EmployeeFundingAllocation::create([
                                 'employee_id' => $employment->employee_id,
                                 'employment_id' => $employment->id,
-                                'position_slot_id' => $allocationData['position_slot_id'],
-                                'org_funded_id' => null,
-                                'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
+                                'grant_item_id' => $allocationData['grant_item_id'],
+                                'grant_id' => null,
+                                'fte' => $fteDecimal,
                                 'allocation_type' => 'grant',
-                                'allocated_amount' => $allocationData['allocated_amount'] ?? null,
-                                'start_date' => $validated['start_date'] ?? $employment->start_date,
-                                'end_date' => $validated['end_date'] ?? $employment->end_date,
-                                'created_by' => $currentUser,
-                                'updated_by' => $currentUser,
-                            ]);
-
-                            $createdFundingAllocations[] = $fundingAllocation;
-                        }
-
-                        // ============================================================================
-                        // SECTION 5B: HANDLE ORG FUNDED ALLOCATIONS
-                        // ============================================================================
-                        elseif ($allocationType === 'org_funded') {
-                            // For org_funded, we need grant_id to create the OrgFundedAllocation
-                            if (empty($allocationData['grant_id'])) {
-                                $errors[] = "Allocation #{$index}: grant_id is required for org_funded allocations";
-
-                                continue;
-                            }
-
-                            // First, create the org_funded_allocation record
-                            $orgFundedAllocation = OrgFundedAllocation::create([
-                                'grant_id' => $allocationData['grant_id'],
-                                'department_id' => $employment->department_id,
-                                'position_id' => $employment->position_id,
-                                'description' => 'Auto-created for employment ID: '.$employment->id.' (Updated)',
-                                'created_by' => $currentUser,
-                                'updated_by' => $currentUser,
-                            ]);
-
-                            $createdOrgFundedAllocations[] = $orgFundedAllocation;
-
-                            // Then, create the employee funding allocation referencing the org_funded_allocation
-                            $fundingAllocation = EmployeeFundingAllocation::create([
-                                'employee_id' => $employment->employee_id,
-                                'employment_id' => $employment->id,
-                                'position_slot_id' => null,
-                                'org_funded_id' => $orgFundedAllocation->id,
-                                'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
-                                'allocation_type' => 'org_funded',
-                                'allocated_amount' => $allocationData['allocated_amount'] ?? null,
-                                'start_date' => $validated['start_date'] ?? $employment->start_date,
+                                'allocated_amount' => $salaryContext['allocated_amount'],
+                                'salary_type' => $salaryContext['salary_type'],
+                                'start_date' => $allocationStartDate,
                                 'end_date' => $validated['end_date'] ?? $employment->end_date,
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
@@ -1514,7 +2328,7 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title,department_id',
-                'workLocation:id,name',
+                'site:id,name',
                 'employeeFundingAllocations',
             ])->find($employment->id);
 
@@ -1527,21 +2341,10 @@ class EmploymentController extends Controller
                 $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
                     'employee:id,staff_id,first_name_en,last_name_en',
                     'employment:id,employment_type,start_date',
-                    'positionSlot.grantItem.grant:id,name,code',
-
-                    'orgFunded.grant:id,name,code',
-                    'orgFunded.department:id,name',
-                    'orgFunded.position:id,title,department_id',
+                    'grantItem.grant:id,name,code',
                 ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 
-                $orgFundedAllocationsWithRelations = OrgFundedAllocation::with([
-                    'grant:id,name,code',
-                    'department:id,name',
-                    'position:id,title,department_id',
-                ])->whereIn('id', collect($createdOrgFundedAllocations)->pluck('id'))->get();
-
                 $responseData['funding_allocations'] = $fundingAllocationsWithRelations;
-                $responseData['org_funded_allocations'] = $orgFundedAllocationsWithRelations;
             }
 
             // ============================================================================
@@ -1557,7 +2360,6 @@ class EmploymentController extends Controller
                     'employment_updated' => true,
                     'allocations_updated' => $allocationsProvided,
                     'old_allocations_removed' => $removedAllocationsCount,
-                    'org_funded_created' => count($createdOrgFundedAllocations),
                     'funding_allocations_created' => count($createdFundingAllocations),
                 ],
             ];
@@ -1639,6 +2441,85 @@ class EmploymentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete employment: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get probation history for a specific employment
+     *
+     * @OA\Get(
+     *     path="/employments/{id}/probation-history",
+     *     summary="Get probation history for employment",
+     *     description="Returns probation records history including extensions, passed/failed events",
+     *     operationId="getProbationHistory",
+     *     tags={"Employments"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="Employment ID",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Probation history retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Probation history retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="total_extensions", type="integer", example=1),
+     *                 @OA\Property(property="current_extension_number", type="integer", example=1),
+     *                 @OA\Property(property="probation_start_date", type="string", format="date"),
+     *                 @OA\Property(property="initial_end_date", type="string", format="date"),
+     *                 @OA\Property(property="current_end_date", type="string", format="date"),
+     *                 @OA\Property(property="current_status", type="string", example="extended"),
+     *                 @OA\Property(property="current_event_type", type="string", example="extension"),
+     *                 @OA\Property(
+     *                     property="records",
+     *                     type="array",
+     *
+     *                     @OA\Items(ref="#/components/schemas/ProbationRecord")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=404, description="Employment not found"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
+    public function getProbationHistory($id)
+    {
+        try {
+            $employment = Employment::with('probationHistory')->findOrFail($id);
+
+            $service = app(\App\Services\ProbationRecordService::class);
+            $history = $service->getHistory($employment);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Probation history retrieved successfully',
+                'data' => $history,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employment not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve probation history: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -100,7 +100,8 @@ class AuthController extends Controller
      *         @OA\JsonContent(
      *
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Invalid credentials")
+     *             @OA\Property(property="message", type="string", example="No account found with this email address."),
+     *             @OA\Property(property="error_type", type="string", example="EMAIL_NOT_FOUND", description="Possible values: EMAIL_NOT_FOUND, INVALID_PASSWORD, ACCOUNT_INACTIVE")
      *         )
      *     ),
      *
@@ -144,13 +145,16 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => "Too many login attempts. Please try again in {$seconds} seconds.",
+                'error_type' => 'RATE_LIMIT_ERROR',
             ], 429);
         }
 
-        // Attempt login
-        if (! Auth::attempt($credentials)) {
+        // First check if user exists
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user) {
             $this->incrementLoginAttempts($request);
-            Log::warning('Failed login attempt', [
+            Log::warning('Login attempt with non-existent email', [
                 'email' => $request->email,
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -158,7 +162,42 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid credentials',
+                'message' => 'No account found with this email address.',
+                'error_type' => 'EMAIL_NOT_FOUND',
+            ], 401);
+        }
+
+        // Check if user account is active
+        if ($user->status !== 'active') {
+            $this->incrementLoginAttempts($request);
+            Log::warning('Login attempt on inactive account', [
+                'email' => $request->email,
+                'user_id' => $user->id,
+                'status' => $user->status,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is not active. Please contact the administrator.',
+                'error_type' => 'ACCOUNT_INACTIVE',
+            ], 401);
+        }
+
+        // Attempt login with password verification
+        if (! Auth::attempt($credentials)) {
+            $this->incrementLoginAttempts($request);
+            Log::warning('Failed login attempt - invalid password', [
+                'email' => $request->email,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'The password you entered is incorrect.',
+                'error_type' => 'INVALID_PASSWORD',
             ], 401);
         }
 

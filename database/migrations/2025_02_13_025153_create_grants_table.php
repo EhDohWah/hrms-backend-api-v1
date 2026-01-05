@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -17,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('code');
             $table->string('name');
-            $table->string('subsidiary');
+            $table->string('organization');
             $table->text('description')->nullable();
             $table->date('end_date')->nullable();
             $table->timestamps();
@@ -25,41 +24,14 @@ return new class extends Migration
             $table->string('updated_by')->nullable();
 
             // Composite indexes for optimized filtering & sorting
-            $table->index(['subsidiary', 'code'], 'idx_grants_subsidiary_code');
-            $table->index(['subsidiary', 'end_date', 'id'], 'idx_grants_subsidiary_end_date_id');
+            $table->index(['organization', 'code'], 'idx_grants_organization_code');
+            $table->index(['organization', 'end_date', 'id'], 'idx_grants_organization_end_date_id');
         });
 
-        $this->insertDefaultGrants();
-    }
-
-    // create a function to insert the two default "hub" grants
-    public function insertDefaultGrants()
-    {
-        // Insert default grants
-        $smruGrant = DB::table('grants')->insertGetId([
-            'code' => 'S0031',
-            'name' => 'Other Fund',
-            'subsidiary' => 'SMRU',
-            'description' => "SMRU's hub grant",
-            'end_date' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-            'created_by' => 'system',
-            'updated_by' => 'system',
-        ]);
-
-        $bhfGrant = DB::table('grants')->insertGetId([
-            'code' => 'S22001',
-            'name' => 'General Fund',
-            'subsidiary' => 'BHF',
-            'description' => "BHF's hub grant",
-            'end_date' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-            'created_by' => 'system',
-            'updated_by' => 'system',
-        ]);
-
+        // Removed: Default hub grants are now imported via Excel
+        // Previously created: S0031 (SMRU Other Fund) and S22001 (BHF General Fund)
+        // These hub grants (General Fund/Organization Saving Grants) should be imported from Excel
+        // along with their grant items that don't have budget line codes
     }
 
     /**

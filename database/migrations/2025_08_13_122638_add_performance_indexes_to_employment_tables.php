@@ -23,8 +23,8 @@ return new class extends Migration
             $table->index('start_date', 'idx_employments_start_date');
             $table->index('end_date', 'idx_employments_end_date');
 
-            // Index for work location filtering
-            $table->index('work_location_id', 'idx_employments_work_location_id');
+            // Index for site filtering
+            $table->index('site_id', 'idx_employments_site_id');
 
             // Index for department and position filtering
             $table->index('department_id', 'idx_employments_department_id');
@@ -44,9 +44,9 @@ return new class extends Migration
                 $table->index('staff_id', 'idx_employees_staff_id');
             }
 
-            // Index for subsidiary filtering
-            if (! Schema::hasIndex('employees', 'idx_employees_subsidiary')) {
-                $table->index('subsidiary', 'idx_employees_subsidiary');
+            // Index for organization filtering
+            if (! Schema::hasIndex('employees', 'idx_employees_organization')) {
+                $table->index('organization', 'idx_employees_organization');
             }
 
             // Composite index for name sorting
@@ -67,11 +67,11 @@ return new class extends Migration
             $table->index(['employment_id', 'allocation_type'], 'idx_efa_employment_type');
         });
 
-        // Add indexes to work_locations table if needed
-        Schema::table('work_locations', function (Blueprint $table) {
-            // Index for name searches
-            if (! Schema::hasIndex('work_locations', 'idx_work_locations_name')) {
-                $table->index('name', 'idx_work_locations_name');
+        // Add indexes to sites table if needed
+        Schema::table('sites', function (Blueprint $table) {
+            // Index for name searches (if not already added in sites migration)
+            if (! Schema::hasIndex('sites', 'idx_sites_name')) {
+                $table->index('name', 'idx_sites_name');
             }
         });
     }
@@ -86,7 +86,7 @@ return new class extends Migration
             $table->dropIndex('idx_employments_employee_id');
             $table->dropIndex('idx_employments_start_date');
             $table->dropIndex('idx_employments_end_date');
-            $table->dropIndex('idx_employments_work_location_id');
+            $table->dropIndex('idx_employments_site_id');
             $table->dropIndex('idx_employments_department_id');
             $table->dropIndex('idx_employments_position_id');
             $table->dropIndex('idx_employments_employment_type');
@@ -98,8 +98,8 @@ return new class extends Migration
             if (Schema::hasIndex('employees', 'idx_employees_staff_id')) {
                 $table->dropIndex('idx_employees_staff_id');
             }
-            if (Schema::hasIndex('employees', 'idx_employees_subsidiary')) {
-                $table->dropIndex('idx_employees_subsidiary');
+            if (Schema::hasIndex('employees', 'idx_employees_organization')) {
+                $table->dropIndex('idx_employees_organization');
             }
             $table->dropIndex('idx_employees_full_name');
         });
@@ -113,10 +113,10 @@ return new class extends Migration
             $table->dropIndex('idx_efa_employment_type');
         });
 
-        // Remove work_locations indexes
-        Schema::table('work_locations', function (Blueprint $table) {
-            if (Schema::hasIndex('work_locations', 'idx_work_locations_name')) {
-                $table->dropIndex('idx_work_locations_name');
+        // Remove sites indexes
+        Schema::table('sites', function (Blueprint $table) {
+            if (Schema::hasIndex('sites', 'idx_sites_name')) {
+                $table->dropIndex('idx_sites_name');
             }
         });
     }

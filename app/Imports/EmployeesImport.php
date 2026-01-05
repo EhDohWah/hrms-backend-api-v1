@@ -85,7 +85,8 @@ class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEm
 
     public function collection(Collection $rows)
     {
-        Log::info('Import chunk started', ['rows_in_chunk' => $rows->count(), 'import_id' => $this->importId]);
+        Log::info('Import chunk started', ['rows_in_chunk' => $rows
+            ->count(), 'import_id' => $this->importId]);
 
         $normalized = $rows->map(function ($r) {
             if (! empty($r['date_of_birth']) && is_numeric($r['date_of_birth'])) {
@@ -206,7 +207,7 @@ class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEm
 
                     $employeeBatch[] = [
                         'staff_id' => $staffId,
-                        'subsidiary' => $row['org'] ?? null,
+                        'organization' => $row['org'] ?? null,
                         'initial_en' => $row['initial'] ?? null,
                         'first_name_en' => $row['first_name'] ?? null,
                         'last_name_en' => $row['last_name'] ?? null,

@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "C:\\Users\\Turtle\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.8.2_Microsoft.Winget.Source_8wekyb3d8bbwe\\php.exe",
+            "args": [
+                "C:\\Users\\Turtle\\Desktop\\HR Management System\\3. Implementation\\HRMS-V1\\hrms-backend-api-v1\\artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}

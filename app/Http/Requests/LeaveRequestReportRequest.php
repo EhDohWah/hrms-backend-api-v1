@@ -24,7 +24,7 @@ class LeaveRequestReportRequest extends FormRequest
         return [
             'start_date' => 'required|date_format:Y-m-d',
             'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
-            'work_location' => 'required|string|max:255|exists:work_locations,name',
+            'work_location' => 'required|string|max:255|exists:sites,name',
             'department' => 'required|string|max:255|exists:departments,name',
         ];
     }
@@ -42,9 +42,9 @@ class LeaveRequestReportRequest extends FormRequest
             'end_date.required' => 'End date is required.',
             'end_date.date_format' => 'End date must be in YYYY-MM-DD format.',
             'end_date.after_or_equal' => 'End date must be after or equal to start date.',
-            'work_location.required' => 'Work location is required.',
-            'work_location.max' => 'Work location name must not exceed 255 characters.',
-            'work_location.exists' => 'The selected work location does not exist.',
+            'work_location.required' => 'Site/Work location is required.',
+            'work_location.max' => 'Site name must not exceed 255 characters.',
+            'work_location.exists' => 'The selected site does not exist.',
             'department.required' => 'Department is required.',
             'department.max' => 'Department name must not exceed 255 characters.',
             'department.exists' => 'The selected department does not exist.',

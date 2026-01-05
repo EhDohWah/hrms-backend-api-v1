@@ -10,13 +10,15 @@ use App\Http\Resources\GrantResource;
 use App\Models\Grant;
 use App\Models\GrantItem;
 use App\Models\Position;
-use App\Models\PositionSlot;
+use App\Models\User;
+use App\Notifications\GrantActionNotification;
+use App\Notifications\GrantItemActionNotification;
+use App\Notifications\ImportedCompletedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * @OA\Tag(
@@ -58,7 +60,7 @@ class GrantController extends Controller
      *                 @OA\Property(property="id", type="integer", example=1),
      *                 @OA\Property(property="code", type="string", example="GR-2023-001"),
      *                 @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *                 @OA\Property(property="subsidiary", type="string", example="Main Branch"),
+     *                 @OA\Property(property="organization", type="string", example="Main Branch"),
      *                 @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
      *                 @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true),
      *                 @OA\Property(
@@ -117,7 +119,7 @@ class GrantController extends Controller
                 },
             ])
                 ->where('code', $code)
-                ->first(['id', 'code', 'name', 'subsidiary', 'description', 'end_date']);
+                ->first(['id', 'code', 'name', 'organization', 'description', 'end_date']);
 
             if (! $grant) {
                 return response()->json([
@@ -173,7 +175,7 @@ class GrantController extends Controller
      *                 @OA\Property(property="id", type="integer", example=1),
      *                 @OA\Property(property="code", type="string", example="GR-2023-001"),
      *                 @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *                 @OA\Property(property="subsidiary", type="string", example="Main Campus"),
+     *                 @OA\Property(property="organization", type="string", example="Main Campus"),
      *                 @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
      *                 @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true),
      *                 @OA\Property(
@@ -259,21 +261,13 @@ class GrantController extends Controller
                         'budgetline_code',
                         'created_at',
                         'updated_at'
-                    )->with([
-                        'positionSlots' => function ($slotQ) {
-                            $slotQ->select(
-                                'id',
-                                'grant_item_id',
-                                'slot_number',
-                                'created_at',
-                                'updated_at'
-                            );
-                        },
-                    ]);
+                    )->withCount(['employeeFundingAllocations as active_allocations_count' => function ($query) {
+                        $query->where('status', 'active');
+                    }]);
                 },
             ])
                 ->select(
-                    'id', 'code', 'name', 'subsidiary', 'description', 'end_date', 'created_at', 'updated_at'
+                    'id', 'code', 'name', 'organization', 'description', 'end_date', 'created_at', 'updated_at'
                 )
                 ->where('id', $id)
                 ->first();
@@ -304,7 +298,7 @@ class GrantController extends Controller
      * @OA\Post(
      *     path="/grants/upload",
      *     summary="Upload grant data from Excel file",
-     *     description="Upload an Excel file with multiple sheets containing grant header and item records. Duplicate grant items (same position + budget line code within a grant) will be rejected with detailed error messages.",
+     *     description="Upload an Excel file with multiple sheets containing grant header and item records. Each sheet represents one grant. Duplicate grant items (same position + budget line code within a grant) will be rejected with detailed error messages.",
      *     tags={"Grants"},
      *     security={{"bearerAuth":{}}},
      *
@@ -338,6 +332,7 @@ class GrantController extends Controller
      *                 property="data",
      *                 type="object",
      *                 @OA\Property(property="processed_grants", type="integer", example=2),
+     *                 @OA\Property(property="processed_items", type="integer", example=15),
      *                 @OA\Property(
      *                     property="warnings",
      *                     type="array",
@@ -393,14 +388,15 @@ class GrantController extends Controller
         $file = $request->file('file');
 
         try {
-            $spreadsheet = IOFactory::load($file->getRealPath());
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
             $sheets = $spreadsheet->getAllSheets();
 
             $processedGrants = 0;
+            $processedItems = 0;
             $errors = [];
             $skippedGrants = [];
 
-            DB::transaction(function () use ($sheets, &$processedGrants, &$errors, &$skippedGrants) {
+            DB::transaction(function () use ($sheets, &$processedGrants, &$processedItems, &$errors, &$skippedGrants) {
                 foreach ($sheets as $sheet) {
                     $data = $sheet->toArray(null, true, true, true);
                     $sheetName = $sheet->getTitle();
@@ -432,6 +428,7 @@ class GrantController extends Controller
                         $itemsProcessed = $this->processGrantItems($data, $grant, $sheetName, $errors);
                         if ($itemsProcessed > 0) {
                             $processedGrants++;
+                            $processedItems += $itemsProcessed;
                         }
                     } catch (\Exception $e) {
                         $errors[] = "Sheet '$sheetName': Error processing items - ".$e->getMessage();
@@ -441,6 +438,7 @@ class GrantController extends Controller
 
             $responseData = [
                 'processed_grants' => $processedGrants,
+                'processed_items' => $processedItems,
             ];
 
             if (! empty($errors)) {
@@ -455,6 +453,9 @@ class GrantController extends Controller
             if (! empty($skippedGrants)) {
                 $message = 'Grant data import completed with skipped grants';
             }
+
+            // Send completion notification to user
+            $this->sendImportNotification($processedGrants, $processedItems, $errors, $skippedGrants);
 
             return response()->json([
                 'success' => true,
@@ -471,12 +472,172 @@ class GrantController extends Controller
         }
     }
 
+    private function createGrant(array $data, string $sheetName, array &$errors)
+    {
+        try {
+            $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
+            $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
+            $organization = trim(str_replace('Subsidiary -', '', $data[3]['A'] ?? ''));
+            $endDate = null;
+
+            // Try to extract end date if available
+            if (isset($data[4]['A'])) {
+                $endDateStr = trim(str_replace('End date -', '', $data[4]['A'] ?? ''));
+                if (! empty($endDateStr)) {
+                    try {
+                        $endDate = \Carbon\Carbon::parse($endDateStr)->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        $errors[] = "Sheet '$sheetName': Invalid end date format - ".$endDateStr;
+                    }
+                }
+            }
+
+            $description = trim(str_replace('Description -', '', $data[5]['A'] ?? ''));
+
+            // Validate required fields
+            if (empty($grantCode)) {
+                $errors[] = "Sheet '$sheetName': Missing grant code";
+
+                return null;
+            }
+
+            if (empty($grantName)) {
+                $errors[] = "Sheet '$sheetName': Missing grant name";
+
+                return null;
+            }
+
+            return Grant::firstOrCreate(
+                ['code' => $grantCode],
+                [
+                    'name' => $grantName,
+                    'end_date' => $endDate,
+                    'organization' => $organization,
+                    'description' => $description,
+                    'created_by' => auth()->user()->name ?? 'system',
+                    'updated_by' => auth()->user()->name ?? 'system',
+                ]
+            );
+        } catch (\Exception $e) {
+            $errors[] = "Sheet '$sheetName': Error creating grant - ".$e->getMessage();
+
+            return null;
+        }
+    }
+
+    /**
+     * Process grant items from Excel data
+     *
+     * @param  array  $data  Array of Excel row data
+     * @param  \App\Models\Grant  $grant  Grant model instance
+     * @param  string  $sheetName  Name of Excel sheet being processed
+     * @param  array  $errors  Array to store error messages
+     * @return int Number of items processed
+     *
+     * @throws \Exception
+     */
+    private function processGrantItems(array $data, Grant $grant, string $sheetName, array &$errors): int
+    {
+        $itemsProcessed = 0;
+        $createdGrantItems = [];
+
+        try {
+            // Skip header rows (1-6), column headers (row 7), validation rules (row 8)
+            // Start processing actual data from row 9
+            $headerRowsCount = 8;
+
+            for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
+                $row = $data[$i];
+
+                // Use column B as the first required field (grant_position)
+                $grantPosition = trim($row['B'] ?? '');
+                $bgLineCode = trim($row['A'] ?? '');
+
+                // Skip empty rows or non-data rows
+                if (empty($grantPosition)) {
+                    continue;
+                }
+                
+                // Additional check: Skip if position looks like a header or validation rule
+                if (stripos($grantPosition, 'String - NOT NULL') !== false || 
+                    stripos($grantPosition, 'Position title') !== false ||
+                    $grantPosition === 'Position') {
+                    continue;
+                }
+
+                // Budget Line Code can be empty for General Fund (hub grants)
+                // Accept any format: 1.2.2.1, BL-001, A.B.C, etc.
+                $bgLineCode = $bgLineCode !== '' ? $bgLineCode : null;
+
+                // Create unique key - handle NULL budget line codes
+                $itemKey = $grant->id.'|'.$grantPosition.'|'.($bgLineCode ?? 'NULL_'.uniqid());
+
+                if (! isset($createdGrantItems[$itemKey])) {
+                    // Check for duplicates ONLY if budget line code exists
+                    // General Fund items (NULL budget line) can have duplicate positions
+                    if ($bgLineCode !== null) {
+                        $existingItem = GrantItem::where('grant_id', $grant->id)
+                            ->where('grant_position', $grantPosition)
+                            ->where('budgetline_code', $bgLineCode)
+                            ->first();
+
+                        if ($existingItem) {
+                            $errors[] = "Sheet '$sheetName' row $i: Duplicate grant item - Position '$grantPosition' with budget line code '$bgLineCode' already exists for this grant";
+
+                            continue;
+                        }
+                    }
+
+                    $grantItem = GrantItem::create([
+                        'grant_id' => $grant->id,
+                        'grant_position' => $grantPosition,
+                        'grant_salary' => isset($row['C']) && $row['C'] !== '' ? $this->toFloat($row['C']) : null,
+                        'grant_benefit' => isset($row['D']) && $row['D'] !== '' ? $this->toFloat($row['D']) : null,
+                        'grant_level_of_effort' => isset($row['E']) && $row['E'] !== '' ?
+                            (float) trim(str_replace('%', '', $row['E'])) / 100 : null,
+                        'grant_position_number' => isset($row['F']) && $row['F'] !== '' ? (int) $row['F'] : 1,
+                        'budgetline_code' => $bgLineCode,
+                        'created_by' => auth()->user()->name ?? 'system',
+                        'updated_by' => auth()->user()->name ?? 'system',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $createdGrantItems[$itemKey] = $grantItem;
+                } else {
+                    $grantItem = $createdGrantItems[$itemKey];
+                }
+
+                $itemsProcessed++;
+            }
+        } catch (\Exception $e) {
+            $errors[] = "Sheet '$sheetName': Error processing items - ".$e->getMessage();
+            throw $e;
+        }
+
+        return $itemsProcessed;
+    }
+
+    /**
+     * Convert string value to float
+     *
+     * @param  mixed  $value  Value to convert
+     * @return float|null Converted float value or null if input is null
+     */
+    private function toFloat($value): ?float
+    {
+        if (is_null($value)) {
+            return null;
+        }
+
+        return floatval(preg_replace('/[^0-9.-]/', '', $value));
+    }
+
     /**
      * @OA\Get(
      *     path="/grants",
      *     operationId="getGrants",
      *     summary="List all grants with pagination and filtering",
-     *     description="Returns a paginated list of grants with their associated items. Supports filtering by subsidiary and sorting by name/code with standard Laravel pagination parameters (page, per_page).",
+     *     description="Returns a paginated list of grants with their associated items. Supports filtering by organization and sorting by name/code with standard Laravel pagination parameters (page, per_page).",
      *     tags={"Grants"},
      *     security={{"bearerAuth":{}}},
      *
@@ -499,9 +660,9 @@ class GrantController extends Controller
      *     ),
      *
      *     @OA\Parameter(
-     *         name="filter_subsidiary",
+     *         name="filter_organization",
      *         in="query",
-     *         description="Filter grants by subsidiary (comma-separated for multiple values)",
+     *         description="Filter grants by organization (comma-separated for multiple values)",
      *         required=false,
      *
      *         @OA\Schema(type="string", example="SMRU,BHF")
@@ -542,7 +703,7 @@ class GrantController extends Controller
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="code", type="string", example="GR-2023-001"),
      *                     @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *                     @OA\Property(property="subsidiary", type="string", example="Main Campus"),
+     *                     @OA\Property(property="organization", type="string", example="Main Campus"),
      *                     @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
      *                     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true),
      *                     @OA\Property(
@@ -593,7 +754,7 @@ class GrantController extends Controller
      *                 property="filters",
      *                 type="object",
      *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="subsidiary", type="array", @OA\Items(type="string"), example={"SMRU"})
+     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"})
      *                 )
      *             )
      *         )
@@ -639,7 +800,7 @@ class GrantController extends Controller
             $validated = $request->validate([
                 'page' => 'integer|min:1',
                 'per_page' => 'integer|min:1|max:100',
-                'filter_subsidiary' => 'string|nullable',
+                'filter_organization' => 'string|nullable',
                 'sort_by' => 'string|nullable|in:name,code',
                 'sort_order' => 'string|nullable|in:asc,desc',
             ]);
@@ -653,9 +814,9 @@ class GrantController extends Controller
                 ->withItemsCount()
                 ->withOptimizedItems();
 
-            // Apply subsidiary filter if provided
-            if (! empty($validated['filter_subsidiary'])) {
-                $query->bySubsidiary($validated['filter_subsidiary']);
+            // Apply organization filter if provided
+            if (! empty($validated['filter_organization'])) {
+                $query->byOrganization($validated['filter_organization']);
             }
 
             // Apply sorting
@@ -674,8 +835,8 @@ class GrantController extends Controller
 
             // Build applied filters array
             $appliedFilters = [];
-            if (! empty($validated['filter_subsidiary'])) {
-                $appliedFilters['subsidiary'] = explode(',', $validated['filter_subsidiary']);
+            if (! empty($validated['filter_organization'])) {
+                $appliedFilters['organization'] = explode(',', $validated['filter_organization']);
             }
 
             return response()->json([
@@ -829,7 +990,7 @@ class GrantController extends Controller
      *                     @OA\Property(property="id", type="integer", example=1),
      *                     @OA\Property(property="code", type="string", example="GR-2023-001"),
      *                     @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="organization", type="string", example="SMRU"),
      *                     @OA\Property(property="description", type="string", example="Grant for health initiatives"),
      *                     @OA\Property(property="end_date", type="string", format="date", example="2023-12-31")
      *                 ),
@@ -892,157 +1053,303 @@ class GrantController extends Controller
         }
     }
 
-    private function createGrant(array $data, string $sheetName, array &$errors)
-    {
-        try {
-            $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
-            $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
-            $subsidiary = trim(str_replace('Subsidiary -', '', $data[3]['A'] ?? ''));
-            $endDate = null;
-
-            // Try to extract end date if available
-            if (isset($data[4]['A'])) {
-                $endDateStr = trim(str_replace('End date -', '', $data[4]['A'] ?? ''));
-                if (! empty($endDateStr)) {
-                    try {
-                        $endDate = \Carbon\Carbon::parse($endDateStr)->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        $errors[] = "Sheet '$sheetName': Invalid end date format - ".$endDateStr;
-                    }
-                }
-            }
-
-            $description = trim(str_replace('Description -', '', $data[5]['A'] ?? ''));
-
-            // Validate required fields
-            if (empty($grantCode)) {
-                $errors[] = "Sheet '$sheetName': Missing grant code";
-
-                return null;
-            }
-
-            if (empty($grantName)) {
-                $errors[] = "Sheet '$sheetName': Missing grant name";
-
-                return null;
-            }
-
-            return Grant::firstOrCreate(
-                ['code' => $grantCode],
-                [
-                    'name' => $grantName,
-                    'end_date' => $endDate,
-                    'subsidiary' => $subsidiary,
-                    'description' => $description,
-                    'created_by' => auth()->user()->name ?? 'system',
-                    'updated_by' => auth()->user()->name ?? 'system',
-                ]
-            );
-        } catch (\Exception $e) {
-            $errors[] = "Sheet '$sheetName': Error creating grant - ".$e->getMessage();
-
-            return null;
-        }
-    }
-
     /**
-     * Process grant items from Excel data
+     * @OA\Get(
+     *     path="/grants/download-template",
+     *     operationId="downloadGrantTemplate",
+     *     summary="Download Grant Import Excel Template",
+     *     description="Downloads an Excel template file with headers and validation rules for grant bulk import",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
      *
-     * @param  array  $data  Array of Excel row data
-     * @param  \App\Models\Grant  $grant  Grant model instance
-     * @param  string  $sheetName  Name of Excel sheet being processed
-     * @param  array  $errors  Array to store error messages
-     * @return int Number of items processed
+     *     @OA\Response(
+     *         response=200,
+     *         description="Excel template file download",
      *
-     * @throws \Exception
+     *         @OA\MediaType(
+     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+     *
+     *             @OA\Schema(
+     *                 type="string",
+     *                 format="binary"
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Failed to generate template",
+     *
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to generate template"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
      */
-    private function processGrantItems(array $data, Grant $grant, string $sheetName, array &$errors): int
+    public function downloadTemplate()
     {
-        $itemsProcessed = 0;
-        $grantItems = [];
-        $createdBudgetLines = [];
-        $createdGrantItems = [];
-
         try {
-            // Skip header rows (1-6) and start processing from row 7
-            $headerRowsCount = 7;
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            
+            // Remove default sheet and create first grant sheet
+            $spreadsheet->removeSheetByIndex(0);
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle('Grant Template');
 
-            for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
-                $row = $data[$i];
+            // Set column widths for better readability
+            $sheet->getColumnDimension('A')->setWidth(25);
+            $sheet->getColumnDimension('B')->setWidth(30);
+            $sheet->getColumnDimension('C')->setWidth(15);
+            $sheet->getColumnDimension('D')->setWidth(15);
+            $sheet->getColumnDimension('E')->setWidth(15);
+            $sheet->getColumnDimension('F')->setWidth(15);
 
-                // Use column B as the first required field (grant_position)
-                $grantPosition = trim($row['B'] ?? '');
-                $bgLineCode = trim($row['A'] ?? '');
+            // Header styling
+            $headerStyle = [
+                'font' => [
+                    'bold' => true,
+                    'size' => 11,
+                    'color' => ['rgb' => '000000'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'E8F4F8'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
+            ];
 
-                // Skip empty rows or non-data rows
-                if (empty($grantPosition)) {
-                    continue;
+            // Validation row styling
+            $validationStyle = [
+                'font' => [
+                    'italic' => true,
+                    'size' => 9,
+                    'color' => ['rgb' => '666666'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'FFF9E6'],
+                ],
+            ];
+
+            // Column header styling
+            $columnHeaderStyle = [
+                'font' => [
+                    'bold' => true,
+                    'size' => 10,
+                    'color' => ['rgb' => 'FFFFFF'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '4472C4'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
+            ];
+
+            // Row 1: Grant Name
+            $sheet->setCellValue('A1', 'Grant name - [Enter grant name here]');
+            $sheet->setCellValue('B1', 'String - NOT NULL - Max 255 chars - Unique identifier for the grant');
+            $sheet->getStyle('A1')->applyFromArray($headerStyle);
+            $sheet->getStyle('B1')->applyFromArray($validationStyle);
+
+            // Row 2: Grant Code
+            $sheet->setCellValue('A2', 'Grant code - [Enter unique grant code]');
+            $sheet->setCellValue('B2', 'String - NOT NULL - Max 255 chars - Must be unique across all grants');
+            $sheet->getStyle('A2')->applyFromArray($headerStyle);
+            $sheet->getStyle('B2')->applyFromArray($validationStyle);
+
+            // Row 3: Subsidiary/Organization
+            $sheet->setCellValue('A3', 'Subsidiary - [Enter organization name]');
+            $sheet->setCellValue('B3', 'String - NULLABLE - Max 255 chars - Organization managing the grant');
+            $sheet->getStyle('A3')->applyFromArray($headerStyle);
+            $sheet->getStyle('B3')->applyFromArray($validationStyle);
+
+            // Row 4: End Date
+            $sheet->setCellValue('A4', 'End date - [YYYY-MM-DD or leave empty]');
+            $sheet->setCellValue('B4', 'Date - NULLABLE - Format: YYYY-MM-DD or Excel date - Grant expiration date');
+            $sheet->getStyle('A4')->applyFromArray($headerStyle);
+            $sheet->getStyle('B4')->applyFromArray($validationStyle);
+
+            // Row 5: Description
+            $sheet->setCellValue('A5', 'Description - [Enter grant description]');
+            $sheet->setCellValue('B5', 'Text - NULLABLE - Max 1000 chars - Brief description of the grant');
+            $sheet->getStyle('A5')->applyFromArray($headerStyle);
+            $sheet->getStyle('B5')->applyFromArray($validationStyle);
+
+            // Row 6: Empty spacer
+            $sheet->getRowDimension(6)->setRowHeight(5);
+
+            // Row 7: Column Headers for Grant Items
+            $sheet->setCellValue('A7', 'Budget Line Code');
+            $sheet->setCellValue('B7', 'Position');
+            $sheet->setCellValue('C7', 'Salary');
+            $sheet->setCellValue('D7', 'Benefit');
+            $sheet->setCellValue('E7', 'Level of Effort (%)');
+            $sheet->setCellValue('F7', 'Position Number');
+            $sheet->getStyle('A7:F7')->applyFromArray($columnHeaderStyle);
+            $sheet->getRowDimension(7)->setRowHeight(25);
+
+            // Row 8: Validation rules for each column
+            $sheet->setCellValue('A8', 'String - NULLABLE - Max 255 chars - Can be empty for General Fund');
+            $sheet->setCellValue('B8', 'String - NOT NULL - Max 255 chars - Position title/name');
+            $sheet->setCellValue('C8', 'Decimal - NULLABLE - Format: 75000 or 75000.50 - Monthly salary');
+            $sheet->setCellValue('D8', 'Decimal - NULLABLE - Format: 15000 or 15000.00 - Monthly benefit');
+            $sheet->setCellValue('E8', 'Decimal - NULLABLE - Format: 75 or 75% or 0.75 - Effort percentage (0-100)');
+            $sheet->setCellValue('F8', 'Integer - NULLABLE - Default: 1 - Number of positions (min: 1)');
+            $sheet->getStyle('A8:F8')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(8)->setRowHeight(30);
+
+            // Wrap text for validation rows
+            $sheet->getStyle('B1:B5')->getAlignment()->setWrapText(true);
+            $sheet->getStyle('A8:F8')->getAlignment()->setWrapText(true);
+
+            // Add borders to the data area
+            $sheet->getStyle('A7:F8')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+            // Add instructions sheet
+            $instructionsSheet = $spreadsheet->createSheet();
+            $instructionsSheet->setTitle('Instructions');
+            $instructionsSheet->getColumnDimension('A')->setWidth(80);
+
+            $instructions = [
+                ['GRANT IMPORT TEMPLATE - INSTRUCTIONS'],
+                [''],
+                ['IMPORTANT: Each sheet represents ONE grant with its grant items.'],
+                [''],
+                ['FILE STRUCTURE:'],
+                ['1. You can have multiple sheets in one Excel file'],
+                ['2. Each sheet will create a separate grant'],
+                ['3. Sheet name can be anything (it will not be imported)'],
+                [''],
+                ['SHEET STRUCTURE (Rows 1-6: Grant Information):'],
+                ['Row 1: Grant name - [Your grant name] (REQUIRED)'],
+                ['Row 2: Grant code - [Unique code] (REQUIRED - Must be unique)'],
+                ['Row 3: Subsidiary - [Organization name] (Optional)'],
+                ['Row 4: End date - [YYYY-MM-DD] (Optional)'],
+                ['Row 5: Description - [Grant description] (Optional)'],
+                ['Row 6: (Leave empty - spacer row)'],
+                [''],
+                ['SHEET STRUCTURE (Row 7+: Grant Items):'],
+                ['Row 7: Column headers (already provided)'],
+                ['Row 8: Validation rules (for reference - delete before import)'],
+                ['Row 9+: Your grant item data'],
+                [''],
+                ['COLUMN DETAILS:'],
+                ['A. Budget Line Code - Optional, can be empty for General Fund grants'],
+                ['   Examples: 1.2.2.1, BL-001, A.B.C, CODE_123, or leave empty'],
+                [''],
+                ['B. Position - REQUIRED, position title or name'],
+                ['   Examples: Project Manager, Senior Researcher, Field Officer'],
+                [''],
+                ['C. Salary - Optional, monthly salary amount'],
+                ['   Examples: 75000, 75000.50'],
+                [''],
+                ['D. Benefit - Optional, monthly benefit amount'],
+                ['   Examples: 15000, 15000.00'],
+                [''],
+                ['E. Level of Effort - Optional, percentage of time on grant'],
+                ['   Examples: 75, 75%, 0.75 (all mean 75%)'],
+                [''],
+                ['F. Position Number - Optional, number of positions (default: 1)'],
+                ['   Examples: 1, 2, 5'],
+                [''],
+                ['VALIDATION RULES:'],
+                ['1. Grant Code must be unique across all grants in the database'],
+                ['2. For Project Grants: Position + Budget Line Code must be unique within each grant'],
+                ['3. For General Fund: Budget Line Code can be empty, duplicate positions allowed'],
+                ['4. Position field is always required'],
+                ['5. All numeric fields accept decimal values'],
+                [''],
+                ['DUPLICATE HANDLING:'],
+                ['- If grant code exists: entire sheet is skipped'],
+                ['- If grant item exists (same position + budget code): item is skipped'],
+                ['- General Fund items (empty budget code) can have duplicate positions'],
+                [''],
+                ['EXAMPLE - Project Grant:'],
+                ['Row 1: Grant name - Health Initiative Grant'],
+                ['Row 2: Grant code - GR-2024-001'],
+                ['Row 3: Subsidiary - SMRU'],
+                ['Row 4: End date - 2024-12-31'],
+                ['Row 5: Description - Funding for health initiatives'],
+                ['Row 6: (empty)'],
+                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Manpower'],
+                ['Row 8: 1.2.2.1 | Project Manager | 75000 | 15000 | 75 | 2'],
+                ['Row 9: 1.2.1.2 | Senior Researcher | 60000 | 12000 | 100 | 3'],
+                [''],
+                ['EXAMPLE - General Fund:'],
+                ['Row 1: Grant name - General Fund'],
+                ['Row 2: Grant code - S22001'],
+                ['Row 3: Subsidiary - BHF'],
+                ['Row 4: End date -'],
+                ['Row 5: Description - BHF hub grant'],
+                ['Row 6: (empty)'],
+                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Manpower'],
+                ['Row 8: (empty) | Manager | 75000 | 15000 | 100 | 2'],
+                ['Row 9: (empty) | Field Officer | 45000 | 9000 | 100 | 3'],
+                ['Row 10: (empty) | Manager | 60000 | 12000 | 75 | 1  (duplicate position OK!)'],
+                [''],
+                ['TIPS:'],
+                ['- Delete row 8 (validation rules) before importing'],
+                ['- Test with a small file first (1-2 grants)'],
+                ['- Keep a backup of your original data'],
+                ['- Check the import notification for results'],
+                ['- Review any error messages carefully'],
+                [''],
+                ['FILE REQUIREMENTS:'],
+                ['- File format: .xlsx, .xls, or .csv'],
+                ['- Maximum file size: 10MB'],
+                ['- Each sheet must have at least 5 rows (grant info)'],
+                [''],
+                ['For more information, refer to the API documentation or contact your system administrator.'],
+            ];
+
+            $row = 1;
+            foreach ($instructions as $instruction) {
+                $instructionsSheet->setCellValue('A' . $row, $instruction[0]);
+                if ($row === 1) {
+                    $instructionsSheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
                 }
-
-                // --- 1. Budget Line ---
-                if ($bgLineCode === '') {
-                    $errors[] = "Sheet '$sheetName' row $i: Missing budget line code (column A)";
-
-                    continue;
-                }
-
-                $createdBudgetLines[$bgLineCode] = true;
-
-                // --- 2. Grant Item ---
-                // Create unique key using grant_id, grant_position, and budgetline_code
-                $itemKey = $grant->id.'|'.$grantPosition.'|'.$bgLineCode;
-
-                if (! isset($createdGrantItems[$itemKey])) {
-                    // Check if this combination already exists in database
-                    $existingItem = GrantItem::where('grant_id', $grant->id)
-                        ->where('grant_position', $grantPosition)
-                        ->where('budgetline_code', $bgLineCode)
-                        ->first();
-
-                    if ($existingItem) {
-                        $errors[] = "Sheet '$sheetName' row $i: Duplicate grant item - Position '$grantPosition' with budget line code '$bgLineCode' already exists for this grant";
-
-                        continue;
-                    }
-
-                    $grantItem = GrantItem::create([
-                        'grant_id' => $grant->id,
-                        'grant_position' => $grantPosition,
-                        'grant_salary' => isset($row['C']) && $row['C'] !== '' ? $this->toFloat($row['C']) : null,
-                        'grant_benefit' => isset($row['D']) && $row['D'] !== '' ? $this->toFloat($row['D']) : null,
-                        'grant_level_of_effort' => isset($row['E']) && $row['E'] !== '' ?
-                            (float) trim(str_replace('%', '', $row['E'])) / 100 : null,
-                        'grant_position_number' => isset($row['F']) && $row['F'] !== '' ? (int) $row['F'] : 1,
-                        'budgetline_code' => $bgLineCode, // Moved from position_slots to grant_items
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    $createdGrantItems[$itemKey] = $grantItem;
-                } else {
-                    $grantItem = $createdGrantItems[$itemKey];
-                }
-
-                // --- 3. Position Slots (One per position number, budget line code now in grant_item) ---
-                $positionCount = isset($row['F']) && $row['F'] !== '' ? (int) $row['F'] : 1;
-                for ($slot = 1; $slot <= $positionCount; $slot++) {
-                    PositionSlot::create([
-                        'grant_item_id' => $grantItem->id,
-                        'slot_number' => $slot,
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                    ]);
-                }
-
-                $itemsProcessed++;
+                $row++;
             }
-        } catch (\Exception $e) {
-            $errors[] = "Sheet '$sheetName': Error processing items - ".$e->getMessage();
-            throw $e;
-        }
 
-        return $itemsProcessed;
+            $instructionsSheet->getStyle('A1:A' . $row)->getAlignment()->setWrapText(true);
+
+            // Set active sheet to template
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // Generate filename with timestamp
+            $filename = 'grant_import_template_' . date('Y-m-d_His') . '.xlsx';
+
+            // Create writer and save to temporary file
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            
+            // Create temporary file
+            $tempFile = tempnam(sys_get_temp_dir(), 'grant_template_');
+            $writer->save($tempFile);
+            
+            // Return file download response with proper CORS headers
+            return response()->download($tempFile, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ])->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1053,23 +1360,8 @@ class GrantController extends Controller
     private function validateFile(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Added max file size
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
-    }
-
-    /**
-     * Convert string value to float
-     *
-     * @param  mixed  $value  Value to convert
-     * @return float|null Converted float value or null if input is null
-     */
-    private function toFloat($value): ?float
-    {
-        if (is_null($value)) {
-            return null;
-        }
-
-        return floatval(preg_replace('/[^0-9.-]/', '', $value));
     }
 
     /**
@@ -1085,11 +1377,11 @@ class GrantController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"code", "name", "subsidiary"},
+     *             required={"code", "name", "organization"},
      *
      *             @OA\Property(property="code", type="string", example="GR-2023-001"),
      *             @OA\Property(property="name", type="string", example="Health Initiative Grant"),
-     *             @OA\Property(property="subsidiary", type="string", example="Main Branch"),
+     *             @OA\Property(property="organization", type="string", example="Main Branch"),
      *             @OA\Property(property="description", type="string", example="Funding for health initiatives", nullable=true),
      *             @OA\Property(property="end_date", type="string", format="date", example="2023-12-31", nullable=true)
      *         )
@@ -1146,7 +1438,7 @@ class GrantController extends Controller
             $validator = Validator::make($request->all(), [
                 'code' => 'required|string|unique:grants,code',
                 'name' => 'required|string|max:255',
-                'subsidiary' => 'required|string|max:255',
+                'organization' => 'required|string|max:255',
                 'description' => 'nullable|string|max:255',
                 'end_date' => 'nullable|date',
             ]);
@@ -1164,6 +1456,15 @@ class GrantController extends Controller
             $data['updated_by'] = Auth::user()->name ?? 'system';
 
             $grant = Grant::create($data);
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantActionNotification('created', $grant, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1292,17 +1593,31 @@ class GrantController extends Controller
             // Create the grant item
             $grantItem = GrantItem::create($data);
 
-            // Create position slots automatically
-            $positionSlots = $this->createPositionSlots($grantItem);
+            // Refresh to ensure all relationships are loaded
+            $grantItem->refresh();
+
+            // Load the grant relationship for notification
+            $grantItem->load('grant');
+
+            // Position slots removed - allocations now link directly to grant_items
 
             DB::commit();
 
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy && $grantItem->grant) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantItemActionNotification('created', $grantItem, $grantItem->grant, $performedBy));
+                }
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Grant item created successfully with '.count($positionSlots).' position slots',
+                'message' => 'Grant item created successfully',
                 'data' => [
                     'grant_item' => $grantItem,
-                    'position_slots_created' => count($positionSlots),
+                    'capacity' => $grantItem->grant_position_number ?? 1,
                 ],
             ], 201);
 
@@ -1457,29 +1772,36 @@ class GrantController extends Controller
             // Update the grant item
             $grantItem->update($validated);
 
-            // Handle position slot changes if position number changed
-            $positionSlotChanges = ['added' => 0, 'removed' => 0, 'warnings' => []];
-            $newPositionNumber = $grantItem->grant_position_number ?? 1;
+            // Reload grant relationship for notification
+            $grantItem->load('grant');
 
-            if ($oldPositionNumber !== $newPositionNumber) {
-                $positionSlotChanges = $this->updatePositionSlots($grantItem, $oldPositionNumber);
-            }
+            // Position slots removed - allocations now link directly to grant_items
+            // Capacity is now tracked via grant_position_number field
 
             DB::commit();
 
-            $message = 'Grant item updated successfully';
-            if ($positionSlotChanges['added'] > 0 || $positionSlotChanges['removed'] > 0) {
-                $message .= '. Position slots: '.$positionSlotChanges['added'].' added, '.$positionSlotChanges['removed'].' removed';
+            // Get current active allocations count for this grant item
+            $activeAllocationsCount = \App\Models\EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
+                ->where('status', 'active')
+                ->count();
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy && $grantItem->grant) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantItemActionNotification('updated', $grantItem, $grantItem->grant, $performedBy));
+                }
             }
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => 'Grant item updated successfully',
                 'data' => [
                     'grant_item' => $grantItem,
-                    'position_slots_added' => $positionSlotChanges['added'],
-                    'position_slots_removed' => $positionSlotChanges['removed'],
-                    'warnings' => $positionSlotChanges['warnings'],
+                    'capacity' => $grantItem->grant_position_number ?? 1,
+                    'active_allocations' => $activeAllocationsCount,
+                    'available_capacity' => max(0, ($grantItem->grant_position_number ?? 1) - $activeAllocationsCount),
                 ],
             ], 200);
 
@@ -1571,6 +1893,9 @@ class GrantController extends Controller
             // Find the grant or return 404
             $grant = Grant::findOrFail($id);
 
+            // Store grant data before deletion for notification
+            $grantData = $grant->toArray();
+
             // Use a transaction to ensure all related items are deleted
             DB::beginTransaction();
 
@@ -1581,6 +1906,22 @@ class GrantController extends Controller
             $grant->delete();
 
             DB::commit();
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                // Create a temporary grant object with the stored data for notification
+                $grantForNotification = (object) [
+                    'id' => $grantData['id'] ?? null,
+                    'name' => $grantData['name'] ?? 'Unknown Grant',
+                    'code' => $grantData['code'] ?? 'N/A',
+                ];
+
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantActionNotification('deleted', $grantForNotification, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1665,12 +2006,35 @@ class GrantController extends Controller
             $grantItem = GrantItem::findOrFail($id);
             $grant = $grantItem->grant;
 
-            DB::transaction(function () use ($grantItem, $grant) {
+            // Store grant item and grant data before deletion for notification
+            $grantItemData = $grantItem->toArray();
+            $grantData = $grant ? $grant->toArray() : null;
+
+            DB::transaction(function () use ($grantItem) {
                 $grantItem->delete();
-                if ($grant && $grant->grantItems()->count() === 0) {
-                    $grant->delete();
-                }
+                // Grant should remain even if it has no items - allow users to add items later
             });
+
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy && $grantData) {
+                // Create temporary objects with the stored data for notification
+                $grantItemForNotification = (object) [
+                    'id' => $grantItemData['id'] ?? null,
+                    'grant_position' => $grantItemData['grant_position'] ?? 'Unknown Position',
+                ];
+
+                $grantForNotification = (object) [
+                    'id' => $grantData['id'] ?? null,
+                    'name' => $grantData['name'] ?? 'Unknown Grant',
+                    'code' => $grantData['code'] ?? 'N/A',
+                ];
+
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantItemActionNotification('deleted', $grantItemForNotification, $grantForNotification, $performedBy));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1796,6 +2160,15 @@ class GrantController extends Controller
             $grant->updated_by = auth()->user()->name ?? 'system';
             $grant->save();
 
+            // Send notification to all users
+            $performedBy = auth()->user();
+            if ($performedBy) {
+                $users = User::all();
+                foreach ($users as $user) {
+                    $user->notify(new GrantActionNotification('updated', $grant, $performedBy));
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Grant updated successfully',
@@ -1882,9 +2255,13 @@ class GrantController extends Controller
     public function getGrantPositions(Request $request)
     {
         try {
-            // Eager-load grantItems -> positionSlots
+            // Eager-load grantItems with allocation counts
             $grants = \App\Models\Grant::with([
-                'grantItems.positionSlots',
+                'grantItems' => function ($q) {
+                    $q->withCount(['employeeFundingAllocations as active_allocations_count' => function ($query) {
+                        $query->where('status', 'active');
+                    }]);
+                },
             ])->orderBy('created_at', 'desc')->get();
 
             if ($grants->isEmpty()) {
@@ -1909,38 +2286,20 @@ class GrantController extends Controller
                     $budgetlineCode = $item->budgetline_code;
                     $manpower = (int) ($item->grant_position_number ?? 0);
 
-                    // For each position slot under this grant item
-                    $slotAllocations = 0;
-                    foreach ($item->positionSlots as $slot) {
-                        // Count active "grant" allocations for this slot
-                        $allocationQuery = \App\Models\EmployeeFundingAllocation::query()
-                            ->where('position_slot_id', $slot->id)
-                            ->where('allocation_type', 'grant');
-
-                        // If 'active' column exists, filter on it. Otherwise, use end_date logic.
-                        if (Schema::hasColumn('employee_funding_allocations', 'active')) {
-                            $allocationQuery->where('active', true);
-                        } else {
-                            $allocationQuery->where(function ($q) {
-                                $q->whereNull('end_date')->orWhere('end_date', '>', now());
-                            });
-                        }
-
-                        $activeAllocations = $allocationQuery->count();
-                        $slotAllocations += $activeAllocations;
-                    }
+                    // Count active allocations directly linked to this grant item
+                    $activeAllocations = $item->active_allocations_count ?? 0;
 
                     $totalPositions += $manpower;
-                    $recruitedPositions += $slotAllocations;
-                    $openPositions += ($manpower - $slotAllocations);
+                    $recruitedPositions += $activeAllocations;
+                    $openPositions += max(0, $manpower - $activeAllocations);
 
                     $grantPositions[] = [
                         'id' => $item->id,
                         'position' => $positionTitle,
                         'budgetline_code' => $budgetlineCode,
                         'manpower' => $manpower,
-                        'recruited' => $slotAllocations,
-                        'finding' => max(0, $manpower - $slotAllocations),
+                        'recruited' => $activeAllocations,
+                        'finding' => max(0, $manpower - $activeAllocations),
                     ];
                 }
 
@@ -1981,84 +2340,36 @@ class GrantController extends Controller
     }
 
     /**
-     * Create position slots for a grant item
+     * Send import completion notification to the authenticated user
      *
-     * @param  \App\Models\GrantItem  $grantItem  The grant item to create slots for
-     * @return array Array of created position slots
+     * @param  int  $processedGrants  Number of grants processed
+     * @param  int  $processedItems  Number of grant items processed
+     * @param  array  $errors  Array of error messages
+     * @param  array  $skippedGrants  Array of skipped grant codes
      */
-    private function createPositionSlots(GrantItem $grantItem): array
+    private function sendImportNotification(int $processedGrants, int $processedItems, array $errors, array $skippedGrants): void
     {
-        $positionNumber = $grantItem->grant_position_number ?? 1;
-        $createdSlots = [];
-        $currentUser = auth()->user()->name ?? 'system';
+        try {
+            $message = "Grant import finished! Processed: {$processedGrants} grants, {$processedItems} grant items";
 
-        for ($slot = 1; $slot <= $positionNumber; $slot++) {
-            $positionSlot = PositionSlot::create([
-                'grant_item_id' => $grantItem->id,
-                'slot_number' => $slot,
-                'created_by' => $currentUser,
-                'updated_by' => $currentUser,
+            if (count($errors) > 0) {
+                $message .= ', Warnings: '.count($errors);
+            }
+
+            if (count($skippedGrants) > 0) {
+                $message .= ', Skipped: '.count($skippedGrants);
+            }
+
+            $user = User::find(auth()->id());
+            if ($user) {
+                $user->notify(new ImportedCompletedNotification($message));
+            }
+        } catch (\Exception $e) {
+            // Log the error but don't fail the import response
+            \Log::error('Failed to send grant import notification', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
             ]);
-            $createdSlots[] = $positionSlot;
         }
-
-        return $createdSlots;
-    }
-
-    /**
-     * Update position slots when grant item position number changes
-     *
-     * @param  \App\Models\GrantItem  $grantItem  The grant item being updated
-     * @param  int  $oldPositionNumber  The previous position number
-     * @return array Array with counts of added, removed slots and any warnings
-     */
-    private function updatePositionSlots(GrantItem $grantItem, int $oldPositionNumber): array
-    {
-        $newPositionNumber = $grantItem->grant_position_number ?? 1;
-        $added = 0;
-        $removed = 0;
-        $warnings = [];
-        $currentUser = auth()->user()->name ?? 'system';
-
-        if ($newPositionNumber > $oldPositionNumber) {
-            // Create additional slots
-            for ($slot = $oldPositionNumber + 1; $slot <= $newPositionNumber; $slot++) {
-                PositionSlot::create([
-                    'grant_item_id' => $grantItem->id,
-                    'slot_number' => $slot,
-                    'created_by' => $currentUser,
-                    'updated_by' => $currentUser,
-                ]);
-                $added++;
-            }
-        } elseif ($newPositionNumber < $oldPositionNumber) {
-            // Remove excess slots, but only if they don't have active allocations
-            $excessSlots = PositionSlot::where('grant_item_id', $grantItem->id)
-                ->where('slot_number', '>', $newPositionNumber)
-                ->get();
-
-            foreach ($excessSlots as $slot) {
-                // Check if this slot has active employee funding allocations
-                $hasActiveAllocations = \App\Models\EmployeeFundingAllocation::where('position_slot_id', $slot->id)
-                    ->where('allocation_type', 'grant')
-                    ->where(function ($q) {
-                        $q->whereNull('end_date')->orWhere('end_date', '>', now());
-                    })
-                    ->exists();
-
-                if (! $hasActiveAllocations) {
-                    $slot->delete();
-                    $removed++;
-                } else {
-                    $warnings[] = "Position slot {$slot->slot_number} could not be removed due to active employee funding allocations";
-                }
-            }
-        }
-
-        return [
-            'added' => $added,
-            'removed' => $removed,
-            'warnings' => $warnings,
-        ];
     }
 }

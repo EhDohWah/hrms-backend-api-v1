@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Carbon\Carbon;
 use OpenApi\Annotations as OA;
 
 /**
@@ -13,6 +13,7 @@ use OpenApi\Annotations as OA;
  *     schema="TaxCalculationLog",
  *     title="Tax Calculation Log",
  *     description="Audit log for all tax calculations performed in the system",
+ *
  *     @OA\Property(property="id", type="integer", format="int64", example=1),
  *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
  *     @OA\Property(property="calculation_type", type="string", enum={"payroll", "annual_summary", "income_tax", "compliance_check"}, example="payroll"),
@@ -89,8 +90,11 @@ class TaxCalculationLog extends Model
 
     // Calculation types
     public const TYPE_PAYROLL = 'payroll';
+
     public const TYPE_ANNUAL_SUMMARY = 'annual_summary';
+
     public const TYPE_INCOME_TAX = 'income_tax';
+
     public const TYPE_COMPLIANCE_CHECK = 'compliance_check';
 
     public const CALCULATION_TYPES = [
@@ -148,6 +152,7 @@ class TaxCalculationLog extends Model
         if ($this->total_income <= 0) {
             return 0;
         }
+
         return round(($this->income_tax_annual / $this->total_income) * 100, 2);
     }
 
@@ -161,7 +166,7 @@ class TaxCalculationLog extends Model
         int $employeeId,
         array $calculationData,
         array $inputParameters,
-        string $calculatedBy = null
+        ?string $calculatedBy = null
     ): self {
         return self::create([
             'employee_id' => $employeeId,
@@ -194,7 +199,7 @@ class TaxCalculationLog extends Model
         float $annualTax,
         array $taxBreakdown,
         int $taxYear,
-        string $calculatedBy = null
+        ?string $calculatedBy = null
     ): self {
         return self::create([
             'employee_id' => $employeeId,
@@ -223,7 +228,7 @@ class TaxCalculationLog extends Model
         int $employeeId,
         array $complianceResults,
         int $taxYear,
-        string $calculatedBy = null
+        ?string $calculatedBy = null
     ): self {
         return self::create([
             'employee_id' => $employeeId,
@@ -243,7 +248,7 @@ class TaxCalculationLog extends Model
     {
         return [
             'employee_id' => 'required|exists:employees,id',
-            'calculation_type' => 'required|in:' . implode(',', array_keys(self::CALCULATION_TYPES)),
+            'calculation_type' => 'required|in:'.implode(',', array_keys(self::CALCULATION_TYPES)),
             'tax_year' => 'required|integer|min:2000|max:2100',
             'gross_salary' => 'nullable|numeric|min:0',
             'total_income' => 'required|numeric|min:0',

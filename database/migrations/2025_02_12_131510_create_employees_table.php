@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('subsidiary', 10)->index();
+            $table->string('organization', 10)->index();
             $table->string('staff_id', 50)->index();
-            $table->unique(['staff_id', 'subsidiary']);
+            $table->unique(['staff_id', 'organization']);
             $table->string('initial_en', 10)->nullable();
             $table->string('initial_th', 20)->nullable();
             $table->string('first_name_en', 255)->nullable();

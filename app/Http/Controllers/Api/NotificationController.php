@@ -23,6 +23,49 @@ class NotificationController extends Controller
     }
 
     /**
+     * Get a single notification by ID
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $notification = $request->user()
+            ->notifications()
+            ->find($id);
+
+        if (! $notification) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Notification not found',
+            ], 404);
+        }
+
+        return response()->json($notification);
+    }
+
+    /**
+     * Mark a single notification as read
+     */
+    public function markAsRead(Request $request, string $id): JsonResponse
+    {
+        $notification = $request->user()
+            ->notifications()
+            ->find($id);
+
+        if (! $notification) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Notification not found',
+            ], 404);
+        }
+
+        $notification->markAsRead();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notification marked as read',
+        ]);
+    }
+
+    /**
      * Mark all notifications as read
      */
     public function markAllAsRead(Request $request): JsonResponse

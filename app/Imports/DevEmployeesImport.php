@@ -208,7 +208,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
                     $employeeBatch[] = [
                         'staff_id' => $staffId,
-                        'subsidiary' => $row['org'] ?? null,
+                        'organization' => $row['org'] ?? null,
                         'initial_en' => $row['initial'] ?? null,
                         'first_name_en' => $row['first_name'] ?? null,
                         'last_name_en' => $row['last_name'] ?? null,

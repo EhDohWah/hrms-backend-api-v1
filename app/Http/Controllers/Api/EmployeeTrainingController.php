@@ -138,7 +138,7 @@ class EmployeeTrainingController extends Controller
      *                         @OA\Property(property="staff_id", type="string", example="EMP001"),
      *                         @OA\Property(property="first_name_en", type="string", example="John"),
      *                         @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                         @OA\Property(property="subsidiary", type="string", example="SMRU")
+     *                         @OA\Property(property="organization", type="string", example="SMRU")
      *                     ),
      *                     @OA\Property(
      *                         property="training",
@@ -225,7 +225,7 @@ class EmployeeTrainingController extends Controller
 
             // Build query with relationships
             $query = EmployeeTraining::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
                 'training:id,title,organizer,start_date,end_date',
             ]);
 
@@ -677,7 +677,7 @@ class EmployeeTrainingController extends Controller
      *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
      *                     @OA\Property(property="first_name_en", type="string", example="John"),
      *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                     @OA\Property(property="subsidiary", type="string", example="SMRU"),
+     *                     @OA\Property(property="organization", type="string", example="SMRU"),
      *                     @OA\Property(property="site", type="string", example="Main Office"),
      *                     @OA\Property(property="department", type="string", example="IT Department")
      *                 ),
@@ -745,10 +745,10 @@ class EmployeeTrainingController extends Controller
 
             // Find the employee with basic information
             $employee = \App\Models\Employee::with([
-                'employment.workLocation',
+                'employment.site',
                 'employment.departmentPosition.department',
             ])
-                ->select('id', 'staff_id', 'first_name_en', 'last_name_en', 'subsidiary')
+                ->select('id', 'staff_id', 'first_name_en', 'last_name_en', 'organization')
                 ->findOrFail($employee_id);
 
             // Build training query
@@ -793,7 +793,7 @@ class EmployeeTrainingController extends Controller
             });
 
             // Get additional employee details
-            $site = $employee->employment->first()?->workLocation?->name ?? 'N/A';
+            $site = $employee->employment->first()?->site?->name ?? 'N/A';
             $department = $employee->employment->first()?->departmentPosition?->department?->name ?? 'N/A';
 
             return response()->json([
@@ -805,7 +805,7 @@ class EmployeeTrainingController extends Controller
                         'staff_id' => $employee->staff_id,
                         'first_name_en' => $employee->first_name_en,
                         'last_name_en' => $employee->last_name_en,
-                        'subsidiary' => $employee->subsidiary,
+                        'organization' => $employee->organization,
                         'site' => $site,
                         'department' => $department,
                     ],
@@ -955,7 +955,7 @@ class EmployeeTrainingController extends Controller
 
             // Build attendance query
             $attendanceQuery = EmployeeTraining::with([
-                'employee:id,staff_id,first_name_en,last_name_en,subsidiary',
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
             ])
                 ->where('training_id', $training_id);
 

@@ -6,14 +6,17 @@ use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
 use App\Models\Grant;
-use App\Models\OrgFundedAllocation;
-use App\Models\PositionSlot;
+use App\Models\GrantItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class FundingAllocationService
 {
+    public function __construct(
+        private readonly EmployeeFundingAllocationService $allocationSalaryService
+    ) {}
+
     /**
      * Allocate employee to funding sources with comprehensive validation
      */
@@ -23,7 +26,6 @@ class FundingAllocationService
         $this->validateTotalEffort($allocations);
 
         $createdAllocations = [];
-        $createdOrgFunded = [];
         $errors = [];
 
         DB::beginTransaction();
@@ -39,9 +41,6 @@ class FundingAllocationService
                 }
 
                 $createdAllocations[] = $result['allocation'];
-                if (isset($result['org_funded'])) {
-                    $createdOrgFunded[] = $result['org_funded'];
-                }
             }
 
             if (! empty($errors)) {
@@ -55,10 +54,8 @@ class FundingAllocationService
             return [
                 'success' => true,
                 'allocations' => $createdAllocations,
-                'org_funded' => $createdOrgFunded,
                 'summary' => [
                     'total_allocations' => count($createdAllocations),
-                    'org_funded_created' => count($createdOrgFunded),
                 ],
             ];
 
@@ -74,16 +71,10 @@ class FundingAllocationService
      */
     private function createAllocation(Employee $employee, Employment $employment, array $data, int $index): array
     {
-        $allocationType = $data['allocation_type'];
+        $allocationType = 'grant'; // All allocations now use grant items (including hub/org funds)
         $currentUser = Auth::user()->name ?? 'system';
 
-        if ($allocationType === 'grant') {
-            return $this->createGrantAllocation($employee, $employment, $data, $index, $currentUser);
-        } elseif ($allocationType === 'org_funded') {
-            return $this->createOrgFundedAllocation($employee, $employment, $data, $index, $currentUser);
-        }
-
-        return ['error' => "Allocation #{$index}: Invalid allocation type"];
+        return $this->createGrantAllocation($employee, $employment, $data, $index, $currentUser);
     }
 
     /**
@@ -91,27 +82,32 @@ class FundingAllocationService
      */
     private function createGrantAllocation(Employee $employee, Employment $employment, array $data, int $index, string $currentUser): array
     {
-        // Validate position slot exists
-        $positionSlot = PositionSlot::with('grantItem')->find($data['position_slot_id']);
-        if (! $positionSlot) {
-            return ['error' => "Allocation #{$index}: Position slot not found"];
+        // Validate grant item exists
+        $grantItem = GrantItem::find($data['grant_item_id']);
+        if (! $grantItem) {
+            return ['error' => "Allocation #{$index}: Grant item not found"];
         }
 
         // Check grant capacity constraints
-        $capacityCheck = $this->validateGrantCapacity($positionSlot, $employment->id);
+        $capacityCheck = $this->validateGrantCapacity($grantItem, $employment->id);
         if (! $capacityCheck['valid']) {
             return ['error' => "Allocation #{$index}: ".$capacityCheck['message']];
         }
 
-        // Create grant funding allocation
+        $fteDecimal = $data['fte'] / 100;
+        $effectiveDate = $employment->start_date instanceof Carbon
+            ? $employment->start_date
+            : Carbon::parse($employment->start_date);
+        $salaryContext = $this->allocationSalaryService->deriveSalaryContext($employment, $fteDecimal, $effectiveDate);
+
         $allocation = EmployeeFundingAllocation::create([
             'employee_id' => $employee->id,
             'employment_id' => $employment->id,
-            'position_slot_id' => $data['position_slot_id'],
-            'org_funded_id' => null,
-            'fte' => $data['fte'] / 100, // Convert percentage to decimal
+            'grant_item_id' => $data['grant_item_id'],
+            'fte' => $fteDecimal,
             'allocation_type' => 'grant',
-            'allocated_amount' => $data['allocated_amount'] ?? null,
+            'allocated_amount' => $salaryContext['allocated_amount'],
+            'salary_type' => $salaryContext['salary_type'],
             'start_date' => $employment->start_date,
             'end_date' => $employment->end_date ?? null,
             'created_by' => $currentUser,
@@ -122,59 +118,16 @@ class FundingAllocationService
     }
 
     /**
-     * Create organization-funded allocation
-     */
-    private function createOrgFundedAllocation(Employee $employee, Employment $employment, array $data, int $index, string $currentUser): array
-    {
-        if (empty($data['grant_id'])) {
-            return ['error' => "Allocation #{$index}: grant_id is required for org_funded allocations"];
-        }
-
-        // Create org_funded_allocation record first
-        $orgFundedAllocation = OrgFundedAllocation::create([
-            'grant_id' => $data['grant_id'],
-            'department_id' => $employment->department_id,
-            'position_id' => $employment->position_id,
-            'description' => 'Auto-created for employment ID: '.$employment->id,
-            'created_by' => $currentUser,
-            'updated_by' => $currentUser,
-        ]);
-
-        // Create employee funding allocation
-        $allocation = EmployeeFundingAllocation::create([
-            'employee_id' => $employee->id,
-            'employment_id' => $employment->id,
-            'position_slot_id' => null,
-            'org_funded_id' => $orgFundedAllocation->id,
-            'fte' => $data['fte'] / 100, // Convert percentage to decimal
-            'allocation_type' => 'org_funded',
-            'allocated_amount' => $data['allocated_amount'] ?? null,
-            'start_date' => $employment->start_date,
-            'end_date' => $employment->end_date ?? null,
-            'created_by' => $currentUser,
-            'updated_by' => $currentUser,
-        ]);
-
-        return [
-            'allocation' => $allocation,
-            'org_funded' => $orgFundedAllocation,
-        ];
-    }
-
-    /**
      * Validate grant capacity constraints
      */
-    public function validateGrantCapacity(PositionSlot $positionSlot, ?int $excludeEmploymentId = null): array
+    public function validateGrantCapacity(GrantItem $grantItem, ?int $excludeEmploymentId = null): array
     {
-        $grantItem = $positionSlot->grantItem;
         if (! $grantItem || $grantItem->grant_position_number <= 0) {
             return ['valid' => true]; // No capacity constraints
         }
 
         $today = Carbon::today();
-        $query = EmployeeFundingAllocation::whereHas('positionSlot', function ($q) use ($grantItem) {
-            $q->where('grant_item_id', $grantItem->id);
-        })
+        $query = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
             ->where('allocation_type', 'grant')
             ->where('start_date', '<=', $today)
             ->where(function ($q) use ($today) {
@@ -207,17 +160,14 @@ class FundingAllocationService
      */
     public function calculateAvailableSlots(Grant $grant): array
     {
-        $grantItems = $grant->grantItems()->with('positionSlots')->get();
+        $grantItems = $grant->grantItems()->get();
         $summary = [];
 
         foreach ($grantItems as $grantItem) {
             $totalSlots = $grantItem->grant_position_number ?? 0;
-            $allocatedSlots = 0;
 
-            foreach ($grantItem->positionSlots as $slot) {
-                $capacityCheck = $this->validateGrantCapacity($slot);
-                $allocatedSlots += ($capacityCheck['total_slots'] ?? 0) - ($capacityCheck['available_slots'] ?? 0);
-            }
+            $capacityCheck = $this->validateGrantCapacity($grantItem);
+            $allocatedSlots = ($capacityCheck['total_slots'] ?? 0) - ($capacityCheck['available_slots'] ?? 0);
 
             $summary[] = [
                 'grant_item_id' => $grantItem->id,
@@ -253,17 +203,8 @@ class FundingAllocationService
         DB::beginTransaction();
 
         try {
-            // Remove existing allocations and their org_funded records
-            $existingAllocations = EmployeeFundingAllocation::where('employment_id', $employment->id)->get();
-            $orgFundedIdsToDelete = $existingAllocations->whereNotNull('org_funded_id')->pluck('org_funded_id')->toArray();
-
             // Delete existing allocations
             EmployeeFundingAllocation::where('employment_id', $employment->id)->delete();
-
-            // Delete orphaned org_funded_allocations
-            if (! empty($orgFundedIdsToDelete)) {
-                OrgFundedAllocation::whereIn('id', $orgFundedIdsToDelete)->delete();
-            }
 
             // Create new allocations
             $result = $this->allocateEmployee($employment->employee, $employment, $newAllocations);
@@ -291,7 +232,7 @@ class FundingAllocationService
     public function getAllocationSummary(Employee $employee): array
     {
         $allocations = $employee->employeeFundingAllocations()
-            ->with(['positionSlot.grantItem.grant', 'orgFunded.grant', 'employment'])
+            ->with(['grantItem.grant', 'employment'])
             ->where(function ($query) {
                 $query->whereNull('end_date')
                     ->orWhere('end_date', '>', now());
@@ -308,17 +249,14 @@ class FundingAllocationService
         foreach ($allocations as $allocation) {
             $fundingSource = [
                 'id' => $allocation->id,
-                'type' => $allocation->allocation_type,
+                'type' => 'grant',
                 'effort_percentage' => $allocation->fte * 100,
                 'allocated_amount' => $allocation->allocated_amount,
             ];
 
-            if ($allocation->allocation_type === 'grant' && $allocation->positionSlot) {
-                $fundingSource['grant'] = $allocation->positionSlot->grantItem->grant->name ?? 'Unknown Grant';
-                $fundingSource['position'] = $allocation->positionSlot->grantItem->grant_position ?? 'Unknown Position';
-            } elseif ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
-                $fundingSource['grant'] = $allocation->orgFunded->grant->name ?? 'Unknown Grant';
-                $fundingSource['description'] = $allocation->orgFunded->description;
+            if ($allocation->grantItem) {
+                $fundingSource['grant'] = $allocation->grantItem->grant->name ?? 'Unknown Grant';
+                $fundingSource['position'] = $allocation->grantItem->grant_position ?? 'Unknown Position';
             }
 
             $summary['funding_sources'][] = $fundingSource;

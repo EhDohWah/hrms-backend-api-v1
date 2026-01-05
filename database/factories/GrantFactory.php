@@ -112,9 +112,9 @@ class GrantFactory extends Factory
             'NSF', 'CDC', 'DFID', 'PEPFAR', 'GAVI', 'UNITAID', 'WELLCOME',
         ];
 
-        // Select subsidiary
-        $subsidiary = $this->faker->randomElement(array_keys($subsidiaries));
-        $subsidiaryData = $subsidiaries[$subsidiary];
+        // Select organization
+        $organization = $this->faker->randomElement(array_keys($subsidiaries));
+        $organizationData = $subsidiaries[$organization];
 
         // Select grant type and details
         $grantType = $this->faker->randomElement(array_keys($grantTypes));
@@ -125,7 +125,7 @@ class GrantFactory extends Factory
         $year = $this->faker->numberBetween(2020, 2026);
         $donorPrefix = $this->faker->randomElement($donorPrefixes);
         $grantNumber = $this->faker->numberBetween(1000, 9999);
-        $grantCode = "{$subsidiaryData['prefix']}{$year}-{$donorPrefix}-{$grantNumber}";
+        $grantCode = "{$organizationData['prefix']}{$year}-{$donorPrefix}-{$grantNumber}";
 
         // Determine end date based on grant type
         $endDate = null;
@@ -142,7 +142,7 @@ class GrantFactory extends Factory
         }
 
         // Add some variation to names and descriptions
-        $locationSuffix = $this->faker->randomElement($subsidiaryData['locations']);
+        $locationSuffix = $this->faker->randomElement($organizationData['locations']);
         $enhancedName = $grantName.' - '.$locationSuffix;
 
         $enhancedDescription = $grantDescription.' '.
@@ -166,7 +166,7 @@ class GrantFactory extends Factory
         return [
             'code' => $grantCode,
             'name' => $enhancedName,
-            'subsidiary' => $subsidiary,
+            'organization' => $organization,
             'description' => $enhancedDescription,
             'end_date' => $endDate,
             'created_by' => $createdBy,
@@ -264,24 +264,24 @@ class GrantFactory extends Factory
     }
 
     /**
-     * Create a grant for a specific subsidiary
+     * Create a grant for a specific organization
      */
-    public function forSubsidiary(string $subsidiary): static
+    public function forSubsidiary(string $organization): static
     {
-        return $this->state(function (array $attributes) use ($subsidiary) {
-            $subsidiaryPrefixes = [
+        return $this->state(function (array $attributes) use ($organization) {
+            $organizationPrefixes = [
                 'SMRU' => 'S',
                 'BHF' => 'B',
                 'MORU' => 'M',
                 'OUCRU' => 'O',
             ];
 
-            $prefix = $subsidiaryPrefixes[$subsidiary] ?? 'G';
+            $prefix = $organizationPrefixes[$organization] ?? 'G';
             $year = $this->faker->numberBetween(2020, 2026);
             $number = $this->faker->numberBetween(1000, 9999);
 
             return [
-                'subsidiary' => $subsidiary,
+                'organization' => $organization,
                 'code' => "{$prefix}{$year}-{$this->faker->randomElement(['NIH', 'WHO', 'USAID'])}-{$number}",
             ];
         });

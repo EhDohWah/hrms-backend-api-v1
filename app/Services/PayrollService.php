@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\BenefitSetting;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
-use App\Models\InterSubsidiaryAdvance;
+use App\Models\InterOrganizationAdvance;
 use App\Models\Payroll;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ class PayrollService
     }
 
     /**
-     * Process complete payroll for an employee including inter-subsidiary advances
+     * Process complete payroll for an employee including inter-organization advances
      */
     public function processEmployeePayroll(Employee $employee, Carbon $payPeriodDate, bool $savePayroll = true): array
     {
@@ -43,8 +44,8 @@ class PayrollService
                             });
                     });
                 },
-                'employeeFundingAllocations.orgFunded.grant',
-                'employeeFundingAllocations.positionSlot.grantItem.grant',
+                'employeeFundingAllocations.grantItem.grant',
+                'employeeFundingAllocations.grant',
                 'employeeChildren',
             ]);
 
@@ -68,8 +69,8 @@ class PayrollService
                     $payroll = $this->createPayrollRecord($employee->employment, $allocation, $payrollData, $payPeriodDate);
                     $payrollRecords[] = $payroll;
 
-                    // Check if inter-subsidiary advance is needed
-                    $advance = $this->createInterSubsidiaryAdvanceIfNeeded($employee, $allocation, $payroll, $payPeriodDate);
+                    // Check if inter-organization advance is needed
+                    $advance = $this->createInterOrganizationAdvanceIfNeeded($employee, $allocation, $payroll, $payPeriodDate);
                     if ($advance) {
                         $interSubsidiaryAdvances[] = $advance;
                     }
@@ -90,7 +91,7 @@ class PayrollService
 
             if ($savePayroll) {
                 $result['payroll_records'] = $payrollRecords;
-                $result['inter_subsidiary_advances'] = $interSubsidiaryAdvances;
+                $result['inter_organization_advances'] = $interSubsidiaryAdvances;
                 $result['summary'] = [
                     'payrolls_created' => count($payrollRecords),
                     'advances_created' => count($interSubsidiaryAdvances),
@@ -112,9 +113,9 @@ class PayrollService
     }
 
     /**
-     * Preview inter-subsidiary advances that would be created for an employee
+     * Preview inter-organization advances that would be created for an employee
      */
-    public function previewInterSubsidiaryAdvances(Employee $employee, Carbon $payPeriodDate): array
+    public function previewInterOrganizationAdvances(Employee $employee, Carbon $payPeriodDate): array
     {
         // Load employee with all necessary relationships
         $employee->load([
@@ -128,8 +129,8 @@ class PayrollService
                         });
                 });
             },
-            'employeeFundingAllocations.orgFunded.grant',
-            'employeeFundingAllocations.positionSlot.grantItem.grant',
+            'employeeFundingAllocations.grantItem.grant',
+            'employeeFundingAllocations.grant',
         ]);
 
         if (! $employee->employment) {
@@ -149,12 +150,12 @@ class PayrollService
                 continue;
             }
 
-            $fundingSubsidiary = $projectGrant->subsidiary;
-            $employeeSubsidiary = $employee->subsidiary;
+            $fundingOrganization = $projectGrant->organization;
+            $employeeOrganization = $employee->organization;
 
             // Check if advance is needed
-            if ($fundingSubsidiary !== $employeeSubsidiary) {
-                $hubGrant = \App\Models\Grant::getHubGrantForSubsidiary($fundingSubsidiary);
+            if ($fundingOrganization !== $employeeOrganization) {
+                $hubGrant = \App\Models\Grant::getHubGrantForOrganization($fundingOrganization);
 
                 if (! $hubGrant) {
                     continue;
@@ -172,16 +173,16 @@ class PayrollService
                         'id' => $projectGrant->id,
                         'code' => $projectGrant->code,
                         'name' => $projectGrant->name,
-                        'subsidiary' => $projectGrant->subsidiary,
+                        'organization' => $projectGrant->organization,
                     ],
                     'hub_grant' => [
                         'id' => $hubGrant->id,
                         'code' => $hubGrant->code,
                         'name' => $hubGrant->name,
-                        'subsidiary' => $hubGrant->subsidiary,
+                        'organization' => $hubGrant->organization,
                     ],
-                    'from_subsidiary' => $fundingSubsidiary,
-                    'to_subsidiary' => $employeeSubsidiary,
+                    'from_organization' => $fundingOrganization,
+                    'to_organization' => $employeeOrganization,
                     'estimated_amount' => $estimatedNetSalary,
                     'formatted_amount' => '฿'.number_format($estimatedNetSalary, 2),
                 ];
@@ -196,7 +197,7 @@ class PayrollService
                 'id' => $employee->id,
                 'staff_id' => $employee->staff_id,
                 'name' => $employee->first_name_en.' '.$employee->last_name_en,
-                'subsidiary' => $employee->subsidiary,
+                'organization' => $employee->organization,
             ],
             'pay_period_date' => $payPeriodDate->format('Y-m-d'),
             'advance_previews' => $advancePreviews,
@@ -449,16 +450,17 @@ class PayrollService
             'calculations' => [
                 // ===== PAYROLL FIELDS (matching database schema) =====
                 'gross_salary' => $grossSalary,
-                'gross_salary_by_FTE' => $grossSalaryCurrentYearByFTE,
+                'gross_salary_by_fte' => $grossSalaryCurrentYearByFTE, // Fixed: lowercase 'fte'
+                'gross_salary_by_FTE' => $grossSalaryCurrentYearByFTE, // Legacy compatibility
                 'salary_increase_1_percent' => $annualIncrease,
                 'compensation_refund' => $compensationRefund,
-                'thirteen_month_salary' => $thirteenthMonthSalary,
+                'thirteenth_month_salary' => $thirteenthMonthSalary,
                 'pvd_saving_fund_employee' => $pvdSavingEmployee,
                 'employer_social_security' => $employerSocialSecurity,
                 'employee_social_security' => $employeeSocialSecurity,
                 'employer_health_welfare' => $healthWelfareEmployer,
                 'employee_health_welfare' => $healthWelfareEmployee,
-                'income_tax' => $incomeTax,
+                'income_tax' => $incomeTax, // Primary key for bulk payroll
                 'net_salary' => $netSalary,
                 'total_salary' => $totalSalary,
                 'total_pvd_saving_fund' => $totalPVDSaving,
@@ -466,7 +468,7 @@ class PayrollService
                 // ===== ADDITIONAL CALCULATED FIELDS =====
                 'pvd' => $pvdSavingCalculations['pvd_employee'],
                 'saving_fund' => $pvdSavingCalculations['saving_fund'],
-                'tax' => $incomeTax,
+                'tax' => $incomeTax, // Legacy compatibility
                 'total_income' => $totalIncome,
                 'total_deduction' => $totalDeductions,
                 'employer_contribution' => $employerContributions,
@@ -512,13 +514,13 @@ class PayrollService
     }
 
     /**
-     * Create inter-subsidiary advance if needed
+     * Create inter-organization advance if needed
      */
-    public function createInterSubsidiaryAdvanceIfNeeded(Employee $employee, EmployeeFundingAllocation $allocation, Payroll $payroll, Carbon $payPeriodDate): ?InterSubsidiaryAdvance
+    public function createInterOrganizationAdvanceIfNeeded(Employee $employee, EmployeeFundingAllocation $allocation, Payroll $payroll, Carbon $payPeriodDate): ?InterOrganizationAdvance
     {
         $projectGrant = $this->getFundingGrant($allocation);
         if (! $projectGrant) {
-            Log::warning('Cannot create inter-subsidiary advance: No project grant found', [
+            Log::warning('Cannot create inter-organization advance: No project grant found', [
                 'allocation_id' => $allocation->id,
                 'payroll_id' => $payroll->id,
             ]);
@@ -526,20 +528,20 @@ class PayrollService
             return null;
         }
 
-        $fundingSubsidiary = $projectGrant->subsidiary;
-        $employeeSubsidiary = $employee->subsidiary;
+        $fundingOrganization = $projectGrant->organization;
+        $employeeOrganization = $employee->organization;
 
         // No advance needed if subsidiaries match
-        if ($fundingSubsidiary === $employeeSubsidiary) {
+        if ($fundingOrganization === $employeeOrganization) {
             return null;
         }
 
-        // Get the correct hub grant for the lending subsidiary
-        $hubGrant = \App\Models\Grant::getHubGrantForSubsidiary($fundingSubsidiary);
+        // Get the correct hub grant for the lending organization
+        $hubGrant = \App\Models\Grant::getHubGrantForOrganization($fundingOrganization);
 
         if (! $hubGrant) {
-            Log::error('Hub grant not found for subsidiary', [
-                'subsidiary' => $fundingSubsidiary,
+            Log::error('Hub grant not found for organization', [
+                'organization' => $fundingOrganization,
                 'allocation_id' => $allocation->id,
                 'payroll_id' => $payroll->id,
             ]);
@@ -547,10 +549,10 @@ class PayrollService
             return null;
         }
 
-        $advance = InterSubsidiaryAdvance::create([
+        $advance = InterOrganizationAdvance::create([
             'payroll_id' => $payroll->id,
-            'from_subsidiary' => $fundingSubsidiary,
-            'to_subsidiary' => $employeeSubsidiary,
+            'from_organization' => $fundingOrganization,
+            'to_organization' => $employeeOrganization,
             'via_grant_id' => $hubGrant->id, // Use hub grant, not project grant
             'amount' => $payroll->net_salary,
             'advance_date' => $payPeriodDate,
@@ -559,10 +561,10 @@ class PayrollService
             'updated_by' => Auth::user()->name ?? 'system',
         ]);
 
-        Log::info('Inter-subsidiary advance created', [
+        Log::info('Inter-organization advance created', [
             'advance_id' => $advance->id,
-            'from' => $fundingSubsidiary,
-            'to' => $employeeSubsidiary,
+            'from' => $fundingOrganization,
+            'to' => $employeeOrganization,
             'amount' => $payroll->net_salary,
             'employee' => $employee->staff_id,
             'project_grant' => $projectGrant->code,
@@ -574,14 +576,12 @@ class PayrollService
     }
 
     /**
-     * Get funding subsidiary from allocation
+     * Get funding organization from allocation
      */
-    private function getFundingSubsidiary(EmployeeFundingAllocation $allocation): string
+    private function getFundingOrganization(EmployeeFundingAllocation $allocation): string
     {
-        if ($allocation->allocation_type === 'grant' && $allocation->positionSlot) {
-            return $allocation->positionSlot->grantItem->grant->subsidiary ?? 'UNKNOWN';
-        } elseif ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
-            return $allocation->orgFunded->grant->subsidiary ?? 'UNKNOWN';
+        if ($allocation->grantItem && $allocation->grantItem->grant) {
+            return $allocation->grantItem->grant->organization ?? 'UNKNOWN';
         }
 
         return 'UNKNOWN';
@@ -592,10 +592,8 @@ class PayrollService
      */
     private function getFundingGrant(EmployeeFundingAllocation $allocation): ?object
     {
-        if ($allocation->allocation_type === 'grant' && $allocation->positionSlot) {
-            return $allocation->positionSlot->grantItem->grant;
-        } elseif ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
-            return $allocation->orgFunded->grant;
+        if ($allocation->grantItem && $allocation->grantItem->grant) {
+            return $allocation->grantItem->grant;
         }
 
         return null;
@@ -606,15 +604,11 @@ class PayrollService
      */
     private function getFundingSourceName(EmployeeFundingAllocation $allocation): string
     {
-        if ($allocation->allocation_type === 'grant' && $allocation->positionSlot) {
-            return $allocation->positionSlot->grantItem->grant->name ?? 'Grant';
+        if ($allocation->grantItem && $allocation->grantItem->grant) {
+            return $allocation->grantItem->grant->name ?? 'Grant';
         }
 
-        if ($allocation->allocation_type === 'org_funded' && $allocation->orgFunded) {
-            return $allocation->orgFunded->grant->name ?? 'Org Funded';
-        }
-
-        return ucfirst($allocation->allocation_type);
+        return 'Grant';
     }
 
     // ===========================================
@@ -627,7 +621,7 @@ class PayrollService
      */
     private function calculateGrossSalary($employment): float
     {
-        return (float) $employment->position_salary;
+        return (float) $employment->pass_probation_salary;
     }
 
     /**
@@ -678,31 +672,35 @@ class PayrollService
     }
 
     /**
-     * 5. Calculate PVD/Saving Fund (7.5%)
+     * 5. Calculate PVD/Saving Fund (percentage from global settings)
      * Local ID = PVD, Local non ID = Saving Fund
      */
     private function calculatePVDSavingFund(Employee $employee, float $monthlySalary, $employment): array
     {
-        // PVD for Local ID (7.5% employee only)
-        // Saving Fund for Local non ID (7.5% employee only)
+        // Get PVD/Saving Fund percentage from global settings (default to 7.5% if not set)
+        $pvdPercentage = BenefitSetting::getActiveSetting('pvd_percentage') ?? 7.5;
+        $savingFundPercentage = BenefitSetting::getActiveSetting('saving_fund_percentage') ?? 7.5;
+
+        // PVD for Local ID (employee only)
+        // Saving Fund for Local non ID (employee only)
         // Will be deducted after passing probation with the exact date
-        $probationPassDate = $employment->probation_pass_date ? Carbon::parse($employment->probation_pass_date) : null;
+        $probationPassDate = $employment->pass_probation_date ? Carbon::parse($employment->pass_probation_date) : null;
 
         // Check if employee has passed probation
         $hasPassed = $probationPassDate && Carbon::now()->gte($probationPassDate);
 
         if ($hasPassed) {
             if ($employee->status === 'Local ID') {
-                // PVD for Local ID employees (7.5% employee contribution only)
+                // PVD for Local ID employees (from global settings)
                 return [
-                    'pvd_employee' => round($monthlySalary * 0.075, 2), // 7.5% PVD
+                    'pvd_employee' => round($monthlySalary * ($pvdPercentage / 100), 2),
                     'saving_fund' => 0.0,
                 ];
             } elseif ($employee->status === 'Local non ID') {
-                // Saving Fund for Local non ID employees (7.5% employee contribution only)
+                // Saving Fund for Local non ID employees (from global settings)
                 return [
                     'pvd_employee' => 0.0,
-                    'saving_fund' => round($monthlySalary * 0.075, 2), // 7.5% Saving Fund
+                    'saving_fund' => round($monthlySalary * ($savingFundPercentage / 100), 2),
                 ];
             }
         }
@@ -743,9 +741,9 @@ class PayrollService
         $employerContribution = 0.0;
 
         // Health Welfare Employer contribution
-        // SMRU subsidiary pays for Non-Thai ID and some expat
-        // BHF subsidiary doesn't have to pay for health welfare employer
-        if ($employee->subsidiary === 'SMRU' &&
+        // SMRU organization pays for Non-Thai ID and some expat
+        // BHF organization doesn't have to pay for health welfare employer
+        if ($employee->organization === 'SMRU' &&
             ($employee->status === 'Non-Thai ID' || $employee->status === 'Expat')) {
             // Calculate employee contribution first
             if ($monthlySalary > 15000) {
@@ -755,7 +753,7 @@ class PayrollService
             } else {
                 $employerContribution = 60;
             }
-        } elseif ($employee->subsidiary === 'BHF') {
+        } elseif ($employee->organization === 'BHF') {
             $employerContribution = 0.0; // BHF doesn't pay employer health welfare
         }
 
@@ -854,33 +852,34 @@ class PayrollService
 
     private function calculateProRatedSalaryForProbation($employment, Carbon $payPeriodDate): array
     {
-        $probationPassDate = $employment->probation_pass_date ? Carbon::parse($employment->probation_pass_date) : null;
-        $probationSalary = $employment->probation_salary ?? $employment->position_salary;
-        $positionSalary = $employment->position_salary;
+        // Use ProbationTransitionService for salary calculations with standardized 30-day month approach
+        $probationService = app(ProbationTransitionService::class);
 
-        $payPeriodStart = $payPeriodDate->copy()->startOfMonth();
-        $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
+        // Check if this is the first month (employee started mid-month)
+        $startDate = Carbon::parse($employment->start_date);
+        $isFirstMonth = $probationService->startedMidMonthIn($employment, $payPeriodDate);
 
-        if (! $probationPassDate || $probationPassDate->lt($payPeriodStart)) {
-            return ['gross_salary' => $positionSalary];
+        if ($isFirstMonth) {
+            // Calculate partial salary for first month
+            $firstMonthSalary = $probationService->calculateFirstMonthSalary($employment);
+
+            return ['gross_salary' => $firstMonthSalary];
         }
 
-        if ($probationPassDate->gt($payPeriodEnd)) {
-            return ['gross_salary' => $probationSalary];
+        // Check if this is transition month (probation completion falls mid-month)
+        $isTransitionMonth = $probationService->isTransitionMonth($employment, $payPeriodDate);
+
+        if ($isTransitionMonth) {
+            // Calculate pro-rated salary for transition month
+            $proRatedSalary = $probationService->calculateProRatedSalary($employment, $payPeriodDate);
+
+            return ['gross_salary' => $proRatedSalary];
         }
 
-        // Pro-rated calculation for mid-month transition
-        $daysInMonth = $payPeriodEnd->day;
-        $probationDays = $payPeriodStart->diffInDays($probationPassDate) + 1;
-        $positionDays = $daysInMonth - $probationDays;
+        // Regular month - use current applicable salary
+        $salary = $employment->getCurrentSalary();
 
-        $dailyProbationSalary = $probationSalary / $daysInMonth;
-        $dailyPositionSalary = $positionSalary / $daysInMonth;
-
-        $probationAmount = $dailyProbationSalary * $probationDays;
-        $positionAmount = $dailyPositionSalary * $positionDays;
-
-        return ['gross_salary' => round($probationAmount + $positionAmount, 2)];
+        return ['gross_salary' => $salary];
     }
 
     private function calculateAnnualSalaryIncrease(Employee $employee, $employment, Carbon $payPeriodDate): float
@@ -901,7 +900,7 @@ class PayrollService
 
         // Check if employee has worked 365 working days (approximately 1 year)
         if ($workingDays >= 365) {
-            return round($employment->position_salary * 0.01, 2);
+            return round($employment->pass_probation_salary * 0.01, 2);
         }
 
         return 0.0;
@@ -929,26 +928,30 @@ class PayrollService
 
     private function calculatePVDContributions(Employee $employee, float $monthlySalary, $employment): array
     {
-        // PVD for Local ID (7.5% employee only)
-        // Saving Fund for Local non ID (7.5% employee only)
+        // Get PVD/Saving Fund percentage from global settings (default to 7.5% if not set)
+        $pvdPercentage = BenefitSetting::getActiveSetting('pvd_percentage') ?? 7.5;
+        $savingFundPercentage = BenefitSetting::getActiveSetting('saving_fund_percentage') ?? 7.5;
+
+        // PVD for Local ID (employee only)
+        // Saving Fund for Local non ID (employee only)
         // Will be deducted after passing probation with the exact date
-        $probationPassDate = $employment->probation_pass_date ? Carbon::parse($employment->probation_pass_date) : null;
+        $probationPassDate = $employment->pass_probation_date ? Carbon::parse($employment->pass_probation_date) : null;
 
         // Check if employee has passed probation
         $hasPassed = $probationPassDate && Carbon::now()->gte($probationPassDate);
 
         if ($hasPassed) {
             if ($employee->status === 'Local ID') {
-                // PVD for Local ID employees (7.5% employee contribution only)
+                // PVD for Local ID employees (from global settings)
                 return [
-                    'pvd_employee' => round($monthlySalary * 0.075, 2), // 7.5% PVD
+                    'pvd_employee' => round($monthlySalary * ($pvdPercentage / 100), 2),
                     'saving_fund' => 0.0,
                 ];
             } elseif ($employee->status === 'Local non ID') {
-                // Saving Fund for Local non ID employees (7.5% employee contribution only)
+                // Saving Fund for Local non ID employees (from global settings)
                 return [
                     'pvd_employee' => 0.0,
-                    'saving_fund' => round($monthlySalary * 0.075, 2), // 7.5% Saving Fund
+                    'saving_fund' => round($monthlySalary * ($savingFundPercentage / 100), 2),
                 ];
             }
         }
@@ -987,12 +990,12 @@ class PayrollService
         }
 
         // Health Welfare Employer contribution
-        // SMRU subsidiary pays for Non-Thai ID and some expat
-        // BHF subsidiary doesn't have to pay for health welfare employer
-        if ($employee->subsidiary === 'SMRU' &&
+        // SMRU organization pays for Non-Thai ID and some expat
+        // BHF organization doesn't have to pay for health welfare employer
+        if ($employee->organization === 'SMRU' &&
             ($employee->status === 'Non-Thai ID' || $employee->status === 'Expat')) {
             $employerContribution = $employeeContribution; // Same as employee contribution
-        } elseif ($employee->subsidiary === 'BHF') {
+        } elseif ($employee->organization === 'BHF') {
             $employerContribution = 0.0; // BHF doesn't pay employer health welfare
         }
 
@@ -1024,7 +1027,7 @@ class PayrollService
     public function getPayrollStatistics(Carbon $startDate, Carbon $endDate): array
     {
         $payrolls = Payroll::whereBetween('pay_period_date', [$startDate, $endDate])->get();
-        $advances = InterSubsidiaryAdvance::whereBetween('advance_date', [$startDate, $endDate])->get();
+        $advances = InterOrganizationAdvance::whereBetween('advance_date', [$startDate, $endDate])->get();
 
         return [
             'period' => [
@@ -1041,7 +1044,7 @@ class PayrollService
             'advance_summary' => [
                 'total_advances' => $advances->count(),
                 'total_advance_amount' => $advances->sum('amount'),
-                'by_subsidiary' => $advances->groupBy('from_subsidiary')->map->count()->toArray(),
+                'by_subsidiary' => $advances->groupBy('from_organization')->map->count()->toArray(),
                 'pending_settlements' => $advances->whereNull('settlement_date')->count(),
             ],
         ];

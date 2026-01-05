@@ -3,18 +3,30 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Module;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Spatie\Permission\Models\Permission;
 
 /**
+ * UserController - Handles authenticated user's own profile operations.
+ *
+ * This controller is for users managing their OWN profile data:
+ * - Profile picture upload
+ * - Username update
+ * - Email update
+ * - Password change
+ * - Get current user info
+ * - Get current user's module permissions
+ *
+ * Note: Admin operations (managing OTHER users) are in AdminController.
+ *
  * @OA\Tag(
  *     name="Users",
- *     description="API Endpoints for user management"
+ *     description="API Endpoints for authenticated user profile management"
  * )
  */
 class UserController extends Controller
@@ -393,30 +405,75 @@ class UserController extends Controller
     }
 
     /**
-     * Assigns default permissions to a user based on their role.
+     * Get current user's permissions in simplified read/edit format.
+     *
+     * Returns permissions organized by module with read and edit flags.
+     * Only includes modules the user has access to.
+     *
+     * @OA\Get(
+     *     path="/api/v1/me/permissions",
+     *     summary="Get current user's module permissions",
+     *     description="Retrieve current user's permissions organized by module with Read/Edit flags",
+     *     operationId="getMyPermissions",
+     *     tags={"Users"},
+     *     security={{"sanctum":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Permissions retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="user_management", type="object",
+     *                     @OA\Property(property="read", type="boolean", example=true),
+     *                     @OA\Property(property="edit", type="boolean", example=true),
+     *                     @OA\Property(property="display_name", type="string", example="User Management"),
+     *                     @OA\Property(property="category", type="string", example="Administration"),
+     *                     @OA\Property(property="icon", type="string", example="users"),
+     *                     @OA\Property(property="route", type="string", example="/user-management/users")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
      */
-    private function assignDefaultPermissions(User $user, string $role)
+    public function getMyPermissions(Request $request): JsonResponse
     {
-        switch ($role) {
-            case 'employee':
-                $user->syncPermissions([
-                    'user.read',
-                    'user.update',
-                    'attendance.create',
-                    'attendance.read',
-                    'travel_request.create',
-                    'travel_request.read',
-                    'leave_request.create',
-                    'leave_request.read',
-                ]);
-                break;
+        $user = $request->user();
+        $modules = Module::active()->ordered()->get();
 
-            case 'admin':
-            case 'hr-manager':
-            case 'hr-assistant':
-                // Assign all permissions
-                $user->syncPermissions(Permission::all());
-                break;
+        $permissions = [];
+
+        foreach ($modules as $module) {
+            $hasRead = $user->can($module->read_permission);
+
+            // Extract permission prefix from read_permission (e.g., 'admin.read' => 'admin')
+            $permissionPrefix = str_replace('.read', '', $module->read_permission);
+            $hasEdit = $user->can("{$permissionPrefix}.edit");
+
+            // Only include modules the user has access to
+            if ($hasRead || $hasEdit) {
+                $permissions[$module->name] = [
+                    'read' => $hasRead,
+                    'edit' => $hasEdit,
+                    'display_name' => $module->display_name,
+                    'category' => $module->category,
+                    'icon' => $module->icon,
+                    'route' => $module->route,
+                ];
+            }
         }
+
+        return response()->json([
+            'success' => true,
+            'data' => $permissions,
+        ]);
     }
 }

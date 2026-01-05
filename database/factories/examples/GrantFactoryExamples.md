@@ -119,14 +119,14 @@ public function test_can_list_active_grants()
     // Additional assertions...
 }
 
-public function test_can_filter_grants_by_subsidiary()
+public function test_can_filter_grants_by_organization()
 {
     // Arrange
     Grant::factory()->count(3)->forSubsidiary('SMRU')->create();
     Grant::factory()->count(2)->forSubsidiary('BHF')->create();
     
     // Act
-    $response = $this->get('/api/grants?filter_subsidiary=SMRU');
+    $response = $this->get('/api/grants?filter_organization=SMRU');
     
     // Assert
     $response->assertStatus(200);
@@ -145,11 +145,11 @@ Grant::factory()->count(8)->expired()->create();
 Grant::factory()->count(3)->endingSoon()->create();
 Grant::factory()->count(4)->permanent()->create();
 
-// Create subsidiary-specific grants
-foreach (['SMRU', 'BHF', 'MORU', 'OUCRU'] as $subsidiary) {
+// Create organization-specific grants
+foreach (['SMRU', 'BHF', 'MORU', 'OUCRU'] as $organization) {
     Grant::factory()
         ->count(2)
-        ->forSubsidiary($subsidiary)
+        ->forSubsidiary($organization)
         ->research()
         ->active()
         ->create();
@@ -183,7 +183,7 @@ The GrantFactory generates realistic data with:
 Grant::factory()->count(5)->create();
 
 # Show all grants with status
-Grant::all()->map(fn($g) => [$g->code, $g->name, $g->status, $g->subsidiary]);
+Grant::all()->map(fn($g) => [$g->code, $g->name, $g->status, $g->organization]);
 
 # Test model scopes
 Grant::active()->count();

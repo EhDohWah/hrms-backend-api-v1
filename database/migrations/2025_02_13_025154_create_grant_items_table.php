@@ -21,15 +21,17 @@ return new class extends Migration
             $table->integer('grant_position_number')->nullable();
 
             // Budget line code moved from position_slots to grant_items
-            $table->string('budgetline_code')->nullable();
+            // Can be NULL for General Fund (hub grants) which don't have budget line codes
+            // Can be any format: 1.2.2.1, BL-001, A.B.C, etc. - no restrictions
+            $table->string('budgetline_code', 255)->nullable();
 
             $table->timestamps();
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
 
-            // Add unique constraint for the combination of grant_id, grant_position, and budgetline_code
-            // This prevents duplicate grant items with the same position and budget line code within the same grant
-            $table->unique(['grant_id', 'grant_position', 'budgetline_code'], 'unique_grant_position_budgetline');
+            // Note: No unique constraint on budgetline_code + position
+            // General Fund items have NULL budget line codes, so duplicates would occur
+            // Uniqueness is enforced at application level for items WITH budget line codes
         });
 
         // insert the default grant items

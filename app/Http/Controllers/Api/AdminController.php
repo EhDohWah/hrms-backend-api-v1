@@ -2,11 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\UserPermissionsUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\PermissionResource;
+use App\Http\Resources\RoleResource;
+use App\Http\Resources\UserResource;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Annotations as OA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -89,12 +97,76 @@ class AdminController extends Controller
      */
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'permissions'])->get();
+        // Pagination parameters
+        $perPage = $request->input('per_page', 15);
+        $page = $request->input('page', 1);
+
+        // Search parameter
+        $search = $request->input('search');
+
+        // Filter parameters
+        $role = $request->input('role');
+        $status = $request->input('status');
+
+        // Sorting parameters
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        // Validate sort order
+        $sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? strtolower($sortOrder) : 'desc';
+
+        // Build query
+        $query = User::with(['roles', 'permissions']);
+
+        // Apply search
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by role
+        if ($role) {
+            $query->whereHas('roles', function ($q) use ($role) {
+                $q->where('name', $role);
+            });
+        }
+
+        // Filter by status
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        // Apply sorting
+        $allowedSortFields = ['name', 'email', 'status', 'created_at', 'updated_at', 'last_login_at'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Paginate results
+        $users = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Users retrieved successfully',
-            'data' => $users,
+            'data' => UserResource::collection($users->items()),
+            'meta' => [
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'last_page' => $users->lastPage(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+            ],
+            'links' => [
+                'first' => $users->url(1),
+                'last' => $users->url($users->lastPage()),
+                'prev' => $users->previousPageUrl(),
+                'next' => $users->nextPageUrl(),
+            ],
         ]);
     }
 
@@ -224,48 +296,10 @@ class AdminController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        // Check if email already exists
-        if (User::where('email', $request->email)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email already exists in the database',
-            ], 422);
-        }
-
-        // Check if name already exists
-        if (User::where('name', $request->name)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Name already exists in the database',
-            ], 422);
-        }
-
-        // If "permissions" is provided as a comma-separated string, convert it to an array.
-        if ($request->has('permissions') && ! is_array($request->input('permissions'))) {
-            $permissionsString = $request->input('permissions');
-            // Explode the string by comma and trim each permission.
-            $permissionsArray = array_map('trim', explode(',', $permissionsString));
-            $request->merge(['permissions' => $permissionsArray]);
-        }
-
-        // Validate incoming request data.
-        $validationRules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
-            'password_confirmation' => 'required|string',
-            'role' => 'required|string|in:admin,hr-manager,hr-assistant,employee',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string',
-            'profile_picture' => 'nullable|image|max:2048', // 2MB max file size
-        ];
-
-        // Add custom error message for regex validation
-        $validated = $request->validate($validationRules, [
-            'password.regex' => 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
-        ]);
+        // Validation is handled by StoreUserRequest
+        $validated = $request->validated();
 
         // Start a database transaction.
         DB::beginTransaction();
@@ -289,12 +323,18 @@ class AdminController extends Controller
             // Assign role using Spatie's role package.
             $user->assignRole($validated['role']);
 
-            // If permissions are provided as an array, sync them.
-            if (isset($validated['permissions']) && is_array($validated['permissions'])) {
-                $user->syncPermissions($validated['permissions']);
+            // Handle permissions based on role and format provided
+            // Admin and HR Manager get full access to all modules
+            if (in_array($validated['role'], ['admin', 'hr-manager'])) {
+                $allModulePermissions = $this->getAllModulePermissions();
+                $user->syncPermissions($allModulePermissions);
+                Log::info("Auto-assigned all module permissions to user {$user->id} with role {$validated['role']}");
             } else {
-                // Optionally, assign default permissions based on the role.
-                // $this->assignDefaultPermissions($user, $validated['role']);
+                // For other roles, use the permissions from the request
+                $permissions = $this->extractPermissions($validated);
+                if (! empty($permissions)) {
+                    $user->syncPermissions($permissions);
+                }
             }
 
             // Commit the transaction if all is well.
@@ -303,9 +343,7 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'User created successfully',
-                'data' => [
-                    'user' => $user->load('roles', 'permissions'),
-                ],
+                'data' => new UserResource($user->load('roles', 'permissions')),
             ], 201);
         } catch (\Exception $e) {
             // Rollback the transaction if something goes wrong.
@@ -319,6 +357,60 @@ class AdminController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    /**
+     * Display the specified user.
+     *
+     * @OA\Get(
+     *     path="/admin/users/{id}",
+     *     summary="Get single user by ID",
+     *     tags={"Admin"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="User ID",
+     *
+     *         @OA\Schema(type="integer")
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="User retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="User retrieved successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     )
+     * )
+     */
+    public function show($id)
+    {
+        $user = User::with(['roles', 'permissions'])->find($id);
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User retrieved successfully',
+            'data' => new UserResource($user),
+        ]);
     }
 
     /**
@@ -394,7 +486,7 @@ class AdminController extends Controller
      *     )
      * )
      */
-    public function update(Request $request, $id)
+    public function update(UpdateUserRequest $request, $id)
     {
         // Find the user by ID
         $user = User::find($id);
@@ -402,28 +494,8 @@ class AdminController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        // Validate inputs for role, permissions and password
-        $validationRules = [
-            'role' => 'nullable|string|in:admin,hr-manager,hr-assistant,employee',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|exists:permissions,name',
-        ];
-
-        // Add password validation rules if password is provided
-        if ($request->filled('password')) {
-            $validationRules['password'] = 'required|string|min:8|confirmed';
-            $validationRules['password_confirmation'] = 'required|string';
-
-            // Additional password strength requirements
-            $validationRules['password'] .= '|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/';
-
-            // Add custom error message for regex validation
-            $request->validate($validationRules, [
-                'password.regex' => 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
-            ]);
-        }
-
-        $validated = $request->validate($validationRules);
+        // Validation is handled by UpdateUserRequest
+        $validated = $request->validated();
 
         // Start a database transaction
         DB::beginTransaction();
@@ -435,11 +507,26 @@ class AdminController extends Controller
                 $user->roles()->detach();
                 // Assign new role
                 $user->assignRole($validated['role']);
-            }
 
-            // Update user's permissions if provided
-            if (isset($validated['permissions']) && is_array($validated['permissions'])) {
-                $user->syncPermissions($validated['permissions']);
+                // Handle permissions based on role
+                // Admin and HR Manager get full access to all modules
+                if (in_array($validated['role'], ['admin', 'hr-manager'])) {
+                    $allModulePermissions = $this->getAllModulePermissions();
+                    $user->syncPermissions($allModulePermissions);
+                    Log::info("Auto-assigned all module permissions to user {$user->id} with updated role {$validated['role']}");
+                } else {
+                    // For other roles, use the permissions from the request
+                    $permissions = $this->extractPermissions($validated);
+                    if (! empty($permissions)) {
+                        $user->syncPermissions($permissions);
+                    }
+                }
+            } else {
+                // If role is not being updated, just sync permissions normally
+                $permissions = $this->extractPermissions($validated);
+                if (! empty($permissions)) {
+                    $user->syncPermissions($permissions);
+                }
             }
 
             // Update password if provided
@@ -454,10 +541,20 @@ class AdminController extends Controller
             // Load the updated roles and permissions
             $user->load('roles', 'permissions');
 
+            // Broadcast permission update event for real-time frontend sync
+            // This allows the affected user to refresh their permissions without re-login
+            $adminName = auth()->user()->name ?? 'System';
+            event(new UserPermissionsUpdated($user->id, $adminName, 'Role or permissions updated by admin'));
+
+            Log::info('UserPermissionsUpdated event dispatched', [
+                'target_user_id' => $user->id,
+                'updated_by' => $adminName,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'User updated successfully',
-                'data' => $user,
+                'data' => new UserResource($user),
             ]);
         } catch (\Exception $e) {
             // Rollback the transaction if something goes wrong
@@ -540,5 +637,186 @@ class AdminController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    /**
+     * Get all roles.
+     *
+     * @OA\Get(
+     *     path="/admin/roles",
+     *     summary="Get all roles",
+     *     tags={"Admin"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Roles retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Roles retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="admin"),
+     *                     @OA\Property(property="guard_name", type="string", example="web"),
+     *                     @OA\Property(property="created_at", type="string", format="date-time"),
+     *                     @OA\Property(property="updated_at", type="string", format="date-time")
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function getRoles()
+    {
+        $roles = Role::query()->orderBy('name')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Roles retrieved successfully',
+            'data' => RoleResource::collection($roles),
+        ]);
+    }
+
+    /**
+     * Get all permissions.
+     *
+     * @OA\Get(
+     *     path="/admin/permissions",
+     *     summary="Get all permissions",
+     *     tags={"Admin"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Permissions retrieved successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Permissions retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *
+     *                 @OA\Items(
+     *
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="user.read"),
+     *                     @OA\Property(property="guard_name", type="string", example="web"),
+     *                     @OA\Property(property="created_at", type="string", format="date-time"),
+     *                     @OA\Property(property="updated_at", type="string", format="date-time")
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function getPermissions()
+    {
+        $permissions = Permission::query()->orderBy('name')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permissions retrieved successfully',
+            'data' => PermissionResource::collection($permissions),
+        ]);
+    }
+
+    /**
+     * Extract permissions from validated data.
+     * Supports both new modules format (Read/Edit) and legacy permissions array.
+     *
+     * @return array Array of permission strings
+     */
+    private function extractPermissions(array $validated): array
+    {
+        $desiredPermissions = [];
+
+        // Handle new modules format with Read/Edit checkboxes
+        if (isset($validated['modules']) && is_array($validated['modules'])) {
+            // Load all active modules from database
+            $modules = Module::active()->get()->keyBy('name');
+
+            foreach ($validated['modules'] as $moduleName => $access) {
+                $module = $modules->get($moduleName);
+
+                if (! $module) {
+                    Log::warning("Module not found: {$moduleName}");
+
+                    continue;
+                }
+
+                // Add read permission if checked
+                if (isset($access['read']) && $access['read']) {
+                    $desiredPermissions[] = $module->read_permission;
+                }
+
+                // Add edit permission if checked
+                if (isset($access['edit']) && $access['edit']) {
+                    $desiredPermissions[] = "{$moduleName}.edit";
+                }
+            }
+        }
+        // Handle legacy permissions array format (backward compatibility)
+        elseif (isset($validated['permissions']) && is_array($validated['permissions'])) {
+            $desiredPermissions = $validated['permissions'];
+        }
+
+        // Only return permissions that actually exist in the database
+        // This prevents "There is no permission named X" errors
+        if (empty($desiredPermissions)) {
+            return [];
+        }
+
+        $existingPermissions = Permission::whereIn('name', $desiredPermissions)
+            ->pluck('name')
+            ->toArray();
+
+        // Log any missing permissions for debugging
+        $missingPermissions = array_diff($desiredPermissions, $existingPermissions);
+        if (! empty($missingPermissions)) {
+            Log::warning('Requested permissions do not exist in database', [
+                'missing' => $missingPermissions,
+                'requested' => $desiredPermissions,
+            ]);
+        }
+
+        return array_unique($existingPermissions);
+    }
+
+    /**
+     * Get all module permissions (read and edit) for privileged roles.
+     *
+     * Used for Admin and HR Manager roles who get full access to all modules.
+     * Only returns permissions that actually exist in the database.
+     *
+     * @return array Array of all module permission strings
+     */
+    private function getAllModulePermissions(): array
+    {
+        $desiredPermissions = [];
+        $modules = Module::active()->get();
+
+        foreach ($modules as $module) {
+            // Add read permission
+            $desiredPermissions[] = $module->read_permission;
+            // Add edit permission
+            $desiredPermissions[] = "{$module->name}.edit";
+        }
+
+        // Only return permissions that actually exist in the database
+        // This prevents "There is no permission named X" errors
+        $existingPermissions = Permission::whereIn('name', $desiredPermissions)
+            ->pluck('name')
+            ->toArray();
+
+        return array_unique($existingPermissions);
     }
 }

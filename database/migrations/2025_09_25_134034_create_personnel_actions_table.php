@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('current_department_id')->nullable();
             $table->unsignedBigInteger('current_position_id')->nullable();
             $table->decimal('current_salary', 12, 2)->nullable();
-            $table->unsignedBigInteger('current_work_location_id')->nullable();
+            $table->unsignedBigInteger('current_site_id')->nullable();
             $table->date('current_employment_date')->nullable();
             $table->date('effective_date');
 
@@ -34,7 +34,7 @@ return new class extends Migration
             // Section 3: New Employment Information (proposed changes with foreign keys)
             $table->unsignedBigInteger('new_department_id')->nullable();
             $table->unsignedBigInteger('new_position_id')->nullable();
-            $table->unsignedBigInteger('new_work_location_id')->nullable();
+            $table->unsignedBigInteger('new_site_id')->nullable();
             $table->decimal('new_salary', 12, 2)->nullable();
 
             // Additional text fields for supplementary information
@@ -64,10 +64,10 @@ return new class extends Migration
             $table->foreign('employment_id')->references('id')->on('employments');
             $table->foreign('current_department_id')->references('id')->on('departments');
             $table->foreign('current_position_id')->references('id')->on('positions');
-            $table->foreign('current_work_location_id')->references('id')->on('work_locations');
+            $table->foreign('current_site_id')->references('id')->on('sites');
             $table->foreign('new_department_id')->references('id')->on('departments');
             $table->foreign('new_position_id')->references('id')->on('positions');
-            $table->foreign('new_work_location_id')->references('id')->on('work_locations');
+            $table->foreign('new_site_id')->references('id')->on('sites');
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
 

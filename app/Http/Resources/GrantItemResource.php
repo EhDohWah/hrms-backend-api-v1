@@ -25,7 +25,8 @@ class GrantItemResource extends JsonResource
             'grant_level_of_effort' => $this->grant_level_of_effort,
             'grant_position_number' => $this->grant_position_number,
             'budgetline_code' => $this->budgetline_code,
-            'position_slots' => PositionSlotResource::collection($this->whenLoaded('positionSlots')),
+            'active_allocations_count' => $this->active_allocations_count ?? 0,
+            'available_capacity' => max(0, ($this->grant_position_number ?? 1) - ($this->active_allocations_count ?? 0)),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
