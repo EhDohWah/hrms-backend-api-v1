@@ -36,10 +36,8 @@ return new class extends Migration
 
         // Step 3: Delete all granular permissions (except read)
         echo "🗑️  Deleting granular permissions (create, update, delete, import, export)...\n";
-        $deletedCount = Permission::whereIn('name', function ($query) {
-            $query->selectRaw('name')
-                ->from('permissions')
-                ->where('name', 'like', '%.create')
+        $deletedCount = Permission::where(function ($query) {
+            $query->where('name', 'like', '%.create')
                 ->orWhere('name', 'like', '%.update')
                 ->orWhere('name', 'like', '%.delete')
                 ->orWhere('name', 'like', '%.import')
