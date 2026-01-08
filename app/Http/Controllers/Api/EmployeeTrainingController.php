@@ -9,200 +9,36 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Employee Trainings",
- *     description="API Endpoints for managing employee training records"
- * )
- */
+#[OA\Tag(name: 'Employee Trainings', description: 'API Endpoints for managing employee training records')]
 class EmployeeTrainingController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/employee-trainings",
-     *     summary="List all employee training records with advanced filtering and pagination",
-     *     description="Returns a paginated list of employee training records with comprehensive filtering, sorting capabilities and statistics",
-     *     operationId="indexEmployeeTrainings",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_training_id",
-     *         in="query",
-     *         description="Filter by training ID",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_employee_id",
-     *         in="query",
-     *         description="Filter by employee ID",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_status",
-     *         in="query",
-     *         description="Filter by training status (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Completed,In Progress,Pending")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_training_title",
-     *         in="query",
-     *         description="Filter by training title (partial match)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Leadership")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_organizer",
-     *         in="query",
-     *         description="Filter by training organizer (partial match)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="HR Department")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"created_at", "training_title", "status", "employee_name", "start_date", "end_date"}, example="created_at")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order (asc or desc)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="desc")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training records retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *                     type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="employee_id", type="integer", example=1),
-     *                     @OA\Property(property="training_id", type="integer", example=1),
-     *                     @OA\Property(property="status", type="string", example="Completed"),
-     *                     @OA\Property(property="created_at", type="string", format="date-time"),
-     *                     @OA\Property(property="updated_at", type="string", format="date-time"),
-     *                     @OA\Property(
-     *                         property="employee",
-     *                         type="object",
-     *                         @OA\Property(property="id", type="integer", example=1),
-     *                         @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                         @OA\Property(property="first_name_en", type="string", example="John"),
-     *                         @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                         @OA\Property(property="organization", type="string", example="SMRU")
-     *                     ),
-     *                     @OA\Property(
-     *                         property="training",
-     *                         type="object",
-     *                         @OA\Property(property="id", type="integer", example=1),
-     *                         @OA\Property(property="title", type="string", example="Leadership Training"),
-     *                         @OA\Property(property="organizer", type="string", example="HR Department"),
-     *                         @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
-     *                         @OA\Property(property="end_date", type="string", format="date", example="2023-01-05")
-     *                     )
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="pagination",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=50),
-     *                 @OA\Property(property="last_page", type="integer", example=5),
-     *                 @OA\Property(property="from", type="integer", example=1),
-     *                 @OA\Property(property="to", type="integer", example=10),
-     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
-     *             ),
-     *             @OA\Property(
-     *                 property="filters",
-     *                 type="object",
-     *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="training_id", type="integer", example=1),
-     *                     @OA\Property(property="employee_id", type="integer", example=1),
-     *                     @OA\Property(property="status", type="array", @OA\Items(type="string"), example={"Completed"}),
-     *                     @OA\Property(property="training_title", type="string", example="Leadership"),
-     *                     @OA\Property(property="organizer", type="string", example="HR Department")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve employee training records"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employee-trainings',
+        summary: 'List all employee training records with advanced filtering and pagination',
+        description: 'Returns a paginated list of employee training records with comprehensive filtering, sorting capabilities and statistics',
+        operationId: 'indexEmployeeTrainings',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', required: false, description: 'Page number for pagination', schema: new OA\Schema(type: 'integer', example: 1, minimum: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, description: 'Number of items per page', schema: new OA\Schema(type: 'integer', example: 10, minimum: 1, maximum: 100)),
+            new OA\Parameter(name: 'filter_training_id', in: 'query', required: false, description: 'Filter by training ID', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'filter_employee_id', in: 'query', required: false, description: 'Filter by employee ID', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'filter_status', in: 'query', required: false, description: 'Filter by training status (comma-separated)', schema: new OA\Schema(type: 'string', example: 'Completed,In Progress,Pending')),
+            new OA\Parameter(name: 'filter_training_title', in: 'query', required: false, description: 'Filter by training title (partial match)', schema: new OA\Schema(type: 'string', example: 'Leadership')),
+            new OA\Parameter(name: 'filter_organizer', in: 'query', required: false, description: 'Filter by training organizer (partial match)', schema: new OA\Schema(type: 'string', example: 'HR Department')),
+            new OA\Parameter(name: 'sort_by', in: 'query', required: false, description: 'Sort by field', schema: new OA\Schema(type: 'string', enum: ['created_at', 'training_title', 'status', 'employee_name', 'start_date', 'end_date'], example: 'created_at')),
+            new OA\Parameter(name: 'sort_order', in: 'query', required: false, description: 'Sort order', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], example: 'desc')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function index(Request $request)
     {
         try {
@@ -338,46 +174,32 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/employee-trainings",
-     *     summary="Create a new employee training record",
-     *     description="Creates a new employee training record",
-     *     operationId="storeEmployeeTraining",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"employee_id", "training_id", "status"},
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="training_id", type="integer", example=1),
-     *             @OA\Property(property="status", type="string", example="Completed"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Employee training record created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training record created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=422, description="Validation error"),
-     *     @OA\Response(response=401, description="Unauthenticated")
-     * )
-     */
+    #[OA\Post(
+        path: '/employee-trainings',
+        summary: 'Create a new employee training record',
+        description: 'Creates a new employee training record',
+        operationId: 'storeEmployeeTraining',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['employee_id', 'training_id', 'status'],
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'training_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'status', type: 'string', example: 'Completed'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Employee training record created successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ]
+    )]
     public function store(Request $request)
     {
         try {
@@ -411,41 +233,22 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/employee-trainings/{id}",
-     *     summary="Get a specific employee training record",
-     *     description="Returns a specific employee training record by ID with training details",
-     *     operationId="showEmployeeTraining",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of the employee training record to retrieve",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training record retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employee training record not found"),
-     *     @OA\Response(response=401, description="Unauthenticated")
-     * )
-     */
+    #[OA\Get(
+        path: '/employee-trainings/{id}',
+        summary: 'Get a specific employee training record',
+        description: 'Returns a specific employee training record by ID with training details',
+        operationId: 'showEmployeeTraining',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of the employee training record to retrieve', schema: new OA\Schema(type: 'integer', format: 'int64')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 404, description: 'Employee training record not found'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ]
+    )]
     public function show($id)
     {
         try {
@@ -471,55 +274,35 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/employee-trainings/{id}",
-     *     summary="Update an employee training record",
-     *     description="Updates an existing employee training record",
-     *     operationId="updateEmployeeTraining",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of the employee training record to update",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="training_id", type="integer", example=1),
-     *             @OA\Property(property="status", type="string", example="In Progress"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee training record updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training record updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeTraining")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employee training record not found"),
-     *     @OA\Response(response=422, description="Validation error"),
-     *     @OA\Response(response=401, description="Unauthenticated")
-     * )
-     */
+    #[OA\Put(
+        path: '/employee-trainings/{id}',
+        summary: 'Update an employee training record',
+        description: 'Updates an existing employee training record',
+        operationId: 'updateEmployeeTraining',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of the employee training record to update', schema: new OA\Schema(type: 'integer', format: 'int64')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'training_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'status', type: 'string', example: 'In Progress'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employee training record updated successfully'),
+            new OA\Response(response: 404, description: 'Employee training record not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ]
+    )]
     public function update(Request $request, $id)
     {
         try {
@@ -561,41 +344,22 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/employee-trainings/{id}",
-     *     summary="Delete an employee training record",
-     *     description="Deletes an employee training record",
-     *     operationId="destroyEmployeeTraining",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of the employee training record to delete",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee training record deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training record deleted successfully"),
-     *             @OA\Property(property="data", type="null")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employee training record not found"),
-     *     @OA\Response(response=401, description="Unauthenticated")
-     * )
-     */
+    #[OA\Delete(
+        path: '/employee-trainings/{id}',
+        summary: 'Delete an employee training record',
+        description: 'Deletes an employee training record',
+        operationId: 'destroyEmployeeTraining',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of the employee training record to delete', schema: new OA\Schema(type: 'integer', format: 'int64')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Employee training record deleted successfully'),
+            new OA\Response(response: 404, description: 'Employee training record not found'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ]
+    )]
     public function destroy($id)
     {
         try {
@@ -622,118 +386,25 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/employee-trainings/employee/{employee_id}/summary",
-     *     summary="Get individual employee training summary report",
-     *     description="Returns a comprehensive training summary for a specific employee including all training records, attendance details, and statistics",
-     *     operationId="getEmployeeTrainingSummary",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="employee_id",
-     *         in="path",
-     *         description="Employee ID to get training summary for",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="date_from",
-     *         in="query",
-     *         description="Filter trainings from this date (YYYY-MM-DD)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", format="date", example="2023-01-01")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="date_to",
-     *         in="query",
-     *         description="Filter trainings to this date (YYYY-MM-DD)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", format="date", example="2023-12-31")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee training summary retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee training summary retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="employee",
-     *                     type="object",
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                     @OA\Property(property="first_name_en", type="string", example="John"),
-     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                     @OA\Property(property="organization", type="string", example="SMRU"),
-     *                     @OA\Property(property="site", type="string", example="Main Office"),
-     *                     @OA\Property(property="department", type="string", example="IT Department")
-     *                 ),
-     *                 @OA\Property(
-     *                     property="training_summary",
-     *                     type="object",
-     *                     @OA\Property(property="total_trainings", type="integer", example=5),
-     *                     @OA\Property(property="completed_trainings", type="integer", example=3),
-     *                     @OA\Property(property="in_progress_trainings", type="integer", example=1),
-     *                     @OA\Property(property="pending_trainings", type="integer", example=1)
-     *                 ),
-     *                 @OA\Property(
-     *                     property="trainings",
-     *                     type="array",
-     *
-     *                     @OA\Items(
-     *                         type="object",
-     *
-     *                         @OA\Property(property="id", type="integer", example=1),
-     *                         @OA\Property(property="training_title", type="string", example="Leadership Training"),
-     *                         @OA\Property(property="organizer_details", type="string", example="HR Department"),
-     *                         @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
-     *                         @OA\Property(property="end_date", type="string", format="date", example="2023-01-05"),
-     *                         @OA\Property(property="status", type="string", example="Completed"),
-     *                         @OA\Property(property="attendance_date", type="string", format="date-time", example="2023-01-01T09:00:00Z")
-     *                     )
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve employee training summary"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employee-trainings/employee/{employee_id}/summary',
+        summary: 'Get individual employee training summary report',
+        description: 'Returns a comprehensive training summary for a specific employee including all training records, attendance details, and statistics',
+        operationId: 'getEmployeeTrainingSummary',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'employee_id', in: 'path', required: true, description: 'Employee ID to get training summary for', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'date_from', in: 'query', required: false, description: 'Filter trainings from this date (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2023-01-01')),
+            new OA\Parameter(name: 'date_to', in: 'query', required: false, description: 'Filter trainings to this date (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2023-12-31')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Employee training summary retrieved successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function getEmployeeTrainingSummary(Request $request, $employee_id)
     {
         try {
@@ -839,108 +510,24 @@ class EmployeeTrainingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/employee-trainings/training/{training_id}/attendance",
-     *     summary="Get training attendance list report",
-     *     description="Returns a list of all employees enrolled in a specific training with their attendance status and details",
-     *     operationId="getTrainingAttendanceList",
-     *     tags={"Employee Trainings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="training_id",
-     *         in="path",
-     *         description="Training ID to get attendance list for",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="status_filter",
-     *         in="query",
-     *         description="Filter by attendance status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"Completed", "In Progress", "Pending"}, example="Completed")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Training attendance list retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Training attendance list retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="training",
-     *                     type="object",
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="title", type="string", example="Leadership Training"),
-     *                     @OA\Property(property="organizer", type="string", example="HR Department"),
-     *                     @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
-     *                     @OA\Property(property="end_date", type="string", format="date", example="2023-01-05")
-     *                 ),
-     *                 @OA\Property(
-     *                     property="attendance_summary",
-     *                     type="object",
-     *                     @OA\Property(property="total_enrolled", type="integer", example=10),
-     *                     @OA\Property(property="completed", type="integer", example=7),
-     *                     @OA\Property(property="in_progress", type="integer", example=2),
-     *                     @OA\Property(property="pending", type="integer", example=1)
-     *                 ),
-     *                 @OA\Property(
-     *                     property="attendees",
-     *                     type="array",
-     *
-     *                     @OA\Items(
-     *                         type="object",
-     *
-     *                         @OA\Property(property="id", type="integer", example=1),
-     *                         @OA\Property(property="staff_name", type="string", example="John Doe"),
-     *                         @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                         @OA\Property(property="organizer_details", type="string", example="HR Department"),
-     *                         @OA\Property(property="start_date", type="string", format="date", example="2023-01-01"),
-     *                         @OA\Property(property="end_date", type="string", format="date", example="2023-01-05"),
-     *                         @OA\Property(property="status", type="string", example="Completed"),
-     *                         @OA\Property(property="enrollment_date", type="string", format="date-time", example="2023-01-01T09:00:00Z")
-     *                     )
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Training not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Training not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve training attendance list"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employee-trainings/training/{training_id}/attendance',
+        summary: 'Get training attendance list report',
+        description: 'Returns a list of all employees enrolled in a specific training with their attendance status and details',
+        operationId: 'getTrainingAttendanceList',
+        tags: ['Employee Trainings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'training_id', in: 'path', required: true, description: 'Training ID to get attendance list for', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'status_filter', in: 'query', required: false, description: 'Filter by attendance status', schema: new OA\Schema(type: 'string', enum: ['Completed', 'In Progress', 'Pending'], example: 'Completed')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Training attendance list retrieved successfully'),
+            new OA\Response(response: 404, description: 'Training not found'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function getTrainingAttendanceList(Request $request, $training_id)
     {
         try {

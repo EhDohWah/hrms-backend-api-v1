@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
 /**
  * Leave Request Item Model
@@ -19,30 +19,31 @@ use OpenApi\Annotations as OA;
  * @property float $days
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- *
- * @OA\Schema(
- *     schema="LeaveRequestItem",
- *     type="object",
- *     description="Individual leave type item within a leave request",
- *
- *     @OA\Property(property="id", type="integer", example=1),
- *     @OA\Property(property="leave_request_id", type="integer", example=1, description="Parent leave request ID"),
- *     @OA\Property(property="leave_type_id", type="integer", example=1, description="Leave type ID"),
- *     @OA\Property(property="days", type="number", format="float", example=2, description="Number of days for this leave type"),
- *     @OA\Property(property="created_at", type="string", format="date-time", example="2025-01-15T10:30:00Z"),
- *     @OA\Property(property="updated_at", type="string", format="date-time", example="2025-01-15T10:30:00Z"),
- *     @OA\Property(
- *         property="leave_type",
- *         type="object",
- *         description="Leave type details",
- *         @OA\Property(property="id", type="integer", example=1),
- *         @OA\Property(property="name", type="string", example="Annual Leave"),
- *         @OA\Property(property="default_duration", type="number", example=26),
- *         @OA\Property(property="description", type="string", example="Annual vacation / ลาพักร้อนประจำปี"),
- *         @OA\Property(property="requires_attachment", type="boolean", example=false)
- *     )
- * )
  */
+#[OA\Schema(
+    schema: 'LeaveRequestItem',
+    description: 'Individual leave type item within a leave request',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'leave_request_id', type: 'integer', example: 1, description: 'Parent leave request ID'),
+        new OA\Property(property: 'leave_type_id', type: 'integer', example: 1, description: 'Leave type ID'),
+        new OA\Property(property: 'days', type: 'number', format: 'float', example: 2, description: 'Number of days for this leave type'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', example: '2025-01-15T10:30:00Z'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', example: '2025-01-15T10:30:00Z'),
+        new OA\Property(
+            property: 'leave_type',
+            type: 'object',
+            description: 'Leave type details',
+            properties: [
+                new OA\Property(property: 'id', type: 'integer', example: 1),
+                new OA\Property(property: 'name', type: 'string', example: 'Annual Leave'),
+                new OA\Property(property: 'default_duration', type: 'number', example: 26),
+                new OA\Property(property: 'description', type: 'string', example: 'Annual vacation / ลาพักร้อนประจำปี'),
+                new OA\Property(property: 'requires_attachment', type: 'boolean', example: false),
+            ]
+        ),
+    ]
+)]
 class LeaveRequestItem extends Model
 {
     use HasFactory;

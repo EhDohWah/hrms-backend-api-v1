@@ -10,54 +10,25 @@ use App\Http\Requests\UpdateSiteRequest;
 use App\Http\Resources\SiteResource;
 use App\Models\Site;
 use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Sites",
- *     description="API Endpoints for Site management"
- * )
- */
+#[OA\Tag(name: 'Sites', description: 'API Endpoints for Site management')]
 class SiteController extends Controller
 {
     /**
      * Lightweight list for dropdowns
-     *
-     * @OA\Get(
-     *     path="/sites/options",
-     *     summary="Get site options (lightweight)",
-     *     description="Returns minimal site list for dropdowns",
-     *     operationId="getSiteOptions",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
-     *     @OA\Parameter(name="is_active", in="query", required=false, @OA\Schema(type="boolean")),
-     *     @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=1000, default=200)),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Site options retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="name", type="string", example="MRM"),
-     *                     @OA\Property(property="code", type="string", example="MRM")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/sites/options',
+        summary: 'Get site options (lightweight)',
+        description: 'Returns minimal site list for dropdowns',
+        operationId: 'getSiteOptions',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function options(ListSiteOptionsRequest $request)
     {
         $validated = $request->validated();
@@ -89,35 +60,19 @@ class SiteController extends Controller
 
     /**
      * Get all sites with optional filtering and pagination
-     *
-     * @OA\Get(
-     *     path="/sites",
-     *     summary="Get all sites",
-     *     description="Returns a paginated list of sites with optional filtering and search",
-     *     operationId="getSites",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
-     *     @OA\Parameter(name="is_active", in="query", required=false, @OA\Schema(type="boolean")),
-     *     @OA\Parameter(name="sort_by", in="query", required=false, @OA\Schema(type="string", enum={"name", "code", "created_at"})),
-     *     @OA\Parameter(name="sort_direction", in="query", required=false, @OA\Schema(type="string", enum={"asc", "desc"})),
-     *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=100, default=20)),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Sites retrieved successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/sites',
+        summary: 'Get all sites',
+        description: 'Returns a paginated list of sites with optional filtering and search',
+        operationId: 'getSites',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function index(IndexSiteRequest $request)
     {
         $validated = $request->validated();
@@ -160,42 +115,33 @@ class SiteController extends Controller
 
     /**
      * Store a new site
-     *
-     * @OA\Post(
-     *     path="/sites",
-     *     summary="Create a new site",
-     *     description="Creates a new site and returns it",
-     *     operationId="storeSite",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"name", "code"},
-     *
-     *             @OA\Property(property="name", type="string", maxLength=100, example="Main Office"),
-     *             @OA\Property(property="code", type="string", maxLength=20, example="MRM"),
-     *             @OA\Property(property="description", type="string", nullable=true),
-     *             @OA\Property(property="address", type="string", nullable=true),
-     *             @OA\Property(property="contact_person", type="string", nullable=true),
-     *             @OA\Property(property="contact_phone", type="string", nullable=true),
-     *             @OA\Property(property="contact_email", type="string", nullable=true),
-     *             @OA\Property(property="is_active", type="boolean", default=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Site created successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/sites',
+        summary: 'Create a new site',
+        description: 'Creates a new site and returns it',
+        operationId: 'storeSite',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'code'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', maxLength: 100),
+                new OA\Property(property: 'code', type: 'string', maxLength: 20),
+                new OA\Property(property: 'description', type: 'string', nullable: true),
+                new OA\Property(property: 'address', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_person', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_phone', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_email', type: 'string', nullable: true),
+                new OA\Property(property: 'is_active', type: 'boolean', default: true),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Site created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function store(StoreSiteRequest $request)
     {
         $validated = $request->validated();
@@ -212,33 +158,18 @@ class SiteController extends Controller
 
     /**
      * Get a specific site
-     *
-     * @OA\Get(
-     *     path="/sites/{id}",
-     *     summary="Get a specific site",
-     *     description="Returns a specific site by ID",
-     *     operationId="getSite",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Site not found"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/sites/{id}',
+        summary: 'Get a specific site',
+        description: 'Returns a specific site by ID',
+        operationId: 'getSite',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Site not found')]
     public function show($id)
     {
         $site = Site::withCounts()->find($id);
@@ -259,53 +190,34 @@ class SiteController extends Controller
 
     /**
      * Update a site
-     *
-     * @OA\Put(
-     *     path="/sites/{id}",
-     *     summary="Update a site",
-     *     description="Updates a site and returns it",
-     *     operationId="updateSite",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="name", type="string", maxLength=100),
-     *             @OA\Property(property="code", type="string", maxLength=20),
-     *             @OA\Property(property="description", type="string", nullable=true),
-     *             @OA\Property(property="address", type="string", nullable=true),
-     *             @OA\Property(property="contact_person", type="string", nullable=true),
-     *             @OA\Property(property="contact_phone", type="string", nullable=true),
-     *             @OA\Property(property="contact_email", type="string", nullable=true),
-     *             @OA\Property(property="is_active", type="boolean")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Site updated successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Site not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Put(
+        path: '/sites/{id}',
+        summary: 'Update a site',
+        description: 'Updates a site and returns it',
+        operationId: 'updateSite',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'name', type: 'string', maxLength: 100),
+                new OA\Property(property: 'code', type: 'string', maxLength: 20),
+                new OA\Property(property: 'description', type: 'string', nullable: true),
+                new OA\Property(property: 'address', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_person', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_phone', type: 'string', nullable: true),
+                new OA\Property(property: 'contact_email', type: 'string', nullable: true),
+                new OA\Property(property: 'is_active', type: 'boolean'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Site updated successfully')]
+    #[OA\Response(response: 404, description: 'Site not found')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function update(UpdateSiteRequest $request, $id)
     {
         $site = Site::find($id);
@@ -331,37 +243,19 @@ class SiteController extends Controller
 
     /**
      * Delete a site
-     *
-     * @OA\Delete(
-     *     path="/sites/{id}",
-     *     summary="Delete a site",
-     *     description="Soft deletes a site",
-     *     operationId="deleteSite",
-     *     tags={"Sites"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Site deleted successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Site not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Cannot delete site with active employments"
-     *     )
-     * )
      */
+    #[OA\Delete(
+        path: '/sites/{id}',
+        summary: 'Delete a site',
+        description: 'Soft deletes a site',
+        operationId: 'deleteSite',
+        security: [['bearerAuth' => []]],
+        tags: ['Sites']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Site deleted successfully')]
+    #[OA\Response(response: 404, description: 'Site not found')]
+    #[OA\Response(response: 422, description: 'Cannot delete site with active employments')]
     public function destroy($id)
     {
         $site = Site::withCounts()->find($id);

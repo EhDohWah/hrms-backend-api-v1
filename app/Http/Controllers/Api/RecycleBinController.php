@@ -7,13 +7,9 @@ use App\Services\UniversalRestoreService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Recycle Bin",
- *     description="Simple dynamic recycle bin for mixed model restoration"
- * )
- */
+#[OA\Tag(name: 'Recycle Bin', description: 'Simple dynamic recycle bin for mixed model restoration')]
 class RecycleBinController extends Controller
 {
     protected $restoreService;
@@ -23,43 +19,7 @@ class RecycleBinController extends Controller
         $this->restoreService = $restoreService;
     }
 
-    /**
-     * @OA\Get(
-     *     path="/recycle-bin",
-     *     summary="Get all deleted records from all models",
-     *     description="Retrieve all deleted records from the deleted_models table",
-     *     security={{"bearerAuth":{}}},
-     *     tags={"Recycle Bin"},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="All deleted records retrieved",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="deleted_record_id", type="integer", example=1),
-     *                     @OA\Property(property="model_class", type="string", example="App\\Models\\Interview"),
-     *                     @OA\Property(property="model_type", type="string", example="Interview"),
-     *                     @OA\Property(property="original_id", type="integer", example=5),
-     *                     @OA\Property(property="primary_info", type="string", example="John Doe - Developer"),
-     *                     @OA\Property(property="restoration_key", type="string", example="abc123def456"),
-     *                     @OA\Property(property="deleted_at", type="string", format="date-time"),
-     *                     @OA\Property(property="deleted_ago", type="string", example="2 hours ago"),
-     *                     @OA\Property(property="data", type="object", description="Original record data")
-     *                 )
-     *             ),
-     *             @OA\Property(property="total_count", type="integer", example=25)
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/recycle-bin', summary: 'Get all deleted records from all models', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'All deleted records retrieved')])]
     public function index(): JsonResponse
     {
         try {
@@ -79,68 +39,7 @@ class RecycleBinController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/recycle-bin/restore",
-     *     summary="Dynamic restoration using model class and ID",
-     *     description="Restore any model dynamically by specifying the model class and original ID",
-     *     tags={"Recycle Bin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             oneOf={
-     *
-     *                 @OA\Schema(
-     *                     title="Restore by Model Class and ID (Dynamic)",
-     *
-     *                     @OA\Property(property="model_class", type="string", example="App\\Models\\Interview", description="Full model class name from deleted_models table"),
-     *                     @OA\Property(property="original_id", type="integer", example=5, description="Original record ID"),
-     *                     required={"model_class", "original_id"}
-     *                 ),
-     *
-     *                 @OA\Schema(
-     *                     title="Restore by Deleted Record ID",
-     *
-     *                     @OA\Property(property="deleted_record_id", type="integer", example=1, description="ID from deleted_models table"),
-     *                     required={"deleted_record_id"}
-     *                 )
-     *             }
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Record restored successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Record restored successfully"),
-     *             @OA\Property(
-     *                 property="restored_record",
-     *                 type="object",
-     *                 @OA\Property(property="id", type="integer", example=5),
-     *                 @OA\Property(property="model_class", type="string", example="App\\Models\\Interview"),
-     *                 @OA\Property(property="model_type", type="string", example="Interview")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Restoration failed",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="No deleted record found for App\\Models\\Interview with ID 5")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(path: '/recycle-bin/restore', summary: 'Dynamic restoration using model class and ID', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Record restored successfully'), new OA\Response(response: 422, description: 'Restoration failed')])]
     public function restore(Request $request): JsonResponse
     {
         // Validate the request
@@ -179,46 +78,7 @@ class RecycleBinController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/recycle-bin/bulk-restore",
-     *     summary="Bulk dynamic restoration",
-     *     description="Restore multiple records from different models dynamically",
-     *     tags={"Recycle Bin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(
-     *                 property="restore_requests",
-     *                 type="array",
-     *                 description="Array of restore requests for different models",
-     *
-     *                 @OA\Items(
-     *                     oneOf={
-     *
-     *                         @OA\Schema(
-     *
-     *                             @OA\Property(property="model_class", type="string", example="App\\Models\\Interview"),
-     *                             @OA\Property(property="original_id", type="integer", example=5)
-     *                         ),
-     *
-     *                         @OA\Schema(
-     *
-     *                             @OA\Property(property="deleted_record_id", type="integer", example=1)
-     *                         )
-     *                     }
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=200, description="Bulk restore completed")
-     * )
-     */
+    #[OA\Post(path: '/recycle-bin/bulk-restore', summary: 'Bulk dynamic restoration', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Bulk restore completed')])]
     public function bulkRestore(Request $request): JsonResponse
     {
         $request->validate([
@@ -248,47 +108,7 @@ class RecycleBinController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/recycle-bin/stats",
-     *     summary="Get recycle bin statistics",
-     *     tags={"Recycle Bin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Recycle bin statistics retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(
-     *                 property="stats",
-     *                 type="object",
-     *                 @OA\Property(property="total_deleted", type="integer", example=42),
-     *                 @OA\Property(
-     *                     property="by_model",
-     *                     type="object",
-     *                     description="Count of deleted records by model type"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Failed to load statistics",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to load statistics")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/recycle-bin/stats', summary: 'Get recycle bin statistics', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Recycle bin statistics retrieved successfully'), new OA\Response(response: 422, description: 'Failed to load statistics')])]
     public function stats(): JsonResponse
     {
         try {
@@ -306,45 +126,7 @@ class RecycleBinController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/recycle-bin/{deletedRecordId}",
-     *     summary="Permanently delete a record",
-     *     tags={"Recycle Bin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="deletedRecordId",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the deleted record to permanently delete",
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Record permanently deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Record permanently deleted")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Failed to permanently delete record",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to permanently delete record: Record not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Delete(path: '/recycle-bin/{deletedRecordId}', summary: 'Permanently delete a record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'deletedRecordId', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record permanently deleted successfully'), new OA\Response(response: 422, description: 'Failed to permanently delete record')])]
     public function permanentDelete($deletedRecordId): JsonResponse
     {
         try {

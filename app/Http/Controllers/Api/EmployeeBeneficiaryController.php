@@ -8,40 +8,34 @@ use App\Models\EmployeeBeneficiary;
 use App\Models\User;
 use App\Notifications\EmployeeActionNotification;
 use Illuminate\Http\Request;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Employee Beneficiaries",
- *     description="API Endpoints for Employee Beneficiary management"
- * )
- */
+#[OA\Tag(name: 'Employee Beneficiaries', description: 'API Endpoints for Employee Beneficiary management')]
 class EmployeeBeneficiaryController extends Controller
 {
-    /**
-     * List all employee beneficiaries
-     *
-     * @OA\Get(
-     *     path="/employee-beneficiaries",
-     *     summary="Get all employee beneficiaries",
-     *     tags={"Employee Beneficiaries"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeBeneficiary")),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiaries retrieved successfully")
-     *         )
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Get(
+        path: '/employee-beneficiaries',
+        summary: 'Get all employee beneficiaries',
+        tags: ['Employee Beneficiaries'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Successful operation',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(
+                            property: 'data',
+                            type: 'array',
+                            items: new OA\Items(ref: '#/components/schemas/EmployeeBeneficiary')
+                        ),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiaries retrieved successfully'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function index()
     {
         $employeeBeneficiaries = EmployeeBeneficiary::with('employee')->get();
@@ -53,56 +47,49 @@ class EmployeeBeneficiaryController extends Controller
         ], 200);
     }
 
-    /**
-     * Create a new employee beneficiary record
-     *
-     * @OA\Post(
-     *     path="/employee-beneficiaries",
-     *     summary="Create a new employee beneficiary",
-     *     tags={"Employee Beneficiaries"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="beneficiary_name", type="string", example="John Doe"),
-     *             @OA\Property(property="beneficiary_relationship", type="string", example="spouse"),
-     *             @OA\Property(property="phone_number", type="string", example="+1234567890"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Employee beneficiary created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary created successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Post(
+        path: '/employee-beneficiaries',
+        summary: 'Create a new employee beneficiary',
+        tags: ['Employee Beneficiaries'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'beneficiary_name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'beneficiary_relationship', type: 'string', example: 'spouse'),
+                    new OA\Property(property: 'phone_number', type: 'string', example: '+1234567890'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Employee beneficiary created successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeBeneficiary'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary created successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Validation error'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -134,51 +121,44 @@ class EmployeeBeneficiaryController extends Controller
         ], 201);
     }
 
-    /**
-     * Show a specific employee beneficiary record
-     *
-     * @OA\Get(
-     *     path="/employee-beneficiaries/{id}",
-     *     summary="Get employee beneficiary by ID",
-     *     tags={"Employee Beneficiaries"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee beneficiary ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary retrieved successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee beneficiary not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Get(
+        path: '/employee-beneficiaries/{id}',
+        summary: 'Get employee beneficiary by ID',
+        tags: ['Employee Beneficiaries'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee beneficiary ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Successful operation',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeBeneficiary'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary retrieved successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee beneficiary not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary not found'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function show($id)
     {
         $employeeBeneficiary = EmployeeBeneficiary::with('employee')->findOrFail($id);
@@ -190,77 +170,68 @@ class EmployeeBeneficiaryController extends Controller
         ], 200);
     }
 
-    /**
-     * Update an existing employee beneficiary record
-     *
-     * @OA\Put(
-     *     path="/employee-beneficiaries/{id}",
-     *     summary="Update an employee beneficiary",
-     *     tags={"Employee Beneficiaries"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee beneficiary ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="beneficiary_name", type="string", example="John Doe"),
-     *             @OA\Property(property="beneficiary_relationship", type="string", example="spouse"),
-     *             @OA\Property(property="phone_number", type="string", example="+1234567890"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee beneficiary updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeBeneficiary"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary updated successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee beneficiary not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Put(
+        path: '/employee-beneficiaries/{id}',
+        summary: 'Update an employee beneficiary',
+        tags: ['Employee Beneficiaries'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee beneficiary ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'beneficiary_name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'beneficiary_relationship', type: 'string', example: 'spouse'),
+                    new OA\Property(property: 'phone_number', type: 'string', example: '+1234567890'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Employee beneficiary updated successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeBeneficiary'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary updated successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee beneficiary not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary not found'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Validation error'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function update(Request $request, $id)
     {
         $employeeBeneficiary = EmployeeBeneficiary::findOrFail($id);
@@ -294,50 +265,43 @@ class EmployeeBeneficiaryController extends Controller
         ], 200);
     }
 
-    /**
-     * Delete an employee beneficiary record
-     *
-     * @OA\Delete(
-     *     path="/employee-beneficiaries/{id}",
-     *     summary="Delete an employee beneficiary",
-     *     tags={"Employee Beneficiaries"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee beneficiary ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee beneficiary deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee beneficiary not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee beneficiary not found")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Delete(
+        path: '/employee-beneficiaries/{id}',
+        summary: 'Delete an employee beneficiary',
+        tags: ['Employee Beneficiaries'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee beneficiary ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Employee beneficiary deleted successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary deleted successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee beneficiary not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee beneficiary not found'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function destroy($id)
     {
         $employeeBeneficiary = EmployeeBeneficiary::findOrFail($id);

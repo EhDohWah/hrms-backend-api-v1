@@ -5,31 +5,30 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="EmployeeParent",
- *     title="Employee Parent",
- *     description="Employee Parent model for Thai tax allowance calculations",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="name", type="string", example="สมใจ ใจดี"),
- *     @OA\Property(property="date_of_birth", type="string", format="date", example="1950-01-01"),
- *     @OA\Property(property="relationship_type", type="string", enum={"father", "mother", "stepfather", "stepmother", "adoptive_father", "adoptive_mother"}, example="father"),
- *     @OA\Property(property="annual_income", type="number", format="float", example=25000.00),
- *     @OA\Property(property="id_card_number", type="string", example="1234567890123"),
- *     @OA\Property(property="address", type="string", example="123 Main St, Bangkok"),
- *     @OA\Property(property="phone", type="string", example="0812345678"),
- *     @OA\Property(property="is_dependent", type="boolean", example=true),
- *     @OA\Property(property="is_eligible_for_allowance", type="boolean", example=true),
- *     @OA\Property(property="created_by", type="string", example="admin"),
- *     @OA\Property(property="updated_by", type="string", example="admin"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
+#[OA\Schema(
+    schema: 'EmployeeParent',
+    title: 'Employee Parent',
+    description: 'Employee Parent model for Thai tax allowance calculations',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'name', type: 'string', example: 'สมใจ ใจดี'),
+        new OA\Property(property: 'date_of_birth', type: 'string', format: 'date', example: '1950-01-01'),
+        new OA\Property(property: 'relationship_type', type: 'string', example: 'father', enum: ['father', 'mother', 'stepfather', 'stepmother', 'adoptive_father', 'adoptive_mother']),
+        new OA\Property(property: 'annual_income', type: 'number', format: 'float', example: 25000.00),
+        new OA\Property(property: 'id_card_number', type: 'string', example: '1234567890123'),
+        new OA\Property(property: 'address', type: 'string', example: '123 Main St, Bangkok'),
+        new OA\Property(property: 'phone', type: 'string', example: '0812345678'),
+        new OA\Property(property: 'is_dependent', type: 'boolean', example: true),
+        new OA\Property(property: 'is_eligible_for_allowance', type: 'boolean', example: true),
+        new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+        new OA\Property(property: 'updated_by', type: 'string', example: 'admin'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ]
+)]
 class EmployeeParent extends Model
 {
     use HasFactory;

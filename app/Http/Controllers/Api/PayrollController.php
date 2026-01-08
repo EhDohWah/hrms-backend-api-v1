@@ -2803,4 +2803,313 @@ class PayrollController extends Controller
 
         return 'N/A';
     }
+
+    /**
+     * @OA\Post(
+     *     path="/uploads/payroll",
+     *     summary="Upload payroll data from Excel file",
+     *     description="Upload an Excel file containing payroll records. The import is processed asynchronously in the background with chunk processing. Each row creates a new payroll record (no duplicate detection).",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *
+     *             @OA\Schema(
+     *
+     *                 @OA\Property(property="file", type="string", format="binary", description="Excel file to upload (xlsx, xls, csv)")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=202, description="Payroll data import started successfully"),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=500, description="Import failed")
+     * )
+     */
+    public function upload(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            ]);
+
+            $file = $request->file('file');
+            $importId = 'payroll_'.str()->uuid();
+            $userId = auth()->id();
+
+            // Queue the import
+            (new \App\Imports\PayrollsImport($importId, $userId))->queue($file);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll import started successfully. You will be notified when complete.',
+                'import_id' => $importId,
+            ], 202);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start payroll import',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/downloads/payroll-template",
+     *     summary="Download payroll import template",
+     *     description="Downloads an Excel template for bulk payroll import with validation rules and sample data",
+     *     operationId="downloadPayrollTemplate",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(response=200, description="Template file downloaded successfully"),
+     *     @OA\Response(response=500, description="Failed to generate template")
+     * )
+     */
+    public function downloadTemplate()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Payroll Import');
+
+            // ============================================
+            // SECTION 1: DEFINE HEADERS
+            // ============================================
+            $headers = [
+                'staff_id',
+                'employee_funding_allocation_id',
+                'pay_period_date',
+                'gross_salary',
+                'gross_salary_by_FTE',
+                'compensation_refund',
+                'thirteen_month_salary',
+                'thirteen_month_salary_accured',
+                'pvd',
+                'saving_fund',
+                'employer_social_security',
+                'employee_social_security',
+                'employer_health_welfare',
+                'employee_health_welfare',
+                'tax',
+                'net_salary',
+                'total_salary',
+                'total_pvd',
+                'total_saving_fund',
+                'salary_bonus',
+                'total_income',
+                'employer_contribution',
+                'total_deduction',
+                'notes',
+            ];
+
+            // ============================================
+            // SECTION 2: DEFINE VALIDATION RULES
+            // ============================================
+            $validationRules = [
+                'String - NOT NULL - Employee staff ID (must exist in system)',
+                'Integer - NOT NULL - Employee funding allocation ID (must exist)',
+                'Date (YYYY-MM-DD) - NOT NULL - Pay period date',
+                'Decimal(15,2) - NOT NULL - Gross salary amount',
+                'Decimal(15,2) - NOT NULL - Gross salary by FTE',
+                'Decimal(15,2) - NULLABLE - Compensation refund',
+                'Decimal(15,2) - NULLABLE - 13th month salary',
+                'Decimal(15,2) - NULLABLE - 13th month salary accrued',
+                'Decimal(15,2) - NULLABLE - Provident fund (PVD)',
+                'Decimal(15,2) - NULLABLE - Saving fund',
+                'Decimal(15,2) - NULLABLE - Employer social security',
+                'Decimal(15,2) - NULLABLE - Employee social security',
+                'Decimal(15,2) - NULLABLE - Employer health welfare',
+                'Decimal(15,2) - NULLABLE - Employee health welfare',
+                'Decimal(15,2) - NULLABLE - Tax amount',
+                'Decimal(15,2) - NOT NULL - Net salary',
+                'Decimal(15,2) - NULLABLE - Total salary',
+                'Decimal(15,2) - NULLABLE - Total PVD',
+                'Decimal(15,2) - NULLABLE - Total saving fund',
+                'Decimal(15,2) - NULLABLE - Salary bonus',
+                'Decimal(15,2) - NULLABLE - Total income',
+                'Decimal(15,2) - NULLABLE - Employer contribution',
+                'Decimal(15,2) - NULLABLE - Total deduction',
+                'String - NULLABLE - Notes for payslip',
+            ];
+
+            // ============================================
+            // SECTION 3: WRITE HEADERS (Row 1)
+            // ============================================
+            $col = 1;
+            foreach ($headers as $header) {
+                $cell = $sheet->getCellByColumnAndRow($col, 1);
+                $cell->setValue($header);
+
+                // Style header
+                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('4472C4');
+                $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
+                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $col++;
+            }
+
+            // ============================================
+            // SECTION 4: WRITE VALIDATION RULES (Row 2)
+            // ============================================
+            $col = 1;
+            foreach ($validationRules as $rule) {
+                $cell = $sheet->getCellByColumnAndRow($col, 2);
+                $cell->setValue($rule);
+
+                // Style validation row
+                $cell->getStyle()->getFont()->setItalic(true)->setSize(9);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('E7E6E6');
+                $cell->getStyle()->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+
+                $col++;
+            }
+
+            // Set row height for validation rules
+            $sheet->getRowDimension(2)->setRowHeight(60);
+
+            // ============================================
+            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)
+            // ============================================
+            $sampleData = [
+                ['EMP001', '1', '2025-01-01', '50000.00', '50000.00', '0.00', '0.00', '4166.67', '3750.00', '0.00', '750.00', '750.00', '0.00', '0.00', '5000.00', '41250.00', '50000.00', '3750.00', '0.00', '0.00', '50000.00', '4500.00', '9500.00', 'Regular monthly salary'],
+                ['EMP002', '2', '2025-01-01', '60000.00', '36000.00', '0.00', '0.00', '5000.00', '4500.00', '0.00', '900.00', '900.00', '0.00', '0.00', '6500.00', '49000.00', '60000.00', '4500.00', '0.00', '0.00', '60000.00', '5400.00', '11900.00', '60% FTE allocation'],
+                ['EMP003', '3', '2025-01-01', '45000.00', '45000.00', '0.00', '0.00', '3750.00', '3375.00', '0.00', '675.00', '675.00', '0.00', '0.00', '4000.00', '37625.00', '45000.00', '3375.00', '0.00', '0.00', '45000.00', '4050.00', '8425.00', 'Probation period'],
+            ];
+
+            $row = 3;
+            foreach ($sampleData as $data) {
+                $col = 1;
+                foreach ($data as $value) {
+                    $sheet->getCellByColumnAndRow($col, $row)->setValue($value);
+                    $col++;
+                }
+                $row++;
+            }
+
+            // ============================================
+            // SECTION 6: SET COLUMN WIDTHS
+            // ============================================
+            $columnWidths = [
+                'A' => 15,  // staff_id
+                'B' => 22,  // employee_funding_allocation_id
+                'C' => 18,  // pay_period_date
+                'D' => 15,  // gross_salary
+                'E' => 18,  // gross_salary_by_FTE
+                'F' => 18,  // compensation_refund
+                'G' => 20,  // thirteen_month_salary
+                'H' => 25,  // thirteen_month_salary_accured
+                'I' => 12,  // pvd
+                'J' => 15,  // saving_fund
+                'K' => 22,  // employer_social_security
+                'L' => 22,  // employee_social_security
+                'M' => 22,  // employer_health_welfare
+                'N' => 22,  // employee_health_welfare
+                'O' => 12,  // tax
+                'P' => 15,  // net_salary
+                'Q' => 15,  // total_salary
+                'R' => 15,  // total_pvd
+                'S' => 18,  // total_saving_fund
+                'T' => 15,  // salary_bonus
+                'U' => 15,  // total_income
+                'V' => 20,  // employer_contribution
+                'W' => 18,  // total_deduction
+                'X' => 30,  // notes
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            // ============================================
+            // SECTION 7: ADD INSTRUCTIONS SHEET
+            // ============================================
+            $instructionsSheet = $spreadsheet->createSheet();
+            $instructionsSheet->setTitle('Instructions');
+
+            $instructions = [
+                ['Payroll Import Template - Instructions'],
+                [''],
+                ['IMPORTANT NOTES:'],
+                ['1. Each row creates a NEW payroll record (no duplicate detection)'],
+                ['2. One employee can have multiple payroll records per month (one per funding allocation)'],
+                ['3. All monetary values will be encrypted automatically for security'],
+                ['4. Provide all calculated values - no auto-calculations performed'],
+                [''],
+                ['REQUIRED FIELDS:'],
+                ['- staff_id: Employee staff ID (must exist in system)'],
+                ['- employee_funding_allocation_id: Funding allocation ID'],
+                ['- pay_period_date: Pay period date (YYYY-MM-DD format)'],
+                ['- gross_salary: Gross salary amount'],
+                ['- gross_salary_by_FTE: Gross salary adjusted by FTE'],
+                ['- net_salary: Net salary after deductions'],
+                [''],
+                ['OPTIONAL FIELDS:'],
+                ['- All other salary components and calculations'],
+                ['- notes: Additional notes for the payslip'],
+                [''],
+                ['DATE FORMAT:'],
+                ['- Use YYYY-MM-DD format (e.g., 2025-01-01)'],
+                ['- Excel may auto-format dates - ensure they are correct'],
+                [''],
+                ['NUMERIC VALUES:'],
+                ['- Use decimal format (e.g., 50000.00)'],
+                ['- Do not use currency symbols'],
+                ['- Commas are optional (will be removed automatically)'],
+                [''],
+                ['MULTIPLE ALLOCATIONS:'],
+                ['- If employee has 2 funding allocations, create 2 rows'],
+                ['- Each row should have different employee_funding_allocation_id'],
+                ['- Both rows can have same pay_period_date'],
+            ];
+
+            $row = 1;
+            foreach ($instructions as $instruction) {
+                $instructionsSheet->setCellValue('A'.$row, $instruction[0]);
+                if ($row === 1) {
+                    $instructionsSheet->getStyle('A'.$row)->getFont()->setBold(true)->setSize(14);
+                } elseif (in_array($row, [3, 9, 17, 21, 24, 27])) {
+                    $instructionsSheet->getStyle('A'.$row)->getFont()->setBold(true);
+                }
+                $row++;
+            }
+
+            $instructionsSheet->getColumnDimension('A')->setWidth(80);
+
+            // Set active sheet back to main sheet
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // ============================================
+            // SECTION 8: GENERATE AND DOWNLOAD
+            // ============================================
+            $filename = 'payroll_import_template_'.date('Y-m-d_His').'.xlsx';
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="'.$filename.'"');
+            header('Cache-Control: max-age=0');
+
+            $writer->save('php://output');
+            exit;
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

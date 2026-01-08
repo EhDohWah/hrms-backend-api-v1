@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\EmployeesExport;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\FilterEmployeeRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeBankRequest;
@@ -37,68 +36,24 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Employees",
- *     description="API Endpoints for Employee management"
- * )
- */
+#[OA\Tag(name: 'Employees', description: 'API Endpoints for Employee management')]
 class EmployeeController extends Controller
 {
     /**
      * Get all employees for tree search
-     *
-     * @OA\Get(
-     *     path="/employees/tree-search",
-     *     summary="Get all employees for tree search",
-     *     description="Returns a list of all employees organized by organization for tree-based search",
-     *     operationId="getEmployeesForTreeSearch",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(
-     *                 @OA\Property(property="key", type="string", example="organization-SMRU"),
-     *                 @OA\Property(property="title", type="string", example="SMRU"),
-     *                 @OA\Property(property="value", type="string", example="organization-SMRU"),
-     *                 @OA\Property(property="children", type="array", @OA\Items(
-     *                     @OA\Property(property="key", type="string", example="34"),
-     *                     @OA\Property(property="title", type="string", example="0001 - John Doe"),
-     *                     @OA\Property(property="status", type="string", example="Local ID Staff"),
-     *                     @OA\Property(property="value", type="string", example="34"),
-     *                     @OA\Property(property="department_id", type="integer", example=5, nullable=true),
-     *                     @OA\Property(property="position_id", type="integer", example=12, nullable=true),
-     *                     @OA\Property(property="employment", type="object", nullable=true,
-     *                         @OA\Property(property="department", type="object", nullable=true,
-     *                             @OA\Property(property="id", type="integer", example=5),
-     *                             @OA\Property(property="name", type="string", example="Human Resources")
-     *                         ),
-     *                         @OA\Property(property="position", type="object", nullable=true,
-     *                             @OA\Property(property="id", type="integer", example=12),
-     *                             @OA\Property(property="title", type="string", example="HR Manager")
-     *                         )
-     *                     )
-     *                 ))
-     *             ))
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/employees/tree-search',
+        summary: 'Get all employees for tree search',
+        description: 'Returns a list of all employees organized by organization for tree-based search',
+        operationId: 'getEmployeesForTreeSearch',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function getEmployeesForTreeSearch()
     {
         try {
@@ -172,63 +127,27 @@ class EmployeeController extends Controller
     }
 
     /**
-     * @OA\Delete(
-     *     path="/employees/delete-selected/{ids}",
-     *     summary="Delete multiple employees by their IDs",
-     *     description="Deletes multiple employees and their related records based on the provided IDs",
-     *     operationId="deleteSelectedEmployees",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Employee IDs to delete",
-     *
-     *         @OA\JsonContent(
-     *             required={"ids"},
-     *
-     *             @OA\Property(
-     *                 property="ids",
-     *                 type="array",
-     *                 description="Array of employee IDs to delete",
-     *
-     *                 @OA\Items(type="integer")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employees deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="5 employee(s) deleted successfully"),
-     *             @OA\Property(property="count", type="integer", example=5)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to delete employees"),
-     *             @OA\Property(property="error", type="string", example="Error message details")
-     *         )
-     *     )
-     * )
-     *
      * Delete multiple employees by their IDs
-     *
-     * @param  FilterEmployeeRequest  $request
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Delete(
+        path: '/employees/delete-selected/{ids}',
+        summary: 'Delete multiple employees by their IDs',
+        description: 'Deletes multiple employees and their related records based on the provided IDs',
+        operationId: 'deleteSelectedEmployees',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['ids'],
+            properties: [
+                new OA\Property(property: 'ids', type: 'array', items: new OA\Items(type: 'integer')),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Employees deleted successfully')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function deleteSelectedEmployees(Request $request)
     {
         $validated = $request->validate([
@@ -281,78 +200,31 @@ class EmployeeController extends Controller
     }
 
     /**
-     * @OA\Post(
-     *     path="/employees/upload",
-     *     summary="Upload employee data from Excel file",
-     *     description="Upload an Excel file where each row contains data for creating an employee record. Identifications and beneficiaries can also be handled if columns are provided and parsed into arrays.",
-     *     operationId="uploadEmployeeData",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Excel file containing employee data",
-     *
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *
-     *             @OA\Schema(
-     *                 required={"file"},
-     *
-     *                 @OA\Property(
-     *                     property="file",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Excel file (xlsx, xls, or csv) with employee data"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee data uploaded successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee data upload completed"),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="processed_employees", type="integer", example=5)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error or no rows imported",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="No rows were imported – check your column headings & data."),
-     *             @OA\Property(property="debug", type="object",
-     *                 @OA\Property(property="first_row_snapshot", type="object", example={"staff_id": "A001", "first_name": "John"}),
-     *                 @OA\Property(property="custom_errors", type="array", @OA\Items(type="string")),
-     *                 @OA\Property(property="validation_failures", type="array", @OA\Items(type="string"))
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Failed to import employees",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to import employee data"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
+     * Upload employee data from Excel file
      */
+    #[OA\Post(
+        path: '/employees/upload',
+        summary: 'Upload employee data from Excel file',
+        description: 'Upload an Excel file where each row contains data for creating an employee record',
+        operationId: 'uploadEmployeeData',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: 'multipart/form-data',
+            schema: new OA\Schema(
+                required: ['file'],
+                properties: [
+                    new OA\Property(property: 'file', type: 'string', format: 'binary'),
+                ]
+            )
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Employee data uploaded successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 500, description: 'Failed to import employees')]
     public function uploadEmployeeData(UploadEmployeeImportRequest $request)
     {
         $file = $request->file('file');
@@ -374,45 +246,23 @@ class EmployeeController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *     path="/uploads/employee/template",
-     *     operationId="downloadEmployeeTemplate",
-     *     summary="Download Employee Import Excel Template",
-     *     description="Downloads an Excel template file with headers, validation rules, and sample data for employee bulk import",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Excel template file download",
-     *
-     *         @OA\MediaType(
-     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-     *
-     *             @OA\Schema(
-     *                 type="string",
-     *                 format="binary"
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Failed to generate template",
-     *
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to generate template"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
+     * Download Employee Import Excel Template
      */
+    #[OA\Get(
+        path: '/uploads/employee/template',
+        summary: 'Download Employee Import Excel Template',
+        description: 'Downloads an Excel template file with headers, validation rules, and sample data for employee bulk import',
+        operationId: 'downloadEmployeeTemplate',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\Response(response: 200, description: 'Excel template file download')]
+    #[OA\Response(response: 500, description: 'Failed to generate template')]
     public function downloadEmployeeTemplate()
     {
         try {
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-            
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+
             // Remove default sheet and create employee data sheet
             $spreadsheet->removeSheetByIndex(0);
             $sheet = $spreadsheet->createSheet();
@@ -471,8 +321,8 @@ class EmployeeController extends Controller
             // Set column widths and headers
             foreach ($columns as $col => $data) {
                 $sheet->getColumnDimension($col)->setWidth($data['width']);
-                $sheet->setCellValue($col . '1', $data['header']);
-                $sheet->setCellValue($col . '2', $data['validation']);
+                $sheet->setCellValue($col.'1', $data['header']);
+                $sheet->setCellValue($col.'2', $data['validation']);
             }
 
             // Style header row
@@ -505,11 +355,11 @@ class EmployeeController extends Controller
                 foreach ($columns as $col => $colData) {
                     if ($colIndex < count($rowData)) {
                         $value = $rowData[$colIndex];
-                        $sheet->setCellValue($col . $rowNum, $value);
-                        
+                        $sheet->setCellValue($col.$rowNum, $value);
+
                         // Add age formula for column K
                         if ($col === 'K' && isset($rowData[9])) {
-                            $sheet->setCellValue($col . $rowNum, '=DATEDIF(J' . $rowNum . ',TODAY(),"Y")');
+                            $sheet->setCellValue($col.$rowNum, '=DATEDIF(J'.$rowNum.',TODAY(),"Y")');
                         }
                     }
                     $colIndex++;
@@ -519,7 +369,7 @@ class EmployeeController extends Controller
             // Add data validation for dropdowns
             // Gender dropdown (column I)
             for ($row = 3; $row <= 1000; $row++) {
-                $validation = $sheet->getCell('I' . $row)->getDataValidation();
+                $validation = $sheet->getCell('I'.$row)->getDataValidation();
                 $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
                 $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
                 $validation->setAllowBlank(false);
@@ -535,7 +385,7 @@ class EmployeeController extends Controller
 
             // ID Type dropdown (column O)
             for ($row = 3; $row <= 1000; $row++) {
-                $validation = $sheet->getCell('O' . $row)->getDataValidation();
+                $validation = $sheet->getCell('O'.$row)->getDataValidation();
                 $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
                 $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
                 $validation->setAllowBlank(true);
@@ -551,7 +401,7 @@ class EmployeeController extends Controller
 
             // Marital Status dropdown (column AA)
             for ($row = 3; $row <= 1000; $row++) {
-                $validation = $sheet->getCell('AA' . $row)->getDataValidation();
+                $validation = $sheet->getCell('AA'.$row)->getDataValidation();
                 $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
                 $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
                 $validation->setAllowBlank(true);
@@ -572,19 +422,19 @@ class EmployeeController extends Controller
             $spreadsheet->setActiveSheetIndex(0);
 
             // Generate filename with timestamp
-            $filename = 'employee_import_template_' . date('Y-m-d_His') . '.xlsx';
+            $filename = 'employee_import_template_'.date('Y-m-d_His').'.xlsx';
 
             // Create writer and save to temporary file
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-            
+
             // Create temporary file
             $tempFile = tempnam(sys_get_temp_dir(), 'employee_template_');
             $writer->save($tempFile);
-            
+
             // Return file download response with proper CORS headers
             return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'no-cache, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0',
@@ -606,186 +456,24 @@ class EmployeeController extends Controller
 
     /**
      * Get all employees with advanced filtering and sorting
-     *
-     * @OA\Get(
-     *     path="/employees",
-     *     summary="Get all employees with advanced filtering and sorting",
-     *     description="Returns a paginated list of employees with comprehensive filtering, sorting capabilities and statistics",
-     *     operationId="getEmployees",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_organization",
-     *         in="query",
-     *         description="Filter by organization (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="SMRU,BHF")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_status",
-     *         in="query",
-     *         description="Filter by employee status (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Expats,Local ID")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_gender",
-     *         in="query",
-     *         description="Filter by gender (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Male,Female")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_age",
-     *         in="query",
-     *         description="Filter by age",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=30)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_id_type",
-     *         in="query",
-     *         description="Filter by identification type (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Passport,ThaiID")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_staff_id",
-     *         in="query",
-     *         description="Filter by staff ID (partial match)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="EMP")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"organization", "staff_id", "first_name_en", "last_name_en", "gender", "date_of_birth", "status", "age", "id_type"}, example="first_name_en")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order (asc or desc)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Employee")
-     *             ),
-     *
-     *             @OA\Property(
-     *                 property="statistics",
-     *                 type="object",
-     *                 @OA\Property(property="totalEmployees", type="integer", example=450),
-     *                 @OA\Property(property="activeCount", type="integer", example=400),
-     *                 @OA\Property(property="inactiveCount", type="integer", example=50),
-     *                 @OA\Property(property="newJoinerCount", type="integer", example=15),
-     *                 @OA\Property(
-     *                     property="subsidiaryCount",
-     *                     type="object",
-     *                     @OA\Property(property="SMRU_count", type="integer", example=300),
-     *                     @OA\Property(property="BHF_count", type="integer", example=150)
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="pagination",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=450),
-     *                 @OA\Property(property="last_page", type="integer", example=45),
-     *                 @OA\Property(property="from", type="integer", example=1),
-     *                 @OA\Property(property="to", type="integer", example=10),
-     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
-     *             ),
-     *             @OA\Property(
-     *                 property="filters",
-     *                 type="object",
-     *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"}),
-     *                     @OA\Property(property="status", type="array", @OA\Items(type="string"), example={"Expats"}),
-     *                     @OA\Property(property="gender", type="array", @OA\Items(type="string"), example={"Male"}),
-     *                     @OA\Property(property="age", type="integer", example=30),
-     *                     @OA\Property(property="id_type", type="array", @OA\Items(type="string"), example={"Passport"})
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve employees"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/employees',
+        summary: 'Get all employees with advanced filtering and sorting',
+        description: 'Returns a paginated list of employees with comprehensive filtering, sorting capabilities and statistics',
+        operationId: 'getEmployees',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'filter_organization', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'filter_status', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'sort_order', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function index(Request $request)
     {
         try {
@@ -909,88 +597,21 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * Get a single employee
-     *
-     * @OA\Get(
-     *     path="/employees/staff-id/{staff_id}",
-     *     summary="Get a single employee",
-     *     description="Returns employee(s) by staff ID with related data",
-     *     operationId="getEmployeeByStaffId",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="staff_id", in="path", required=true, description="Staff ID of the employee", @OA\Schema(type="string")),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee(s) retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *                     type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="organization", type="string", example="SMRU"),
-     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                     @OA\Property(property="initial_en", type="string", example="Mr."),
-     *                     @OA\Property(property="first_name_en", type="string", example="John"),
-     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                     @OA\Property(property="gender", type="string", example="male"),
-     *                     @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01"),
-     *                     @OA\Property(property="age", type="integer", example=33),
-     *                     @OA\Property(property="status", type="string", example="Expats"),
-     *                     @OA\Property(property="social_security_number", type="string", example="SSN123456"),
-     *                     @OA\Property(property="tax_number", type="string", example="TAX123456"),
-     *                     @OA\Property(property="mobile_phone", type="string", example="0812345678"),
-     *                     @OA\Property(
-     *                         property="employee_identification",
-     *                         type="array",
-     *
-     *                         @OA\Items(
-     *                             type="object",
-     *
-     *                             @OA\Property(property="id", type="integer", example=1),
-     *                             @OA\Property(property="employee_id", type="integer", example=1),
-     *                             @OA\Property(property="id_type", type="string", example="Passport"),
-     *                             @OA\Property(property="document_number", type="string", example="P12345678"),
-     *                             @OA\Property(property="issue_date", type="string", format="date", example="2020-01-01"),
-     *                             @OA\Property(property="expiry_date", type="string", format="date", example="2030-01-01")
-     *                         )
-     *                     ),
-     *                     @OA\Property(
-     *                         property="employment",
-     *                         type="object",
-     *                         @OA\Property(property="id", type="integer", example=1),
-     *                         @OA\Property(property="employee_id", type="integer", example=1),
-     *                         @OA\Property(property="active", type="integer", example=1),
-     *                         @OA\Property(property="start_date", type="string", format="date", example="2023-01-01")
-     *                     )
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="message", type="string", example="No employee found with staff_id = EMP001")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employees/staff-id/{staff_id}',
+        summary: 'Get a single employee',
+        description: 'Returns employee(s) by staff ID with related data',
+        operationId: 'getEmployeeByStaffId',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'staff_id', in: 'path', required: true, description: 'Staff ID of the employee', schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function show(ShowEmployeeRequest $request, string $staff_id)
     {
 
@@ -1034,50 +655,21 @@ class EmployeeController extends Controller
             ]);
     }
 
-    /**
-     * Get employee details
-     *
-     * @OA\Get(
-     *     path="/employees/{id}",
-     *     summary="Get employee details",
-     *     description="Returns employee details by ID with related data including employment, grant allocations, beneficiaries, identification, and leave balances",
-     *     operationId="getEmployeeDetailsById",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="id", in="path", required=true, description="ID of the employee", @OA\Schema(type="integer")),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 ref="#/components/schemas/Employee",
-     *                 description="Employee data with related information"
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employees/{id}',
+        summary: 'Get employee details',
+        description: 'Returns employee details by ID with related data including employment, grant allocations, beneficiaries, identification, and leave balances',
+        operationId: 'getEmployeeDetailsById',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of the employee', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function employeeDetails(Request $request, $id)
     {
         $employee = Employee::with([
@@ -1115,97 +707,24 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    /**
-     * Create a new employee with basic information
-     *
-     * @OA\Post(
-     *     path="/employees",
-     *     summary="Create a new employee",
-     *     description="Creates a new employee with optional identifications and beneficiaries",
-     *     operationId="createEmployee",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Employee data",
-     *
-     *         @OA\JsonContent(
-     *             required={"organization","staff_id","first_name_en","gender","date_of_birth","status"},
-     *
-     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee organization"),
-     *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
-     *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
-     *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
-     *             @OA\Property(property="first_name_en", type="string", example="John", description="Employee first name in English"),
-     *             @OA\Property(property="last_name_en", type="string", example="Doe", description="Employee last name in English"),
-     *             @OA\Property(property="first_name_th", type="string", example="จอห์น", description="Employee first name in Thai"),
-     *             @OA\Property(property="last_name_th", type="string", example="โด", description="Employee last name in Thai"),
-     *             @OA\Property(property="gender", type="string", example="Male", description="Employee gender"),
-     *             @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01", description="Employee date of birth"),
-     *             @OA\Property(property="date_of_birth_th", type="string", example="01/01/2533", description="Employee date of birth in Thai format"),
-     *             @OA\Property(property="age", type="integer", example=33, description="Employee age"),
-     *             @OA\Property(property="status", type="string", enum={"Expats (Local)", "Local ID Staff", "Local non ID Staff"}, example="Local ID Staff", description="Employee status"),
-     *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Employee created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Employee")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(
-     *                 property="errors",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="staff_id",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="The staff id field is required.")
-     *                 ),
-     *
-     *                 @OA\Property(
-     *                     property="first_name_en",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="The first name en field is required.")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to create employee"),
-     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/employees',
+        summary: 'Create a new employee',
+        description: 'Creates a new employee with optional identifications and beneficiaries',
+        operationId: 'createEmployee',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Employee data',
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Employee created successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function store(StoreEmployeeRequest $request)
     {
         try {
@@ -1245,115 +764,27 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * Update an employees
-     *
-     * @OA\Put(
-     *     path="/employees/{id}",
-     *     summary="Update employee details",
-     *     description="Updates an existing employee record with the provided information",
-     *     operationId="updateEmployee",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Employee information to update",
-     *
-     *         @OA\JsonContent(
-     *             required={"staff_id","first_name_en","last_name_en","gender","date_of_birth","status"},
-     *
-     *             @OA\Property(property="staff_id", type="string", example="EMP001", description="Unique staff identifier"),
-     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}, example="SMRU", description="Employee organization"),
-     *             @OA\Property(property="user_id", type="integer", nullable=true, description="Associated user ID"),
-     *             @OA\Property(property="initial_en", type="string", example="Mr.", description="English initial/title"),
-     *             @OA\Property(property="initial_th", type="string", example="นาย", description="Thai initial/title"),
-     *             @OA\Property(property="first_name_en", type="string", example="John", description="Employee first name in English"),
-     *             @OA\Property(property="last_name_en", type="string", example="Doe", description="Employee last name in English"),
-     *             @OA\Property(property="first_name_th", type="string", example="จอห์น", description="Employee first name in Thai"),
-     *             @OA\Property(property="last_name_th", type="string", example="โด", description="Employee last name in Thai"),
-     *             @OA\Property(property="gender", type="string", example="male", description="Employee gender"),
-     *             @OA\Property(property="date_of_birth", type="string", format="date", example="1990-01-01", description="Employee date of birth"),
-     *             @OA\Property(property="date_of_birth_th", type="string", example="01/01/2533", description="Employee date of birth in Thai format"),
-     *             @OA\Property(property="age", type="integer", example=33, description="Employee age"),
-     *             @OA\Property(property="status", type="string", enum={"Expats", "Local ID", "Local non ID"}, example="Expats", description="Employee status"),
-     *             @OA\Property(property="nationality", type="string", example="Thai", description="Employee nationality"),
-     *             @OA\Property(property="religion", type="string", example="Buddhism", description="Employee religion"),
-     *             @OA\Property(property="social_security_number", type="string", example="SSN123456", description="Employee social security number"),
-     *             @OA\Property(property="tax_number", type="string", example="TAX123456", description="Employee tax number"),
-     *             @OA\Property(property="bank_name", type="string", example="Bangkok Bank", description="Employee bank name"),
-     *             @OA\Property(property="bank_branch", type="string", example="Silom", description="Employee bank branch"),
-     *             @OA\Property(property="bank_account_name", type="string", example="John Doe", description="Employee bank account name"),
-     *             @OA\Property(property="bank_account_number", type="string", example="1234567890", description="Employee bank account number"),
-     *             @OA\Property(property="mobile_phone", type="string", example="0812345678", description="Employee mobile phone"),
-     *             @OA\Property(property="permanent_address", type="string", example="123 Main St, Bangkok", description="Employee permanent address"),
-     *             @OA\Property(property="current_address", type="string", example="456 Second St, Bangkok", description="Employee current address"),
-     *             @OA\Property(property="military_status", type="boolean", example=false, description="Employee military status"),
-     *             @OA\Property(property="marital_status", type="string", example="Single", description="Employee marital status"),
-     *             @OA\Property(property="spouse_name", type="string", example="Jane Doe", description="Employee spouse name"),
-     *             @OA\Property(property="spouse_phone_number", type="string", example="0812345679", description="Employee spouse phone number"),
-     *             @OA\Property(property="emergency_contact_person_name", type="string", example="James Doe", description="Emergency contact name"),
-     *             @OA\Property(property="emergency_contact_person_relationship", type="string", example="Father", description="Emergency contact relationship"),
-     *             @OA\Property(property="emergency_contact_person_phone", type="string", example="0812345680", description="Emergency contact phone"),
-     *             @OA\Property(property="father_name", type="string", example="James Doe", description="Employee father name"),
-     *             @OA\Property(property="father_occupation", type="string", example="Engineer", description="Employee father occupation"),
-     *             @OA\Property(property="father_phone_number", type="string", example="0812345681", description="Employee father phone number"),
-     *             @OA\Property(property="mother_name", type="string", example="Mary Doe", description="Employee mother name"),
-     *             @OA\Property(property="mother_occupation", type="string", example="Teacher", description="Employee mother occupation"),
-     *             @OA\Property(property="mother_phone_number", type="string", example="0812345682", description="Employee mother phone number"),
-     *             @OA\Property(property="driver_license_number", type="string", example="DL123456", description="Employee driver license number"),
-     *             @OA\Property(property="remark", type="string", example="Additional notes", description="Additional remarks")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Employee")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/employees/{id}',
+        summary: 'Update employee details',
+        description: 'Updates an existing employee record with the provided information',
+        operationId: 'updateEmployee',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employee ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Employee information to update',
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employee updated successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function update(Request $request, $id)
     {
         try {
@@ -1444,51 +875,21 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * Delete an employee
-     *
-     * @OA\Delete(
-     *     path="/employees/{id}",
-     *     summary="Delete an employee",
-     *     description="Deletes an employee by ID",
-     *     operationId="deleteEmployee",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Delete(
+        path: '/employees/{id}',
+        summary: 'Delete an employee',
+        description: 'Deletes an employee by ID',
+        operationId: 'deleteEmployee',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employee ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Employee deleted successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function destroy($id)
     {
         try {
@@ -1558,44 +959,17 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * Get Site records
-     *
-     * @OA\Get(
-     *     path="/employees/site-records",
-     *     summary="Get Site records",
-     *     description="Returns a list of all work locations/sites",
-     *     operationId="getSiteRecords",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Site records retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *                     type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="name", type="string", example="Main Office"),
-     *                     @OA\Property(property="address", type="string", example="123 Main Street"),
-     *                     @OA\Property(property="created_at", type="string", format="date-time"),
-     *                     @OA\Property(property="updated_at", type="string", format="date-time")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employees/site-records',
+        summary: 'Get Site records',
+        description: 'Returns a list of all work locations/sites',
+        operationId: 'getSiteRecords',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+        ]
+    )]
     public function getSiteRecords()
     {
         $sites = Site::all();
@@ -1607,75 +981,23 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    /**
-     * Filter employees by given criteria
-     *
-     * @OA\Get(
-     *     path="/employees/filter",
-     *     summary="Filter employees by criteria",
-     *     description="Returns employees filtered by the provided criteria",
-     *     operationId="filterEmployees",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="staff_id",
-     *         in="query",
-     *         description="Staff ID to filter by",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="status",
-     *         in="query",
-     *         description="Employee status to filter by",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"Expats", "Local ID", "Local non ID"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="organization",
-     *         in="query",
-     *         description="Employee organization to filter by",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"SMRU", "BHF"})
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Filtered employees retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employees retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Employee")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="No employees found matching the criteria",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="No employees found.")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employees/filter',
+        summary: 'Filter employees by criteria',
+        description: 'Returns employees filtered by the provided criteria',
+        operationId: 'filterEmployees',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'staff_id', in: 'query', required: false, description: 'Staff ID to filter by', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'status', in: 'query', required: false, description: 'Employee status to filter by', schema: new OA\Schema(type: 'string', enum: ['Expats', 'Local ID', 'Local non ID'])),
+            new OA\Parameter(name: 'organization', in: 'query', required: false, description: 'Employee organization to filter by', schema: new OA\Schema(type: 'string', enum: ['SMRU', 'BHF'])),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Filtered employees retrieved successfully'),
+            new OA\Response(response: 404, description: 'No employees found matching the criteria'),
+        ]
+    )]
     public function filterEmployees(Request $request)
     {
         $validated = $request->validate([
@@ -1714,90 +1036,35 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    /**
-     * Upload profile picture for an employee
-     *
-     * @OA\Post(
-     *     path="/employees/{id}/profile-picture",
-     *     summary="Upload profile picture",
-     *     description="Upload a profile picture for an employee",
-     *     operationId="uploadProfilePictureEmployee",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Profile picture file",
-     *
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *
-     *             @OA\Schema(
-     *                 required={"profile_picture"},
-     *
-     *                 @OA\Property(
-     *                     property="profile_picture",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Profile picture file (jpeg, png, jpg, gif, svg, max 2MB)"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Profile picture uploaded successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Profile picture uploaded successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="profile_picture", type="string", example="employee/profile_pictures/image.jpg"),
-     *                 @OA\Property(property="url", type="string", example="http://example.com/storage/employee/profile_pictures/image.jpg")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/employees/{id}/profile-picture',
+        summary: 'Upload profile picture',
+        description: 'Upload a profile picture for an employee',
+        operationId: 'uploadProfilePictureEmployee',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employee ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Profile picture file',
+            content: new OA\MediaType(
+                mediaType: 'multipart/form-data',
+                schema: new OA\Schema(
+                    required: ['profile_picture'],
+                    properties: [
+                        new OA\Property(property: 'profile_picture', type: 'string', format: 'binary', description: 'Profile picture file (jpeg, png, jpg, gif, svg, max 2MB)'),
+                    ]
+                )
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Profile picture uploaded successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function uploadProfilePicture(Request $request, $id)
     {
         try {
@@ -1938,68 +1205,24 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/employees/{employee}/basic-information",
-     *     summary="Update employee basic information",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="employee",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"organization", "staff_id", "first_name_en", "gender", "date_of_birth", "status"},
-     *
-     *             @OA\Property(property="organization", type="string", enum={"SMRU", "BHF"}),
-     *             @OA\Property(property="staff_id", type="string", maxLength=50),
-     *             @OA\Property(property="initial_en", type="string", maxLength=10, nullable=true),
-     *             @OA\Property(property="initial_th", type="string", maxLength=10, nullable=true),
-     *             @OA\Property(property="first_name_en", type="string", maxLength=255),
-     *             @OA\Property(property="last_name_en", type="string", maxLength=255, nullable=true),
-     *             @OA\Property(property="first_name_th", type="string", maxLength=255, nullable=true),
-     *             @OA\Property(property="last_name_th", type="string", maxLength=255, nullable=true),
-     *             @OA\Property(property="gender", type="string", maxLength=10),
-     *             @OA\Property(property="date_of_birth", type="string", format="date"),
-     *             @OA\Property(property="status", type="string", enum={"Expats (Local)", "Local ID Staff", "Local non ID Staff"})
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee basic information updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee basic information updated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 ref="#/components/schemas/Employee"
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found"
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/employees/{employee}/basic-information',
+        summary: 'Update employee basic information',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'employee', in: 'path', required: true, description: 'Employee ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employee basic information updated successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request, Employee $employee)
     {
         \Log::info('Employee injected by route model binding', ['employee' => $employee]);
@@ -2045,83 +1268,26 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/employees/{employee}/personal-information",
-     *     summary="Update employee personal information",
-     *     description="Update the personal information of an employee, including identification and languages.",
-     *     operationId="updateEmployeePersonalInformation",
-     *     tags={"Employees"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="employee",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the employee",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"employee_id", "mobile_phone", "nationality", "religion", "marital_status", "current_address", "permanent_address", "employee_identification"},
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *             @OA\Property(property="mobile_phone", type="string", example="0812345678"),
-     *             @OA\Property(property="nationality", type="string", example="Thai"),
-     *             @OA\Property(property="social_security_number", type="string", example="1234567890"),
-     *             @OA\Property(property="tax_number", type="string", example="0987654321"),
-     *             @OA\Property(property="religion", type="string", example="Buddhism"),
-     *             @OA\Property(property="marital_status", type="string", example="Single"),
-     *             @OA\Property(
-     *                 property="languages",
-     *                 type="array",
-     *
-     *                 @OA\Items(type="string", example="English")
-     *             ),
-     *
-     *             @OA\Property(property="current_address", type="string", example="123 Main St"),
-     *             @OA\Property(property="permanent_address", type="string", example="456 Home St"),
-     *             @OA\Property(
-     *                 property="employee_identification",
-     *                 type="object",
-     *                 required={"id_type", "document_number"},
-     *                 @OA\Property(property="id_type", type="string", example="Passport"),
-     *                 @OA\Property(property="document_number", type="string", example="A12345678")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee personal information updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee personal information updated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 ref="#/components/schemas/Employee"
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found"
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/employees/{employee}/personal-information',
+        summary: 'Update employee personal information',
+        description: 'Update the personal information of an employee, including identification and languages',
+        operationId: 'updateEmployeePersonalInformation',
+        tags: ['Employees'],
+        security: [['sanctum' => []]],
+        parameters: [
+            new OA\Parameter(name: 'employee', in: 'path', required: true, description: 'ID of the employee', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employee personal information updated successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function updateEmployeePersonalInformation(UpdateEmployeePersonalRequest $request, Employee $employee)
     {
         \Log::info('Employee injected by route model binding', ['employee' => $employee]);
@@ -2201,75 +1367,25 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/employees/{employee}/family-information",
-     *     summary="Update employee family information",
-     *     description="Update the family information of an employee including parents and emergency contact.",
-     *     operationId="updateEmployeeFamilyInformation",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="employee",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the employee",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=false,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="father_name", type="string", maxLength=100, example="James Doe"),
-     *             @OA\Property(property="father_occupation", type="string", maxLength=100, example="Engineer"),
-     *             @OA\Property(property="father_phone", type="string", maxLength=20, example="0812345670"),
-     *             @OA\Property(property="mother_name", type="string", maxLength=100, example="Mary Doe"),
-     *             @OA\Property(property="mother_occupation", type="string", maxLength=100, example="Teacher"),
-     *             @OA\Property(property="mother_phone", type="string", maxLength=20, example="0812345671"),
-     *             @OA\Property(property="spouse_name", type="string", maxLength=100, example="Jane Doe"),
-     *             @OA\Property(property="spouse_phone_number", type="string", maxLength=20, example="0812345673"),
-     *             @OA\Property(property="emergency_contact_name", type="string", maxLength=100, example="John Smith"),
-     *             @OA\Property(property="emergency_contact_relationship", type="string", maxLength=50, example="Brother"),
-     *             @OA\Property(property="emergency_contact_phone", type="string", maxLength=20, example="0812345672")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee family information updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employee family information updated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="father_name", type="string", example="James Doe"),
-     *                 @OA\Property(property="father_occupation", type="string", example="Engineer"),
-     *                 @OA\Property(property="father_phone_number", type="string", example="0812345670"),
-     *                 @OA\Property(property="mother_name", type="string", example="Mary Doe"),
-     *                 @OA\Property(property="mother_occupation", type="string", example="Teacher"),
-     *                 @OA\Property(property="mother_phone_number", type="string", example="0812345671"),
-     *                 @OA\Property(property="spouse_name", type="string", example="Jane Doe"),
-     *                 @OA\Property(property="spouse_phone_number", type="string", example="0812345673"),
-     *                 @OA\Property(property="emergency_contact_person_name", type="string", example="John Smith"),
-     *                 @OA\Property(property="emergency_contact_person_relationship", type="string", example="Brother"),
-     *                 @OA\Property(property="emergency_contact_person_phone", type="string", example="0812345672")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found"
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/employees/{employee}/family-information',
+        summary: 'Update employee family information',
+        description: 'Update the family information of an employee including parents and emergency contact',
+        operationId: 'updateEmployeeFamilyInformation',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'employee', in: 'path', required: true, description: 'ID of the employee', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employee family information updated successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+        ]
+    )]
     public function updateEmployeeFamilyInformation(UpdateEmployeeFamilyRequest $request, Employee $employee)
     {
         try {
@@ -2375,141 +1491,28 @@ class EmployeeController extends Controller
         ], 200);
     }
 
-    /**
-     * Update employee bank information
-     *
-     * @OA\Put(
-     *     path="/employees/{id}/bank-information",
-     *     summary="Update employee bank information",
-     *     description="Updates bank details for a specific employee including bank name, branch, account name and account number",
-     *     operationId="updateEmployeeBankInformation",
-     *     tags={"Employees"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee ID",
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Bank information to update",
-     *
-     *         @OA\JsonContent(
-     *             required={"bank_account_name", "bank_account_number"},
-     *
-     *             @OA\Property(
-     *                 property="bank_name",
-     *                 type="string",
-     *                 maxLength=100,
-     *                 example="Bangkok Bank",
-     *                 description="Name of the bank",
-     *                 nullable=true
-     *             ),
-     *             @OA\Property(
-     *                 property="bank_branch",
-     *                 type="string",
-     *                 maxLength=100,
-     *                 example="Silom Branch",
-     *                 description="Bank branch name",
-     *                 nullable=true
-     *             ),
-     *             @OA\Property(
-     *                 property="bank_account_name",
-     *                 type="string",
-     *                 maxLength=100,
-     *                 example="John Doe",
-     *                 description="Name on the bank account"
-     *             ),
-     *             @OA\Property(
-     *                 property="bank_account_number",
-     *                 type="string",
-     *                 maxLength=100,
-     *                 example="1234567890",
-     *                 description="Bank account number (numbers, dashes, and spaces only)"
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Bank information updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Bank information updated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="bank_name", type="string", example="Bangkok Bank", nullable=true),
-     *                 @OA\Property(property="bank_branch", type="string", example="Silom Branch", nullable=true),
-     *                 @OA\Property(property="bank_account_name", type="string", example="John Doe"),
-     *                 @OA\Property(property="bank_account_number", type="string", example="1234567890")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employee not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(
-     *                 property="errors",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="bank_account_name",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="Bank account name is required when providing bank information.")
-     *                 ),
-     *
-     *                 @OA\Property(
-     *                     property="bank_account_number",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="Bank account number can only contain numbers, dashes, and spaces.")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to update bank information"),
-     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/employees/{id}/bank-information',
+        summary: 'Update employee bank information',
+        description: 'Updates bank details for a specific employee including bank name, branch, account name and account number',
+        operationId: 'updateEmployeeBankInformation',
+        tags: ['Employees'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employee ID', schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Bank information to update',
+            content: new OA\JsonContent(ref: '#/components/schemas/Employee')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Bank information updated successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function updateBankInformation(UpdateEmployeeBankRequest $request, $id)
     {
         try {

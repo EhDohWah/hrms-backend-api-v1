@@ -12,160 +12,32 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Tax Settings",
- *     description="API Endpoints for managing tax settings"
- * )
- */
+#[OA\Tag(name: 'Tax Settings', description: 'API Endpoints for managing tax settings')]
 class TaxSettingController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/tax-settings",
-     *     summary="Get all tax settings with advanced filtering and pagination",
-     *     description="Get a paginated list of all tax settings with advanced filtering, sorting, and search capabilities",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_setting_type",
-     *         in="query",
-     *         description="Filter by setting type (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="DEDUCTION,RATE")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_effective_year",
-     *         in="query",
-     *         description="Filter by effective year (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="2024,2025")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_is_selected",
-     *         in="query",
-     *         description="Filter by is_selected status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean", example=true)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"setting_key", "setting_value", "setting_type", "effective_year"}, example="setting_key")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search by setting_key (partial match, case-insensitive)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="PERSONAL")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax settings retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax settings retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE"),
-     *                     @OA\Property(property="setting_value", type="number", example=60000),
-     *                     @OA\Property(property="setting_type", type="string", example="DEDUCTION"),
-     *                     @OA\Property(property="description", type="string", example="Personal allowance for income tax"),
-     *                     @OA\Property(property="effective_year", type="integer", example=2025),
-     *                     @OA\Property(property="is_selected", type="boolean", example=true)
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="pagination",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=25),
-     *                 @OA\Property(property="last_page", type="integer", example=3),
-     *                 @OA\Property(property="from", type="integer", example=1),
-     *                 @OA\Property(property="to", type="integer", example=10),
-     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
-     *             ),
-     *             @OA\Property(
-     *                 property="filters",
-     *                 type="object",
-     *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="setting_type", type="array", @OA\Items(type="string"), example={"DEDUCTION"}),
-     *                     @OA\Property(property="effective_year", type="array", @OA\Items(type="integer"), example={2025})
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="meta",
-     *                 type="object",
-     *                 @OA\Property(property="total_count", type="integer", example=25),
-     *                 @OA\Property(property="filtered_count", type="integer", example=15)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error - Invalid parameters provided",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-settings',
+        summary: 'Get all tax settings with advanced filtering and pagination',
+        description: 'Get a paginated list of all tax settings with advanced filtering, sorting, and search capabilities',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 10)),
+            new OA\Parameter(name: 'filter_setting_type', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'filter_effective_year', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'filter_is_selected', in: 'query', required: false, schema: new OA\Schema(type: 'boolean')),
+            new OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'sort_order', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax settings retrieved successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function index(Request $request)
     {
         try {
@@ -283,54 +155,21 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/tax-settings",
-     *     summary="Create a new tax setting",
-     *     description="Create a new tax setting",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"setting_key", "setting_value", "setting_type", "effective_year"},
-     *
-     *             @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE"),
-     *             @OA\Property(property="setting_value", type="number", example=60000),
-     *             @OA\Property(property="setting_type", type="string", enum={"DEDUCTION", "RATE", "LIMIT"}, example="DEDUCTION"),
-     *             @OA\Property(property="description", type="string", example="Personal allowance for income tax"),
-     *             @OA\Property(property="effective_year", type="integer", example=2025),
-     *             @OA\Property(property="is_active", type="boolean", example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Tax setting created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting created successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/tax-settings',
+        summary: 'Create a new tax setting',
+        description: 'Create a new tax setting',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/TaxSetting')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Tax setting created successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function store(StoreTaxSettingRequest $request)
     {
         try {
@@ -350,47 +189,20 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-settings/{id}",
-     *     summary="Get a specific tax setting",
-     *     description="Get details of a specific tax setting by ID",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax setting ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax setting retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting retrieved successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax setting not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax setting not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-settings/{id}',
+        summary: 'Get a specific tax setting',
+        description: 'Get details of a specific tax setting by ID',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax setting ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax setting retrieved successfully'),
+            new OA\Response(response: 404, description: 'Tax setting not found'),
+        ]
+    )]
     public function show(string $id)
     {
         try {
@@ -415,74 +227,25 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/tax-settings/{id}",
-     *     summary="Update a tax setting",
-     *     description="Update an existing tax setting",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax setting ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE"),
-     *             @OA\Property(property="setting_value", type="number", example=65000),
-     *             @OA\Property(property="setting_type", type="string", enum={"DEDUCTION", "RATE", "LIMIT"}, example="DEDUCTION"),
-     *             @OA\Property(property="description", type="string", example="Updated personal allowance for income tax"),
-     *             @OA\Property(property="effective_year", type="integer", example=2025),
-     *             @OA\Property(property="is_active", type="boolean", example=true),
-     *             @OA\Property(property="updated_by", type="string", example="admin@example.com")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax setting updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting updated successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax setting not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax setting not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/tax-settings/{id}',
+        summary: 'Update a tax setting',
+        description: 'Update an existing tax setting',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax setting ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/TaxSetting')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Tax setting updated successfully'),
+            new OA\Response(response: 404, description: 'Tax setting not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function update(UpdateTaxSettingRequest $request, string $id)
     {
         try {
@@ -508,46 +271,20 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/tax-settings/{id}",
-     *     summary="Delete a tax setting",
-     *     description="Delete a specific tax setting",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax setting ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax setting deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax setting not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax setting not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Delete(
+        path: '/tax-settings/{id}',
+        summary: 'Delete a tax setting',
+        description: 'Delete a specific tax setting',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax setting ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax setting deleted successfully'),
+            new OA\Response(response: 404, description: 'Tax setting not found'),
+        ]
+    )]
     public function destroy(string $id)
     {
         try {
@@ -572,55 +309,19 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-settings/by-year/{year}",
-     *     summary="Get all tax settings for a specific year",
-     *     description="Get all tax settings grouped by type for a specific year",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="year",
-     *         in="path",
-     *         required=true,
-     *         description="Tax year",
-     *
-     *         @OA\Schema(type="integer", example=2025)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax settings for year retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax settings retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="DEDUCTION",
-     *                     type="object",
-     *                     @OA\Property(property="PERSONAL_ALLOWANCE", type="number", example=60000),
-     *                     @OA\Property(property="SPOUSE_ALLOWANCE", type="number", example=60000)
-     *                 ),
-     *                 @OA\Property(
-     *                     property="RATE",
-     *                     type="object",
-     *                     @OA\Property(property="SSF_RATE", type="number", example=5)
-     *                 ),
-     *                 @OA\Property(
-     *                     property="LIMIT",
-     *                     type="object",
-     *                     @OA\Property(property="SSF_MAX_MONTHLY", type="number", example=750)
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-settings/by-year/{year}',
+        summary: 'Get all tax settings for a specific year',
+        description: 'Get all tax settings grouped by type for a specific year',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'year', in: 'path', required: true, description: 'Tax year', schema: new OA\Schema(type: 'integer', example: 2025)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax settings for year retrieved successfully'),
+        ]
+    )]
     public function getByYear(int $year)
     {
         try {
@@ -641,61 +342,21 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-settings/value/{key}",
-     *     summary="Get a specific tax setting value",
-     *     description="Get the value of a specific tax setting by key",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="key",
-     *         in="path",
-     *         required=true,
-     *         description="Tax setting key",
-     *
-     *         @OA\Schema(type="string", example="PERSONAL_ALLOWANCE")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="year",
-     *         in="query",
-     *         description="Tax year (defaults to current year)",
-     *
-     *         @OA\Schema(type="integer", example=2025)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax setting value retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting value retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="key", type="string", example="PERSONAL_ALLOWANCE"),
-     *                 @OA\Property(property="value", type="number", example=60000),
-     *                 @OA\Property(property="year", type="integer", example=2025)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax setting not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax setting not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-settings/value/{key}',
+        summary: 'Get a specific tax setting value',
+        description: 'Get the value of a specific tax setting by key',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'key', in: 'path', required: true, description: 'Tax setting key', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'year', in: 'query', required: false, description: 'Tax year', schema: new OA\Schema(type: 'integer', example: 2025)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax setting value retrieved successfully'),
+            new OA\Response(response: 404, description: 'Tax setting not found'),
+        ]
+    )]
     public function getValue(Request $request, string $key)
     {
         try {
@@ -727,37 +388,16 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-settings/allowed-keys",
-     *     summary="Get all allowed tax setting keys",
-     *     description="Get all allowed tax setting keys organized by category",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Allowed keys retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Allowed keys retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="all_keys", type="array", @OA\Items(type="string")),
-     *                 @OA\Property(
-     *                     property="by_category",
-     *                     type="object",
-     *                     @OA\Property(property="personal_deductions", type="array", @OA\Items(type="string")),
-     *                     @OA\Property(property="social_security", type="array", @OA\Items(type="string"))
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-settings/allowed-keys',
+        summary: 'Get all allowed tax setting keys',
+        description: 'Get all allowed tax setting keys organized by category',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Allowed keys retrieved successfully'),
+        ]
+    )]
     public function getAllowedKeys()
     {
         try {
@@ -778,50 +418,20 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/tax-settings/bulk-update",
-     *     summary="Bulk update tax settings",
-     *     description="Update multiple tax settings at once",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"settings", "effective_year"},
-     *
-     *             @OA\Property(property="effective_year", type="integer", example=2025),
-     *             @OA\Property(
-     *                 property="settings",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE"),
-     *                     @OA\Property(property="setting_value", type="number", example=60000),
-     *                     @OA\Property(property="setting_type", type="string", example="DEDUCTION"),
-     *                     @OA\Property(property="description", type="string", example="Personal allowance")
-     *                 )
-     *             ),
-     *             @OA\Property(property="updated_by", type="string", example="admin@example.com")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax settings updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax settings updated successfully"),
-     *             @OA\Property(property="updated_count", type="integer", example=5)
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/tax-settings/bulk-update',
+        summary: 'Bulk update tax settings',
+        description: 'Update multiple tax settings at once',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(type: 'object')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Tax settings updated successfully'),
+        ]
+    )]
     public function bulkUpdate(Request $request)
     {
         try {
@@ -884,42 +494,20 @@ class TaxSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Patch(
-     *     path="/tax-settings/{id}/toggle",
-     *     summary="Toggle tax setting selection status",
-     *     description="Toggle the is_selected status of a tax setting for global control",
-     *     tags={"Tax Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax setting ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax setting toggled successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax setting toggled successfully"),
-     *             @OA\Property(property="data", type="object"),
-     *             @OA\Property(property="status", type="string", example="enabled")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax setting not found"
-     *     )
-     * )
-     */
+    #[OA\Patch(
+        path: '/tax-settings/{id}/toggle',
+        summary: 'Toggle tax setting selection status',
+        description: 'Toggle the is_selected status of a tax setting for global control',
+        tags: ['Tax Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax setting ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax setting toggled successfully'),
+            new OA\Response(response: 404, description: 'Tax setting not found'),
+        ]
+    )]
     public function toggleSelection($id)
     {
         try {

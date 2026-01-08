@@ -4,26 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="LeaveBalance",
- *     type="object",
- *
- *     @OA\Property(property="id", type="integer"),
- *     @OA\Property(property="employee_id", type="integer"),
- *     @OA\Property(property="leave_type_id", type="integer"),
- *     @OA\Property(property="total_days", type="number", format="float", default=0),
- *     @OA\Property(property="used_days", type="number", format="float", default=0),
- *     @OA\Property(property="remaining_days", type="number", format="float", default=0),
- *     @OA\Property(property="year", type="integer"),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
- *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
- * )
- */
+#[OA\Schema(
+    schema: 'LeaveBalance',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'employee_id', type: 'integer'),
+        new OA\Property(property: 'leave_type_id', type: 'integer'),
+        new OA\Property(property: 'total_days', type: 'number', format: 'float', default: 0),
+        new OA\Property(property: 'used_days', type: 'number', format: 'float', default: 0),
+        new OA\Property(property: 'remaining_days', type: 'number', format: 'float', default: 0),
+        new OA\Property(property: 'year', type: 'integer'),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', nullable: true),
+    ]
+)]
 class LeaveBalance extends Model
 {
     //

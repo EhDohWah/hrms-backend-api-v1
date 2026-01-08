@@ -4,29 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="EmployeeFundingAllocation",
- *     title="Employee Funding Allocation",
- *     description="Employee Funding Allocation model",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employment_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="grant_item_id", type="integer", format="int64", nullable=true, example=1, description="Direct link to grant_items for grant allocations"),
- *     @OA\Property(property="fte", type="number", format="float", example=0.5, description="Full-Time Equivalent - actual funding allocation percentage"),
- *     @OA\Property(property="allocation_type", type="string", enum={"grant"}, example="grant"),
- *     @OA\Property(property="allocated_amount", type="number", format="float", nullable=true, example=10000),
- *     @OA\Property(property="start_date", type="string", format="date", nullable=true, example="2023-01-01"),
- *     @OA\Property(property="end_date", type="string", format="date", nullable=true, example="2023-12-31"),
- *     @OA\Property(property="created_by", type="string", nullable=true, example="admin"),
- *     @OA\Property(property="updated_by", type="string", nullable=true, example="admin"),
- *     @OA\Property(property="created_at", type="string", format="date-time", example="2023-01-01T00:00:00.000000Z"),
- *     @OA\Property(property="updated_at", type="string", format="date-time", example="2023-01-01T00:00:00.000000Z")
- * )
- */
+#[OA\Schema(
+    schema: 'EmployeeFundingAllocation',
+    title: 'Employee Funding Allocation',
+    description: 'Employee Funding Allocation model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employment_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'grant_item_id', type: 'integer', format: 'int64', nullable: true, example: 1, description: 'Direct link to grant_items for grant allocations'),
+        new OA\Property(property: 'fte', type: 'number', format: 'float', example: 0.5, description: 'Full-Time Equivalent - actual funding allocation percentage'),
+        new OA\Property(property: 'allocation_type', type: 'string', example: 'grant', enum: ['grant']),
+        new OA\Property(property: 'allocated_amount', type: 'number', format: 'float', nullable: true, example: 10000),
+        new OA\Property(property: 'start_date', type: 'string', format: 'date', nullable: true, example: '2023-01-01'),
+        new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true, example: '2023-12-31'),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true, example: 'admin'),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true, example: 'admin'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', example: '2023-01-01T00:00:00.000000Z'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', example: '2023-01-01T00:00:00.000000Z'),
+    ]
+)]
 class EmployeeFundingAllocation extends Model
 {
     use HasFactory;

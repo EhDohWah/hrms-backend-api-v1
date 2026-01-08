@@ -6,40 +6,39 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="TaxCalculationLog",
- *     title="Tax Calculation Log",
- *     description="Audit log for all tax calculations performed in the system",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="calculation_type", type="string", enum={"payroll", "annual_summary", "income_tax", "compliance_check"}, example="payroll"),
- *     @OA\Property(property="tax_year", type="integer", example=2025),
- *     @OA\Property(property="gross_salary", type="number", format="float", example=50000.00),
- *     @OA\Property(property="total_income", type="number", format="float", example=600000.00),
- *     @OA\Property(property="employment_deductions", type="number", format="float", example=100000.00),
- *     @OA\Property(property="personal_allowances", type="number", format="float", example=150000.00),
- *     @OA\Property(property="total_deductions", type="number", format="float", example=250000.00),
- *     @OA\Property(property="taxable_income", type="number", format="float", example=350000.00),
- *     @OA\Property(property="income_tax_annual", type="number", format="float", example=10000.00),
- *     @OA\Property(property="income_tax_monthly", type="number", format="float", example=833.33),
- *     @OA\Property(property="social_security_employee", type="number", format="float", example=750.00),
- *     @OA\Property(property="social_security_employer", type="number", format="float", example=750.00),
- *     @OA\Property(property="net_salary", type="number", format="float", example=48416.67),
- *     @OA\Property(property="calculation_details", type="object", description="JSON object containing detailed calculation breakdown"),
- *     @OA\Property(property="input_parameters", type="object", description="JSON object containing input parameters used"),
- *     @OA\Property(property="tax_bracket_breakdown", type="array", @OA\Items(type="object"), description="Array of tax bracket calculations"),
- *     @OA\Property(property="is_thai_compliant", type="boolean", example=true),
- *     @OA\Property(property="compliance_notes", type="string", example="Calculation follows Thai Revenue Department guidelines"),
- *     @OA\Property(property="calculated_by", type="string", example="admin@example.com"),
- *     @OA\Property(property="calculated_at", type="string", format="date-time"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
+#[OA\Schema(
+    schema: 'TaxCalculationLog',
+    title: 'Tax Calculation Log',
+    description: 'Audit log for all tax calculations performed in the system',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'calculation_type', type: 'string', example: 'payroll', enum: ['payroll', 'annual_summary', 'income_tax', 'compliance_check']),
+        new OA\Property(property: 'tax_year', type: 'integer', example: 2025),
+        new OA\Property(property: 'gross_salary', type: 'number', format: 'float', example: 50000.00),
+        new OA\Property(property: 'total_income', type: 'number', format: 'float', example: 600000.00),
+        new OA\Property(property: 'employment_deductions', type: 'number', format: 'float', example: 100000.00),
+        new OA\Property(property: 'personal_allowances', type: 'number', format: 'float', example: 150000.00),
+        new OA\Property(property: 'total_deductions', type: 'number', format: 'float', example: 250000.00),
+        new OA\Property(property: 'taxable_income', type: 'number', format: 'float', example: 350000.00),
+        new OA\Property(property: 'income_tax_annual', type: 'number', format: 'float', example: 10000.00),
+        new OA\Property(property: 'income_tax_monthly', type: 'number', format: 'float', example: 833.33),
+        new OA\Property(property: 'social_security_employee', type: 'number', format: 'float', example: 750.00),
+        new OA\Property(property: 'social_security_employer', type: 'number', format: 'float', example: 750.00),
+        new OA\Property(property: 'net_salary', type: 'number', format: 'float', example: 48416.67),
+        new OA\Property(property: 'calculation_details', type: 'object', description: 'JSON object containing detailed calculation breakdown'),
+        new OA\Property(property: 'input_parameters', type: 'object', description: 'JSON object containing input parameters used'),
+        new OA\Property(property: 'tax_bracket_breakdown', type: 'array', items: new OA\Items(type: 'object'), description: 'Array of tax bracket calculations'),
+        new OA\Property(property: 'is_thai_compliant', type: 'boolean', example: true),
+        new OA\Property(property: 'compliance_notes', type: 'string', example: 'Calculation follows Thai Revenue Department guidelines'),
+        new OA\Property(property: 'calculated_by', type: 'string', example: 'admin@example.com'),
+        new OA\Property(property: 'calculated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ]
+)]
 class TaxCalculationLog extends Model
 {
     use HasFactory;

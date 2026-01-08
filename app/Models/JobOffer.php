@@ -5,29 +5,29 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use OpenApi\Attributes as OA;
 use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
 
-/**
- * @OA\Schema(
- *     schema="JobOffer",
- *     title="Job Offer",
- *     description="Job Offer model",
- *
- *     @OA\Property(property="id", type="integer", format="int64", description="Job offer ID"),
- *     @OA\Property(property="date", type="string", format="date", description="Offer date"),
- *     @OA\Property(property="candidate_name", type="string", description="Name of the candidate"),
- *     @OA\Property(property="position_name", type="string", description="Name of the position"),
- *     @OA\Property(property="probation_salary", type="number", format="float", description="Probation period salary"),
- *     @OA\Property(property="post_probation_salary", type="number", format="float", description="Post-probation salary"),
- *     @OA\Property(property="acceptance_deadline", type="string", format="date", description="Deadline for acceptance"),
- *     @OA\Property(property="acceptance_status", type="string", description="Status of acceptance"),
- *     @OA\Property(property="note", type="string", description="Additional notes"),
- *     @OA\Property(property="created_by", type="string", description="User who created the record"),
- *     @OA\Property(property="updated_by", type="string", description="User who last updated the record"),
- *     @OA\Property(property="created_at", type="string", format="date-time", description="Creation timestamp"),
- *     @OA\Property(property="updated_at", type="string", format="date-time", description="Last update timestamp")
- * )
- */
+#[OA\Schema(
+    schema: 'JobOffer',
+    title: 'Job Offer',
+    description: 'Job Offer model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', description: 'Job offer ID'),
+        new OA\Property(property: 'date', type: 'string', format: 'date', description: 'Offer date'),
+        new OA\Property(property: 'candidate_name', type: 'string', description: 'Name of the candidate'),
+        new OA\Property(property: 'position_name', type: 'string', description: 'Name of the position'),
+        new OA\Property(property: 'probation_salary', type: 'number', format: 'float', description: 'Probation period salary'),
+        new OA\Property(property: 'post_probation_salary', type: 'number', format: 'float', description: 'Post-probation salary'),
+        new OA\Property(property: 'acceptance_deadline', type: 'string', format: 'date', description: 'Deadline for acceptance'),
+        new OA\Property(property: 'acceptance_status', type: 'string', description: 'Status of acceptance'),
+        new OA\Property(property: 'note', type: 'string', description: 'Additional notes'),
+        new OA\Property(property: 'created_by', type: 'string', description: 'User who created the record'),
+        new OA\Property(property: 'updated_by', type: 'string', description: 'User who last updated the record'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', description: 'Creation timestamp'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', description: 'Last update timestamp'),
+    ]
+)]
 class JobOffer extends Model
 {
     use HasFactory, KeepsDeletedModels;

@@ -6,38 +6,9 @@ use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *   schema="Employment",
- *   required={"employee_id","employment_type","start_date","site_id","pass_probation_salary"},
- *
- *   @OA\Property(property="id", type="integer", format="int64", readOnly=true),
- *   @OA\Property(property="employee_id", type="integer", format="int64"),
- *   @OA\Property(property="employment_type", type="string"),
- *   @OA\Property(property="start_date", type="string", format="date"),
- *   @OA\Property(property="end_date", type="string", format="date", nullable=true),
- *   @OA\Property(property="pass_probation_date", type="string", format="date", nullable=true, description="First day employee receives pass_probation_salary - typically 3 months after start_date"),
- *   @OA\Property(property="pay_method", type="string", nullable=true),
- *   @OA\Property(property="site_id", type="integer", format="int64", nullable=true, description="Site/organizational location"),
- *   @OA\Property(property="section_department_id", type="integer", format="int64", nullable=true, description="Section department within main department"),
- *   @OA\Property(property="section_department", type="string", nullable=true, description="Legacy text field - being migrated to section_department_id"),
- *   @OA\Property(property="pass_probation_salary", type="number", format="float"),
- *   @OA\Property(property="probation_salary", type="number", format="float", nullable=true),
-
- *   @OA\Property(property="health_welfare", type="boolean", default=false),
- *   @OA\Property(property="health_welfare_percentage", type="number", format="float", nullable=true, description="Health & Welfare percentage (0-100)"),
- *   @OA\Property(property="pvd", type="boolean", default=false),
- *   @OA\Property(property="pvd_percentage", type="number", format="float", nullable=true, description="PVD percentage (0-100)"),
- *   @OA\Property(property="saving_fund", type="boolean", default=false),
- *   @OA\Property(property="saving_fund_percentage", type="number", format="float", nullable=true, description="Saving Fund percentage (0-100)"),
- *   @OA\Property(property="status", type="boolean", default=true, description="Employment status: true=Active, false=Inactive"),
- *   @OA\Property(property="created_by", type="string", nullable=true),
- *   @OA\Property(property="updated_by", type="string", nullable=true),
- *   @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
- *   @OA\Property(property="updated_at", type="string", format="date-time", readOnly=true)
- * )
- */
+#[OA\Schema(schema: 'Employment', required: ['employee_id', 'employment_type', 'start_date', 'site_id', 'pass_probation_salary'], properties: [new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true), new OA\Property(property: 'employee_id', type: 'integer', format: 'int64'), new OA\Property(property: 'employment_type', type: 'string'), new OA\Property(property: 'start_date', type: 'string', format: 'date'), new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true), new OA\Property(property: 'pass_probation_date', type: 'string', format: 'date', nullable: true, description: 'First day employee receives pass_probation_salary - typically 3 months after start_date'), new OA\Property(property: 'pay_method', type: 'string', nullable: true), new OA\Property(property: 'site_id', type: 'integer', format: 'int64', nullable: true, description: 'Site/organizational location'), new OA\Property(property: 'section_department_id', type: 'integer', format: 'int64', nullable: true, description: 'Section department within main department'), new OA\Property(property: 'section_department', type: 'string', nullable: true, description: 'Legacy text field - being migrated to section_department_id'), new OA\Property(property: 'pass_probation_salary', type: 'number', format: 'float'), new OA\Property(property: 'probation_salary', type: 'number', format: 'float', nullable: true), new OA\Property(property: 'health_welfare', type: 'boolean', default: false), new OA\Property(property: 'health_welfare_percentage', type: 'number', format: 'float', nullable: true, description: 'Health & Welfare percentage (0-100)'), new OA\Property(property: 'pvd', type: 'boolean', default: false), new OA\Property(property: 'pvd_percentage', type: 'number', format: 'float', nullable: true, description: 'PVD percentage (0-100)'), new OA\Property(property: 'saving_fund', type: 'boolean', default: false), new OA\Property(property: 'saving_fund_percentage', type: 'number', format: 'float', nullable: true, description: 'Saving Fund percentage (0-100)'), new OA\Property(property: 'status', type: 'boolean', default: true, description: 'Employment status: true=Active, false=Inactive'), new OA\Property(property: 'created_by', type: 'string', nullable: true), new OA\Property(property: 'updated_by', type: 'string', nullable: true), new OA\Property(property: 'created_at', type: 'string', format: 'date-time', readOnly: true), new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', readOnly: true)])]
 class Employment extends Model
 {
     use HasFactory, LogsActivity;

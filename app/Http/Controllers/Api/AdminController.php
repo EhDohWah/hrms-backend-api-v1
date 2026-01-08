@@ -15,16 +15,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
-/**
- * @OA\Tag(
- *     name="Admin",
- *     description="Admin API Endpoints"
- * )
- */
 class AdminController extends Controller
 {
     /***
@@ -35,66 +29,32 @@ class AdminController extends Controller
 
     /**
      * Display a listing of users.
-     *
-     * @OA\Get(
-     *     path="/admin/users",
-     *     summary="Get list of users",
-     *     description="Returns a list of all users with their roles and permissions",
-     *     operationId="indexUsers",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="array",
-     *
-     *             @OA\Items(
-     *
-     *                 @OA\Property(property="id", type="integer", example=1),
-     *                 @OA\Property(property="name", type="string", example="John Doe"),
-     *                 @OA\Property(property="email", type="string", format="email", example="john@example.com"),
-     *                 @OA\Property(property="last_login_at", type="string", format="date-time"),
-     *                 @OA\Property(
-     *                     property="roles",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="Admin")
-     *                 ),
-     *
-     *                 @OA\Property(
-     *                     property="permissions",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="user.read")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Unauthenticated")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=403,
-     *         description="Forbidden",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Forbidden")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/admin/users',
+        summary: 'Get list of users',
+        description: 'Returns a list of all users with their roles and permissions',
+        operationId: 'indexUsers',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Response(
+        response: 200,
+        description: 'Successful operation',
+        content: new OA\JsonContent(
+            type: 'array',
+            items: new OA\Items(
+                properties: [
+                    new OA\Property(property: 'id', type: 'integer', example: 1),
+                    new OA\Property(property: 'name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'john@example.com'),
+                    new OA\Property(property: 'last_login_at', type: 'string', format: 'date-time'),
+                ]
+            )
+        )
+    )]
+    #[OA\Response(response: 401, description: 'Unauthenticated')]
+    #[OA\Response(response: 403, description: 'Forbidden')]
     public function index(Request $request)
     {
         // Pagination parameters
@@ -173,129 +133,41 @@ class AdminController extends Controller
     /**
      * Store a newly created user in storage.
      *
-     * @OA\Post(
-     *     path="/admin/users",
-     *     summary="Create new user",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *
-     *             @OA\Schema(
-     *                 required={"name","email","password","password_confirmation","role"},
-     *
-     *                 @OA\Property(
-     *                     property="name",
-     *                     type="string",
-     *                     example="John Doe"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="email",
-     *                     type="string",
-     *                     format="email",
-     *                     example="john@example.com"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="password",
-     *                     type="string",
-     *                     format="password",
-     *                     example="password123"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="password_confirmation",
-     *                     type="string",
-     *                     format="password",
-     *                     example="password123"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="role",
-     *                     type="string",
-     *                     example="employee",
-     *                     enum={"admin", "hr-manager", "hr-assistant", "employee"}
-     *                 ),
-     *                 @OA\Property(
-     *                     property="permissions",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="user.read"),
-     *                     description="Array of permission strings"
-     *                 ),
-     *
-     *                 @OA\Property(
-     *                     property="profile_picture",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Optional profile picture file"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="User created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="User created successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="user",
-     *                     type="object",
-     *                     ref="#/components/schemas/User"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Error creating user"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="error", type="string")
-     *             )
-     *         )
-     *     )
-     * )
-     *
      * Expected payload:
-     * - name (string)               : Full name
-     * - email (string)              : User's email address
-     * - password (string)           : Password (must match password_confirmation)
+     * - name (string): Full name
+     * - email (string): User's email address
+     * - password (string): Password (must match password_confirmation)
      * - password_confirmation (string)
-     * - role (string)               : Role (e.g. admin, hr-manager, hr-assistant, employee)
+     * - role (string): Role (e.g. admin, hr-manager, hr-assistant, employee)
      * - permissions (array, optional): Array of permission strings
-     *   Example: ["grant.read", "employee.read", "employment.read"]
      * - profile_picture (file, optional): User's profile picture image
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Post(
+        path: '/admin/users',
+        summary: 'Create new user',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: 'multipart/form-data',
+            schema: new OA\Schema(
+                required: ['name', 'email', 'password', 'password_confirmation', 'role'],
+                properties: [
+                    new OA\Property(property: 'name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'john@example.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'password123'),
+                    new OA\Property(property: 'password_confirmation', type: 'string', format: 'password', example: 'password123'),
+                    new OA\Property(property: 'role', type: 'string', example: 'employee', enum: ['admin', 'hr-manager', 'hr-assistant', 'employee']),
+                    new OA\Property(property: 'profile_picture', type: 'string', format: 'binary', description: 'Optional profile picture file'),
+                ]
+            )
+        )
+    )]
+    #[OA\Response(response: 201, description: 'User created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function store(StoreUserRequest $request)
     {
         // Validation is handled by StoreUserRequest
@@ -361,40 +233,16 @@ class AdminController extends Controller
 
     /**
      * Display the specified user.
-     *
-     * @OA\Get(
-     *     path="/admin/users/{id}",
-     *     summary="Get single user by ID",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="User ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="User retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="User retrieved successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/admin/users/{id}',
+        summary: 'Get single user by ID',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'User retrieved successfully')]
+    #[OA\Response(response: 404, description: 'User not found')]
     public function show($id)
     {
         $user = User::with(['roles', 'permissions'])->find($id);
@@ -415,77 +263,27 @@ class AdminController extends Controller
 
     /**
      * Update a user's roles, permissions and password if provided.
-     *
-     * @OA\Put(
-     *     path="/admin/users/{id}",
-     *     summary="Update user roles, permissions and password",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="User ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\MediaType(
-     *             mediaType="application/json",
-     *
-     *             @OA\Schema(
-     *                 type="object",
-     *
-     *                 @OA\Property(
-     *                     property="role",
-     *                     type="string",
-     *                     example="employee",
-     *                     enum={"admin", "hr-manager", "hr-assistant", "employee"},
-     *                     description="User role"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="permissions",
-     *                     type="array",
-     *
-     *                     @OA\Items(type="string", example="user.read"),
-     *                     description="Array of permission strings"
-     *                 ),
-     *
-     *                 @OA\Property(
-     *                     property="password",
-     *                     type="string",
-     *                     description="New password (optional)"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="password_confirmation",
-     *                     type="string",
-     *                     description="Confirm new password"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="User updated successfully",
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/User")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Put(
+        path: '/admin/users/{id}',
+        summary: 'Update user roles, permissions and password',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'role', type: 'string', example: 'employee', enum: ['admin', 'hr-manager', 'hr-assistant', 'employee']),
+                new OA\Property(property: 'password', type: 'string', description: 'New password (optional)'),
+                new OA\Property(property: 'password_confirmation', type: 'string', description: 'Confirm new password'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'User updated successfully')]
+    #[OA\Response(response: 404, description: 'User not found')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function update(UpdateUserRequest $request, $id)
     {
         // Find the user by ID
@@ -572,32 +370,16 @@ class AdminController extends Controller
 
     /**
      * Delete a user.
-     *
-     * @OA\Delete(
-     *     path="/admin/users/{id}",
-     *     summary="Delete user",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="User ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="User deleted successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found"
-     *     )
-     * )
      */
+    #[OA\Delete(
+        path: '/admin/users/{id}',
+        summary: 'Delete user',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'User deleted successfully')]
+    #[OA\Response(response: 404, description: 'User not found')]
     public function destroy(Request $request, $id)
     {
         $user = User::find($id);
@@ -641,38 +423,14 @@ class AdminController extends Controller
 
     /**
      * Get all roles.
-     *
-     * @OA\Get(
-     *     path="/admin/roles",
-     *     summary="Get all roles",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Roles retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Roles retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="name", type="string", example="admin"),
-     *                     @OA\Property(property="guard_name", type="string", example="web"),
-     *                     @OA\Property(property="created_at", type="string", format="date-time"),
-     *                     @OA\Property(property="updated_at", type="string", format="date-time")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/admin/roles',
+        summary: 'Get all roles',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Response(response: 200, description: 'Roles retrieved successfully')]
     public function getRoles()
     {
         $roles = Role::query()->orderBy('name')->get();
@@ -686,38 +444,14 @@ class AdminController extends Controller
 
     /**
      * Get all permissions.
-     *
-     * @OA\Get(
-     *     path="/admin/permissions",
-     *     summary="Get all permissions",
-     *     tags={"Admin"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Permissions retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Permissions retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="name", type="string", example="user.read"),
-     *                     @OA\Property(property="guard_name", type="string", example="web"),
-     *                     @OA\Property(property="created_at", type="string", format="date-time"),
-     *                     @OA\Property(property="updated_at", type="string", format="date-time")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/admin/permissions',
+        summary: 'Get all permissions',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin']
+    )]
+    #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
     public function getPermissions()
     {
         $permissions = Permission::query()->orderBy('name')->get();

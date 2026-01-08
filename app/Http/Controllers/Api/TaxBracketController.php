@@ -6,154 +6,31 @@ use App\Http\Controllers\Controller;
 use App\Models\TaxBracket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Tax Brackets",
- *     description="API Endpoints for managing tax brackets"
- * )
- */
+#[OA\Tag(name: 'Tax Brackets', description: 'API Endpoints for managing tax brackets')]
 class TaxBracketController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/tax-brackets",
-     *     summary="Get all tax brackets with advanced filtering and pagination",
-     *     description="Get a paginated list of all tax brackets with advanced filtering, sorting, and search capabilities",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_effective_year",
-     *         in="query",
-     *         description="Filter by effective year (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="2024,2025")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_is_active",
-     *         in="query",
-     *         description="Filter by is_active status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean", example=true)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"effective_year", "bracket_order", "min_income", "max_income", "tax_rate"}, example="bracket_order")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="asc")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search by bracket_order (exact match)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="1")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax brackets retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax brackets retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="min_income", type="number", example=0),
-     *                     @OA\Property(property="max_income", type="number", example=150000),
-     *                     @OA\Property(property="tax_rate", type="number", example=0),
-     *                     @OA\Property(property="bracket_order", type="integer", example=1),
-     *                     @OA\Property(property="effective_year", type="integer", example=2025),
-     *                     @OA\Property(property="is_active", type="boolean", example=true),
-     *                     @OA\Property(property="description", type="string", example="Tax-free bracket"),
-     *                     @OA\Property(property="income_range", type="string", example="฿0 - ฿150,000"),
-     *                     @OA\Property(property="formatted_rate", type="string", example="0%")
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="pagination",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=8),
-     *                 @OA\Property(property="last_page", type="integer", example=1),
-     *                 @OA\Property(property="from", type="integer", example=1),
-     *                 @OA\Property(property="to", type="integer", example=8),
-     *                 @OA\Property(property="has_more_pages", type="boolean", example=false)
-     *             ),
-     *             @OA\Property(
-     *                 property="filters",
-     *                 type="object",
-     *                 @OA\Property(property="applied_filters", type="object",
-     *                     @OA\Property(property="effective_year", type="array", @OA\Items(type="integer"), example={2025}),
-     *                     @OA\Property(property="is_active", type="boolean", example=true)
-     *                 )
-     *             ),
-     *             @OA\Property(
-     *                 property="meta",
-     *                 type="object",
-     *                 @OA\Property(property="total_count", type="integer", example=16),
-     *                 @OA\Property(property="filtered_count", type="integer", example=8)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error - Invalid parameters provided",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-brackets',
+        summary: 'Get all tax brackets with advanced filtering and pagination',
+        description: 'Get a paginated list of all tax brackets with advanced filtering, sorting, and search capabilities',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', example: 10)),
+            new OA\Parameter(name: 'filter_effective_year', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'filter_is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean')),
+            new OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'sort_order', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax brackets retrieved successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function index(Request $request)
     {
         try {
@@ -269,125 +146,25 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-brackets/search",
-     *     operationId="searchTaxBracketsByOrder",
-     *     summary="Search tax brackets by bracket order ID",
-     *     description="Returns all tax brackets matching the specified bracket order. Useful for finding specific tax brackets by their order in the progression.",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="order_id",
-     *         in="query",
-     *         description="Bracket order ID to search for (exact match)",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="effective_year",
-     *         in="query",
-     *         description="Filter by effective year (optional)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=2025)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_active",
-     *         in="query",
-     *         description="Filter by active status (optional)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean", example=true)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax brackets found successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax brackets found successfully"),
-     *             @OA\Property(property="total_records", type="integer", example=2),
-     *             @OA\Property(
-     *                 property="search_criteria",
-     *                 type="object",
-     *                 @OA\Property(property="order_id", type="integer", example=1),
-     *                 @OA\Property(property="effective_year", type="integer", example=2025),
-     *                 @OA\Property(property="is_active", type="boolean", example=true)
-     *             ),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(
-     *
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="min_income", type="number", format="float", example=0),
-     *                     @OA\Property(property="max_income", type="number", format="float", example=150000),
-     *                     @OA\Property(property="tax_rate", type="number", format="float", example=0),
-     *                     @OA\Property(property="bracket_order", type="integer", example=1),
-     *                     @OA\Property(property="effective_year", type="integer", example=2025),
-     *                     @OA\Property(property="is_active", type="boolean", example=true),
-     *                     @OA\Property(property="description", type="string", example="Tax-free bracket"),
-     *                     @OA\Property(property="income_range", type="string", example="฿0 - ฿150,000"),
-     *                     @OA\Property(property="formatted_rate", type="string", example="0%"),
-     *                     @OA\Property(property="created_at", type="string", format="date-time", example="2025-01-15T10:30:00Z"),
-     *                     @OA\Property(property="updated_at", type="string", format="date-time", example="2025-01-15T10:30:00Z")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="No tax brackets found for the specified order ID",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="No tax brackets found for order ID: 99")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error - Invalid or missing order_id parameter",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object", example={"order_id": {"The order id field is required."}})
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated - User not logged in or token expired"
-     *     ),
-     *     @OA\Response(
-     *         response=403,
-     *         description="Unauthorized - User does not have permission to access tax brackets"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to search tax brackets"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-brackets/search',
+        operationId: 'searchTaxBracketsByOrder',
+        summary: 'Search tax brackets by bracket order ID',
+        description: 'Returns all tax brackets matching the specified bracket order',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'order_id', in: 'query', required: true, description: 'Bracket order ID', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'effective_year', in: 'query', required: false, description: 'Filter by effective year', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'is_active', in: 'query', required: false, description: 'Filter by active status', schema: new OA\Schema(type: 'boolean')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax brackets found successfully'),
+            new OA\Response(response: 404, description: 'No tax brackets found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function search(Request $request)
     {
         try {
@@ -462,55 +239,21 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/tax-brackets",
-     *     summary="Create a new tax bracket",
-     *     description="Create a new tax bracket",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"min_income", "tax_rate", "bracket_order", "effective_year"},
-     *
-     *             @OA\Property(property="min_income", type="number", example=150001),
-     *             @OA\Property(property="max_income", type="number", example=300000, nullable=true),
-     *             @OA\Property(property="tax_rate", type="number", example=5),
-     *             @OA\Property(property="bracket_order", type="integer", example=2),
-     *             @OA\Property(property="effective_year", type="integer", example=2025),
-     *             @OA\Property(property="description", type="string", example="5% tax bracket"),
-     *             @OA\Property(property="is_active", type="boolean", example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Tax bracket created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax bracket created successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/tax-brackets',
+        summary: 'Create a new tax bracket',
+        description: 'Create a new tax bracket',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/TaxBracket')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Tax bracket created successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function store(Request $request)
     {
         try {
@@ -561,47 +304,20 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-brackets/{id}",
-     *     summary="Get a specific tax bracket",
-     *     description="Get details of a specific tax bracket by ID",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax bracket ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax bracket retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax bracket retrieved successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax bracket not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax bracket not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-brackets/{id}',
+        summary: 'Get a specific tax bracket',
+        description: 'Get details of a specific tax bracket by ID',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax bracket ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax bracket retrieved successfully'),
+            new OA\Response(response: 404, description: 'Tax bracket not found'),
+        ]
+    )]
     public function show(string $id)
     {
         try {
@@ -627,75 +343,25 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/tax-brackets/{id}",
-     *     summary="Update a tax bracket",
-     *     description="Update an existing tax bracket",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax bracket ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="min_income", type="number", example=150001),
-     *             @OA\Property(property="max_income", type="number", example=300000, nullable=true),
-     *             @OA\Property(property="tax_rate", type="number", example=5),
-     *             @OA\Property(property="bracket_order", type="integer", example=2),
-     *             @OA\Property(property="effective_year", type="integer", example=2025),
-     *             @OA\Property(property="description", type="string", example="5% tax bracket"),
-     *             @OA\Property(property="is_active", type="boolean", example=true),
-     *             @OA\Property(property="updated_by", type="string", example="admin@example.com")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax bracket updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax bracket updated successfully"),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax bracket not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax bracket not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Put(
+        path: '/tax-brackets/{id}',
+        summary: 'Update a tax bracket',
+        description: 'Update an existing tax bracket',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax bracket ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/TaxBracket')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Tax bracket updated successfully'),
+            new OA\Response(response: 404, description: 'Tax bracket not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function update(Request $request, string $id)
     {
         try {
@@ -759,46 +425,20 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/tax-brackets/{id}",
-     *     summary="Delete a tax bracket",
-     *     description="Delete a specific tax bracket",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Tax bracket ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax bracket deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax bracket deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Tax bracket not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Tax bracket not found")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Delete(
+        path: '/tax-brackets/{id}',
+        summary: 'Delete a tax bracket',
+        description: 'Delete a specific tax bracket',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Tax bracket ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax bracket deleted successfully'),
+            new OA\Response(response: 404, description: 'Tax bracket not found'),
+        ]
+    )]
     public function destroy(string $id)
     {
         try {
@@ -823,51 +463,20 @@ class TaxBracketController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/tax-brackets/calculate/{income}",
-     *     summary="Calculate tax for a specific income",
-     *     description="Calculate the tax amount for a given income using current tax brackets",
-     *     tags={"Tax Brackets"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="income",
-     *         in="path",
-     *         required=true,
-     *         description="Annual income amount",
-     *
-     *         @OA\Schema(type="number")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="year",
-     *         in="query",
-     *         description="Tax year (defaults to current year)",
-     *
-     *         @OA\Schema(type="integer", example=2025)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Tax calculation completed successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Tax calculated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="income", type="number", example=500000),
-     *                 @OA\Property(property="total_tax", type="number", example=25000),
-     *                 @OA\Property(property="effective_rate", type="number", example=5),
-     *                 @OA\Property(property="breakdown", type="array", @OA\Items(type="object"))
-     *             )
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/tax-brackets/calculate/{income}',
+        summary: 'Calculate tax for a specific income',
+        description: 'Calculate the tax amount for a given income using current tax brackets',
+        tags: ['Tax Brackets'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'income', in: 'path', required: true, description: 'Annual income amount', schema: new OA\Schema(type: 'number')),
+            new OA\Parameter(name: 'year', in: 'query', required: false, description: 'Tax year', schema: new OA\Schema(type: 'integer', example: 2025)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Tax calculation completed successfully'),
+        ]
+    )]
     public function calculateTax(Request $request, float $income)
     {
         try {
