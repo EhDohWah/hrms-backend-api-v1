@@ -14,83 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 
 class InterOrganizationAdvanceController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/api/inter-organization-advances",
-     *     summary="Get all inter-organization advances with enhanced filtering and pagination",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="from_organization",
-     *         in="query",
-     *         description="Filter by source organization",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="SMRU")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="to_organization",
-     *         in="query",
-     *         description="Filter by destination organization",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="BHF")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="status",
-     *         in="query",
-     *         description="Filter by settlement status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"pending", "settled"}, example="pending")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="date_range",
-     *         in="query",
-     *         description="Filter by advance date range (YYYY-MM-DD,YYYY-MM-DD)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="2025-01-01,2025-01-31")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/InterOrganizationAdvanceResource")),
-     *             @OA\Property(property="pagination", type="object"),
-     *             @OA\Property(property="summary", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/api/inter-organization-advances', summary: 'Get all inter-organization advances with enhanced filtering and pagination', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function index(Request $request)
     {
         try {
@@ -172,31 +100,7 @@ class InterOrganizationAdvanceController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/inter-organization-advances",
-     *     summary="Create a new inter-organization advance",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/StoreInterOrganizationAdvanceRequest")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Created",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Advance recorded."),
-     *             @OA\Property(property="data", ref="#/components/schemas/InterOrganizationAdvanceResource")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(path: '/api/inter-organization-advances', summary: 'Create a new inter-organization advance', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 201, description: 'Created')])]
     public function store(StoreInterOrganizationAdvanceRequest $request)
     {
         $data = $request->validated() + [
@@ -211,38 +115,7 @@ class InterOrganizationAdvanceController extends Controller
         ], 201);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/api/inter-organization-advances/{id}",
-     *     summary="Get a specific inter-organization advance",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the advance",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/InterOrganizationAdvanceResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/api/inter-organization-advances/{id}', summary: 'Get a specific inter-organization advance', tags: ['Inter-Organization Advances'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function show($id)
     {
         $item = InterOrganizationAdvance::with('viaGrant')->findOrFail($id);
@@ -253,45 +126,7 @@ class InterOrganizationAdvanceController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Put(
-     *     path="/api/inter-organization-advances/{id}",
-     *     summary="Update an inter-organization advance",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the advance",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/UpdateInterOrganizationAdvanceRequest")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Advance updated."),
-     *             @OA\Property(property="data", ref="#/components/schemas/InterOrganizationAdvanceResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Put(path: '/api/inter-organization-advances/{id}', summary: 'Update an inter-organization advance', tags: ['Inter-Organization Advances'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function update(UpdateInterOrganizationAdvanceRequest $request, $id)
     {
         $item = InterOrganizationAdvance::findOrFail($id);
@@ -306,38 +141,7 @@ class InterOrganizationAdvanceController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/api/inter-organization-advances/{id}",
-     *     summary="Delete an inter-organization advance",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the advance",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Advance deleted.")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Delete(path: '/api/inter-organization-advances/{id}', summary: 'Delete an inter-organization advance', tags: ['Inter-Organization Advances'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function destroy($id)
     {
         $item = InterOrganizationAdvance::findOrFail($id);
@@ -349,38 +153,7 @@ class InterOrganizationAdvanceController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/inter-organization-advances/bulk-settle",
-     *     summary="Bulk settle multiple advances",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"advance_ids", "settlement_date"},
-     *
-     *             @OA\Property(property="advance_ids", type="array", @OA\Items(type="integer"), example={1, 2, 3}),
-     *             @OA\Property(property="settlement_date", type="string", format="date", example="2025-01-31"),
-     *             @OA\Property(property="notes", type="string", nullable=true, example="Bulk settlement for January payroll")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Advances settled successfully"),
-     *             @OA\Property(property="settled_count", type="integer", example=3),
-     *             @OA\Property(property="total_amount", type="number", example=125000.00)
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(path: '/api/inter-organization-advances/bulk-settle', summary: 'Bulk settle multiple advances', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function bulkSettle(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -454,51 +227,7 @@ class InterOrganizationAdvanceController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/api/inter-organization-advances/summary",
-     *     summary="Get inter-organization advances summary and statistics",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\Parameter(
-     *         name="period",
-     *         in="query",
-     *         description="Time period for summary",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"current_month", "last_month", "current_year", "custom"}, example="current_month")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="start_date",
-     *         in="query",
-     *         description="Start date for custom period (required if period=custom)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", format="date", example="2025-01-01")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="end_date",
-     *         in="query",
-     *         description="End date for custom period (required if period=custom)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", format="date", example="2025-01-31")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="object")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/api/inter-organization-advances/summary', summary: 'Get inter-organization advances summary and statistics', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function getSummary(Request $request)
     {
         try {
@@ -577,37 +306,7 @@ class InterOrganizationAdvanceController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/inter-organization-advances/auto-create",
-     *     summary="Auto-create advances for payroll period",
-     *     tags={"Inter-Organization Advances"},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"payroll_period_date"},
-     *
-     *             @OA\Property(property="payroll_period_date", type="string", format="date", example="2025-01-31"),
-     *             @OA\Property(property="dry_run", type="boolean", example=false, description="If true, only returns what would be created")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="created_count", type="integer"),
-     *             @OA\Property(property="total_amount", type="number")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(path: '/api/inter-organization-advances/auto-create', summary: 'Auto-create advances for payroll period', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function autoCreateAdvances(Request $request)
     {
         $validator = Validator::make($request->all(), [

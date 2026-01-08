@@ -19,13 +19,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Employments",
- *     description="API Endpoints for managing employee employment records"
- * )
- */
+#[OA\Tag(name: 'Employments', description: 'API Endpoints for managing employee employment records')]
 class EmploymentController extends Controller
 {
     use HasCacheManagement;
@@ -43,156 +39,24 @@ class EmploymentController extends Controller
     }
 
     /**
-     * Display a listing of employments with advanced pagination, filtering, and sorting.
-     *
-     * @OA\Get(
-     *     path="/employments",
-     *     summary="Get employment records with advanced filtering and pagination",
-     *     description="Returns a paginated list of employment records with filtering by organization, employment type, and work location. Supports sorting by staff ID, employee name, work location, and start date.",
-     *     operationId="getEmployments",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number for pagination",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=1, minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", example=10, minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_organization",
-     *         in="query",
-     *         description="Filter employments by employee organization (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="SMRU,BHF")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_employment_type",
-     *         in="query",
-     *         description="Filter by employment type (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Full-Time,Part-Time")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_site",
-     *         in="query",
-     *         description="Filter by site name (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Headquarters,Branch Office")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_department",
-     *         in="query",
-     *         description="Filter by department name (comma-separated for multiple values)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="Administration,Finance,IT")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"staff_id", "employee_name", "site", "start_date"}, example="start_date")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"}, example="desc")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employments retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employments retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Employment")
-     *             ),
-     *
-     *             @OA\Property(
-     *                 property="pagination",
-     *                 type="object",
-     *                 @OA\Property(property="current_page", type="integer", example=1),
-     *                 @OA\Property(property="per_page", type="integer", example=10),
-     *                 @OA\Property(property="total", type="integer", example=25),
-     *                 @OA\Property(property="last_page", type="integer", example=3),
-     *                 @OA\Property(property="from", type="integer", example=1),
-     *                 @OA\Property(property="to", type="integer", example=10),
-     *                 @OA\Property(property="has_more_pages", type="boolean", example=true)
-     *             ),
-     *             @OA\Property(
-     *                 property="filters",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="applied_filters",
-     *                     type="object",
-     *                     @OA\Property(property="organization", type="array", @OA\Items(type="string"), example={"SMRU"}),
-     *                     @OA\Property(property="employment_type", type="array", @OA\Items(type="string"), example={"Full-Time"}),
-     *                     @OA\Property(property="site", type="array", @OA\Items(type="string"), example={"Headquarters"}),
-     *                     @OA\Property(property="department", type="array", @OA\Items(type="string"), example={"Administration"})
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error - Invalid parameters provided",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object", example={"per_page": {"The per page must be between 1 and 100."}})
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to retrieve employments"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
+     * Display a listing of employments with advanced pagination, filtering, and sorting
      */
+    #[OA\Get(
+        path: '/employments',
+        summary: 'Get employment records with advanced filtering and pagination',
+        description: 'Returns a paginated list of employment records with filtering by organization, employment type, and work location',
+        operationId: 'getEmployments',
+        security: [['bearerAuth' => []]],
+        tags: ['Employments']
+    )]
+    #[OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'filter_organization', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'filter_employment_type', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Employments retrieved successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function index(Request $request)
     {
         try {
@@ -396,108 +260,25 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Search employment records by staff ID.
-     *
-     * @OA\Get(
-     *     path="/employments/search/staff-id/{staffId}",
-     *     summary="Search employment records by staff ID",
-     *     description="Returns employment records for a specific employee identified by their staff ID. Includes all related information like employee details, department position, work location, and funding allocations.",
-     *     operationId="searchEmploymentByStaffId",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="staffId",
-     *         in="path",
-     *         description="Staff ID of the employee to search for",
-     *         required=true,
-     *
-     *         @OA\Schema(type="string", example="EMP001")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="include_inactive",
-     *         in="query",
-     *         description="Include inactive/ended employment records",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean", example=false, default=false)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employment records found successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment records found for staff ID: EMP001"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(
-     *                     property="employee",
-     *                     type="object",
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="staff_id", type="string", example="EMP001"),
-     *                     @OA\Property(property="organization", type="string", example="SMRU"),
-     *                     @OA\Property(property="first_name_en", type="string", example="John"),
-     *                     @OA\Property(property="last_name_en", type="string", example="Doe"),
-     *                     @OA\Property(property="full_name", type="string", example="John Doe")
-     *                 ),
-     *                 @OA\Property(
-     *                     property="employments",
-     *                     type="array",
-     *
-     *                     @OA\Items(ref="#/components/schemas/Employment")
-     *                 ),
-     *
-     *                 @OA\Property(property="total_employments", type="integer", example=2),
-     *                 @OA\Property(property="active_employments", type="integer", example=1),
-     *                 @OA\Property(property="inactive_employments", type="integer", example=1)
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="No employee found with staff ID: EMP001")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="The given data was invalid."),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to search employment records"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: '/employments/search/staff-id/{staffId}',
+        summary: 'Search employment records by staff ID',
+        description: 'Returns employment records for a specific employee identified by their staff ID. Includes all related information like employee details, department position, work location, and funding allocations',
+        operationId: 'searchEmploymentByStaffId',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'staffId', in: 'path', required: true, description: 'Staff ID of the employee to search for', schema: new OA\Schema(type: 'string', example: 'EMP001')),
+            new OA\Parameter(name: 'include_inactive', in: 'query', required: false, description: 'Include inactive/ended employment records', schema: new OA\Schema(type: 'boolean', example: false, default: false)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Employment records found successfully'),
+            new OA\Response(response: 404, description: 'Employee not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function searchByStaffId(Request $request, $staffId)
     {
         try {
@@ -591,85 +372,24 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/employments",
-     *     operationId="createEmploymentWithFundingAllocations",
-     *     tags={"Employments"},
-     *     summary="Create employment record with funding allocations",
-     *     description="Creates an employment record and associated funding allocations using grant items for all funding sources.",
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"employee_id", "employment_type", "start_date", "pass_probation_salary", "allocations"},
-     *
-     *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
-     *             @OA\Property(property="employment_type", type="string", description="Type of employment"),
-     *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
-     *             @OA\Property(property="pass_probation_date", type="string", format="date", description="First day employee receives pass_probation_salary - typically 3 months after start_date", nullable=true),
-     *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date"),
-     *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
-     *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
-     *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
-     *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
-     *             @OA\Property(property="site_id", type="integer", description="Site ID", nullable=true),
-     *             @OA\Property(property="pass_probation_salary", type="number", format="float", description="Pass probation salary"),
-     *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
-     *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", default=false),
-     *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
-     *             @OA\Property(property="pvd", type="boolean", description="Provident fund", default=false),
-     *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
-     *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", default=false),
-     *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
-     *             @OA\Property(property="status", type="boolean", default=true, description="Employment status: true=Active, false=Inactive", nullable=true),
-     *             @OA\Property(
-     *                 property="allocations",
-     *                 type="array",
-     *                 description="Array of funding allocations",
-     *
-     *                 @OA\Items(
-     *                     type="object",
-     *                     required={"allocation_type", "fte"},
-     *
-     *                     @OA\Property(property="allocation_type", type="string", enum={"grant"}, description="Type of allocation"),
-     *                     @OA\Property(property="grant_item_id", type="integer", description="Grant item ID (required for allocations)", nullable=false),
-     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
-     *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Employment and allocations created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment and funding allocations created successfully"),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
-     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation"))
-     *             ),
-     *             @OA\Property(property="summary", type="object",
-     *                 @OA\Property(property="employment_created", type="boolean"),
-     *                 @OA\Property(property="org_funded_created", type="integer"),
-     *                 @OA\Property(property="funding_allocations_created", type="integer")
-     *             ),
-     *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=400, description="Bad request"),
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
+    #[OA\Post(
+        path: '/employments',
+        operationId: 'createEmploymentWithFundingAllocations',
+        tags: ['Employments'],
+        summary: 'Create employment record with funding allocations',
+        description: 'Creates an employment record and associated funding allocations using grant items for all funding sources',
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Employment')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Employment and allocations created successfully'),
+            new OA\Response(response: 400, description: 'Bad request'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function store(StoreEmploymentRequest $request)
     {
         try {
@@ -895,74 +615,29 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/employments/upload",
-     *     summary="Upload employment data from Excel file",
-     *     description="Upload an Excel file containing employment records. The import is processed asynchronously in the background with chunk processing and duplicate checking. Existing employments will be updated, new ones will be created.",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *
-     *             @OA\Schema(
-     *
-     *                 @OA\Property(
-     *                     property="file",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Excel file to upload (xlsx, xls, csv)"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=202,
-     *         description="Employment data import started successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment import started successfully. You will receive a notification when the import is complete."),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="import_id", type="string", example="employment_import_abc123"),
-     *                 @OA\Property(property="status", type="string", example="processing")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Import failed",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to start employment import"),
-     *             @OA\Property(property="error", type="string")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/employments/upload',
+        summary: 'Upload employment data from Excel file',
+        description: 'Upload an Excel file containing employment records. The import is processed asynchronously in the background with chunk processing and duplicate checking. Existing employments will be updated, new ones will be created',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'multipart/form-data',
+                schema: new OA\Schema(
+                    properties: [
+                        new OA\Property(property: 'file', type: 'string', format: 'binary', description: 'Excel file to upload (xlsx, xls, csv)'),
+                    ]
+                )
+            )
+        ),
+        responses: [
+            new OA\Response(response: 202, description: 'Employment data import started successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Import failed'),
+        ]
+    )]
     public function upload(Request $request)
     {
         try {
@@ -1009,29 +684,18 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Download employment import template
-     *
-     * @OA\Get(
-     *     path="/downloads/employment-template",
-     *     summary="Download employment import template",
-     *     description="Downloads an Excel template for bulk employment import with validation rules and sample data",
-     *     operationId="downloadEmploymentTemplate",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Template file downloaded successfully",
-     *
-     *         @OA\MediaType(
-     *             mediaType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=500, description="Failed to generate template")
-     * )
-     */
+    #[OA\Get(
+        path: '/downloads/employment-template',
+        summary: 'Download employment import template',
+        description: 'Downloads an Excel template for bulk employment import with validation rules and sample data',
+        operationId: 'downloadEmploymentTemplate',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Template file downloaded successfully'),
+            new OA\Response(response: 500, description: 'Failed to generate template'),
+        ]
+    )]
     public function downloadEmploymentTemplate()
     {
         try {
@@ -1326,42 +990,21 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Display the specified employment record.
-     *
-     * @OA\Get(
-     *     path="/employments/{id}",
-     *     summary="Get employment record by ID",
-     *     description="Returns a specific employment record by ID",
-     *     operationId="getEmployment",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of employment record to return",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/Employment"),
-     *             @OA\Property(property="message", type="string", example="Employment retrieved successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employment not found")
-     * )
-     */
+    #[OA\Get(
+        path: '/employments/{id}',
+        summary: 'Get employment record by ID',
+        description: 'Returns a specific employment record by ID',
+        operationId: 'getEmployment',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of employment record to return', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+        ]
+    )]
     public function show($id)
     {
         try {
@@ -1385,55 +1028,24 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Manually complete probation for an employment record.
-     *
-     * @OA\Post(
-     *     path="/employments/{id}/complete-probation",
-     *     summary="Complete probation period manually",
-     *     description="Manually triggers probation completion, updating funding allocations from probation_salary to pass_probation_salary",
-     *     operationId="completeProbation",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of employment record",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Probation completed successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Probation completed successfully and funding allocations updated"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
-     *                 @OA\Property(
-     *                     property="updated_allocations",
-     *                     type="array",
-     *
-     *                     @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employment not found"),
-     *     @OA\Response(response=400, description="Invalid request or probation already completed"),
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Unauthorized - Only HR or Admin can complete probation")
-     * )
-     */
+    #[OA\Post(
+        path: '/employments/{id}/complete-probation',
+        summary: 'Complete probation period manually',
+        description: 'Manually triggers probation completion, updating funding allocations from probation_salary to pass_probation_salary',
+        operationId: 'completeProbation',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of employment record', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Probation completed successfully'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 400, description: 'Invalid request or probation already completed'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Unauthorized'),
+        ]
+    )]
     public function completeProbation($id)
     {
         try {
@@ -1474,45 +1086,35 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Update probation status (pass/fail) for an employment record.
-     *
-     * @OA\Post(
-     *     path="/employments/{id}/probation-status",
-     *     summary="Update probation status for an employment",
-     *     description="Allows HR to manually mark probation as passed or failed with optional reason/notes.",
-     *     operationId="updateProbationStatus",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer"),
-     *         description="Employment ID"
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"action"},
-     *
-     *             @OA\Property(property="action", type="string", enum={"passed","failed"}),
-     *             @OA\Property(property="decision_date", type="string", format="date", nullable=true),
-     *             @OA\Property(property="reason", type="string", nullable=true),
-     *             @OA\Property(property="notes", type="string", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=200, description="Probation status updated successfully"),
-     *     @OA\Response(response=404, description="Employment not found"),
-     *     @OA\Response(response=422, description="Unable to update probation status"),
-     *     @OA\Response(response=500, description="Server error updating probation status")
-     * )
-     */
+    #[OA\Post(
+        path: '/employments/{id}/probation-status',
+        summary: 'Update probation status for an employment',
+        description: 'Allows HR to manually mark probation as passed or failed with optional reason/notes',
+        operationId: 'updateProbationStatus',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employment ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['action'],
+                properties: [
+                    new OA\Property(property: 'action', type: 'string', enum: ['passed', 'failed']),
+                    new OA\Property(property: 'decision_date', type: 'string', format: 'date', nullable: true),
+                    new OA\Property(property: 'reason', type: 'string', nullable: true),
+                    new OA\Property(property: 'notes', type: 'string', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Probation status updated successfully'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 422, description: 'Unable to update probation status'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function updateProbationStatus(UpdateProbationStatusRequest $request, int $id)
     {
         try {
@@ -1570,84 +1172,31 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Calculate funding allocation amount in real-time based on FTE and salary.
-     *
-     * @OA\Post(
-     *     path="/employments/calculate-allocation",
-     *     summary="Calculate funding allocation amount in real-time",
-     *     description="Calculates the allocated amount for a funding allocation based on FTE percentage and the employment's salary (probation_salary or pass_probation_salary). This endpoint is used for real-time calculation in the frontend as users enter FTE percentages.",
-     *     operationId="calculateAllocationAmount",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Calculation parameters",
-     *
-     *         @OA\JsonContent(
-     *             required={"employment_id", "fte"},
-     *
-     *             @OA\Property(property="employment_id", type="integer", example=123, description="ID of the employment record"),
-     *             @OA\Property(property="fte", type="number", format="float", example=60, description="FTE percentage (0-100)")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Calculation successful",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Allocation amount calculated successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="employment_id", type="integer", example=123),
-     *                 @OA\Property(property="fte", type="number", format="float", example=60, description="FTE as percentage"),
-     *                 @OA\Property(property="fte_decimal", type="number", format="float", example=0.60, description="FTE as decimal for database storage"),
-     *                 @OA\Property(property="base_salary", type="number", format="float", example=50000, description="Base salary used for calculation (probation_salary or pass_probation_salary)"),
-     *                 @OA\Property(property="salary_type", type="string", example="probation_salary", description="Which salary field was used"),
-     *                 @OA\Property(property="allocated_amount", type="number", format="float", example=30000, description="Calculated allocated amount"),
-     *                 @OA\Property(property="formatted_amount", type="string", example="฿30,000.00", description="Formatted currency string"),
-     *                 @OA\Property(property="calculation_formula", type="string", example="(50000 × 60) / 100 = 30000", description="Human-readable formula")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employment not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Employment not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(
-     *                 property="errors",
-     *                 type="object",
-     *                 @OA\Property(property="fte", type="array", @OA\Items(type="string", example="The fte must be between 0 and 100."))
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Post(
+        path: '/employments/calculate-allocation',
+        summary: 'Calculate funding allocation amount in real-time',
+        description: 'Calculates the allocated amount for a funding allocation based on FTE percentage and employment salary',
+        operationId: 'calculateAllocationAmount',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['employment_id', 'fte'],
+                properties: [
+                    new OA\Property(property: 'employment_id', type: 'integer', example: 123),
+                    new OA\Property(property: 'fte', type: 'number', format: 'float', example: 60),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Calculation successful'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function calculateAllocationAmount(Request $request)
     {
         try {
@@ -1822,68 +1371,23 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Get funding allocations for a specific employment record.
-     *
-     * @OA\Get(
-     *     path="/employments/{id}/funding-allocations",
-     *     summary="Get funding allocations for an employment record",
-     *     description="Returns all funding allocations associated with a specific employment record, including related grant and position slot information",
-     *     operationId="getEmploymentFundingAllocations",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of employment record",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Funding allocations retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="employment_id", type="integer"),
-     *                 @OA\Property(property="employee", type="object"),
-     *                 @OA\Property(
-     *                     property="funding_allocations",
-     *                     type="array",
-     *
-     *                     @OA\Items(
-     *                         type="object",
-     *
-     *                         @OA\Property(property="id", type="integer"),
-     *                         @OA\Property(property="allocation_type", type="string"),
-     *                         @OA\Property(property="fte", type="number"),
-     *                         @OA\Property(property="allocated_amount", type="number"),
-     *                         @OA\Property(property="start_date", type="string", format="date"),
-     *                         @OA\Property(property="end_date", type="string", format="date", nullable=true),
-     *                         @OA\Property(property="grant_item", type="object", nullable=true, description="Grant item details (for grant allocations)"),
-     *                         @OA\Property(property="grant", type="object", nullable=true, description="Grant details (for org_funded allocations)")
-     *                     )
-     *                 ),
-     *                 @OA\Property(property="total_allocations", type="integer"),
-     *                 @OA\Property(property="total_fte", type="number")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employment not found"),
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=403, description="Forbidden")
-     * )
-     */
+    #[OA\Get(
+        path: '/employments/{id}/funding-allocations',
+        summary: 'Get funding allocations for an employment record',
+        description: 'Returns all funding allocations associated with a specific employment record, including related grant and position slot information',
+        operationId: 'getEmploymentFundingAllocations',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of employment record', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Successful operation'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+        ]
+    )]
     public function getFundingAllocations($id)
     {
         try {
@@ -1947,100 +1451,28 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Update the specified employment record with optional funding allocations.
-     *
-     * @OA\Put(
-     *     path="/employments/{id}",
-     *     operationId="updateEmploymentWithFundingAllocations",
-     *     tags={"Employments"},
-     *     summary="Update employment record with optional funding allocations",
-     *     description="Updates an employment record and optionally replaces funding allocations. If allocations are provided, all existing allocations will be replaced with the new ones. For org_funded allocations, creates new org_funded_allocation records. Validates that total effort equals 100% if allocations are provided.",
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of employment record to update",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", description="ID of the employee", nullable=true),
-     *             @OA\Property(property="employment_type", type="string", description="Type of employment", nullable=true),
-     *             @OA\Property(property="pay_method", type="string", description="Pay method", nullable=true),
-     *             @OA\Property(property="pass_probation_date", type="string", format="date", description="First day employee receives pass_probation_salary - typically 3 months after start_date", nullable=true),
-     *             @OA\Property(property="start_date", type="string", format="date", description="Employment start date", nullable=true),
-     *             @OA\Property(property="end_date", type="string", format="date", description="Employment end date", nullable=true),
-     *             @OA\Property(property="department_id", type="integer", description="Department ID", nullable=true),
-     *             @OA\Property(property="position_id", type="integer", description="Position ID", nullable=true),
-     *             @OA\Property(property="section_department", type="string", description="Section department", nullable=true),
-     *             @OA\Property(property="site_id", type="integer", description="Site ID", nullable=true),
-     *             @OA\Property(property="pass_probation_salary", type="number", format="float", description="Pass probation salary", nullable=true),
-     *             @OA\Property(property="probation_salary", type="number", format="float", description="Probation salary", nullable=true),
-     *             @OA\Property(property="health_welfare", type="boolean", description="Health welfare benefit", nullable=true),
-     *             @OA\Property(property="health_welfare_percentage", type="number", format="float", description="Health welfare percentage (0-100)", nullable=true),
-     *             @OA\Property(property="pvd", type="boolean", description="Provident fund", nullable=true),
-     *             @OA\Property(property="pvd_percentage", type="number", format="float", description="PVD percentage (0-100)", nullable=true),
-     *             @OA\Property(property="saving_fund", type="boolean", description="Saving fund", nullable=true),
-     *             @OA\Property(property="saving_fund_percentage", type="number", format="float", description="Saving fund percentage (0-100)", nullable=true),
-     *             @OA\Property(property="status", type="boolean", description="Employment status: true=Active, false=Inactive", nullable=true),
-     *             @OA\Property(
-     *                 property="allocations",
-     *                 type="array",
-     *                 description="Optional array of funding allocations to replace existing ones",
-     *                 nullable=true,
-     *
-     *                 @OA\Items(
-     *                     type="object",
-     *                     required={"allocation_type", "fte"},
-     *
-     *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *                     @OA\Property(property="grant_item_id", type="integer", description="Grant item ID (required for grant allocations)", nullable=true),
-     *                     @OA\Property(property="grant_id", type="integer", description="Grant ID (required for org_funded allocations)", nullable=true),
-     *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
-     *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employment and allocations updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment and funding allocations updated successfully"),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="employment", ref="#/components/schemas/Employment"),
-     *                 @OA\Property(property="funding_allocations", type="array", @OA\Items(ref="#/components/schemas/EmployeeFundingAllocation"))
-     *             ),
-     *             @OA\Property(property="summary", type="object",
-     *                 @OA\Property(property="employment_updated", type="boolean"),
-     *                 @OA\Property(property="allocations_updated", type="boolean"),
-     *                 @OA\Property(property="old_allocations_removed", type="integer"),
-     *                 @OA\Property(property="org_funded_created", type="integer"),
-     *                 @OA\Property(property="funding_allocations_created", type="integer")
-     *             ),
-     *             @OA\Property(property="warnings", type="array", @OA\Items(type="string"), nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=400, description="Bad request"),
-     *     @OA\Response(response=401, description="Unauthenticated"),
-     *     @OA\Response(response=404, description="Employment not found"),
-     *     @OA\Response(response=422, description="Validation error")
-     * )
-     */
+    #[OA\Put(
+        path: '/employments/{id}',
+        operationId: 'updateEmploymentWithFundingAllocations',
+        tags: ['Employments'],
+        summary: 'Update employment record with optional funding allocations',
+        description: 'Updates an employment record and optionally replaces funding allocations',
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of employment record to update', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Employment')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Employment and allocations updated successfully'),
+            new OA\Response(response: 400, description: 'Bad request'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+        ]
+    )]
     public function update(Request $request, $id)
     {
         try {
@@ -2389,41 +1821,21 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Remove the specified employment record.
-     *
-     * @OA\Delete(
-     *     path="/employments/{id}",
-     *     summary="Delete an employment record",
-     *     description="Deletes an employment record by ID",
-     *     operationId="deleteEmployment",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of employment record to delete",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employment deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Employment deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employment not found")
-     * )
-     */
+    #[OA\Delete(
+        path: '/employments/{id}',
+        summary: 'Delete an employment record',
+        description: 'Deletes an employment record by ID',
+        operationId: 'deleteEmployment',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID of employment record to delete', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Employment deleted successfully'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+        ]
+    )]
     public function destroy($id)
     {
         try {
@@ -2445,59 +1857,22 @@ class EmploymentController extends Controller
         }
     }
 
-    /**
-     * Get probation history for a specific employment
-     *
-     * @OA\Get(
-     *     path="/employments/{id}/probation-history",
-     *     summary="Get probation history for employment",
-     *     description="Returns probation records history including extensions, passed/failed events",
-     *     operationId="getProbationHistory",
-     *     tags={"Employments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="Employment ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Probation history retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Probation history retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="total_extensions", type="integer", example=1),
-     *                 @OA\Property(property="current_extension_number", type="integer", example=1),
-     *                 @OA\Property(property="probation_start_date", type="string", format="date"),
-     *                 @OA\Property(property="initial_end_date", type="string", format="date"),
-     *                 @OA\Property(property="current_end_date", type="string", format="date"),
-     *                 @OA\Property(property="current_status", type="string", example="extended"),
-     *                 @OA\Property(property="current_event_type", type="string", example="extension"),
-     *                 @OA\Property(
-     *                     property="records",
-     *                     type="array",
-     *
-     *                     @OA\Items(ref="#/components/schemas/ProbationRecord")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Employment not found"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Get(
+        path: '/employments/{id}/probation-history',
+        summary: 'Get probation history for employment',
+        description: 'Returns probation records history including extensions, passed/failed events',
+        operationId: 'getProbationHistory',
+        tags: ['Employments'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Employment ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Probation history retrieved successfully'),
+            new OA\Response(response: 404, description: 'Employment not found'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function getProbationHistory($id)
     {
         try {

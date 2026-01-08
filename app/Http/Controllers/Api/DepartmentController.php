@@ -13,55 +13,26 @@ use App\Http\Resources\PositionResource;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Departments",
- *     description="API Endpoints for Department management"
- * )
- */
+#[OA\Tag(name: 'Departments', description: 'API Endpoints for Department management')]
 class DepartmentController extends Controller
 {
     /**
      * Lightweight list for dropdowns
-     *
-     * @OA\Get(
-     *     path="/departments/options",
-     *     summary="Get department options (lightweight)",
-     *     description="Returns minimal department list for dropdowns",
-     *     operationId="getDepartmentOptions",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
-     *     @OA\Parameter(name="is_active", in="query", required=false, @OA\Schema(type="boolean")),
-     *     @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=1000, default=200)),
-     *     @OA\Parameter(name="order_by", in="query", required=false, @OA\Schema(type="string", enum={"name","created_at"}, default="name")),
-     *     @OA\Parameter(name="order_direction", in="query", required=false, @OA\Schema(type="string", enum={"asc","desc"}, default="asc")),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department options retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=8),
-     *                     @OA\Property(property="name", type="string", example="IT")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/departments/options',
+        summary: 'Get department options (lightweight)',
+        description: 'Returns minimal department list for dropdowns',
+        operationId: 'getDepartmentOptions',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'limit', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 1000, default: 200))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function options(ListDepartmentOptionsRequest $request)
     {
         $validated = $request->validated();
@@ -93,80 +64,20 @@ class DepartmentController extends Controller
 
     /**
      * Get all departments with optional filtering and pagination
-     *
-     * @OA\Get(
-     *     path="/departments",
-     *     summary="Get all departments",
-     *     description="Returns a paginated list of departments with optional filtering and search",
-     *     operationId="getDepartments",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search term for department name or description",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_active",
-     *         in="query",
-     *         description="Filter by active status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Field to sort by",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"name", "created_at", "positions_count"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_direction",
-     *         in="query",
-     *         description="Sort direction",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1, maximum=100, default=20)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Departments retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Department")),
-     *                 @OA\Property(property="meta", type="object"),
-     *                 @OA\Property(property="links", type="object")
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/departments',
+        summary: 'Get all departments',
+        description: 'Returns a paginated list of departments with optional filtering and search',
+        operationId: 'getDepartments',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function index(IndexDepartmentRequest $request)
     {
         $validated = $request->validated();
@@ -210,54 +121,28 @@ class DepartmentController extends Controller
 
     /**
      * Store a new department
-     *
-     * @OA\Post(
-     *     path="/departments",
-     *     summary="Create a new department",
-     *     description="Creates a new department and returns it",
-     *     operationId="storeDepartment",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"name"},
-     *
-     *             @OA\Property(property="name", type="string", maxLength=255, example="Information Technology"),
-     *             @OA\Property(property="description", type="string", nullable=true, example="IT department responsible for technology infrastructure"),
-     *             @OA\Property(property="is_active", type="boolean", default=true, example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Department created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Department")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/departments',
+        summary: 'Create a new department',
+        description: 'Creates a new department and returns it',
+        operationId: 'storeDepartment',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', maxLength: 255, example: 'Information Technology'),
+                new OA\Property(property: 'description', type: 'string', nullable: true),
+                new OA\Property(property: 'is_active', type: 'boolean', default: true),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Department created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function store(StoreDepartmentRequest $request)
     {
         $validated = $request->validated();
@@ -274,50 +159,18 @@ class DepartmentController extends Controller
 
     /**
      * Get a specific department
-     *
-     * @OA\Get(
-     *     path="/departments/{id}",
-     *     summary="Get a specific department",
-     *     description="Returns a specific department by ID with detailed information",
-     *     operationId="getDepartment",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of department to return",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Department")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Department not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Department not found")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/departments/{id}',
+        summary: 'Get a specific department',
+        description: 'Returns a specific department by ID with detailed information',
+        operationId: 'getDepartment',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Department not found')]
     public function show($id)
     {
         $department = Department::withPositionsCount()
@@ -342,58 +195,29 @@ class DepartmentController extends Controller
 
     /**
      * Update a department
-     *
-     * @OA\Put(
-     *     path="/departments/{id}",
-     *     summary="Update a department",
-     *     description="Updates a department and returns it",
-     *     operationId="updateDepartment",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of department to update",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="name", type="string", maxLength=255, example="Information Technology"),
-     *             @OA\Property(property="description", type="string", nullable=true, example="Updated IT department description"),
-     *             @OA\Property(property="is_active", type="boolean", example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Department updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Department")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Department not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Put(
+        path: '/departments/{id}',
+        summary: 'Update a department',
+        description: 'Updates a department and returns it',
+        operationId: 'updateDepartment',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'name', type: 'string', maxLength: 255),
+                new OA\Property(property: 'description', type: 'string', nullable: true),
+                new OA\Property(property: 'is_active', type: 'boolean'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Department updated successfully')]
+    #[OA\Response(response: 404, description: 'Department not found')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function update(UpdateDepartmentRequest $request, $id)
     {
         $department = Department::find($id);
@@ -419,46 +243,19 @@ class DepartmentController extends Controller
 
     /**
      * Delete a department
-     *
-     * @OA\Delete(
-     *     path="/departments/{id}",
-     *     summary="Delete a department",
-     *     description="Deletes a department (soft delete if has positions, hard delete if empty)",
-     *     operationId="deleteDepartment",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of department to delete",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Department deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Department not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Cannot delete department with active positions"
-     *     )
-     * )
      */
+    #[OA\Delete(
+        path: '/departments/{id}',
+        summary: 'Delete a department',
+        description: 'Deletes a department (soft delete if has positions, hard delete if empty)',
+        operationId: 'deleteDepartment',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Department deleted successfully')]
+    #[OA\Response(response: 404, description: 'Department not found')]
+    #[OA\Response(response: 422, description: 'Cannot delete department with active positions')]
     public function destroy($id)
     {
         $department = Department::find($id);
@@ -490,66 +287,20 @@ class DepartmentController extends Controller
 
     /**
      * Get positions in a specific department
-     *
-     * @OA\Get(
-     *     path="/departments/{id}/positions",
-     *     summary="Get all positions in a department",
-     *     description="Returns all positions within a specific department",
-     *     operationId="getDepartmentPositions",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of department",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_active",
-     *         in="query",
-     *         description="Filter by active status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_manager",
-     *         in="query",
-     *         description="Filter by manager status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department positions retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Position")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Department not found"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/departments/{id}/positions',
+        summary: 'Get all positions in a department',
+        description: 'Returns all positions within a specific department',
+        operationId: 'getDepartmentPositions',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'is_manager', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Department not found')]
     public function positions(Request $request, $id)
     {
         $department = Department::find($id);
@@ -586,48 +337,18 @@ class DepartmentController extends Controller
 
     /**
      * Get managers in a specific department
-     *
-     * @OA\Get(
-     *     path="/departments/{id}/managers",
-     *     summary="Get all managers in a department",
-     *     description="Returns all manager positions within a specific department",
-     *     operationId="getDepartmentManagers",
-     *     tags={"Departments"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of department",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Department managers retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Position")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Department not found"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/departments/{id}/managers',
+        summary: 'Get all managers in a department',
+        description: 'Returns all manager positions within a specific department',
+        operationId: 'getDepartmentManagers',
+        security: [['bearerAuth' => []]],
+        tags: ['Departments']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Department not found')]
     public function managers($id)
     {
         $department = Department::find($id);

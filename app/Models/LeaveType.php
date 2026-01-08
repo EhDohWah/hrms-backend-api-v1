@@ -4,24 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="LeaveType",
- *     type="object",
- *
- *     @OA\Property(property="id", type="integer"),
- *     @OA\Property(property="name", type="string", maxLength=100),
- *     @OA\Property(property="default_duration", type="number", format="float", nullable=true),
- *     @OA\Property(property="description", type="string", nullable=true),
- *     @OA\Property(property="requires_attachment", type="boolean", default=false),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
- *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
- * )
- */
+#[OA\Schema(
+    schema: 'LeaveType',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'name', type: 'string', maxLength: 100),
+        new OA\Property(property: 'default_duration', type: 'number', format: 'float', nullable: true),
+        new OA\Property(property: 'description', type: 'string', nullable: true),
+        new OA\Property(property: 'requires_attachment', type: 'boolean', default: false),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', nullable: true),
+    ]
+)]
 class LeaveType extends Model
 {
     use HasFactory;

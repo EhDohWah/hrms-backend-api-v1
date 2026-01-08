@@ -1305,4 +1305,320 @@ class EmployeeFundingAllocationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/uploads/employee-funding-allocation",
+     *     summary="Upload employee funding allocation data from Excel file",
+     *     description="Upload an Excel file containing employee funding allocation records. The import is processed asynchronously in the background with chunk processing. Existing allocations will be updated, new ones will be created.",
+     *     tags={"Employee Funding Allocations"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *         content={
+     *
+     *             @OA\MediaType(
+     *                 mediaType="multipart/form-data",
+     *
+     *                 @OA\Schema(
+     *
+     *                     @OA\Property(
+     *                         property="file",
+     *                         type="string",
+     *                         format="binary",
+     *                         description="Excel file to upload (xlsx, xls, csv)"
+     *                     )
+     *                 )
+     *             )
+     *         }
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=202,
+     *         description="Employee funding allocation data import started successfully"
+     *     ),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=500, description="Import failed")
+     * )
+     */
+    public function upload(Request $request)
+    {
+        try {
+            // Validate file
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('file');
+
+        try {
+            // Generate unique import ID
+            $importId = 'funding_allocation_import_'.uniqid();
+
+            // Get authenticated user
+            $userId = auth()->id();
+
+            // Queue the import
+            $import = new \App\Imports\EmployeeFundingAllocationsImport($importId, $userId);
+            $import->queue($file);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee funding allocation import started successfully. You will receive a notification when the import is complete.',
+                'data' => [
+                    'import_id' => $importId,
+                    'status' => 'processing',
+                ],
+            ], 202);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start employee funding allocation import',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/downloads/employee-funding-allocation-template",
+     *     summary="Download employee funding allocation import template",
+     *     description="Downloads an Excel template for bulk employee funding allocation import with validation rules and sample data",
+     *     operationId="downloadEmployeeFundingAllocationTemplate",
+     *     tags={"Employee Funding Allocations"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(response=200, description="Template file downloaded successfully"),
+     *     @OA\Response(response=500, description="Failed to generate template")
+     * )
+     */
+    public function downloadTemplate()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Funding Allocation Import');
+
+            // ============================================
+            // SECTION 1: DEFINE HEADERS
+            // ============================================
+            $headers = [
+                'staff_id',
+                'employment_id',
+                'grant_item_id',
+                'fte',
+                'allocation_type',
+                'allocated_amount',
+                'salary_type',
+                'status',
+                'start_date',
+                'end_date',
+            ];
+
+            // ============================================
+            // SECTION 2: DEFINE VALIDATION RULES
+            // ============================================
+            $validationRules = [
+                'String - NOT NULL - Employee staff ID (must exist in system)',
+                'Integer - NULLABLE - Employment ID (optional, will auto-link to active employment if not provided)',
+                'Integer - NOT NULL - Grant item ID (must exist in grant_items table)',
+                'Decimal (0-100) - NOT NULL - FTE percentage (e.g., 50 for 50%, 100 for 100%)',
+                'String - NOT NULL - Values: grant, org_funded',
+                'Decimal(15,2) - NULLABLE - Pre-calculated allocated amount (auto-calculated if empty)',
+                'String - NULLABLE - Values: probation_salary, pass_probation_salary (auto-detected if empty)',
+                'String - NULLABLE - Values: active, historical, terminated (default: active)',
+                'Date (YYYY-MM-DD) - NOT NULL - Allocation start date',
+                'Date (YYYY-MM-DD) - NULLABLE - Allocation end date',
+            ];
+
+            // ============================================
+            // SECTION 3: WRITE HEADERS (Row 1)
+            // ============================================
+            $col = 1;
+            foreach ($headers as $header) {
+                $cell = $sheet->getCellByColumnAndRow($col, 1);
+                $cell->setValue($header);
+
+                // Style header
+                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('4472C4');
+                $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
+                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+                $col++;
+            }
+
+            // ============================================
+            // SECTION 4: WRITE VALIDATION RULES (Row 2)
+            // ============================================
+            $col = 1;
+            foreach ($validationRules as $rule) {
+                $cell = $sheet->getCellByColumnAndRow($col, 2);
+                $cell->setValue($rule);
+
+                // Style validation row
+                $cell->getStyle()->getFont()->setItalic(true)->setSize(9);
+                $cell->getStyle()->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('E7E6E6');
+                $cell->getStyle()->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+
+                $col++;
+            }
+
+            // Set row height for validation rules
+            $sheet->getRowDimension(2)->setRowHeight(60);
+
+            // ============================================
+            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)
+            // ============================================
+            $sampleData = [
+                ['EMP001', '', '1', '100', 'grant', '', '', 'active', '2025-01-01', ''],
+                ['EMP002', '15', '2', '60', 'grant', '30000.00', 'probation_salary', 'active', '2025-01-15', '2025-12-31'],
+                ['EMP002', '15', '3', '40', 'org_funded', '20000.00', 'pass_probation_salary', 'active', '2025-01-15', '2025-12-31'],
+            ];
+
+            $row = 3;
+            foreach ($sampleData as $data) {
+                $col = 1;
+                foreach ($data as $value) {
+                    $sheet->getCellByColumnAndRow($col, $row)->setValue($value);
+                    $col++;
+                }
+                $row++;
+            }
+
+            // ============================================
+            // SECTION 6: SET COLUMN WIDTHS
+            // ============================================
+            $columnWidths = [
+                'A' => 15,  // staff_id
+                'B' => 15,  // employment_id
+                'C' => 18,  // grant_item_id
+                'D' => 12,  // fte
+                'E' => 18,  // allocation_type
+                'F' => 18,  // allocated_amount
+                'G' => 22,  // salary_type
+                'H' => 15,  // status
+                'I' => 15,  // start_date
+                'J' => 15,  // end_date
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            // ============================================
+            // SECTION 7: ADD INSTRUCTIONS SHEET
+            // ============================================
+            $instructionsSheet = $spreadsheet->createSheet();
+            $instructionsSheet->setTitle('Instructions');
+
+            $instructions = [
+                ['Employee Funding Allocation Import Template - Instructions'],
+                [''],
+                ['IMPORTANT NOTES:'],
+                ['1. Required Fields (Cannot be empty):'],
+                ['   - staff_id: Employee staff ID (must exist in system)'],
+                ['   - grant_item_id: Grant item ID from grant_items table'],
+                ['   - fte: FTE percentage (0-100, e.g., 50 for 50%, 100 for 100%)'],
+                ['   - start_date: Allocation start date (YYYY-MM-DD format)'],
+                [''],
+                ['2. Date Format: All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)'],
+                [''],
+                ['3. FTE (Full-Time Equivalent):'],
+                ['   - Enter as percentage without % symbol (e.g., 100 for full-time, 50 for half-time)'],
+                ['   - For split funding: Create multiple rows for the same employee'],
+                ['   - Example: Employee 60% on Grant A + 40% on Grant B = 2 rows'],
+                [''],
+                ['4. Grant Item ID:'],
+                ['   - Must be a valid ID from the grant_items table'],
+                ['   - Contact your administrator for the list of available grant items'],
+                ['   - Each grant item represents a specific grant position/funding source'],
+                [''],
+                ['5. Foreign Keys (Must exist in database):'],
+                ['   - staff_id: Must match an existing employee'],
+                ['   - grant_item_id: Must be a valid grant item ID'],
+                ['   - System will verify employment exists for the employee'],
+                [''],
+                ['6. Allocation Logic:'],
+                ['   - If allocation exists for employee+grant_item: UPDATED'],
+                ['   - If allocation does not exist: CREATED'],
+                ['   - allocated_amount is auto-calculated based on FTE and salary'],
+                [''],
+                ['7. Validation Rules:'],
+                ['   - FTE must be between 0 and 100'],
+                ['   - start_date is required'],
+                ['   - end_date is optional (leave empty for ongoing allocation)'],
+                ['   - Employee must have active employment record'],
+                [''],
+                ['8. Example Scenarios:'],
+                ['   - Single funding: 1 row with FTE=100'],
+                ['   - Split funding (60/40): 2 rows, one with FTE=60, another with FTE=40'],
+                ['   - Split funding (50/30/20): 3 rows with respective FTE values'],
+                [''],
+                ['9. Best Practices:'],
+                ['   - Keep total FTE per employee = 100% (system validates this)'],
+                ['   - Use consistent date formats'],
+                ['   - Verify grant_item_id before uploading'],
+                ['   - Test with small batch first'],
+                [''],
+                ['10. After Upload:'],
+                ['   - You will receive a notification when import completes'],
+                ['   - Check notification for success/error summary'],
+                ['   - Review created/updated allocations in the system'],
+            ];
+
+            $row = 1;
+            foreach ($instructions as $instruction) {
+                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
+                if ($row === 1) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
+                } elseif ($row === 3 || strpos($instruction[0], ':') !== false) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
+                }
+                $row++;
+            }
+
+            $instructionsSheet->getColumnDimension('A')->setWidth(100);
+
+            // Set active sheet back to main sheet
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // ============================================
+            // SECTION 8: GENERATE AND DOWNLOAD FILE
+            // ============================================
+            $filename = 'employee_funding_allocation_import_template_'.date('Y-m-d_His').'.xlsx';
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'funding_allocation_template_');
+            $writer->save($tempFile);
+
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Cache-Control' => 'max-age=0',
+            ];
+
+            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate employee funding allocation template',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

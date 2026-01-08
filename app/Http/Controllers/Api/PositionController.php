@@ -11,58 +11,27 @@ use App\Http\Resources\PositionDetailResource;
 use App\Http\Resources\PositionResource;
 use App\Models\Position;
 use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Positions",
- *     description="API Endpoints for Position management"
- * )
- */
+#[OA\Tag(name: 'Positions', description: 'API Endpoints for Position management')]
 class PositionController extends Controller
 {
     /**
      * Lightweight list for dropdowns
-     *
-     * @OA\Get(
-     *     path="/positions/options",
-     *     summary="Get position options (lightweight)",
-     *     description="Returns minimal position list for dropdowns, optionally filtered by department",
-     *     operationId="getPositionOptions",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(name="department_id", in="query", required=false, @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
-     *     @OA\Parameter(name="is_active", in="query", required=false, @OA\Schema(type="boolean")),
-     *     @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=1000, default=200)),
-     *     @OA\Parameter(name="order_by", in="query", required=false, @OA\Schema(type="string", enum={"title","level","created_at"}, default="title")),
-     *     @OA\Parameter(name="order_direction", in="query", required=false, @OA\Schema(type="string", enum={"asc","desc"}, default="asc")),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Position options retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(type="object",
-     *
-     *                     @OA\Property(property="id", type="integer", example=12),
-     *                     @OA\Property(property="title", type="string", example="IT Specialist"),
-     *                     @OA\Property(property="department_id", type="integer", example=8),
-     *                     @OA\Property(property="department_name", type="string", example="IT")
-     *                 )
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/positions/options',
+        summary: 'Get position options (lightweight)',
+        description: 'Returns minimal position list for dropdowns, optionally filtered by department',
+        operationId: 'getPositionOptions',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'department_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'limit', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 1000, default: 200))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function options(ListPositionOptionsRequest $request)
     {
         $validated = $request->validated();
@@ -107,107 +76,22 @@ class PositionController extends Controller
 
     /**
      * Get all positions with optional filtering and pagination
-     *
-     * @OA\Get(
-     *     path="/positions",
-     *     summary="Get all positions",
-     *     description="Returns a paginated list of positions with optional filtering and search",
-     *     operationId="getPositions",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search term for position title or department name",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="department_id",
-     *         in="query",
-     *         description="Filter by department ID",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_active",
-     *         in="query",
-     *         description="Filter by active status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="is_manager",
-     *         in="query",
-     *         description="Filter by manager status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="level",
-     *         in="query",
-     *         description="Filter by hierarchy level",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Field to sort by",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"title", "level", "created_at", "subordinates_count"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_direction",
-     *         in="query",
-     *         description="Sort direction",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Number of items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1, maximum=100, default=20)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Positions retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Position")),
-     *                 @OA\Property(property="meta", type="object"),
-     *                 @OA\Property(property="links", type="object")
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/positions',
+        summary: 'Get all positions',
+        description: 'Returns a paginated list of positions with optional filtering and search',
+        operationId: 'getPositions',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'department_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'is_manager', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Parameter(name: 'level', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
     public function index(IndexPositionRequest $request)
     {
         $validated = $request->validated();
@@ -275,57 +159,31 @@ class PositionController extends Controller
 
     /**
      * Store a new position
-     *
-     * @OA\Post(
-     *     path="/positions",
-     *     summary="Create a new position",
-     *     description="Creates a new position and returns it",
-     *     operationId="storePosition",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"title", "department_id"},
-     *
-     *             @OA\Property(property="title", type="string", maxLength=255, example="Senior Software Engineer"),
-     *             @OA\Property(property="department_id", type="integer", example=1),
-     *             @OA\Property(property="reports_to_position_id", type="integer", nullable=true, example=5),
-     *             @OA\Property(property="level", type="integer", minimum=1, default=1, example=2),
-     *             @OA\Property(property="is_manager", type="boolean", default=false, example=false),
-     *             @OA\Property(property="is_active", type="boolean", default=true, example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Position created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Position created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Position")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/positions',
+        summary: 'Create a new position',
+        description: 'Creates a new position and returns it',
+        operationId: 'storePosition',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['title', 'department_id'],
+            properties: [
+                new OA\Property(property: 'title', type: 'string', maxLength: 255),
+                new OA\Property(property: 'department_id', type: 'integer'),
+                new OA\Property(property: 'reports_to_position_id', type: 'integer', nullable: true),
+                new OA\Property(property: 'level', type: 'integer', minimum: 1, default: 1),
+                new OA\Property(property: 'is_manager', type: 'boolean', default: false),
+                new OA\Property(property: 'is_active', type: 'boolean', default: true),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Position created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function store(StorePositionRequest $request)
     {
         $validated = $request->validated();
@@ -351,50 +209,18 @@ class PositionController extends Controller
 
     /**
      * Get a specific position
-     *
-     * @OA\Get(
-     *     path="/positions/{id}",
-     *     summary="Get a specific position",
-     *     description="Returns a specific position by ID with detailed information",
-     *     operationId="getPosition",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of position to return",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Position retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Position")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Position not found",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Position not found")
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/positions/{id}',
+        summary: 'Get a specific position',
+        description: 'Returns a specific position by ID with detailed information',
+        operationId: 'getPosition',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Position not found')]
     public function show($id)
     {
         $position = Position::with(['department', 'manager', 'directReports'])
@@ -417,61 +243,32 @@ class PositionController extends Controller
 
     /**
      * Update a position
-     *
-     * @OA\Put(
-     *     path="/positions/{id}",
-     *     summary="Update a position",
-     *     description="Updates a position and returns it",
-     *     operationId="updatePosition",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of position to update",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="title", type="string", maxLength=255, example="Lead Software Engineer"),
-     *             @OA\Property(property="department_id", type="integer", example=1),
-     *             @OA\Property(property="reports_to_position_id", type="integer", nullable=true, example=5),
-     *             @OA\Property(property="level", type="integer", minimum=1, example=2),
-     *             @OA\Property(property="is_manager", type="boolean", example=true),
-     *             @OA\Property(property="is_active", type="boolean", example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Position updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Position updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Position")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Position not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Put(
+        path: '/positions/{id}',
+        summary: 'Update a position',
+        description: 'Updates a position and returns it',
+        operationId: 'updatePosition',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'title', type: 'string', maxLength: 255),
+                new OA\Property(property: 'department_id', type: 'integer'),
+                new OA\Property(property: 'reports_to_position_id', type: 'integer', nullable: true),
+                new OA\Property(property: 'level', type: 'integer', minimum: 1),
+                new OA\Property(property: 'is_manager', type: 'boolean'),
+                new OA\Property(property: 'is_active', type: 'boolean'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Position updated successfully')]
+    #[OA\Response(response: 404, description: 'Position not found')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function update(UpdatePositionRequest $request, $id)
     {
         $position = Position::find($id);
@@ -506,46 +303,19 @@ class PositionController extends Controller
 
     /**
      * Delete a position
-     *
-     * @OA\Delete(
-     *     path="/positions/{id}",
-     *     summary="Delete a position",
-     *     description="Deletes a position (deactivates if has subordinates, hard delete if empty)",
-     *     operationId="deletePosition",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of position to delete",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Position deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Position deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Position not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Cannot delete position with active subordinates"
-     *     )
-     * )
      */
+    #[OA\Delete(
+        path: '/positions/{id}',
+        summary: 'Delete a position',
+        description: 'Deletes a position (deactivates if has subordinates, hard delete if empty)',
+        operationId: 'deletePosition',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Position deleted successfully')]
+    #[OA\Response(response: 404, description: 'Position not found')]
+    #[OA\Response(response: 422, description: 'Cannot delete position with active subordinates')]
     public function destroy($id)
     {
         $position = Position::find($id);
@@ -577,48 +347,18 @@ class PositionController extends Controller
 
     /**
      * Get direct reports for a manager position
-     *
-     * @OA\Get(
-     *     path="/positions/{id}/direct-reports",
-     *     summary="Get direct reports of a manager position",
-     *     description="Returns all positions that directly report to this manager",
-     *     operationId="getPositionDirectReports",
-     *     tags={"Positions"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="ID of manager position",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", format="int64")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Direct reports retrieved successfully"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="array",
-     *
-     *                 @OA\Items(ref="#/components/schemas/Position")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Position not found"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/positions/{id}/direct-reports',
+        summary: 'Get direct reports of a manager position',
+        description: 'Returns all positions that directly report to this manager',
+        operationId: 'getPositionDirectReports',
+        security: [['bearerAuth' => []]],
+        tags: ['Positions']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Position not found')]
     public function directReports($id)
     {
         $position = Position::find($id);

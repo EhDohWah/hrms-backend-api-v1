@@ -5,34 +5,33 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="AllocationChangeLog",
- *     title="Allocation Change Log",
- *     description="Allocation change log model for tracking funding allocation changes",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employee_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="employment_id", type="integer", format="int64", nullable=true, example=1),
- *     @OA\Property(property="employee_funding_allocation_id", type="integer", format="int64", nullable=true, example=1),
- *     @OA\Property(property="change_type", type="string", example="updated", enum={"created", "updated", "deleted", "transferred"}),
- *     @OA\Property(property="action_description", type="string", example="Level of effort changed from 50% to 60%"),
- *     @OA\Property(property="old_values", type="object", nullable=true),
- *     @OA\Property(property="new_values", type="object", nullable=true),
- *     @OA\Property(property="allocation_summary", type="object", nullable=true),
- *     @OA\Property(property="financial_impact", type="number", format="float", nullable=true, example=5000.00),
- *     @OA\Property(property="impact_type", type="string", nullable=true, example="increase", enum={"increase", "decrease", "neutral"}),
- *     @OA\Property(property="approval_status", type="string", example="approved", enum={"pending", "approved", "rejected"}),
- *     @OA\Property(property="reason_category", type="string", nullable=true, example="promotion"),
- *     @OA\Property(property="business_justification", type="string", nullable=true, example="Employee promoted to senior role"),
- *     @OA\Property(property="changed_by", type="string", example="john.doe"),
- *     @OA\Property(property="change_source", type="string", example="manual", enum={"manual", "system", "import", "api"}),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
+#[OA\Schema(
+    schema: 'AllocationChangeLog',
+    title: 'Allocation Change Log',
+    description: 'Allocation change log model for tracking funding allocation changes',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'employment_id', type: 'integer', format: 'int64', nullable: true, example: 1),
+        new OA\Property(property: 'employee_funding_allocation_id', type: 'integer', format: 'int64', nullable: true, example: 1),
+        new OA\Property(property: 'change_type', type: 'string', example: 'updated', enum: ['created', 'updated', 'deleted', 'transferred']),
+        new OA\Property(property: 'action_description', type: 'string', example: 'Level of effort changed from 50% to 60%'),
+        new OA\Property(property: 'old_values', type: 'object', nullable: true),
+        new OA\Property(property: 'new_values', type: 'object', nullable: true),
+        new OA\Property(property: 'allocation_summary', type: 'object', nullable: true),
+        new OA\Property(property: 'financial_impact', type: 'number', format: 'float', nullable: true, example: 5000.00),
+        new OA\Property(property: 'impact_type', type: 'string', nullable: true, example: 'increase', enum: ['increase', 'decrease', 'neutral']),
+        new OA\Property(property: 'approval_status', type: 'string', example: 'approved', enum: ['pending', 'approved', 'rejected']),
+        new OA\Property(property: 'reason_category', type: 'string', nullable: true, example: 'promotion'),
+        new OA\Property(property: 'business_justification', type: 'string', nullable: true, example: 'Employee promoted to senior role'),
+        new OA\Property(property: 'changed_by', type: 'string', example: 'john.doe'),
+        new OA\Property(property: 'change_source', type: 'string', example: 'manual', enum: ['manual', 'system', 'import', 'api']),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ]
+)]
 class AllocationChangeLog extends Model
 {
     protected $fillable = [

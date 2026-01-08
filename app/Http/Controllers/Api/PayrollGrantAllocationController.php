@@ -7,28 +7,11 @@ use App\Http\Requests\StorePayrollGrantAllocationRequest;
 use App\Http\Requests\UpdatePayrollGrantAllocationRequest;
 use App\Http\Resources\PayrollGrantAllocationResource;
 use App\Models\PayrollGrantAllocation;
+use OpenApi\Attributes as OA;
 
 class PayrollGrantAllocationController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/payroll-grant-allocations",
-     *     summary="Get all payroll grant allocations",
-     *     tags={"Payroll Grant Allocations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/PayrollGrantAllocationResource"))
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/payroll-grant-allocations', summary: 'Get all payroll grant allocations', tags: ['Payroll Grant Allocations'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function index()
     {
         $items = PayrollGrantAllocation::with('employeeGrantAllocation')->get();
@@ -39,32 +22,7 @@ class PayrollGrantAllocationController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/payroll-grant-allocations",
-     *     summary="Create a new payroll grant allocation",
-     *     tags={"Payroll Grant Allocations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/StorePayrollGrantAllocationRequest")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Created",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Allocation created."),
-     *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Post(path: '/payroll-grant-allocations', summary: 'Create a new payroll grant allocation', tags: ['Payroll Grant Allocations'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 201, description: 'Created')])]
     public function store(StorePayrollGrantAllocationRequest $request)
     {
         $data = $request->validated() + [
@@ -79,38 +37,7 @@ class PayrollGrantAllocationController extends Controller
         ], 201);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/payroll-grant-allocations/{id}",
-     *     summary="Get a specific payroll grant allocation",
-     *     tags={"Payroll Grant Allocations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Get(path: '/payroll-grant-allocations/{id}', summary: 'Get a specific payroll grant allocation', tags: ['Payroll Grant Allocations'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function show($id)
     {
         $item = PayrollGrantAllocation::with('employeeGrantAllocation')->findOrFail($id);
@@ -121,45 +48,7 @@ class PayrollGrantAllocationController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Put(
-     *     path="/payroll-grant-allocations/{id}",
-     *     summary="Update a payroll grant allocation",
-     *     tags={"Payroll Grant Allocations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/UpdatePayrollGrantAllocationRequest")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Allocation updated."),
-     *             @OA\Property(property="data", ref="#/components/schemas/PayrollGrantAllocationResource")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Put(path: '/payroll-grant-allocations/{id}', summary: 'Update a payroll grant allocation', tags: ['Payroll Grant Allocations'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function update(UpdatePayrollGrantAllocationRequest $request, $id)
     {
         $item = PayrollGrantAllocation::findOrFail($id);
@@ -174,38 +63,7 @@ class PayrollGrantAllocationController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/payroll-grant-allocations/{id}",
-     *     summary="Delete a payroll grant allocation",
-     *     tags={"Payroll Grant Allocations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Success",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Allocation deleted.")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Not Found"
-     *     )
-     * )
-     */
+    #[OA\Delete(path: '/payroll-grant-allocations/{id}', summary: 'Delete a payroll grant allocation', tags: ['Payroll Grant Allocations'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not Found')])]
     public function destroy($id)
     {
         $item = PayrollGrantAllocation::findOrFail($id);

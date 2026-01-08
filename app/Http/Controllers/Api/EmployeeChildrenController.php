@@ -7,34 +7,34 @@ use App\Models\EmployeeChild;
 use App\Models\User;
 use App\Notifications\EmployeeActionNotification;
 use Illuminate\Http\Request;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
+#[OA\Tag(name: 'Employee Children', description: 'API Endpoints for Employee Children management')]
 class EmployeeChildrenController extends Controller
 {
-    /**
-     * List all employee children
-     *
-     * @OA\Get(
-     *     path="/employee-children",
-     *     summary="Get all employee children",
-     *     tags={"Employee Children"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/EmployeeChild")),
-     *             @OA\Property(property="message", type="string", example="Employee children retrieved successfully")
-     *         )
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Get(
+        path: '/employee-children',
+        summary: 'Get all employee children',
+        tags: ['Employee Children'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Successful operation',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(
+                            property: 'data',
+                            type: 'array',
+                            items: new OA\Items(ref: '#/components/schemas/EmployeeChild')
+                        ),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee children retrieved successfully'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function index()
     {
         $employeeChildren = EmployeeChild::all();
@@ -46,55 +46,48 @@ class EmployeeChildrenController extends Controller
         ], 200);
     }
 
-    /**
-     * Create a new employee child record
-     *
-     * @OA\Post(
-     *     path="/employee-children",
-     *     summary="Create a new employee child",
-     *     tags={"Employee Children"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="date_of_birth", type="string", format="date", example="2020-01-01"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Employee child created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeChild"),
-     *             @OA\Property(property="message", type="string", example="Employee child created successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Post(
+        path: '/employee-children',
+        summary: 'Create a new employee child',
+        tags: ['Employee Children'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'date_of_birth', type: 'string', format: 'date', example: '2020-01-01'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Employee child created successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeChild'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child created successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Validation error'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -124,51 +117,44 @@ class EmployeeChildrenController extends Controller
         ], 201);
     }
 
-    /**
-     * Show a specific employee child record
-     *
-     * @OA\Get(
-     *     path="/employee-children/{id}",
-     *     summary="Get employee child by ID",
-     *     tags={"Employee Children"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee child ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeChild"),
-     *             @OA\Property(property="message", type="string", example="Employee child retrieved successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee child not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee child not found")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Get(
+        path: '/employee-children/{id}',
+        summary: 'Get employee child by ID',
+        tags: ['Employee Children'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee child ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Successful operation',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeChild'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child retrieved successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee child not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child not found'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function show($id)
     {
         $employeeChild = EmployeeChild::findOrFail($id);
@@ -180,76 +166,67 @@ class EmployeeChildrenController extends Controller
         ], 200);
     }
 
-    /**
-     * Update an existing employee child record
-     *
-     * @OA\Put(
-     *     path="/employee-children/{id}",
-     *     summary="Update an employee child",
-     *     tags={"Employee Children"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee child ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="employee_id", type="integer", example=1),
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="date_of_birth", type="string", format="date", example="2020-01-01"),
-     *             @OA\Property(property="created_by", type="string", example="admin"),
-     *             @OA\Property(property="updated_by", type="string", example="admin", nullable=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee child updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/EmployeeChild"),
-     *             @OA\Property(property="message", type="string", example="Employee child updated successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee child not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee child not found")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Validation error"),
-     *             @OA\Property(property="errors", type="object")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Put(
+        path: '/employee-children/{id}',
+        summary: 'Update an employee child',
+        tags: ['Employee Children'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee child ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'employee_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'name', type: 'string', example: 'John Doe'),
+                    new OA\Property(property: 'date_of_birth', type: 'string', format: 'date', example: '2020-01-01'),
+                    new OA\Property(property: 'created_by', type: 'string', example: 'admin'),
+                    new OA\Property(property: 'updated_by', type: 'string', example: 'admin', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Employee child updated successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'data', ref: '#/components/schemas/EmployeeChild'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child updated successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee child not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child not found'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Validation error'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function update(Request $request, $id)
     {
         $employeeChild = EmployeeChild::findOrFail($id);
@@ -281,50 +258,43 @@ class EmployeeChildrenController extends Controller
         ], 200);
     }
 
-    /**
-     * Delete an employee child record
-     *
-     * @OA\Delete(
-     *     path="/employee-children/{id}",
-     *     summary="Delete an employee child",
-     *     tags={"Employee Children"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Employee child ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Employee child deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="message", type="string", example="Employee child deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Employee child not found",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="message", type="string", example="Employee child not found")
-     *         )
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    #[OA\Delete(
+        path: '/employee-children/{id}',
+        summary: 'Delete an employee child',
+        tags: ['Employee Children'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                in: 'path',
+                required: true,
+                description: 'Employee child ID',
+                schema: new OA\Schema(type: 'integer')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Employee child deleted successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'success'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child deleted successfully'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Employee child not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'error'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Employee child not found'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function destroy($id)
     {
         $employeeChild = EmployeeChild::findOrFail($id);

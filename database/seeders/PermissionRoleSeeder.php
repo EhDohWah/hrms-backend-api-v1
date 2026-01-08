@@ -53,6 +53,7 @@ class PermissionRoleSeeder extends Seeder
                 'employees',
                 'employment_records',
                 'employee_resignation',
+                'employee_funding_allocations', // new module
                 // HRM standalone items (3)
                 'holidays',
                 'resignation',

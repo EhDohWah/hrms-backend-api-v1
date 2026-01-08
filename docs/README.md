@@ -24,7 +24,25 @@ Payroll processing, calculations, and bulk operations
 - Bulk payroll creation system
 - Payroll validation guides
 - Tax calculations and deductions
+- Budget history implementation
+- Payroll system analysis (4 comprehensive sections)
 - Demo scripts and workflows
+
+### 📡 `/realtime`
+Real-time communication, WebSockets, and Laravel Reverb
+- Quick start guide for Reverb WebSocket server
+- Real-time permission update system
+- WebSocket debugging and troubleshooting
+- Broadcast configuration guides
+- Event broadcasting documentation
+
+### 💻 `/development`
+Development guidelines, coding standards, and best practices
+- Laravel Boost guidelines
+- Coding conventions and standards
+- Laravel 11-specific patterns
+- Testing guidelines (Pest)
+- Code formatting rules (Pint)
 
 ### 🎓 `/probation`
 Probation tracking, transitions, and event-based system
@@ -158,6 +176,8 @@ General documentation, API references, and system-wide guides
 - **Database Schema**: `/database/DATABASE_RELATIONSHIPS.md`
 - **API Architecture**: `/architecture/HRMS_BACKEND_ARCHITECTURE.md`
 - **Personnel Actions**: `/personnel-actions/PERSONNEL_ACTIONS_COMPLETE_DOCUMENTATION.md`
+- **Real-Time Updates**: `/realtime/QUICK_START_REVERB.md`
+- **Development Guidelines**: `/development/CLAUDE_GUIDELINES.md`
 
 ### Getting Started
 1. Start with `/general/Introduction.md` for system overview
@@ -191,7 +211,17 @@ General documentation, API references, and system-wide guides
 ---
 
 ## 🔄 Last Updated
-November 20, 2025
+January 8, 2026
+
+### Recent Updates
+- **January 8, 2026**: 
+  - Organized all root-level markdown files into appropriate folders
+  - Created `/realtime/` folder for WebSocket and Reverb documentation
+  - Created `/development/` folder for coding guidelines
+  - Moved 4 payroll analysis files to `/payroll/`
+  - Moved 3 WebSocket/Reverb files to `/realtime/`
+  - Moved development guidelines to `/development/`
+- **November 20, 2025**: Previous updates
 
 ---
 

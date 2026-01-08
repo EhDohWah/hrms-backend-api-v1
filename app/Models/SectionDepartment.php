@@ -5,26 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="SectionDepartment",
- *     type="object",
- *     title="Section Department",
- *     description="Sub-department within a department",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="name", type="string", example="Training"),
- *     @OA\Property(property="department_id", type="integer", example=5),
- *     @OA\Property(property="description", type="string", nullable=true),
- *     @OA\Property(property="is_active", type="boolean", example=true),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time"),
- *     @OA\Property(property="deleted_at", type="string", format="date-time", nullable=true)
- * )
- */
+#[OA\Schema(
+    schema: 'SectionDepartment',
+    title: 'Section Department',
+    description: 'Sub-department within a department',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'name', type: 'string', example: 'Training'),
+        new OA\Property(property: 'department_id', type: 'integer', example: 5),
+        new OA\Property(property: 'description', type: 'string', nullable: true),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'deleted_at', type: 'string', format: 'date-time', nullable: true),
+    ]
+)]
 class SectionDepartment extends Model
 {
     use HasFactory, SoftDeletes;

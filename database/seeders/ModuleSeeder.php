@@ -133,6 +133,18 @@ class ModuleSeeder extends Seeder
                 'order' => 31,
             ],
             [
+                'name' => 'employee_funding_allocations',
+                'display_name' => 'Employee Funding Allocations',
+                'description' => 'Manage employee funding allocations',
+                'icon' => 'chart-pie',
+                'category' => 'Employee',
+                'route' => '/employee/funding-allocations',
+                'active_link' => '/employee/funding-allocations',
+                'read_permission' => 'employee_funding_allocations.read',
+                'edit_permissions' => ['employee_funding_allocations.edit'],
+                'order' => 32,
+            ],
+            [
                 'name' => 'employee_resignation',
                 'display_name' => 'Employee Resignation',
                 'description' => 'Manage employee resignations',
@@ -142,7 +154,7 @@ class ModuleSeeder extends Seeder
                 'active_link' => '/employee/employee-resignation',
                 'read_permission' => 'employee_resignation.read',
                 'edit_permissions' => ['employee_resignation.edit'],
-                'order' => 32,
+                'order' => 33,
             ],
 
             // ============================================================================
@@ -746,7 +758,7 @@ class ModuleSeeder extends Seeder
         $this->command->info('- Main Menu (1 item: Dashboard - dynamic with widgets)');
         $this->command->info('- Grants (2 items)');
         $this->command->info('- Recruitment (2 items)');
-        $this->command->info('- Employee (3 items)');
+        $this->command->info('- Employee (4 items)');
         $this->command->info('- HRM (3 standalone items: Holidays, Resignation, Termination)');
         $this->command->info('- Leaves (5 items)');
         $this->command->info('- Travel (2 items)');

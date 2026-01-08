@@ -4,80 +4,26 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="DeletedModel",
- *     type="object",
- *     title="Deleted Model",
- *     description="Model representing deleted records stored in the recycle bin",
- *
- *     @OA\Property(
- *         property="id",
- *         type="integer",
- *         description="Unique identifier for the deleted model record",
- *         example=1
- *     ),
- *     @OA\Property(
- *         property="key",
- *         type="string",
- *         maxLength=40,
- *         description="Unique key for the deleted record (used for restoration)",
- *         example="abc123def456"
- *     ),
- *     @OA\Property(
- *         property="model",
- *         type="string",
- *         description="Full class name of the original model",
- *         example="App\\Models\\Interview"
- *     ),
- *     @OA\Property(
- *         property="values",
- *         type="object",
- *         description="JSON data containing the original model's attributes",
- *         example={"id": 1, "candidate_name": "John Doe", "job_position": "Developer"}
- *     ),
- *     @OA\Property(
- *         property="created_at",
- *         type="string",
- *         format="date-time",
- *         description="Timestamp when the record was deleted",
- *         example="2023-12-01T10:30:00Z"
- *     ),
- *     @OA\Property(
- *         property="updated_at",
- *         type="string",
- *         format="date-time",
- *         description="Timestamp when the deleted record was last updated",
- *         example="2023-12-01T10:30:00Z"
- *     ),
- *     @OA\Property(
- *         property="model_type",
- *         type="string",
- *         description="Simple class name of the original model (computed attribute)",
- *         example="Interview"
- *     ),
- *     @OA\Property(
- *         property="original_id",
- *         type="integer",
- *         description="Original ID of the deleted model (computed attribute)",
- *         example=1
- *     ),
- *     @OA\Property(
- *         property="deleted_time_ago",
- *         type="string",
- *         description="Human readable time since deletion (computed attribute)",
- *         example="2 hours ago"
- *     ),
- *     @OA\Property(
- *         property="deleted_at",
- *         type="string",
- *         format="date-time",
- *         description="Alias for created_at (computed attribute)",
- *         example="2023-12-01T10:30:00Z"
- *     )
- * )
- */
+#[OA\Schema(
+    schema: 'DeletedModel',
+    type: 'object',
+    title: 'Deleted Model',
+    description: 'Model representing deleted records stored in the recycle bin',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', description: 'Unique identifier for the deleted model record', example: 1),
+        new OA\Property(property: 'key', type: 'string', maxLength: 40, description: 'Unique key for the deleted record (used for restoration)', example: 'abc123def456'),
+        new OA\Property(property: 'model', type: 'string', description: 'Full class name of the original model', example: 'App\\Models\\Interview'),
+        new OA\Property(property: 'values', type: 'object', description: 'JSON data containing the original model\'s attributes', example: ['id' => 1, 'candidate_name' => 'John Doe', 'job_position' => 'Developer']),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', description: 'Timestamp when the record was deleted', example: '2023-12-01T10:30:00Z'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', description: 'Timestamp when the deleted record was last updated', example: '2023-12-01T10:30:00Z'),
+        new OA\Property(property: 'model_type', type: 'string', description: 'Simple class name of the original model (computed attribute)', example: 'Interview'),
+        new OA\Property(property: 'original_id', type: 'integer', description: 'Original ID of the deleted model (computed attribute)', example: 1),
+        new OA\Property(property: 'deleted_time_ago', type: 'string', description: 'Human readable time since deletion (computed attribute)', example: '2 hours ago'),
+        new OA\Property(property: 'deleted_at', type: 'string', format: 'date-time', description: 'Alias for created_at (computed attribute)', example: '2023-12-01T10:30:00Z'),
+    ]
+)]
 class DeletedModel extends Model
 {
     protected $table = 'deleted_models';

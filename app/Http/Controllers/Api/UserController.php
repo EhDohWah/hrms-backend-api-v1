@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use OpenApi\Attributes as OA;
 
 /**
  * UserController - Handles authenticated user's own profile operations.
@@ -23,59 +24,32 @@ use Illuminate\Validation\Rule;
  * - Get current user's module permissions
  *
  * Note: Admin operations (managing OTHER users) are in AdminController.
- *
- * @OA\Tag(
- *     name="Users",
- *     description="API Endpoints for authenticated user profile management"
- * )
  */
 class UserController extends Controller
 {
     /**
      * Update user profile picture.
-     *
-     * @OA\Post(
-     *     path="/user/profile-picture",
-     *     summary="Update user profile picture",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *
-     *             @OA\Schema(
-     *                 required={"profile_picture"},
-     *
-     *                 @OA\Property(
-     *                     property="profile_picture",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Profile picture file"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Profile picture updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Profile picture updated successfully"),
-     *             @OA\Property(property="profile_picture", type="string", example="profile_pictures/image.jpg")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/user/profile-picture',
+        summary: 'Update user profile picture',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: 'multipart/form-data',
+            schema: new OA\Schema(
+                required: ['profile_picture'],
+                properties: [
+                    new OA\Property(property: 'profile_picture', type: 'string', format: 'binary', description: 'Profile picture file'),
+                ]
+            )
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Profile picture updated successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function updateProfilePicture(Request $request)
     {
         $request->validate([
@@ -108,40 +82,24 @@ class UserController extends Controller
 
     /**
      * Update user name.
-     *
-     * @OA\Post(
-     *     path="/user/username",
-     *     summary="Update user name",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"name"},
-     *
-     *             @OA\Property(property="name", type="string", example="John Doe")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Username updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Username updated successfully"),
-     *             @OA\Property(property="name", type="string", example="John Doe")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/user/username',
+        summary: 'Update user name',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'John Doe'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Username updated successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function updateUsername(Request $request)
     {
         $request->validate([
@@ -168,40 +126,24 @@ class UserController extends Controller
 
     /**
      * Update user email.
-     *
-     * @OA\Post(
-     *     path="/user/email",
-     *     summary="Update user email",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"email"},
-     *
-     *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Email updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Email updated successfully"),
-     *             @OA\Property(property="email", type="string", example="john@example.com")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/user/email',
+        summary: 'Update user email',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email'],
+            properties: [
+                new OA\Property(property: 'email', type: 'string', format: 'email', example: 'john@example.com'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Email updated successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function updateEmail(Request $request)
     {
         $user = Auth::user();
@@ -233,45 +175,27 @@ class UserController extends Controller
 
     /**
      * Update user password.
-     *
-     * @OA\Post(
-     *     path="/user/password",
-     *     summary="Update user password",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"current_password", "new_password", "confirm_password"},
-     *
-     *             @OA\Property(property="current_password", type="string", format="password", example="current123"),
-     *             @OA\Property(property="new_password", type="string", format="password", example="new123"),
-     *             @OA\Property(property="confirm_password", type="string", format="password", example="new123")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Password updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="message", type="string", example="Password updated successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=400,
-     *         description="Current password is incorrect"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
      */
+    #[OA\Post(
+        path: '/user/password',
+        summary: 'Update user password',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['current_password', 'new_password', 'confirm_password'],
+            properties: [
+                new OA\Property(property: 'current_password', type: 'string', format: 'password', example: 'current123'),
+                new OA\Property(property: 'new_password', type: 'string', format: 'password', example: 'new123'),
+                new OA\Property(property: 'confirm_password', type: 'string', format: 'password', example: 'new123'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Password updated successfully')]
+    #[OA\Response(response: 400, description: 'Current password is incorrect')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function updatePassword(Request $request)
     {
         $request->validate([
@@ -311,91 +235,17 @@ class UserController extends Controller
 
     /**
      * Get the authenticated user with roles and permissions.
-     *
-     * @OA\Get(
-     *     path="/user/user",
-     *     summary="Get authenticated user details",
-     *     description="Returns the authenticated user's basic details along with their roles and permissions.",
-     *     operationId="getUser",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="User details retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *             required={"id", "name", "email", "roles", "permissions"},
-     *
-     *             @OA\Property(
-     *                 property="id",
-     *                 type="integer",
-     *                 example=1,
-     *                 description="Unique identifier for the user"
-     *             ),
-     *             @OA\Property(
-     *                 property="name",
-     *                 type="string",
-     *                 example="John Doe",
-     *                 description="Full name of the user"
-     *             ),
-     *             @OA\Property(
-     *                 property="email",
-     *                 type="string",
-     *                 format="email",
-     *                 example="john@example.com",
-     *                 description="Email address of the user"
-     *             ),
-     *             @OA\Property(
-     *                 property="last_login_at",
-     *                 type="string",
-     *                 format="date-time",
-     *                 nullable=true,
-     *                 description="The date and time when the user last logged in"
-     *             ),
-     *             @OA\Property(
-     *                 property="roles",
-     *                 type="array",
-     *                 description="List of roles assigned to the user",
-     *
-     *                 @OA\Items(
-     *                     type="string",
-     *                     example="Admin",
-     *                     description="A role name"
-     *                 )
-     *             ),
-     *
-     *             @OA\Property(
-     *                 property="permissions",
-     *                 type="array",
-     *                 description="List of permissions granted to the user",
-     *
-     *                 @OA\Items(
-     *                     type="string",
-     *                     example="user.read",
-     *                     description="A permission identifier"
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated - The request does not have valid authentication credentials",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(
-     *                 property="message",
-     *                 type="string",
-     *                 example="Unauthenticated"
-     *             )
-     *         )
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/user/user',
+        summary: 'Get authenticated user details',
+        description: "Returns the authenticated user's basic details along with their roles and permissions.",
+        operationId: 'getUser',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\Response(response: 200, description: 'User details retrieved successfully')]
+    #[OA\Response(response: 401, description: 'Unauthenticated')]
     public function getUser(Request $request)
     {
         $user = $request->user();
@@ -409,41 +259,17 @@ class UserController extends Controller
      *
      * Returns permissions organized by module with read and edit flags.
      * Only includes modules the user has access to.
-     *
-     * @OA\Get(
-     *     path="/api/v1/me/permissions",
-     *     summary="Get current user's module permissions",
-     *     description="Retrieve current user's permissions organized by module with Read/Edit flags",
-     *     operationId="getMyPermissions",
-     *     tags={"Users"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Permissions retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="user_management", type="object",
-     *                     @OA\Property(property="read", type="boolean", example=true),
-     *                     @OA\Property(property="edit", type="boolean", example=true),
-     *                     @OA\Property(property="display_name", type="string", example="User Management"),
-     *                     @OA\Property(property="category", type="string", example="Administration"),
-     *                     @OA\Property(property="icon", type="string", example="users"),
-     *                     @OA\Property(property="route", type="string", example="/user-management/users")
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/api/v1/me/permissions',
+        summary: "Get current user's module permissions",
+        description: "Retrieve current user's permissions organized by module with Read/Edit flags",
+        operationId: 'getMyPermissions',
+        security: [['bearerAuth' => []]],
+        tags: ['Users']
+    )]
+    #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
+    #[OA\Response(response: 401, description: 'Unauthenticated')]
     public function getMyPermissions(Request $request): JsonResponse
     {
         $user = $request->user();

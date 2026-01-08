@@ -3,22 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="Lookup",
- *     title="Lookup",
- *     description="Lookup model for various system reference data",
- *
- *     @OA\Property(property="id", type="integer", format="int64", description="Lookup ID"),
- *     @OA\Property(property="type", type="string", description="Type of lookup (gender, organization, etc.)"),
- *     @OA\Property(property="value", type="string", description="Display value"),
- *     @OA\Property(property="created_by", type="string", nullable=true, description="User who created the record"),
- *     @OA\Property(property="updated_by", type="string", nullable=true, description="User who last updated the record"),
- *     @OA\Property(property="created_at", type="string", format="date-time", description="Creation timestamp"),
- *     @OA\Property(property="updated_at", type="string", format="date-time", description="Last update timestamp")
- * )
- */
+#[OA\Schema(
+    schema: 'Lookup',
+    title: 'Lookup',
+    description: 'Lookup model for various system reference data',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', description: 'Lookup ID'),
+        new OA\Property(property: 'type', type: 'string', description: 'Type of lookup (gender, organization, etc.)'),
+        new OA\Property(property: 'value', type: 'string', description: 'Display value'),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true, description: 'User who created the record'),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true, description: 'User who last updated the record'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', description: 'Creation timestamp'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', description: 'Last update timestamp'),
+    ]
+)]
 class Lookup extends Model
 {
     /**

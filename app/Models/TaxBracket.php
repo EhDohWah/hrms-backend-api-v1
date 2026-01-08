@@ -5,31 +5,29 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="TaxBracket",
- *     type="object",
- *     title="Tax Bracket",
- *     description="Progressive income tax bracket configuration",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="min_income", type="number", format="float", example=150001, description="Minimum income for this bracket"),
- *     @OA\Property(property="max_income", type="number", format="float", example=300000, description="Maximum income for this bracket (null for highest bracket)"),
- *     @OA\Property(property="tax_rate", type="number", format="float", example=5.00, description="Tax rate as percentage"),
- *     @OA\Property(property="bracket_order", type="integer", example=2, description="Order of bracket in progression"),
- *     @OA\Property(property="effective_year", type="integer", example=2025, description="Year this bracket is effective"),
- *     @OA\Property(property="is_active", type="boolean", example=true, description="Whether bracket is currently active"),
- *     @OA\Property(property="description", type="string", example="5% tax bracket - Income ฿150,001 to ฿300,000"),
- *     @OA\Property(property="created_by", type="string", example="admin@example.com"),
- *     @OA\Property(property="updated_by", type="string", example="admin@example.com"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time"),
- *     @OA\Property(property="income_range", type="string", example="฿150,001 - ฿300,000", description="Formatted income range"),
- *     @OA\Property(property="formatted_rate", type="string", example="5%", description="Formatted tax rate")
- * )
- */
+#[OA\Schema(
+    schema: 'TaxBracket',
+    title: 'Tax Bracket',
+    description: 'Progressive income tax bracket configuration',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'min_income', type: 'number', format: 'float', example: 150001, description: 'Minimum income for this bracket'),
+        new OA\Property(property: 'max_income', type: 'number', format: 'float', example: 300000, description: 'Maximum income for this bracket (null for highest bracket)'),
+        new OA\Property(property: 'tax_rate', type: 'number', format: 'float', example: 5.00, description: 'Tax rate as percentage'),
+        new OA\Property(property: 'bracket_order', type: 'integer', example: 2, description: 'Order of bracket in progression'),
+        new OA\Property(property: 'effective_year', type: 'integer', example: 2025, description: 'Year this bracket is effective'),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true, description: 'Whether bracket is currently active'),
+        new OA\Property(property: 'description', type: 'string', example: '5% tax bracket - Income ฿150,001 to ฿300,000'),
+        new OA\Property(property: 'created_by', type: 'string', example: 'admin@example.com'),
+        new OA\Property(property: 'updated_by', type: 'string', example: 'admin@example.com'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'income_range', type: 'string', example: '฿150,001 - ฿300,000', description: 'Formatted income range'),
+        new OA\Property(property: 'formatted_rate', type: 'string', example: '5%', description: 'Formatted tax rate'),
+    ]
+)]
 class TaxBracket extends Model
 {
     use HasFactory;

@@ -8,47 +8,40 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="LeaveRequest",
- *     type="object",
- *     description="Leave request with support for multiple leave types",
- *
- *     @OA\Property(property="id", type="integer", example=1),
- *     @OA\Property(property="employee_id", type="integer", example=123),
- *     @OA\Property(property="start_date", type="string", format="date", example="2025-01-15"),
- *     @OA\Property(property="end_date", type="string", format="date", example="2025-01-17"),
- *     @OA\Property(property="total_days", type="number", example=3.5, description="Sum of all item days"),
- *     @OA\Property(property="reason", type="string", example="Family emergency and medical checkup"),
- *     @OA\Property(property="status", type="string", example="approved", enum={"pending", "approved", "declined", "cancelled"}),
- *     @OA\Property(property="supervisor_approved", type="boolean", default=false, example=true),
- *     @OA\Property(property="supervisor_approved_date", type="string", format="date", nullable=true, example="2025-01-10"),
- *     @OA\Property(property="hr_site_admin_approved", type="boolean", default=false, example=true),
- *     @OA\Property(property="hr_site_admin_approved_date", type="string", format="date", nullable=true, example="2025-01-12"),
- *     @OA\Property(property="attachment_notes", type="string", nullable=true, example="Medical certificate attached"),
- *     @OA\Property(property="created_by", type="string", nullable=true, example="System"),
- *     @OA\Property(property="updated_by", type="string", nullable=true, example="John Doe"),
- *     @OA\Property(
- *         property="items",
- *         type="array",
- *         description="Leave type items with individual days allocation",
- *
- *         @OA\Items(ref="#/components/schemas/LeaveRequestItem")
- *     ),
- *
- *     @OA\Property(
- *         property="employee",
- *         type="object",
- *         description="Employee information",
- *         @OA\Property(property="id", type="integer", example=123),
- *         @OA\Property(property="staff_id", type="string", example="EMP001"),
- *         @OA\Property(property="first_name_en", type="string", example="John"),
- *         @OA\Property(property="last_name_en", type="string", example="Doe")
- *     )
- * )
- */
+#[OA\Schema(
+    schema: 'LeaveRequest',
+    description: 'Leave request with support for multiple leave types',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', example: 123),
+        new OA\Property(property: 'start_date', type: 'string', format: 'date', example: '2025-01-15'),
+        new OA\Property(property: 'end_date', type: 'string', format: 'date', example: '2025-01-17'),
+        new OA\Property(property: 'total_days', type: 'number', example: 3.5, description: 'Sum of all item days'),
+        new OA\Property(property: 'reason', type: 'string', example: 'Family emergency and medical checkup'),
+        new OA\Property(property: 'status', type: 'string', example: 'approved', enum: ['pending', 'approved', 'declined', 'cancelled']),
+        new OA\Property(property: 'supervisor_approved', type: 'boolean', default: false, example: true),
+        new OA\Property(property: 'supervisor_approved_date', type: 'string', format: 'date', nullable: true, example: '2025-01-10'),
+        new OA\Property(property: 'hr_site_admin_approved', type: 'boolean', default: false, example: true),
+        new OA\Property(property: 'hr_site_admin_approved_date', type: 'string', format: 'date', nullable: true, example: '2025-01-12'),
+        new OA\Property(property: 'attachment_notes', type: 'string', nullable: true, example: 'Medical certificate attached'),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true, example: 'System'),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true, example: 'John Doe'),
+        new OA\Property(property: 'items', type: 'array', description: 'Leave type items with individual days allocation', items: new OA\Items(ref: '#/components/schemas/LeaveRequestItem')),
+        new OA\Property(
+            property: 'employee',
+            type: 'object',
+            description: 'Employee information',
+            properties: [
+                new OA\Property(property: 'id', type: 'integer', example: 123),
+                new OA\Property(property: 'staff_id', type: 'string', example: 'EMP001'),
+                new OA\Property(property: 'first_name_en', type: 'string', example: 'John'),
+                new OA\Property(property: 'last_name_en', type: 'string', example: 'Doe'),
+            ]
+        ),
+    ]
+)]
 class LeaveRequest extends Model
 {
     use HasFactory;

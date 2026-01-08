@@ -5,32 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="ProbationRecord",
- *     required={"employment_id", "employee_id", "event_type", "event_date", "probation_start_date", "probation_end_date"},
- *
- *     @OA\Property(property="id", type="integer", format="int64", readOnly=true),
- *     @OA\Property(property="employment_id", type="integer", format="int64"),
- *     @OA\Property(property="employee_id", type="integer", format="int64"),
- *     @OA\Property(property="event_type", type="string", enum={"initial", "extension", "passed", "failed"}),
- *     @OA\Property(property="event_date", type="string", format="date"),
- *     @OA\Property(property="decision_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="probation_start_date", type="string", format="date"),
- *     @OA\Property(property="probation_end_date", type="string", format="date"),
- *     @OA\Property(property="previous_end_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="extension_number", type="integer", default=0),
- *     @OA\Property(property="decision_reason", type="string", nullable=true),
- *     @OA\Property(property="evaluation_notes", type="string", nullable=true),
- *     @OA\Property(property="approved_by", type="string", nullable=true),
- *     @OA\Property(property="is_active", type="boolean", default=true),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", readOnly=true),
- *     @OA\Property(property="updated_at", type="string", format="date-time", readOnly=true)
- * )
- */
+#[OA\Schema(
+    schema: 'ProbationRecord',
+    required: ['employment_id', 'employee_id', 'event_type', 'event_date', 'probation_start_date', 'probation_end_date'],
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true),
+        new OA\Property(property: 'employment_id', type: 'integer', format: 'int64'),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64'),
+        new OA\Property(property: 'event_type', type: 'string', enum: ['initial', 'extension', 'passed', 'failed']),
+        new OA\Property(property: 'event_date', type: 'string', format: 'date'),
+        new OA\Property(property: 'decision_date', type: 'string', format: 'date', nullable: true),
+        new OA\Property(property: 'probation_start_date', type: 'string', format: 'date'),
+        new OA\Property(property: 'probation_end_date', type: 'string', format: 'date'),
+        new OA\Property(property: 'previous_end_date', type: 'string', format: 'date', nullable: true),
+        new OA\Property(property: 'extension_number', type: 'integer', default: 0),
+        new OA\Property(property: 'decision_reason', type: 'string', nullable: true),
+        new OA\Property(property: 'evaluation_notes', type: 'string', nullable: true),
+        new OA\Property(property: 'approved_by', type: 'string', nullable: true),
+        new OA\Property(property: 'is_active', type: 'boolean', default: true),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', readOnly: true),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', readOnly: true),
+    ]
+)]
 class ProbationRecord extends Model
 {
     use HasFactory;

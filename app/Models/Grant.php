@@ -6,33 +6,27 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="Grant",
- *     title="Grant",
- *     description="Grant model",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="name", type="string", example="Research Grant 2023"),
- *     @OA\Property(property="code", type="string", example="RG-2023-001"),
- *     @OA\Property(property="organization", type="string", example="Main Campus"),
- *     @OA\Property(property="description", type="string", nullable=true, example="Funding for research activities"),
- *     @OA\Property(property="end_date", type="string", format="date", nullable=true, example="2023-12-31"),
- *     @OA\Property(property="status", type="string", example="Active", enum={"Active", "Expired", "Ending Soon"}),
- *     @OA\Property(property="created_by", type="string", nullable=true, example="admin"),
- *     @OA\Property(property="updated_by", type="string", nullable=true, example="admin"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time"),
- *     @OA\Property(
- *         property="grant_items",
- *         type="array",
- *
- *         @OA\Items(ref="#/components/schemas/GrantItem")
- *     )
- * )
- */
+#[OA\Schema(
+    schema: 'Grant',
+    title: 'Grant',
+    description: 'Grant model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'name', type: 'string', example: 'Research Grant 2023'),
+        new OA\Property(property: 'code', type: 'string', example: 'RG-2023-001'),
+        new OA\Property(property: 'organization', type: 'string', example: 'Main Campus'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, example: 'Funding for research activities'),
+        new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true, example: '2023-12-31'),
+        new OA\Property(property: 'status', type: 'string', example: 'Active', enum: ['Active', 'Expired', 'Ending Soon']),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true, example: 'admin'),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true, example: 'admin'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'grant_items', type: 'array', items: new OA\Items(ref: '#/components/schemas/GrantItem')),
+    ]
+)]
 class Grant extends Model
 {
     use HasFactory;

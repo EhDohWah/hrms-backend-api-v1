@@ -4,42 +4,41 @@ namespace App\Models;
 
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="Payroll",
- *     type="object",
- *
- *     @OA\Property(property="id", type="integer", format="int64"),
- *     @OA\Property(property="employment_id", type="integer", format="int64"),
- *     @OA\Property(property="employee_funding_allocation_id", type="integer", format="int64"),
- *     @OA\Property(property="pay_period_date", type="string", format="date"),
- *     @OA\Property(property="gross_salary", type="number", format="float"),
- *     @OA\Property(property="gross_salary_by_FTE", type="number", format="float"),
- *     @OA\Property(property="compensation_refund", type="number", format="float"),
- *     @OA\Property(property="thirteen_month_salary", type="number", format="float"),
- *     @OA\Property(property="thirteen_month_salary_accured", type="number", format="float"),
- *     @OA\Property(property="pvd", type="number", format="float"),
- *     @OA\Property(property="saving_fund", type="number", format="float"),
- *     @OA\Property(property="employer_social_security", type="number", format="float"),
- *     @OA\Property(property="employee_social_security", type="number", format="float"),
- *     @OA\Property(property="employer_health_welfare", type="number", format="float"),
- *     @OA\Property(property="employee_health_welfare", type="number", format="float"),
- *     @OA\Property(property="tax", type="number", format="float"),
- *     @OA\Property(property="net_salary", type="number", format="float"),
- *     @OA\Property(property="total_salary", type="number", format="float"),
- *     @OA\Property(property="total_pvd", type="number", format="float"),
- *     @OA\Property(property="total_saving_fund", type="number", format="float"),
- *     @OA\Property(property="salary_bonus", type="number", format="float"),
- *     @OA\Property(property="total_income", type="number", format="float"),
- *     @OA\Property(property="employer_contribution", type="number", format="float"),
- *     @OA\Property(property="total_deduction", type="number", format="float"),
- *     @OA\Property(property="notes", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time", nullable=true),
- *     @OA\Property(property="updated_at", type="string", format="date-time", nullable=true)
- * )
- */
+#[OA\Schema(
+    schema: 'Payroll',
+    type: 'object',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64'),
+        new OA\Property(property: 'employment_id', type: 'integer', format: 'int64'),
+        new OA\Property(property: 'employee_funding_allocation_id', type: 'integer', format: 'int64'),
+        new OA\Property(property: 'pay_period_date', type: 'string', format: 'date'),
+        new OA\Property(property: 'gross_salary', type: 'number', format: 'float'),
+        new OA\Property(property: 'gross_salary_by_FTE', type: 'number', format: 'float'),
+        new OA\Property(property: 'compensation_refund', type: 'number', format: 'float'),
+        new OA\Property(property: 'thirteen_month_salary', type: 'number', format: 'float'),
+        new OA\Property(property: 'thirteen_month_salary_accured', type: 'number', format: 'float'),
+        new OA\Property(property: 'pvd', type: 'number', format: 'float'),
+        new OA\Property(property: 'saving_fund', type: 'number', format: 'float'),
+        new OA\Property(property: 'employer_social_security', type: 'number', format: 'float'),
+        new OA\Property(property: 'employee_social_security', type: 'number', format: 'float'),
+        new OA\Property(property: 'employer_health_welfare', type: 'number', format: 'float'),
+        new OA\Property(property: 'employee_health_welfare', type: 'number', format: 'float'),
+        new OA\Property(property: 'tax', type: 'number', format: 'float'),
+        new OA\Property(property: 'net_salary', type: 'number', format: 'float'),
+        new OA\Property(property: 'total_salary', type: 'number', format: 'float'),
+        new OA\Property(property: 'total_pvd', type: 'number', format: 'float'),
+        new OA\Property(property: 'total_saving_fund', type: 'number', format: 'float'),
+        new OA\Property(property: 'salary_bonus', type: 'number', format: 'float'),
+        new OA\Property(property: 'total_income', type: 'number', format: 'float'),
+        new OA\Property(property: 'employer_contribution', type: 'number', format: 'float'),
+        new OA\Property(property: 'total_deduction', type: 'number', format: 'float'),
+        new OA\Property(property: 'notes', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', nullable: true),
+    ]
+)]
 class Payroll extends Model
 {
     use LogsActivity;

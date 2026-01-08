@@ -6,35 +6,33 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
 
-/**
- * @OA\Schema(
- *     schema="Interview",
- *     type="object",
- *     required={"candidate_name", "job_position"},
- *
- *     @OA\Property(property="id", type="integer", readOnly=true),
- *     @OA\Property(property="candidate_name", type="string", maxLength=255),
- *     @OA\Property(property="phone", type="string", maxLength=10, nullable=true),
- *     @OA\Property(property="job_position", type="string", maxLength=255),
- *     @OA\Property(property="interviewer_name", type="string", nullable=true),
- *     @OA\Property(property="interview_date", type="string", format="date", nullable=true),
- *     @OA\Property(property="start_time", type="string", format="time", nullable=true),
- *     @OA\Property(property="end_time", type="string", format="time", nullable=true),
- *     @OA\Property(property="interview_mode", type="string", nullable=true),
- *     @OA\Property(property="interview_status", type="string", nullable=true),
- *     @OA\Property(property="hired_status", type="string", nullable=true),
- *     @OA\Property(property="score", type="number", format="decimal", nullable=true),
- *     @OA\Property(property="feedback", type="string", nullable=true),
- *     @OA\Property(property="reference_info", type="string", nullable=true),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
+#[OA\Schema(
+    schema: 'Interview',
+    required: ['candidate_name', 'job_position'],
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', readOnly: true),
+        new OA\Property(property: 'candidate_name', type: 'string', maxLength: 255),
+        new OA\Property(property: 'phone', type: 'string', maxLength: 10, nullable: true),
+        new OA\Property(property: 'job_position', type: 'string', maxLength: 255),
+        new OA\Property(property: 'interviewer_name', type: 'string', nullable: true),
+        new OA\Property(property: 'interview_date', type: 'string', format: 'date', nullable: true),
+        new OA\Property(property: 'start_time', type: 'string', format: 'time', nullable: true),
+        new OA\Property(property: 'end_time', type: 'string', format: 'time', nullable: true),
+        new OA\Property(property: 'interview_mode', type: 'string', nullable: true),
+        new OA\Property(property: 'interview_status', type: 'string', nullable: true),
+        new OA\Property(property: 'hired_status', type: 'string', nullable: true),
+        new OA\Property(property: 'score', type: 'number', format: 'decimal', nullable: true),
+        new OA\Property(property: 'feedback', type: 'string', nullable: true),
+        new OA\Property(property: 'reference_info', type: 'string', nullable: true),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ]
+)]
 class Interview extends Model
 {
     use HasFactory, KeepsDeletedModels;

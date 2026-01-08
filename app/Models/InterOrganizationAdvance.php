@@ -3,29 +3,28 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="InterOrganizationAdvance",
- *     title="Inter Organization Advance",
- *     description="Inter Organization Advance model",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="payroll_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="from_organization", type="string", maxLength=5, example="ORG1"),
- *     @OA\Property(property="to_organization", type="string", maxLength=5, example="ORG2"),
- *     @OA\Property(property="via_grant_id", type="integer", format="int64", example=1),
- *     @OA\Property(property="amount", type="number", format="float", example=10000.00),
- *     @OA\Property(property="advance_date", type="string", format="date", example="2023-01-15"),
- *     @OA\Property(property="notes", type="string", maxLength=255, nullable=true, example="Advance for project expenses"),
- *     @OA\Property(property="settlement_date", type="string", format="date", nullable=true, example="2023-06-15"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time"),
- *     @OA\Property(property="created_by", type="string", maxLength=100, nullable=true, example="admin"),
- *     @OA\Property(property="updated_by", type="string", maxLength=100, nullable=true, example="admin")
- * )
- */
+#[OA\Schema(
+    schema: 'InterOrganizationAdvance',
+    title: 'Inter Organization Advance',
+    description: 'Inter Organization Advance model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'payroll_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'from_organization', type: 'string', maxLength: 5, example: 'ORG1'),
+        new OA\Property(property: 'to_organization', type: 'string', maxLength: 5, example: 'ORG2'),
+        new OA\Property(property: 'via_grant_id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'amount', type: 'number', format: 'float', example: 10000.00),
+        new OA\Property(property: 'advance_date', type: 'string', format: 'date', example: '2023-01-15'),
+        new OA\Property(property: 'notes', type: 'string', maxLength: 255, nullable: true, example: 'Advance for project expenses'),
+        new OA\Property(property: 'settlement_date', type: 'string', format: 'date', nullable: true, example: '2023-06-15'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'created_by', type: 'string', maxLength: 100, nullable: true, example: 'admin'),
+        new OA\Property(property: 'updated_by', type: 'string', maxLength: 100, nullable: true, example: 'admin'),
+    ]
+)]
 class InterOrganizationAdvance extends Model
 {
     protected $fillable = [

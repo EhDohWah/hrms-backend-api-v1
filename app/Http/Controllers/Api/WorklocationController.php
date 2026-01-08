@@ -7,42 +7,24 @@ use App\Models\Site;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Work Locations",
- *     description="API Endpoints for managing work locations"
- * )
- */
+#[OA\Tag(name: 'Work Locations', description: 'API Endpoints for managing work locations')]
 class WorklocationController extends Controller
 {
     /**
-     * @OA\Get(
-     *     path="/worklocations",
-     *     summary="Get all work locations",
-     *     description="Returns a list of all work locations",
-     *     operationId="getWorkLocations",
-     *     tags={"Work Locations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Site"))
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated",
-     *     )
-     * )
+     * Get all work locations
      */
+    #[OA\Get(
+        path: '/worklocations',
+        summary: 'Get all work locations',
+        description: 'Returns a list of all work locations',
+        operationId: 'getWorkLocations',
+        security: [['bearerAuth' => []]],
+        tags: ['Work Locations']
+    )]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 401, description: 'Unauthenticated')]
     public function index()
     {
         $worklocations = Site::all();
@@ -54,44 +36,28 @@ class WorklocationController extends Controller
     }
 
     /**
-     * @OA\Post(
-     *     path="/worklocations",
-     *     summary="Create a new work location",
-     *     description="Creates a new work location record",
-     *     operationId="storeWorkLocation",
-     *     tags={"Work Locations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"name", "type"},
-     *
-     *             @OA\Property(property="name", type="string", example="MKT"),
-     *             @OA\Property(property="type", type="string", example="Site")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Work location created successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Site"),
-     *             @OA\Property(property="message", type="string", example="Work location created successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     )
-     * )
+     * Create a new work location
      */
+    #[OA\Post(
+        path: '/worklocations',
+        summary: 'Create a new work location',
+        description: 'Creates a new work location record',
+        operationId: 'storeWorkLocation',
+        security: [['bearerAuth' => []]],
+        tags: ['Work Locations']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'type'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string'),
+                new OA\Property(property: 'type', type: 'string'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Work location created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -121,41 +87,19 @@ class WorklocationController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *     path="/worklocations/{id}",
-     *     summary="Get a specific work location",
-     *     description="Returns a specific work location by ID",
-     *     operationId="getWorkLocation",
-     *     tags={"Work Locations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the work location",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Site")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Work location not found"
-     *     )
-     * )
+     * Get a specific work location
      */
+    #[OA\Get(
+        path: '/worklocations/{id}',
+        summary: 'Get a specific work location',
+        description: 'Returns a specific work location by ID',
+        operationId: 'getWorkLocation',
+        security: [['bearerAuth' => []]],
+        tags: ['Work Locations']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Work location not found')]
     public function show($id)
     {
         $worklocation = Site::find($id);
@@ -174,52 +118,28 @@ class WorklocationController extends Controller
     }
 
     /**
-     * @OA\Put(
-     *     path="/worklocations/{id}",
-     *     summary="Update a work location",
-     *     description="Updates an existing work location",
-     *     operationId="updateWorkLocation",
-     *     tags={"Work Locations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the work location",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="name", type="string", example="WPA"),
-     *             @OA\Property(property="type", type="string", example="Site")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Work location updated successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="data", ref="#/components/schemas/Site"),
-     *             @OA\Property(property="message", type="string", example="Work location updated successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Work location not found"
-     *     )
-     * )
+     * Update a work location
      */
+    #[OA\Put(
+        path: '/worklocations/{id}',
+        summary: 'Update a work location',
+        description: 'Updates an existing work location',
+        operationId: 'updateWorkLocation',
+        security: [['bearerAuth' => []]],
+        tags: ['Work Locations']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'name', type: 'string'),
+                new OA\Property(property: 'type', type: 'string'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Work location updated successfully')]
+    #[OA\Response(response: 404, description: 'Work location not found')]
     public function update(Request $request, $id)
     {
         $worklocation = Site::find($id);
@@ -257,41 +177,19 @@ class WorklocationController extends Controller
     }
 
     /**
-     * @OA\Delete(
-     *     path="/worklocations/{id}",
-     *     summary="Delete a work location",
-     *     description="Deletes a work location",
-     *     operationId="deleteWorkLocation",
-     *     tags={"Work Locations"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="ID of the work location",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Work location deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(property="message", type="string", example="Work location deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Work location not found"
-     *     )
-     * )
+     * Delete a work location
      */
+    #[OA\Delete(
+        path: '/worklocations/{id}',
+        summary: 'Delete a work location',
+        description: 'Deletes a work location',
+        operationId: 'deleteWorkLocation',
+        security: [['bearerAuth' => []]],
+        tags: ['Work Locations']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Work location deleted successfully')]
+    #[OA\Response(response: 404, description: 'Work location not found')]
     public function destroy($id)
     {
         $worklocation = Site::find($id);

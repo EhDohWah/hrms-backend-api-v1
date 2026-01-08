@@ -5,49 +5,23 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Lookup;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Lookups",
- *     description="API Endpoints for system lookup values"
- * )
- */
 class LookupController extends Controller
 {
     /**
      * Get all lookups organized by category
-     *
-     * @OA\Get(
-     *     path="/lookups/lists",
-     *     summary="Get all lookup values organized by category",
-     *     description="Returns all system lookup values grouped by their respective categories",
-     *     operationId="getLookupLists",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *             description="Object containing lookup values grouped by type",
-     *             additionalProperties=true,
-     *             example={
-     *                 "gender": {{"id": 1, "type": "gender", "value": "Male"}, {"id": 2, "type": "gender", "value": "Female"}},
-     *                 "nationality": {{"id": 3, "type": "nationality", "value": "Thai"}, {"id": 4, "type": "nationality", "value": "American"}}
-     *             }
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups/lists',
+        summary: 'Get all lookup values organized by category',
+        description: 'Returns all system lookup values grouped by their respective categories',
+        operationId: 'getLookupLists',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function getLookupLists()
     {
         try {
@@ -65,112 +39,21 @@ class LookupController extends Controller
 
     /**
      * Get all lookups with pagination and filtering
-     *
-     * @OA\Get(
-     *     path="/lookups",
-     *     summary="Get lookup values with pagination and filtering",
-     *     description="Returns lookup values with pagination, filtering by type, and search capabilities",
-     *     operationId="getLookups",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1, maximum=100)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_type",
-     *         in="query",
-     *         description="Filter by lookup type",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search in lookup values",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"type", "value", "created_at", "updated_at"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="grouped",
-     *         in="query",
-     *         description="Return data grouped by type (legacy mode)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Lookups retrieved successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Lookup")),
-     *             @OA\Property(property="pagination", type="object",
-     *                 @OA\Property(property="current_page", type="integer"),
-     *                 @OA\Property(property="per_page", type="integer"),
-     *                 @OA\Property(property="total", type="integer"),
-     *                 @OA\Property(property="last_page", type="integer"),
-     *                 @OA\Property(property="from", type="integer"),
-     *                 @OA\Property(property="to", type="integer"),
-     *                 @OA\Property(property="has_more_pages", type="boolean")
-     *             ),
-     *             @OA\Property(property="filters", type="object",
-     *                 @OA\Property(property="applied_filters", type="object"),
-     *                 @OA\Property(property="available_types", type="array", @OA\Items(type="string"))
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups',
+        summary: 'Get lookup values with pagination and filtering',
+        description: 'Returns lookup values with pagination, filtering by type, and search capabilities',
+        operationId: 'getLookups',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'filter_type', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function index(Request $request)
     {
         try {
@@ -264,50 +147,28 @@ class LookupController extends Controller
 
     /**
      * Store a new lookup value
-     *
-     * @OA\Post(
-     *     path="/lookups",
-     *     summary="Create a new lookup value",
-     *     description="Stores a new lookup value in the system",
-     *     operationId="storeLookup",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"type", "value"},
-     *
-     *             @OA\Property(property="type", type="string", example="gender", description="Lookup type"),
-     *             @OA\Property(property="value", type="string", example="Non-binary", description="Display value")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Lookup created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Lookup created successfully"),
-     *             @OA\Property(property="data", type="object", ref="#/components/schemas/Lookup")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Post(
+        path: '/lookups',
+        summary: 'Create a new lookup value',
+        description: 'Stores a new lookup value in the system',
+        operationId: 'storeLookup',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['type', 'value'],
+            properties: [
+                new OA\Property(property: 'type', type: 'string', example: 'gender'),
+                new OA\Property(property: 'value', type: 'string', example: 'Non-binary'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Lookup created successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -338,63 +199,28 @@ class LookupController extends Controller
 
     /**
      * Update an existing lookup value
-     *
-     * @OA\Put(
-     *     path="/lookups/{id}",
-     *     summary="Update a lookup value",
-     *     description="Updates an existing lookup value in the system",
-     *     operationId="updateLookup",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Lookup ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="type", type="string", example="gender", description="Lookup type"),
-     *             @OA\Property(property="value", type="string", example="Updated Value", description="Display value")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Lookup updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Lookup updated successfully"),
-     *             @OA\Property(property="data", type="object", ref="#/components/schemas/Lookup")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Lookup not found"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Put(
+        path: '/lookups/{id}',
+        summary: 'Update a lookup value',
+        description: 'Updates an existing lookup value in the system',
+        operationId: 'updateLookup',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'Lookup ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'type', type: 'string', example: 'gender'),
+                new OA\Property(property: 'value', type: 'string', example: 'Updated Value'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Lookup updated successfully')]
+    #[OA\Response(response: 404, description: 'Lookup not found')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -437,48 +263,18 @@ class LookupController extends Controller
 
     /**
      * Delete a lookup value
-     *
-     * @OA\Delete(
-     *     path="/lookups/{id}",
-     *     summary="Delete a lookup value",
-     *     description="Removes a lookup value from the system",
-     *     operationId="deleteLookup",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Lookup ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Lookup deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Lookup deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Lookup not found"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Delete(
+        path: '/lookups/{id}',
+        summary: 'Delete a lookup value',
+        description: 'Removes a lookup value from the system',
+        operationId: 'deleteLookup',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'Lookup ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Lookup deleted successfully')]
+    #[OA\Response(response: 404, description: 'Lookup not found')]
     public function destroy($id)
     {
         try {
@@ -505,44 +301,18 @@ class LookupController extends Controller
 
     /**
      * Get a specific lookup value
-     *
-     * @OA\Get(
-     *     path="/lookups/{id}",
-     *     summary="Get a specific lookup value",
-     *     description="Returns details for a specific lookup value",
-     *     operationId="showLookup",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         required=true,
-     *         description="Lookup ID",
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(ref="#/components/schemas/Lookup")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="Lookup not found"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups/{id}',
+        summary: 'Get a specific lookup value',
+        description: 'Returns details for a specific lookup value',
+        operationId: 'showLookup',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, description: 'Lookup ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'Lookup not found')]
     public function show($id)
     {
         try {
@@ -568,113 +338,19 @@ class LookupController extends Controller
 
     /**
      * Search lookups with advanced filtering
-     *
-     * @OA\Get(
-     *     path="/lookups/search",
-     *     summary="Search lookup values with advanced filtering",
-     *     description="Search lookup values with more flexible search criteria and filtering options",
-     *     operationId="searchLookups",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search term for type or value",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="types",
-     *         in="query",
-     *         description="Comma-separated list of lookup types to search in",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="value",
-     *         in="query",
-     *         description="Search specifically in values",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Items per page",
-     *         required=false,
-     *
-     *         @OA\Schema(type="integer", minimum=1, maximum=50)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_by",
-     *         in="query",
-     *         description="Sort by field",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"type", "value", "created_at", "updated_at"})
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="sort_order",
-     *         in="query",
-     *         description="Sort order",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", enum={"asc", "desc"})
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Search completed successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Lookup")),
-     *             @OA\Property(property="pagination", type="object"),
-     *             @OA\Property(property="search_info", type="object",
-     *                 @OA\Property(property="search_term", type="string"),
-     *                 @OA\Property(property="searched_types", type="array", @OA\Items(type="string")),
-     *                 @OA\Property(property="total_found", type="integer")
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="No results found"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups/search',
+        summary: 'Search lookup values with advanced filtering',
+        description: 'Search lookup values with more flexible search criteria and filtering options',
+        operationId: 'searchLookups',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'types', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 422, description: 'Validation error')]
     public function search(Request $request)
     {
         try {
@@ -792,35 +468,17 @@ class LookupController extends Controller
 
     /**
      * Get all available lookup types
-     *
-     * @OA\Get(
-     *     path="/lookups/types",
-     *     summary="Get all available lookup types",
-     *     description="Returns a list of all available lookup types in the system",
-     *     operationId="getLookupTypes",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="object",
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="array", @OA\Items(type="string"), description="List of lookup types")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups/types',
+        summary: 'Get all available lookup types',
+        description: 'Returns a list of all available lookup types in the system',
+        operationId: 'getLookupTypes',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 500, description: 'Server error')]
     public function getTypes()
     {
         try {
@@ -841,48 +499,18 @@ class LookupController extends Controller
 
     /**
      * Get lookup values by type
-     *
-     * @OA\Get(
-     *     path="/lookups/type/{type}",
-     *     summary="Get lookup values by type",
-     *     description="Returns all lookup values for a specific type",
-     *     operationId="getLookupsByType",
-     *     tags={"Lookups"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="type",
-     *         in="path",
-     *         required=true,
-     *         description="Lookup type (e.g., gender, nationality)",
-     *
-     *         @OA\Schema(type="string")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Successful operation",
-     *
-     *         @OA\JsonContent(
-     *             type="array",
-     *
-     *             @OA\Items(ref="#/components/schemas/Lookup")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="No lookups found for this type"
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Server error"
-     *     )
-     * )
-     *
-     * @param  string  $type
-     * @return \Illuminate\Http\JsonResponse
      */
+    #[OA\Get(
+        path: '/lookups/type/{type}',
+        summary: 'Get lookup values by type',
+        description: 'Returns all lookup values for a specific type',
+        operationId: 'getLookupsByType',
+        security: [['bearerAuth' => []]],
+        tags: ['Lookups']
+    )]
+    #[OA\Parameter(name: 'type', in: 'path', required: true, description: 'Lookup type', schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Successful operation')]
+    #[OA\Response(response: 404, description: 'No lookups found for this type')]
     public function getByType($type)
     {
         try {

@@ -8,57 +8,26 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Tag(
- *     name="Benefit Settings",
- *     description="API Endpoints for managing global benefit settings (percentages, rates, etc.)"
- * )
- */
+#[OA\Tag(name: 'Benefit Settings', description: 'API Endpoints for managing global benefit settings (percentages, rates, etc.)')]
 class BenefitSettingController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/benefit-settings",
-     *     summary="Get all benefit settings",
-     *     description="Get a list of all benefit settings with optional filtering",
-     *     tags={"Benefit Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="filter_is_active",
-     *         in="query",
-     *         description="Filter by active status",
-     *         required=false,
-     *
-     *         @OA\Schema(type="boolean", example=true)
-     *     ),
-     *
-     *     @OA\Parameter(
-     *         name="filter_setting_type",
-     *         in="query",
-     *         description="Filter by setting type (percentage, boolean, numeric)",
-     *         required=false,
-     *
-     *         @OA\Schema(type="string", example="percentage")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Benefit settings retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Benefit settings retrieved successfully"),
-     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/BenefitSetting"))
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Get(
+        path: '/benefit-settings',
+        summary: 'Get all benefit settings',
+        description: 'Get a list of all benefit settings with optional filtering',
+        tags: ['Benefit Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'filter_is_active', in: 'query', required: false, description: 'Filter by active status', schema: new OA\Schema(type: 'boolean', example: true)),
+            new OA\Parameter(name: 'filter_setting_type', in: 'query', required: false, description: 'Filter by setting type', schema: new OA\Schema(type: 'string', example: 'percentage')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Benefit settings retrieved successfully'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function index(Request $request): JsonResponse
     {
         try {
@@ -93,46 +62,22 @@ class BenefitSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/benefit-settings",
-     *     summary="Create a new benefit setting",
-     *     description="Create a new benefit setting",
-     *     tags={"Benefit Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *             required={"setting_key","setting_value","setting_type"},
-     *
-     *             @OA\Property(property="setting_key", type="string", example="health_welfare_percentage"),
-     *             @OA\Property(property="setting_value", type="number", format="float", example=5.00),
-     *             @OA\Property(property="setting_type", type="string", example="percentage"),
-     *             @OA\Property(property="description", type="string", nullable=true, example="Health & Welfare percentage deduction"),
-     *             @OA\Property(property="effective_date", type="string", format="date", nullable=true, example="2025-01-01"),
-     *             @OA\Property(property="is_active", type="boolean", example=true),
-     *             @OA\Property(property="applies_to", type="object", nullable=true, example={"organization": "SMRU"})
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=201,
-     *         description="Benefit setting created successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Benefit setting created successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/BenefitSetting")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=422, description="Validation error"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Post(
+        path: '/benefit-settings',
+        summary: 'Create a new benefit setting',
+        description: 'Create a new benefit setting',
+        tags: ['Benefit Settings'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/BenefitSetting')
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Benefit setting created successfully'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function store(Request $request): JsonResponse
     {
         try {
@@ -174,39 +119,21 @@ class BenefitSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Get(
-     *     path="/benefit-settings/{id}",
-     *     summary="Get a specific benefit setting",
-     *     description="Get details of a specific benefit setting by ID",
-     *     tags={"Benefit Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="Benefit Setting ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Benefit setting retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Benefit setting retrieved successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/BenefitSetting")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Benefit setting not found"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Get(
+        path: '/benefit-settings/{id}',
+        summary: 'Get a specific benefit setting',
+        description: 'Get details of a specific benefit setting by ID',
+        tags: ['Benefit Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Benefit Setting ID', schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Benefit setting retrieved successfully'),
+            new OA\Response(response: 404, description: 'Benefit setting not found'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function show(string $id): JsonResponse
     {
         try {
@@ -226,52 +153,26 @@ class BenefitSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Put(
-     *     path="/benefit-settings/{id}",
-     *     summary="Update a benefit setting",
-     *     description="Update an existing benefit setting",
-     *     tags={"Benefit Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="Benefit Setting ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="setting_value", type="number", format="float", example=6.00),
-     *             @OA\Property(property="description", type="string", nullable=true, example="Updated description"),
-     *             @OA\Property(property="effective_date", type="string", format="date", nullable=true, example="2025-02-01"),
-     *             @OA\Property(property="is_active", type="boolean", example=true)
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Benefit setting updated successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Benefit setting updated successfully"),
-     *             @OA\Property(property="data", ref="#/components/schemas/BenefitSetting")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Benefit setting not found"),
-     *     @OA\Response(response=422, description="Validation error"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Put(
+        path: '/benefit-settings/{id}',
+        summary: 'Update a benefit setting',
+        description: 'Update an existing benefit setting',
+        tags: ['Benefit Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Benefit Setting ID', schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/BenefitSetting')
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Benefit setting updated successfully'),
+            new OA\Response(response: 404, description: 'Benefit setting not found'),
+            new OA\Response(response: 422, description: 'Validation error'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function update(Request $request, string $id): JsonResponse
     {
         try {
@@ -314,38 +215,21 @@ class BenefitSettingController extends Controller
         }
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/benefit-settings/{id}",
-     *     summary="Delete a benefit setting",
-     *     description="Soft delete a benefit setting",
-     *     tags={"Benefit Settings"},
-     *     security={{"bearerAuth":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="Benefit Setting ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Benefit setting deleted successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Benefit setting deleted successfully")
-     *         )
-     *     ),
-     *
-     *     @OA\Response(response=404, description="Benefit setting not found"),
-     *     @OA\Response(response=500, description="Server error")
-     * )
-     */
+    #[OA\Delete(
+        path: '/benefit-settings/{id}',
+        summary: 'Delete a benefit setting',
+        description: 'Soft delete a benefit setting',
+        tags: ['Benefit Settings'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'Benefit Setting ID', schema: new OA\Schema(type: 'integer', example: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Benefit setting deleted successfully'),
+            new OA\Response(response: 404, description: 'Benefit setting not found'),
+            new OA\Response(response: 500, description: 'Server error'),
+        ]
+    )]
     public function destroy(string $id): JsonResponse
     {
         try {

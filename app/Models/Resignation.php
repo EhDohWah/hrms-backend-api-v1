@@ -7,172 +7,40 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="Resignation",
- *     type="object",
- *     title="Resignation",
- *     description="Employee resignation model",
- *     required={"employee_id", "resignation_date", "last_working_date", "reason"},
- *
- *     @OA\Property(
- *         property="id",
- *         type="integer",
- *         format="int64",
- *         description="Unique identifier for the resignation",
- *         example=1
- *     ),
- *     @OA\Property(
- *         property="employee_id",
- *         type="integer",
- *         format="int64",
- *         description="ID of the employee submitting resignation",
- *         example=1
- *     ),
- *     @OA\Property(
- *         property="department_id",
- *         type="integer",
- *         format="int64",
- *         description="ID of the employee's department",
- *         example=5,
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="position_id",
- *         type="integer",
- *         format="int64",
- *         description="ID of the employee's position",
- *         example=12,
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="resignation_date",
- *         type="string",
- *         format="date",
- *         description="Date when resignation was submitted",
- *         example="2024-02-01"
- *     ),
- *     @OA\Property(
- *         property="last_working_date",
- *         type="string",
- *         format="date",
- *         description="Employee's last day of work",
- *         example="2024-02-29"
- *     ),
- *     @OA\Property(
- *         property="reason",
- *         type="string",
- *         maxLength=50,
- *         description="Primary reason for resignation",
- *         example="Career Advancement"
- *     ),
- *     @OA\Property(
- *         property="reason_details",
- *         type="string",
- *         description="Detailed explanation of resignation reason",
- *         example="Accepted a position with better growth opportunities and higher compensation",
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="acknowledgement_status",
- *         type="string",
- *         enum={"Pending", "Acknowledged", "Rejected"},
- *         description="Current status of the resignation",
- *         example="Pending"
- *     ),
- *     @OA\Property(
- *         property="acknowledged_by",
- *         type="integer",
- *         format="int64",
- *         description="ID of the user who acknowledged the resignation",
- *         example=3,
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="acknowledged_at",
- *         type="string",
- *         format="date-time",
- *         description="Timestamp when resignation was acknowledged",
- *         example="2024-02-02T10:30:00Z",
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="created_by",
- *         type="string",
- *         description="Name of user who created the record",
- *         example="John Doe",
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="updated_by",
- *         type="string",
- *         description="Name of user who last updated the record",
- *         example="Jane Smith",
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="created_at",
- *         type="string",
- *         format="date-time",
- *         description="Record creation timestamp",
- *         example="2024-02-01T09:00:00Z"
- *     ),
- *     @OA\Property(
- *         property="updated_at",
- *         type="string",
- *         format="date-time",
- *         description="Record last update timestamp",
- *         example="2024-02-02T10:30:00Z"
- *     ),
- *     @OA\Property(
- *         property="deleted_at",
- *         type="string",
- *         format="date-time",
- *         description="Record deletion timestamp (soft delete)",
- *         example="2024-03-01T14:20:00Z",
- *         nullable=true
- *     ),
- *     @OA\Property(
- *         property="employee",
- *         ref="#/components/schemas/Employee",
- *         description="Employee who submitted the resignation"
- *     ),
- *     @OA\Property(
- *         property="department",
- *         ref="#/components/schemas/Department",
- *         description="Employee's department information"
- *     ),
- *     @OA\Property(
- *         property="position",
- *         ref="#/components/schemas/Position",
- *         description="Employee's position information"
- *     ),
- *     @OA\Property(
- *         property="acknowledged_by_user",
- *         ref="#/components/schemas/User",
- *         description="User who acknowledged the resignation"
- *     ),
- *     @OA\Property(
- *         property="notice_period_days",
- *         type="integer",
- *         description="Calculated notice period in days",
- *         example=28
- *     ),
- *     @OA\Property(
- *         property="days_until_last_working",
- *         type="integer",
- *         description="Days remaining until last working date",
- *         example=15
- *     ),
- *     @OA\Property(
- *         property="is_overdue",
- *         type="boolean",
- *         description="Whether the resignation is overdue for processing",
- *         example=false
- *     )
- * )
- */
+#[OA\Schema(
+    schema: 'Resignation',
+    type: 'object',
+    title: 'Resignation',
+    description: 'Employee resignation model',
+    required: ['employee_id', 'resignation_date', 'last_working_date', 'reason'],
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', description: 'Unique identifier for the resignation', example: 1),
+        new OA\Property(property: 'employee_id', type: 'integer', format: 'int64', description: 'ID of the employee submitting resignation', example: 1),
+        new OA\Property(property: 'department_id', type: 'integer', format: 'int64', description: 'ID of the employee\'s department', example: 5, nullable: true),
+        new OA\Property(property: 'position_id', type: 'integer', format: 'int64', description: 'ID of the employee\'s position', example: 12, nullable: true),
+        new OA\Property(property: 'resignation_date', type: 'string', format: 'date', description: 'Date when resignation was submitted', example: '2024-02-01'),
+        new OA\Property(property: 'last_working_date', type: 'string', format: 'date', description: 'Employee\'s last day of work', example: '2024-02-29'),
+        new OA\Property(property: 'reason', type: 'string', maxLength: 50, description: 'Primary reason for resignation', example: 'Career Advancement'),
+        new OA\Property(property: 'reason_details', type: 'string', description: 'Detailed explanation of resignation reason', example: 'Accepted a position with better growth opportunities and higher compensation', nullable: true),
+        new OA\Property(property: 'acknowledgement_status', type: 'string', description: 'Current status of the resignation', example: 'Pending', enum: ['Pending', 'Acknowledged', 'Rejected']),
+        new OA\Property(property: 'acknowledged_by', type: 'integer', format: 'int64', description: 'ID of the user who acknowledged the resignation', example: 3, nullable: true),
+        new OA\Property(property: 'acknowledged_at', type: 'string', format: 'date-time', description: 'Timestamp when resignation was acknowledged', example: '2024-02-02T10:30:00Z', nullable: true),
+        new OA\Property(property: 'created_by', type: 'string', description: 'Name of user who created the record', example: 'John Doe', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', description: 'Name of user who last updated the record', example: 'Jane Smith', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', description: 'Record creation timestamp', example: '2024-02-01T09:00:00Z'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', description: 'Record last update timestamp', example: '2024-02-02T10:30:00Z'),
+        new OA\Property(property: 'deleted_at', type: 'string', format: 'date-time', description: 'Record deletion timestamp (soft delete)', example: '2024-03-01T14:20:00Z', nullable: true),
+        new OA\Property(property: 'employee', ref: '#/components/schemas/Employee', description: 'Employee who submitted the resignation'),
+        new OA\Property(property: 'department', ref: '#/components/schemas/Department', description: 'Employee\'s department information'),
+        new OA\Property(property: 'position', ref: '#/components/schemas/Position', description: 'Employee\'s position information'),
+        new OA\Property(property: 'acknowledged_by_user', ref: '#/components/schemas/User', description: 'User who acknowledged the resignation'),
+        new OA\Property(property: 'notice_period_days', type: 'integer', description: 'Calculated notice period in days', example: 28),
+        new OA\Property(property: 'days_until_last_working', type: 'integer', description: 'Days remaining until last working date', example: 15),
+        new OA\Property(property: 'is_overdue', type: 'boolean', description: 'Whether the resignation is overdue for processing', example: false),
+    ]
+)]
 class Resignation extends Model
 {
     use HasFactory, SoftDeletes;

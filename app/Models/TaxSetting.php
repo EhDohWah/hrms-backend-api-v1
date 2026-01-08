@@ -7,28 +7,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="TaxSetting",
- *     type="object",
- *     title="Tax Setting",
- *     description="Configurable tax settings for deductions, rates, and limits",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="setting_key", type="string", example="PERSONAL_ALLOWANCE", description="Unique setting identifier"),
- *     @OA\Property(property="setting_value", type="number", format="float", example=60000, description="Setting value"),
- *     @OA\Property(property="setting_type", type="string", enum={"DEDUCTION", "RATE", "LIMIT"}, example="DEDUCTION", description="Type of setting"),
- *     @OA\Property(property="description", type="string", example="Personal allowance for individual taxpayers"),
- *     @OA\Property(property="effective_year", type="integer", example=2025, description="Year this setting is effective"),
- *     @OA\Property(property="is_active", type="boolean", example=true, description="Whether setting is currently active"),
- *     @OA\Property(property="created_by", type="string", example="admin@example.com"),
- *     @OA\Property(property="updated_by", type="string", example="admin@example.com"),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
+#[OA\Schema(
+    schema: 'TaxSetting',
+    title: 'Tax Setting',
+    description: 'Configurable tax settings for deductions, rates, and limits',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'setting_key', type: 'string', example: 'PERSONAL_ALLOWANCE', description: 'Unique setting identifier'),
+        new OA\Property(property: 'setting_value', type: 'number', format: 'float', example: 60000, description: 'Setting value'),
+        new OA\Property(property: 'setting_type', type: 'string', example: 'DEDUCTION', enum: ['DEDUCTION', 'RATE', 'LIMIT'], description: 'Type of setting'),
+        new OA\Property(property: 'description', type: 'string', example: 'Personal allowance for individual taxpayers'),
+        new OA\Property(property: 'effective_year', type: 'integer', example: 2025, description: 'Year this setting is effective'),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true, description: 'Whether setting is currently active'),
+        new OA\Property(property: 'created_by', type: 'string', example: 'admin@example.com'),
+        new OA\Property(property: 'updated_by', type: 'string', example: 'admin@example.com'),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+    ]
+)]
 class TaxSetting extends Model
 {
     use HasFactory;

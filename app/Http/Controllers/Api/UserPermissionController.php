@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use OpenApi\Attributes as OA;
 
 /**
  * UserPermissionController
@@ -21,59 +22,19 @@ class UserPermissionController extends Controller
 {
     /**
      * Get user permissions grouped by module with Read/Edit flags.
-     *
-     * Returns a simple structure showing which modules the user can:
-     * - Read (view only)
-     * - Edit (full CRUD: create, update, delete)
-     *
-     * @OA\Get(
-     *     path="/api/v1/admin/user-permissions/{userId}",
-     *     summary="Get user module permissions",
-     *     description="Retrieve user permissions organized by module with Read/Edit flags",
-     *     operationId="getUserPermissions",
-     *     tags={"User Permissions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="userId",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Permissions retrieved successfully",
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="user", type="object"),
-     *                 @OA\Property(property="modules", type="object",
-     *                     @OA\Property(property="user_management", type="object",
-     *                         @OA\Property(property="read", type="boolean", example=true),
-     *                         @OA\Property(property="edit", type="boolean", example=true),
-     *                         @OA\Property(property="display_name", type="string", example="User Management"),
-     *                         @OA\Property(property="category", type="string", example="Administration")
-     *                     )
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found"
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthenticated"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/api/v1/admin/user-permissions/{userId}',
+        summary: 'Get user module permissions',
+        description: 'Retrieve user permissions organized by module with Read/Edit flags',
+        operationId: 'getUserPermissions',
+        security: [['bearerAuth' => []]],
+        tags: ['User Permissions']
+    )]
+    #[OA\Parameter(name: 'userId', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
+    #[OA\Response(response: 404, description: 'User not found')]
+    #[OA\Response(response: 401, description: 'Unauthenticated')]
     public function getUserPermissions(int $userId): JsonResponse
     {
         // Find user with permissions
@@ -118,64 +79,20 @@ class UserPermissionController extends Controller
 
     /**
      * Update user permissions based on Read/Edit checkboxes.
-     *
-     * Accepts a simple structure with Read/Edit flags per module and
-     * converts them to granular permissions (create, read, update, delete).
-     *
-     * Logic:
-     * - Read checkbox checked → Grant read permission
-     * - Edit checkbox checked → Grant create, update, delete permissions
-     * - Both unchecked → Remove all permissions for that module
-     *
-     * @OA\Put(
-     *     path="/api/v1/admin/user-permissions/{userId}",
-     *     summary="Update user module permissions",
-     *     description="Update user permissions using Read/Edit checkboxes per module",
-     *     operationId="updateUserPermissions",
-     *     tags={"User Permissions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="userId",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\RequestBody(
-     *         required=true,
-     *
-     *         @OA\JsonContent(
-     *
-     *             @OA\Property(property="modules", type="object",
-     *                 @OA\Property(property="user_management", type="object",
-     *                     @OA\Property(property="read", type="boolean", example=true),
-     *                     @OA\Property(property="edit", type="boolean", example=true)
-     *                 ),
-     *                 @OA\Property(property="employees", type="object",
-     *                     @OA\Property(property="read", type="boolean", example=true),
-     *                     @OA\Property(property="edit", type="boolean", example=false)
-     *                 )
-     *             )
-     *         )
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Permissions updated successfully"
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found"
-     *     )
-     * )
      */
+    #[OA\Put(
+        path: '/api/v1/admin/user-permissions/{userId}',
+        summary: 'Update user module permissions',
+        description: 'Update user permissions using Read/Edit checkboxes per module',
+        operationId: 'updateUserPermissions',
+        security: [['bearerAuth' => []]],
+        tags: ['User Permissions']
+    )]
+    #[OA\Parameter(name: 'userId', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(properties: [new OA\Property(property: 'modules', type: 'object')]))]
+    #[OA\Response(response: 200, description: 'Permissions updated successfully')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    #[OA\Response(response: 404, description: 'User not found')]
     public function updateUserPermissions(Request $request, int $userId): JsonResponse
     {
         // Validate request
@@ -258,32 +175,17 @@ class UserPermissionController extends Controller
 
     /**
      * Get permissions summary for a user.
-     *
-     * Returns a quick overview of user's permission status.
-     *
-     * @OA\Get(
-     *     path="/api/v1/admin/user-permissions/{userId}/summary",
-     *     summary="Get user permissions summary",
-     *     description="Get a summary of user's permission status",
-     *     operationId="getUserPermissionsSummary",
-     *     tags={"User Permissions"},
-     *     security={{"sanctum":{}}},
-     *
-     *     @OA\Parameter(
-     *         name="userId",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *
-     *         @OA\Schema(type="integer")
-     *     ),
-     *
-     *     @OA\Response(
-     *         response=200,
-     *         description="Summary retrieved successfully"
-     *     )
-     * )
      */
+    #[OA\Get(
+        path: '/api/v1/admin/user-permissions/{userId}/summary',
+        summary: 'Get user permissions summary',
+        description: "Get a summary of user's permission status",
+        operationId: 'getUserPermissionsSummary',
+        security: [['bearerAuth' => []]],
+        tags: ['User Permissions']
+    )]
+    #[OA\Parameter(name: 'userId', in: 'path', required: true, description: 'User ID', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Summary retrieved successfully')]
     public function summary(int $userId): JsonResponse
     {
         $user = User::findOrFail($userId);

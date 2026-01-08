@@ -5,30 +5,29 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OpenApi\Attributes as OA;
 
-/**
- * @OA\Schema(
- *     schema="Site",
- *     type="object",
- *     title="Site",
- *     description="Organizational site/unit model",
- *
- *     @OA\Property(property="id", type="integer", format="int64", example=1),
- *     @OA\Property(property="name", type="string", example="MRM"),
- *     @OA\Property(property="code", type="string", example="MRM"),
- *     @OA\Property(property="description", type="string", nullable=true),
- *     @OA\Property(property="address", type="string", nullable=true),
- *     @OA\Property(property="contact_person", type="string", nullable=true),
- *     @OA\Property(property="contact_phone", type="string", nullable=true),
- *     @OA\Property(property="contact_email", type="string", nullable=true),
- *     @OA\Property(property="is_active", type="boolean", example=true),
- *     @OA\Property(property="created_by", type="string", nullable=true),
- *     @OA\Property(property="updated_by", type="string", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time"),
- *     @OA\Property(property="deleted_at", type="string", format="date-time", nullable=true)
- * )
- */
+#[OA\Schema(
+    schema: 'Site',
+    title: 'Site',
+    description: 'Organizational site/unit model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', format: 'int64', example: 1),
+        new OA\Property(property: 'name', type: 'string', example: 'MRM'),
+        new OA\Property(property: 'code', type: 'string', example: 'MRM'),
+        new OA\Property(property: 'description', type: 'string', nullable: true),
+        new OA\Property(property: 'address', type: 'string', nullable: true),
+        new OA\Property(property: 'contact_person', type: 'string', nullable: true),
+        new OA\Property(property: 'contact_phone', type: 'string', nullable: true),
+        new OA\Property(property: 'contact_email', type: 'string', nullable: true),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true),
+        new OA\Property(property: 'created_by', type: 'string', nullable: true),
+        new OA\Property(property: 'updated_by', type: 'string', nullable: true),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'deleted_at', type: 'string', format: 'date-time', nullable: true),
+    ]
+)]
 class Site extends Model
 {
     use HasFactory, SoftDeletes;
