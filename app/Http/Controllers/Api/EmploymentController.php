@@ -715,16 +715,13 @@ class EmploymentController extends Controller
                 'probation_salary',
                 'end_date',
                 'pay_method',
-                'site',
-                'department_id',
-                'section_department_id',
-                'position_id',
+                'site_code',
+                'department',
+                'section_department',
+                'position',
                 'health_welfare',
-                'health_welfare_percentage',
                 'pvd',
-                'pvd_percentage',
                 'saving_fund',
-                'saving_fund_percentage',
                 'status',
             ];
 
@@ -740,16 +737,13 @@ class EmploymentController extends Controller
                 'Decimal(10,2) - NULLABLE - Salary during probation period',
                 'Date (YYYY-MM-DD) - NULLABLE - Employment end date (for contracts)',
                 'String - NULLABLE - Values: Monthly, Weekly, Daily, Hourly, Bank Transfer, Cash, Cheque',
-                'String - NULLABLE - Site/work location name (must exist in sites table)',
-                'Integer - NULLABLE - Department ID (must exist in departments table)',
-                'Integer - NULLABLE - Section department ID (must exist in section_departments table)',
-                'Integer - NULLABLE - Position ID (must exist in positions table)',
-                'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0)',
-                'Decimal(5,2) - NULLABLE - Health welfare percentage (0-100)',
-                'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0)',
-                'Decimal(5,2) - NULLABLE - PVD percentage (0-100, typically 7.5)',
-                'Boolean (1/0) - NULLABLE - Saving fund enabled (default: 0)',
-                'Decimal(5,2) - NULLABLE - Saving fund percentage (0-100, typically 7.5)',
+                'String - NULLABLE - Site code (must exist in sites table, e.g., MRM, BHF)',
+                'String - NULLABLE - Department name (must exist in departments table)',
+                'String - NULLABLE - Section department name (must exist in section_departments table)',
+                'String - NULLABLE - Position title (must exist in positions table)',
+                'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0) - Percentages managed globally',
+                'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0) - Percentages managed globally',
+                'Boolean (1/0) - NULLABLE - Saving fund enabled (default: 0) - Percentages managed globally',
                 'Boolean (1/0) - NULLABLE - Employment status: 1=Active, 0=Inactive (default: 1)',
             ];
 
@@ -799,15 +793,15 @@ class EmploymentController extends Controller
             $sampleData = [
                 [
                     'EMP001', 'Full-time', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
-                    'Monthly', 'Headquarters', '1', '', '5', '1', '5.00', '1', '7.50', '0', '', '1',
+                    'Monthly', 'MRM', 'Human Resources', '', 'HR Manager', '1', '1', '0', '1',
                 ],
                 [
                     'EMP002', 'Part-time', '2025-02-01', '30000.00', '2025-05-01', '', '',
-                    'Hourly', 'Branch Office', '2', '3', '8', '0', '', '1', '7.50', '1', '7.50', '1',
+                    'Hourly', 'BHF', 'Finance', 'Accounting', 'Accountant', '0', '1', '1', '1',
                 ],
                 [
                     'EMP003', 'Contract', '2025-03-01', '60000.00', '', '', '2025-12-31',
-                    'Bank Transfer', 'Remote', '', '', '10', '1', '5.00', '0', '', '0', '', '1',
+                    'Bank Transfer', 'SMRU', 'IT', '', 'Software Developer', '1', '0', '0', '1',
                 ],
             ];
 
@@ -858,7 +852,7 @@ class EmploymentController extends Controller
             }
 
             // Boolean fields (1/0) validation
-            $booleanColumns = ['M', 'O', 'Q', 'S']; // health_welfare, pvd, saving_fund, status
+            $booleanColumns = ['M', 'N', 'O', 'P']; // health_welfare, pvd, saving_fund, status
             foreach ($booleanColumns as $column) {
                 $booleanValidation = $sheet->getCell("{$column}6")->getDataValidation();
                 $booleanValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
@@ -885,17 +879,14 @@ class EmploymentController extends Controller
                 'F' => 18,  // probation_salary
                 'G' => 15,  // end_date
                 'H' => 18,  // pay_method
-                'I' => 20,  // site
-                'J' => 15,  // department_id
-                'K' => 22,  // section_department_id
-                'L' => 15,  // position_id
+                'I' => 15,  // site_code
+                'J' => 20,  // department
+                'K' => 22,  // section_department
+                'L' => 20,  // position
                 'M' => 18,  // health_welfare
-                'N' => 25,  // health_welfare_percentage
-                'O' => 12,  // pvd
-                'P' => 18,  // pvd_percentage
-                'Q' => 15,  // saving_fund
-                'R' => 25,  // saving_fund_percentage
-                'S' => 12,  // status
+                'N' => 12,  // pvd
+                'O' => 15,  // saving_fund
+                'P' => 12,  // status
             ];
 
             foreach ($columnWidths as $column => $width) {
@@ -922,22 +913,23 @@ class EmploymentController extends Controller
                 [''],
                 ['3. Boolean Fields: Use 1 for Yes/True, 0 for No/False'],
                 ['   - health_welfare, pvd, saving_fund, status'],
+                ['   - Note: Benefit percentages are managed globally in system settings'],
                 [''],
                 ['4. Foreign Keys (Must exist in database):'],
                 ['   - staff_id: Must match an existing employee'],
-                ['   - site: Must match an existing site name'],
-                ['   - department_id: Must be a valid department ID'],
-                ['   - section_department_id: Must be a valid section department ID'],
-                ['   - position_id: Must be a valid position ID'],
+                ['   - site_code: Must match an existing site code (e.g., MRM, BHF, SMRU)'],
+                ['   - department: Must match an existing department name'],
+                ['   - section_department: Must match an existing section department name'],
+                ['   - position: Must match an existing position title'],
                 [''],
                 ['5. Salary Fields: Enter as decimal numbers (e.g., 50000.00)'],
                 [''],
                 ['6. Probation Date: If not provided, defaults to 3 months after start_date'],
                 [''],
                 ['7. Benefit Percentages:'],
-                ['   - Typical PVD: 7.5%'],
-                ['   - Typical Saving Fund: 7.5%'],
-                ['   - Health Welfare: Varies (typically 5%)'],
+                ['   - Percentages are managed globally in system settings'],
+                ['   - Only enable/disable benefits using 1 (enabled) or 0 (disabled)'],
+                ['   - Contact administrator to view or modify benefit percentages'],
                 [''],
                 ['8. Status: 1 = Active, 0 = Inactive (default is 1)'],
                 [''],

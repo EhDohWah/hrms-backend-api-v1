@@ -70,6 +70,12 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
 
     public function bindValue(Cell $cell, $value)
     {
+        // Keep numeric values as numeric for validation
+        if (is_numeric($value)) {
+            return parent::bindValue($cell, $value);
+        }
+
+        // Convert other values to string
         $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
 
         return true;
@@ -117,6 +123,43 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                         'value' => $r['pay_period_date'],
                         'error' => $e->getMessage(),
                     ]);
+                }
+            }
+
+            // Convert numeric string fields to proper numeric types
+            $numericFields = [
+                'employee_funding_allocation_id',
+                'gross_salary',
+                'gross_salary_by_fte',
+                'compensation_refund',
+                'thirteen_month_salary',
+                'thirteen_month_salary_accured',
+                'pvd',
+                'saving_fund',
+                'employer_social_security',
+                'employee_social_security',
+                'employer_health_welfare',
+                'employee_health_welfare',
+                'tax',
+                'net_salary',
+                'total_salary',
+                'total_pvd',
+                'total_saving_fund',
+                'salary_bonus',
+                'total_income',
+                'employer_contribution',
+                'total_deduction',
+            ];
+
+            foreach ($numericFields as $field) {
+                if (isset($r[$field]) && $r[$field] !== '' && $r[$field] !== null) {
+                    // Remove commas and convert to numeric
+                    $value = str_replace(',', '', $r[$field]);
+                    if ($field === 'employee_funding_allocation_id') {
+                        $r[$field] = (int) $value;
+                    } else {
+                        $r[$field] = is_numeric($value) ? (float) $value : $r[$field];
+                    }
                 }
             }
 
@@ -291,28 +334,28 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
     {
         return [
             '*.staff_id' => 'required|string',
-            '*.employee_funding_allocation_id' => 'required|integer',
+            '*.employee_funding_allocation_id' => 'required|integer|min:1',
             '*.pay_period_date' => 'required|date',
             '*.gross_salary' => 'required|numeric|min:0',
             '*.gross_salary_by_fte' => 'required|numeric|min:0',
             '*.compensation_refund' => 'nullable|numeric|min:0',
             '*.thirteen_month_salary' => 'nullable|numeric|min:0',
             '*.thirteen_month_salary_accured' => 'nullable|numeric|min:0',
-            '*.pvd' => 'nullable|numeric|min:0',
-            '*.saving_fund' => 'nullable|numeric|min:0',
+            '*.pvd' => 'nullable|numeric',
+            '*.saving_fund' => 'nullable|numeric',
             '*.employer_social_security' => 'nullable|numeric|min:0',
             '*.employee_social_security' => 'nullable|numeric|min:0',
             '*.employer_health_welfare' => 'nullable|numeric|min:0',
             '*.employee_health_welfare' => 'nullable|numeric|min:0',
             '*.tax' => 'nullable|numeric|min:0',
-            '*.net_salary' => 'required|numeric|min:0',
+            '*.net_salary' => 'required|numeric',
             '*.total_salary' => 'nullable|numeric|min:0',
-            '*.total_pvd' => 'nullable|numeric|min:0',
-            '*.total_saving_fund' => 'nullable|numeric|min:0',
-            '*.salary_bonus' => 'nullable|numeric|min:0',
+            '*.total_pvd' => 'nullable|numeric',
+            '*.total_saving_fund' => 'nullable|numeric',
+            '*.salary_bonus' => 'nullable|numeric',
             '*.total_income' => 'nullable|numeric|min:0',
             '*.employer_contribution' => 'nullable|numeric|min:0',
-            '*.total_deduction' => 'nullable|numeric|min:0',
+            '*.total_deduction' => 'nullable|numeric',
             '*.notes' => 'nullable|string',
         ];
     }
