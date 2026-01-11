@@ -273,4 +273,3 @@ describe('LogsActivity Trait', function () {
         expect($log)->toBeNull();
     });
 });
-

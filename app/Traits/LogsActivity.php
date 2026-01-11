@@ -117,4 +117,3 @@ trait LogsActivity
             ->latest('created_at');
     }
 }
-

@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // 2) Edit routes (create, update, delete):
         Route::post('/items', [GrantController::class, 'storeGrantItem'])->name('grants.items.store')->middleware('permission:grants_list.edit');
         Route::post('/', [GrantController::class, 'storeGrant'])->name('grants.store')->middleware('permission:grants_list.edit');
+        Route::delete('/delete-selected', [GrantController::class, 'deleteSelectedGrants'])->name('grants.destroy.selected')->middleware('permission:grants_list.edit');
         Route::put('/{id}', [GrantController::class, 'updateGrant'])->name('grants.update')->middleware('permission:grants_list.edit');
         Route::delete('/{id}', [GrantController::class, 'deleteGrant'])->name('grants.destroy')->middleware('permission:grants_list.edit');
         Route::put('/items/{id}', [GrantController::class, 'updateGrantItem'])->name('grants.items.update')->middleware('permission:grants_list.edit');

@@ -1,0 +1,10 @@
+# Include: ../cursorrules (inherits workspace rules)
+
+## Laravel Specific
+- Use Service classes for business logic
+- Implement Form Requests for validation
+- Use Eloquent eager loading
+- Follow PSR-12 standards
+- Type hints on all methods
+- Use database transactions for payroll operations
+- Implement proper API resources
