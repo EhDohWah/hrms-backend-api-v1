@@ -34,13 +34,12 @@ class Employment extends Model
         'pass_probation_salary',
         'probation_salary',
         'health_welfare',
-        'health_welfare_percentage',
         'pvd',
-        'pvd_percentage',
         'saving_fund',
-        'saving_fund_percentage',
         'status',
         // NOTE: probation_status removed - use probation_records table instead
+        // NOTE: Benefit percentages (health_welfare_percentage, pvd_percentage, saving_fund_percentage)
+        //       are managed globally in benefit_settings table, not per-employment
         'created_by',
         'updated_by',
     ];
@@ -53,11 +52,8 @@ class Employment extends Model
         'pass_probation_salary' => 'decimal:2',
         'probation_salary' => 'decimal:2',
         'health_welfare' => 'boolean',
-        'health_welfare_percentage' => 'decimal:2',
         'pvd' => 'boolean',
-        'pvd_percentage' => 'decimal:2',
         'saving_fund' => 'boolean',
-        'saving_fund_percentage' => 'decimal:2',
         'status' => 'boolean',
     ];
 

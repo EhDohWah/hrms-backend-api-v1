@@ -28,6 +28,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/employment', [EmploymentController::class, 'upload'])
             ->name('uploads.employment')
             ->middleware('permission:employment_records.edit');
+
+        // Employee funding allocation upload
+        Route::post('/employee-funding-allocation', [EmployeeFundingAllocationController::class, 'upload'])
+            ->name('uploads.employee-funding-allocation')
+            ->middleware('permission:employee_funding_allocations.edit');
+
+        // Payroll upload
+        Route::post('/payroll', [PayrollController::class, 'upload'])
+            ->name('uploads.payroll')
+            ->middleware('permission:employee_salary.edit');
     });
 
     // ========================================
@@ -54,28 +64,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/employee-funding-allocation-template', [EmployeeFundingAllocationController::class, 'downloadTemplate'])
             ->name('downloads.employee-funding-allocation-template')
             ->middleware('permission:employee_funding_allocations.read');
-    });
 
-    // ========================================
-    // UPLOADS PREFIX (continued) - Employee Funding Allocation
-    // ========================================
-    Route::prefix('uploads')->group(function () {
+        // Grant items reference download (for funding allocation imports)
+        Route::get('/grant-items-reference', [EmployeeFundingAllocationController::class, 'downloadGrantItemsReference'])
+            ->name('downloads.grant-items-reference')
+            ->middleware('permission:employee_funding_allocations.read');
 
-        // Employee funding allocation upload
-        Route::post('/employee-funding-allocation', [EmployeeFundingAllocationController::class, 'upload'])
-            ->name('uploads.employee-funding-allocation')
-            ->middleware('permission:employee_funding_allocations.edit');
-
-        // Payroll upload
-        Route::post('/payroll', [PayrollController::class, 'upload'])
-            ->name('uploads.payroll')
-            ->middleware('permission:employee_salary.edit');
-    });
-
-    // ========================================
-    // DOWNLOADS PREFIX (continued) - Payroll Template
-    // ========================================
-    Route::prefix('downloads')->group(function () {
+        // Employee funding allocations reference download (for payroll imports)
+        Route::get('/employee-funding-allocations-reference', [PayrollController::class, 'downloadEmployeeFundingAllocationsReference'])
+            ->name('downloads.employee-funding-allocations-reference')
+            ->middleware('permission:employee_salary.read');
 
         // Payroll template download
         Route::get('/payroll-template', [PayrollController::class, 'downloadTemplate'])

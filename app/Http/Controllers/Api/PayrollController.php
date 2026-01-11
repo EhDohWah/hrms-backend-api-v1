@@ -892,10 +892,21 @@ class PayrollController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
+            \Log::error('Payroll index error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve payrolls',
                 'error' => $e->getMessage(),
+                'debug' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ] : null,
             ], 500);
         }
     }
@@ -3097,17 +3108,262 @@ class PayrollController extends Controller
 
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
 
-            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment;filename="'.$filename.'"');
-            header('Cache-Control: max-age=0');
+            // Create temporary file
+            $tempFile = tempnam(sys_get_temp_dir(), 'payroll_template_');
+            $writer->save($tempFile);
 
-            $writer->save('php://output');
-            exit;
+            // Define response headers
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Cache-Control' => 'max-age=0',
+            ];
+
+            // Return file download response with proper CORS headers
+            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to generate template',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/downloads/employee-funding-allocations-reference",
+     *     summary="Download employee funding allocations reference list for payroll",
+     *     description="Downloads an Excel file with all active employee funding allocations including IDs for use in payroll imports",
+     *     operationId="downloadEmployeeFundingAllocationsReference",
+     *     tags={"Payrolls"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(response=200, description="Reference file downloaded successfully"),
+     *     @OA\Response(response=500, description="Failed to generate reference file")
+     * )
+     */
+    public function downloadEmployeeFundingAllocationsReference()
+    {
+        try {
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Funding Allocations Ref');
+
+            // Add important notice at the top
+            $sheet->mergeCells('A1:L1');
+            $sheet->setCellValue('A1', '⚠️ IMPORTANT: Copy the "Funding Allocation ID" (Column A - Green) to your Payroll Import Template');
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12)->getColor()->setRGB('FFFFFF');
+            $sheet->getStyle('A1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('FF6B6B'); // Red background for attention
+            $sheet->getStyle('A1')->getAlignment()
+                ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
+                ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            $sheet->getRowDimension(1)->setRowHeight(30);
+
+            // Headers
+            $headers = [
+                'Funding Allocation ID',
+                'Staff ID',
+                'Employee Name',
+                'Grant Code',
+                'Grant Name',
+                'Grant Position',
+                'FTE (%)',
+                'Allocated Amount',
+                'Start Date',
+                'End Date',
+                'Status',
+                'Organization',
+            ];
+
+            // Write headers with special highlighting for Funding Allocation ID (Row 2)
+            $col = 1;
+            foreach ($headers as $header) {
+                $cell = $sheet->getCellByColumnAndRow($col, 2);
+                $cell->setValue($header);
+                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
+
+                // Highlight Funding Allocation ID column (column A - the most important one)
+                if ($header === 'Funding Allocation ID') {
+                    $cell->getStyle()->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('28A745'); // Green - Important!
+                    $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
+                    $cell->getStyle()->getFont()->setSize(12)->setBold(true);
+                } else {
+                    $cell->getStyle()->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('4472C4'); // Blue - Standard
+                    $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
+                }
+
+                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $col++;
+            }
+
+            // Fetch all active employee funding allocations with relationships
+            $allocations = EmployeeFundingAllocation::with([
+                'employee:id,staff_id,first_name_en,last_name_en,organization',
+                'grantItem.grant:id,name,code',
+            ])
+                ->where('status', 'active')
+                ->orderBy('employee_id')
+                ->get();
+
+            $row = 3; // Start from row 3 (after notice and headers)
+            foreach ($allocations as $allocation) {
+                // Highlight Funding Allocation ID cell (Column A) - This is what users need!
+                $sheet->setCellValue("A{$row}", $allocation->id);
+                $sheet->getStyle("A{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('D4EDDA'); // Light green background
+                $sheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(11)->getColor()->setRGB('155724');
+                $sheet->getStyle("A{$row}")->getAlignment()
+                    ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                // Add border to make it stand out
+                $sheet->getStyle("A{$row}")->getBorders()->getAllBorders()
+                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM)
+                    ->getColor()->setRGB('28A745');
+
+                $sheet->setCellValue("B{$row}", $allocation->employee->staff_id ?? 'N/A');
+                $sheet->setCellValue("C{$row}", ($allocation->employee->first_name_en ?? '').' '.($allocation->employee->last_name_en ?? ''));
+                $sheet->setCellValue("D{$row}", $allocation->grantItem->grant->code ?? 'N/A');
+                $sheet->setCellValue("E{$row}", $allocation->grantItem->grant->name ?? 'N/A');
+                $sheet->setCellValue("F{$row}", $allocation->grantItem->grant_position ?? 'N/A');
+                $sheet->setCellValue("G{$row}", round($allocation->fte * 100, 2)); // Convert to percentage
+                $sheet->setCellValue("H{$row}", $allocation->allocated_amount);
+                $sheet->setCellValue("I{$row}", $allocation->start_date ? $allocation->start_date->format('Y-m-d') : '');
+                $sheet->setCellValue("J{$row}", $allocation->end_date ? $allocation->end_date->format('Y-m-d') : 'Ongoing');
+                $sheet->setCellValue("K{$row}", ucfirst($allocation->status));
+                $sheet->setCellValue("L{$row}", $allocation->employee->organization ?? 'N/A');
+
+                $row++;
+            }
+
+            // Set column widths
+            $columnWidths = [
+                'A' => 20,  // Funding Allocation ID
+                'B' => 15,  // Staff ID
+                'C' => 25,  // Employee Name
+                'D' => 15,  // Grant Code
+                'E' => 30,  // Grant Name
+                'F' => 25,  // Grant Position
+                'G' => 12,  // FTE (%)
+                'H' => 18,  // Allocated Amount
+                'I' => 15,  // Start Date
+                'J' => 15,  // End Date
+                'K' => 12,  // Status
+                'L' => 15,  // Organization
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            // Add instructions sheet
+            $instructionsSheet = $spreadsheet->createSheet();
+            $instructionsSheet->setTitle('Instructions');
+
+            $instructions = [
+                ['Employee Funding Allocations Reference - How to Use'],
+                [''],
+                ['⭐ QUICK START:'],
+                ['Look for the GREEN column (Column A) - that\'s the "Funding Allocation ID" you need!'],
+                ['Copy this ID to your payroll import template.'],
+                [''],
+                ['PURPOSE:'],
+                ['This file contains all active employee funding allocations with their IDs.'],
+                ['Use this reference when filling out the Payroll import template.'],
+                ['Each employee may have multiple funding allocations (split funding).'],
+                [''],
+                ['HOW TO USE:'],
+                ['1. Find the employee you want to create payroll for (by Staff ID or Name)'],
+                ['2. Identify which funding allocation to use (check Grant Code and Position)'],
+                ['3. Copy the "Funding Allocation ID" from Column A (GREEN HIGHLIGHTED) to your payroll import'],
+                ['4. If an employee has multiple allocations, create separate payroll rows for each'],
+                [''],
+                ['COLOR CODING:'],
+                ['🟢 GREEN COLUMN (A) = Funding Allocation ID - THIS IS WHAT YOU NEED!'],
+                ['🔵 BLUE COLUMNS = Reference information to help you find the right allocation'],
+                [''],
+                ['IMPORTANT NOTES:'],
+                ['- Funding Allocation ID is required for payroll imports'],
+                ['- One employee can have multiple funding allocations (split funding)'],
+                ['- Only ACTIVE allocations with no end date or future end dates are shown'],
+                ['- FTE (%) shows the percentage of time allocated to this funding source'],
+                ['- Allocated Amount is the monthly allocation for this funding source'],
+                [''],
+                ['SPLIT FUNDING EXAMPLE:'],
+                ['Employee EMP001 might have:'],
+                ['  - Allocation ID 5: 60% on Grant A (Allocated: $30,000)'],
+                ['  - Allocation ID 6: 40% on Grant B (Allocated: $20,000)'],
+                [''],
+                ['For payroll, you would create TWO rows:'],
+                ['  Row 1: staff_id=EMP001, employee_funding_allocation_id=5, gross_salary_by_FTE=30000'],
+                ['  Row 2: staff_id=EMP001, employee_funding_allocation_id=6, gross_salary_by_FTE=20000'],
+                [''],
+                ['COLUMNS EXPLAINED:'],
+                ['- Funding Allocation ID: ID to use in payroll imports (REQUIRED)'],
+                ['- Staff ID: Employee identifier'],
+                ['- Employee Name: Full name of employee'],
+                ['- Grant Code: Short code for the grant'],
+                ['- Grant Name: Full name of the grant'],
+                ['- Grant Position: Position title for this allocation'],
+                ['- FTE (%): Percentage of time allocated (0-100)'],
+                ['- Allocated Amount: Monthly allocation amount'],
+                ['- Start Date: When this allocation started'],
+                ['- End Date: When this allocation ends (or "Ongoing")'],
+                ['- Status: Current status (Active, Historical, Terminated)'],
+                ['- Organization: SMRU or BHF'],
+                [''],
+                ['FILTERING:'],
+                ['- This file shows ONLY active allocations'],
+                ['- Historical and terminated allocations are excluded'],
+                ['- Allocations with past end dates are excluded'],
+                [''],
+                ['BEST PRACTICES:'],
+                ['- Always download the latest reference before creating payroll'],
+                ['- Verify the employee has active allocations before importing'],
+                ['- For split funding, ensure all allocations are included'],
+                ['- Check that FTE percentages add up to 100% per employee'],
+            ];
+
+            $row = 1;
+            foreach ($instructions as $instruction) {
+                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
+                if ($row === 1) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
+                } elseif (in_array($row, [3, 7, 11, 15, 19, 23, 30, 38, 42, 46])) {
+                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
+                }
+                $row++;
+            }
+
+            $instructionsSheet->getColumnDimension('A')->setWidth(100);
+            $spreadsheet->setActiveSheetIndex(0);
+
+            // Generate and download
+            $filename = 'employee_funding_allocations_reference_'.date('Y-m-d_His').'.xlsx';
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'funding_alloc_ref_');
+            $writer->save($tempFile);
+
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Cache-Control' => 'max-age=0',
+            ];
+
+            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate employee funding allocations reference',
                 'error' => $e->getMessage(),
             ], 500);
         }

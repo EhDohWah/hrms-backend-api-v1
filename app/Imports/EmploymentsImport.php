@@ -2,8 +2,11 @@
 
 namespace App\Imports;
 
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Employment;
+use App\Models\Position;
+use App\Models\SectionDepartment;
 use App\Models\Site;
 use App\Models\User;
 use App\Notifications\ImportedCompletedNotification;
@@ -44,6 +47,12 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
 
     protected $siteLookup = [];
 
+    protected $departmentLookup = [];
+
+    protected $sectionDepartmentLookup = [];
+
+    protected $positionLookup = [];
+
     public function __construct(string $importId, int $userId)
     {
         $this->importId = $importId;
@@ -58,8 +67,17 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
             ->pluck('employments.id', 'employees.staff_id')
             ->toArray();
 
-        // Prefetch site lookup (name -> id)
-        $this->siteLookup = Site::pluck('id', 'name')->toArray();
+        // Prefetch site lookup (code -> id)
+        $this->siteLookup = Site::pluck('id', 'code')->toArray();
+
+        // Prefetch department lookup (name -> id)
+        $this->departmentLookup = Department::pluck('id', 'name')->toArray();
+
+        // Prefetch section department lookup (name -> id)
+        $this->sectionDepartmentLookup = SectionDepartment::pluck('id', 'name')->toArray();
+
+        // Prefetch position lookup (title -> id)
+        $this->positionLookup = Position::pluck('id', 'title')->toArray();
 
         // Initialize cache keys for this import
         Cache::put("import_{$this->importId}_errors", [], 3600);
@@ -109,7 +127,7 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
         // Normalize data
         $normalized = $rows->map(function ($r) {
             // Normalize date fields
-            foreach (['start_date_bhf', 'start_date_smru', 'pass_prob_date', 'end_of_prob_date'] as $dateField) {
+            foreach (['start_date', 'pass_probation_date', 'end_date'] as $dateField) {
                 if (! empty($r[$dateField]) && is_numeric($r[$dateField])) {
                     try {
                         $r[$dateField] = ExcelDate::excelToDateTimeObject($r[$dateField])->format('Y-m-d');
@@ -171,9 +189,9 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                         continue;
                     }
 
-                    $staffId = trim($row['idno'] ?? '');
+                    $staffId = trim($row['staff_id'] ?? '');
                     if (! $staffId) {
-                        $errors[] = "Row {$index}: Missing staff ID (ID.no.)";
+                        $errors[] = "Row {$index}: Missing staff ID";
 
                         continue;
                     }
@@ -196,55 +214,62 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                     $seenStaffIds[] = $staffId;
                     $allStaffIds[] = $staffId;
 
-                    // Determine employment type based on status
-                    $statusText = trim($row['status'] ?? '');
-                    $employmentType = $this->mapEmploymentType($statusText);
+                    // Parse employment type
+                    $employmentType = trim($row['employment_type'] ?? 'Full-time');
+                    if (! in_array($employmentType, ['Full-time', 'Part-time', 'Contract', 'Temporary'])) {
+                        $errors[] = "Row {$index}: Invalid employment type '{$employmentType}'";
+
+                        continue;
+                    }
 
                     // Parse dates
-                    $startDate = $this->parseStartDate($row);
-                    $passProbDate = $this->parseDate($row['pass_prob_date'] ?? null);
-                    $endDate = null; // Not in the Excel
+                    $startDate = $this->parseDate($row['start_date'] ?? null);
+                    $passProbDate = $this->parseDate($row['pass_probation_date'] ?? null);
+                    $endDate = $this->parseDate($row['end_date'] ?? null);
 
                     if (! $startDate) {
-                        $errors[] = "Row {$index}: Missing start date (Start date BHF or Start date SMRU)";
+                        $errors[] = "Row {$index}: Missing start date";
 
                         continue;
                     }
 
                     // Parse salary
-                    $salary = $this->parseNumeric($row['salary_2025'] ?? null);
+                    $salary = $this->parseNumeric($row['pass_probation_salary'] ?? null);
                     if (! $salary) {
-                        $errors[] = "Row {$index}: Missing or invalid salary";
+                        $errors[] = "Row {$index}: Missing or invalid pass_probation_salary";
 
                         continue;
                     }
 
-                    // Determine probation salary (if probation date is in future)
-                    $probationSalary = null;
-                    if ($passProbDate && \Carbon\Carbon::parse($passProbDate)->isFuture()) {
-                        // Could be same as salary or different based on your business rules
-                        $probationSalary = $salary; // Adjust if needed
-                    }
+                    // Parse probation salary
+                    $probationSalary = $this->parseNumeric($row['probation_salary'] ?? null);
 
-                    // Parse site
-                    $siteName = trim($row['site'] ?? '');
-                    $siteId = $this->siteLookup[$siteName] ?? null;
+                    // Parse site by code
+                    $siteCode = trim($row['site_code'] ?? '');
+                    $siteId = $this->siteLookup[$siteCode] ?? null;
+
+                    // Parse department by name
+                    $departmentName = trim($row['department'] ?? '');
+                    $departmentId = $this->departmentLookup[$departmentName] ?? null;
+
+                    // Parse section department by name
+                    $sectionDepartmentName = trim($row['section_department'] ?? '');
+                    $sectionDepartmentId = $this->sectionDepartmentLookup[$sectionDepartmentName] ?? null;
+
+                    // Parse position by title
+                    $positionTitle = trim($row['position'] ?? '');
+                    $positionId = $this->positionLookup[$positionTitle] ?? null;
 
                     // Parse pay method
                     $payMethod = $this->mapPayMethod($row['pay_method'] ?? '');
 
-                    // Parse PVD/Saving Fund
-                    $pvdSavingText = trim($row['pvdsaving'] ?? '');
-                    $isPVD = stripos($pvdSavingText, 'pvd') !== false;
-                    $isSavingFund = stripos($pvdSavingText, 'saving') !== false;
+                    // Parse benefits (percentages are managed globally in benefit_settings table)
+                    $healthWelfare = $this->parseBoolean($row['health_welfare'] ?? '0');
+                    $isPVD = $this->parseBoolean($row['pvd'] ?? '0');
+                    $isSavingFund = $this->parseBoolean($row['saving_fund'] ?? '0');
 
-                    // Parse benefit percentages
-                    $pvdPercentage = $isPVD ? 7.5 : null;
-                    $savingFundPercentage = $isSavingFund ? 7.5 : null;
-                    $healthWelfarePercentage = $this->parseNumeric($row['health_welfare_employer'] ?? null);
-
-                    // Determine if health welfare is enabled
-                    $healthWelfare = ! empty($healthWelfarePercentage) && $healthWelfarePercentage > 0;
+                    // Parse status
+                    $status = $this->parseBoolean($row['status'] ?? '1');
 
                     // Prepare employment data
                     $employmentData = [
@@ -255,15 +280,15 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                         'pass_probation_date' => $passProbDate,
                         'pay_method' => $payMethod,
                         'site_id' => $siteId,
+                        'department_id' => $departmentId,
+                        'section_department_id' => $sectionDepartmentId,
+                        'position_id' => $positionId,
                         'pass_probation_salary' => $salary,
                         'probation_salary' => $probationSalary,
                         'health_welfare' => $healthWelfare,
-                        'health_welfare_percentage' => $healthWelfarePercentage,
                         'pvd' => $isPVD,
-                        'pvd_percentage' => $pvdPercentage,
                         'saving_fund' => $isSavingFund,
-                        'saving_fund_percentage' => $savingFundPercentage,
-                        'status' => true, // Active by default
+                        'status' => $status,
                         'created_by' => auth()->user()->name ?? 'system',
                         'updated_by' => auth()->user()->name ?? 'system',
                         'created_at' => now(),
@@ -334,15 +359,22 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
     public function rules(): array
     {
         return [
-            '*.idno' => 'required|string',
-            '*.salary_2025' => 'required|numeric',
+            '*.staff_id' => 'required|string',
+            '*.employment_type' => 'required|string|in:Full-time,Part-time,Contract,Temporary',
+            '*.start_date' => 'required|date',
+            '*.pass_probation_salary' => 'required|numeric',
+            '*.pass_probation_date' => 'nullable|date',
+            '*.probation_salary' => 'nullable|numeric',
+            '*.end_date' => 'nullable|date',
             '*.pay_method' => 'nullable|string',
-            '*.status' => 'nullable|string',
-            '*.site' => 'nullable|string',
-            '*.pvdsaving' => 'nullable|string',
-            '*.start_date_bhf' => 'nullable|date',
-            '*.start_date_smru' => 'nullable|date',
-            '*.pass_prob_date' => 'nullable|date',
+            '*.site_code' => 'nullable|string',
+            '*.department' => 'nullable|string',
+            '*.section_department' => 'nullable|string',
+            '*.position' => 'nullable|string',
+            '*.health_welfare' => 'nullable|in:0,1',
+            '*.pvd' => 'nullable|in:0,1',
+            '*.saving_fund' => 'nullable|in:0,1',
+            '*.status' => 'nullable|in:0,1',
         ];
     }
 
@@ -440,17 +472,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
     }
 
     /**
-     * Parse start date from BHF or SMRU columns
-     */
-    private function parseStartDate(Collection $row): ?string
-    {
-        $bhfDate = $this->parseDate($row['start_date_bhf'] ?? null);
-        $smruDate = $this->parseDate($row['start_date_smru'] ?? null);
-
-        return $bhfDate ?? $smruDate;
-    }
-
-    /**
      * Parse date field
      */
     private function parseDate($value): ?string
@@ -481,29 +502,17 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
     }
 
     /**
-     * Map status text to employment type
+     * Parse boolean value
      */
-    private function mapEmploymentType(string $statusText): string
+    private function parseBoolean($value): bool
     {
-        $statusLower = strtolower($statusText);
-
-        if (stripos($statusLower, 'full') !== false || stripos($statusLower, 'local') !== false) {
-            return 'Full-time';
+        if (is_bool($value)) {
+            return $value;
         }
 
-        if (stripos($statusLower, 'part') !== false) {
-            return 'Part-time';
-        }
+        $value = strtolower(trim((string) $value));
 
-        if (stripos($statusLower, 'contract') !== false) {
-            return 'Contract';
-        }
-
-        if (stripos($statusLower, 'temp') !== false) {
-            return 'Temporary';
-        }
-
-        return 'Full-time'; // Default
+        return in_array($value, ['1', 'true', 'yes', 'on'], true);
     }
 
     /**

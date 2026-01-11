@@ -180,6 +180,18 @@ class Payroll extends Model
         });
     }
 
+    public function scopeByOrganization($query, $organizations)
+    {
+        if (is_string($organizations)) {
+            $organizations = explode(',', $organizations);
+        }
+        $organizations = array_map('trim', array_filter($organizations));
+
+        return $query->whereHas('employment.employee', function ($q) use ($organizations) {
+            $q->whereIn('organization', $organizations);
+        });
+    }
+
     public function scopeByDepartment($query, $departments)
     {
         if (is_string($departments)) {

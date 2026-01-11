@@ -205,4 +205,3 @@ class ActivityLog extends Model
         return $this->properties['new'] ?? null;
     }
 }
-

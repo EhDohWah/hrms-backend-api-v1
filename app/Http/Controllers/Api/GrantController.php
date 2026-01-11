@@ -557,9 +557,9 @@ class GrantController extends Controller
                 if (empty($grantPosition)) {
                     continue;
                 }
-                
+
                 // Additional check: Skip if position looks like a header or validation rule
-                if (stripos($grantPosition, 'String - NOT NULL') !== false || 
+                if (stripos($grantPosition, 'String - NOT NULL') !== false ||
                     stripos($grantPosition, 'Position title') !== false ||
                     $grantPosition === 'Position') {
                     continue;
@@ -1081,6 +1081,7 @@ class GrantController extends Controller
      *         description="Failed to generate template",
      *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Failed to generate template"),
      *             @OA\Property(property="error", type="string")
@@ -1091,8 +1092,8 @@ class GrantController extends Controller
     public function downloadTemplate()
     {
         try {
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-            
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+
             // Remove default sheet and create first grant sheet
             $spreadsheet->removeSheetByIndex(0);
             $sheet = $spreadsheet->createSheet();
@@ -1312,32 +1313,32 @@ class GrantController extends Controller
 
             $row = 1;
             foreach ($instructions as $instruction) {
-                $instructionsSheet->setCellValue('A' . $row, $instruction[0]);
+                $instructionsSheet->setCellValue('A'.$row, $instruction[0]);
                 if ($row === 1) {
-                    $instructionsSheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
+                    $instructionsSheet->getStyle('A'.$row)->getFont()->setBold(true)->setSize(14);
                 }
                 $row++;
             }
 
-            $instructionsSheet->getStyle('A1:A' . $row)->getAlignment()->setWrapText(true);
+            $instructionsSheet->getStyle('A1:A'.$row)->getAlignment()->setWrapText(true);
 
             // Set active sheet to template
             $spreadsheet->setActiveSheetIndex(0);
 
             // Generate filename with timestamp
-            $filename = 'grant_import_template_' . date('Y-m-d_His') . '.xlsx';
+            $filename = 'grant_import_template_'.date('Y-m-d_His').'.xlsx';
 
             // Create writer and save to temporary file
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-            
+
             // Create temporary file
             $tempFile = tempnam(sys_get_temp_dir(), 'grant_template_');
             $writer->save($tempFile);
-            
+
             // Return file download response with proper CORS headers
             return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'no-cache, must-revalidate',
                 'Pragma' => 'no-cache',
                 'Expires' => '0',
@@ -2335,6 +2336,134 @@ class GrantController extends Controller
                 'success' => false,
                 'message' => 'Failed to retrieve grant statistics',
                 'error' => app()->environment('production') ? null : $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/grants/delete-selected",
+     *     operationId="deleteSelectedGrants",
+     *     summary="Delete multiple grants",
+     *     description="Delete multiple grants and their associated grant items by IDs. This is a bulk delete operation.",
+     *     tags={"Grants"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"ids"},
+     *
+     *             @OA\Property(
+     *                 property="ids",
+     *                 type="array",
+     *                 description="Array of grant IDs to delete",
+     *
+     *                 @OA\Items(type="integer")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Grants deleted successfully",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="5 grant(s) deleted successfully"),
+     *             @OA\Property(property="count", type="integer", example=5)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - User does not have permission"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to delete grants"),
+     *             @OA\Property(property="error", type="string")
+     *         )
+     *     )
+     * )
+     */
+    public function deleteSelectedGrants(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer|exists:grants,id',
+        ]);
+        $ids = $validated['ids'];
+
+        try {
+            DB::beginTransaction();
+
+            // Store grant data before deletion for notifications
+            $grants = Grant::whereIn('id', $ids)->get();
+
+            // Delete related grant items first (they have foreign key to grants)
+            GrantItem::whereIn('grant_id', $ids)->delete();
+
+            // Delete the grants
+            $count = Grant::whereIn('id', $ids)->delete();
+
+            DB::commit();
+
+            // Send notification to all users about the bulk delete
+            $performedBy = auth()->user();
+            if ($performedBy && $grants->isNotEmpty()) {
+                $grantNames = $grants->pluck('name')->take(3)->implode(', ');
+                $message = $count > 3
+                    ? "{$grantNames} and ".($count - 3).' more'
+                    : $grantNames;
+
+                $users = User::all();
+                foreach ($users as $user) {
+                    // Create a summary grant object for notification
+                    $grantForNotification = (object) [
+                        'id' => null,
+                        'name' => "Bulk delete: {$message}",
+                        'code' => "{$count} grants",
+                    ];
+                    $user->notify(new GrantActionNotification('deleted', $grantForNotification, $performedBy));
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $count.' grant(s) deleted successfully',
+                'count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete grants',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
