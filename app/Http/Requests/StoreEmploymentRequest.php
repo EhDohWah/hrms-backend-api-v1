@@ -44,11 +44,12 @@ class StoreEmploymentRequest extends FormRequest
             'saving_fund_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'status' => ['nullable', 'boolean'],
 
-            // Allocation fields (matching actual database schema)
-            'allocations' => ['required', 'array', 'min:1'],
+            // Allocation fields (optional - can be created separately via EmployeeFundingAllocationController)
+            // Note: Allocations are now decoupled from employment creation for better flexibility
+            'allocations' => ['sometimes', 'array'],
             'allocations.*.allocation_type' => ['sometimes', 'string', Rule::in(['grant'])],
-            'allocations.*.fte' => ['required', 'numeric', 'min:0.01', 'max:100'],
-            'allocations.*.grant_item_id' => ['required', 'integer', 'exists:grant_items,id'],
+            'allocations.*.fte' => ['required_with:allocations', 'numeric', 'min:0.01', 'max:100'],
+            'allocations.*.grant_item_id' => ['required_with:allocations', 'integer', 'exists:grant_items,id'],
             'allocations.*.allocated_amount' => ['nullable', 'numeric', 'min:0'],
             'allocations.*.start_date' => ['nullable', 'date'],
             'allocations.*.end_date' => ['nullable', 'date', 'after:allocations.*.start_date'],
@@ -81,8 +82,8 @@ class StoreEmploymentRequest extends FormRequest
             'pvd.boolean' => 'PVD must be true or false.',
             'saving_fund.boolean' => 'Saving fund must be true or false.',
             'status.boolean' => 'Status must be true (Active) or false (Inactive).',
-            'allocations.required' => 'At least one funding allocation is required.',
-            'allocations.min' => 'At least one funding allocation must be specified.',
+            // Note: Allocations are now optional - can be created separately after employment
+            'allocations.array' => 'Allocations must be an array if provided.',
             'allocations.*.allocation_type.required' => 'Funding allocation type is required.',
             'allocations.*.allocation_type.in' => 'Invalid allocation type. Must be grant.',
             'allocations.*.fte.required' => 'FTE (Full-Time Equivalent) is required for each allocation.',
@@ -101,8 +102,10 @@ class StoreEmploymentRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // Validate total FTE equals 100%
-            if ($this->has('allocations')) {
+            // Validate total FTE equals 100% only if allocations are provided
+            // Note: Allocations are now optional - employment can be created without allocations
+            // and allocations can be added later via EmployeeFundingAllocationController
+            if ($this->has('allocations') && is_array($this->allocations) && count($this->allocations) > 0) {
                 $totalFte = array_sum(array_column($this->allocations, 'fte'));
                 if (abs($totalFte - 100) > 0.01) { // Allow small floating point differences
                     $validator->errors()->add('allocations',

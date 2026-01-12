@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\EmployeeFundingAllocationResource;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
+use App\Models\Employment;
 use App\Models\Grant;
 use App\Models\GrantItem;
+use App\Services\EmployeeFundingAllocationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,6 +25,12 @@ use Illuminate\Support\Facades\Validator;
  */
 class EmployeeFundingAllocationController extends Controller
 {
+    /**
+     * Constructor with dependency injection for salary calculation service
+     */
+    public function __construct(
+        private readonly EmployeeFundingAllocationService $employeeFundingAllocationService
+    ) {}
     /**
      * @OA\Get(
      *     path="/employee-funding-allocations",
@@ -324,6 +332,26 @@ class EmployeeFundingAllocationController extends Controller
             $validated = $validator->validated();
             $currentUser = Auth::user()->name ?? 'system';
 
+            // Fetch the employment record for salary context calculation
+            $employment = Employment::find($validated['employment_id']);
+            if (! $employment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employment record not found',
+                ], 404);
+            }
+
+            // Validate that employment has salary defined (required for allocation calculation)
+            if (is_null($employment->pass_probation_salary) && is_null($employment->probation_salary)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employment must have a salary defined before funding allocations can be created. Please update the employment record with salary information first.',
+                ], 422);
+            }
+
+            // Determine effective date for salary calculation
+            $effectiveDate = Carbon::parse($validated['start_date']);
+
             // Validate that the total effort of all new allocations equals exactly 100%
             $totalNewEffort = array_sum(array_column($validated['allocations'], 'fte'));
             if ($totalNewEffort != 100) {
@@ -413,19 +441,28 @@ class EmployeeFundingAllocationController extends Controller
                         continue;
                     }
 
-                    // Create the allocation
-                    $allocation = EmployeeFundingAllocation::create([
+                    // Calculate salary context using the service
+                    // This automatically determines probation vs post-probation salary based on effective date
+                    $fteDecimal = $allocationData['fte'] / 100;
+                    $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
+                        $employment,
+                        $fteDecimal,
+                        $effectiveDate
+                    );
+
+                    // Create the allocation with auto-calculated salary
+                    $allocation = EmployeeFundingAllocation::create(array_merge([
                         'employee_id' => $validated['employee_id'],
                         'employment_id' => $validated['employment_id'],
                         'grant_item_id' => $allocationData['grant_item_id'],
-                        'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
+                        'fte' => $fteDecimal,
                         'allocation_type' => 'grant',
-                        'allocated_amount' => $allocationData['allocated_amount'] ?? null,
+                        'status' => 'active',
                         'start_date' => $validated['start_date'],
                         'end_date' => $validated['end_date'] ?? null,
                         'created_by' => $currentUser,
                         'updated_by' => $currentUser,
-                    ]);
+                    ], $salaryContext));  // Merge salary_type and allocated_amount from service
 
                     $createdAllocations[] = $allocation;
 
@@ -458,6 +495,14 @@ class EmployeeFundingAllocationController extends Controller
                 'message' => 'Employee funding allocations created successfully',
                 'data' => $allocationsWithRelations,
                 'total_created' => count($createdAllocations),
+                'salary_info' => [
+                    'salary_type_used' => $employment->getSalaryTypeForDate($effectiveDate),
+                    'salary_amount_used' => $employment->getSalaryAmountForDate($effectiveDate),
+                    'is_probation_period' => $employment->pass_probation_date 
+                        ? $effectiveDate->lt(Carbon::parse($employment->pass_probation_date))
+                        : false,
+                    'pass_probation_date' => $employment->pass_probation_date,
+                ],
             ];
 
             if (! empty($errors)) {
@@ -472,6 +517,135 @@ class EmployeeFundingAllocationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee funding allocations',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/employee-funding-allocations/calculate-preview",
+     *     operationId="calculateAllocationPreview",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Calculate allocation amount preview",
+     *     description="Calculates the allocated amount for a funding allocation without persisting. Uses the employment's salary (probation or post-probation) based on the effective date. Useful for real-time UI feedback before saving.",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"employment_id", "fte"},
+     *
+     *             @OA\Property(property="employment_id", type="integer", description="ID of the employment record"),
+     *             @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
+     *             @OA\Property(property="effective_date", type="string", format="date", description="Date to determine which salary to use (defaults to today)", nullable=true)
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Calculation successful",
+     *
+     *         @OA\JsonContent(
+     *             type="object",
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="fte_decimal", type="number", example=0.5),
+     *                 @OA\Property(property="fte_percentage", type="number", example=50),
+     *                 @OA\Property(property="allocated_amount", type="number", example=25000.00),
+     *                 @OA\Property(property="salary_type", type="string", example="probation_salary"),
+     *                 @OA\Property(property="salary_amount", type="number", example=50000.00),
+     *                 @OA\Property(property="is_probation_period", type="boolean", example=true),
+     *                 @OA\Property(property="pass_probation_date", type="string", format="date", nullable=true)
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=404, description="Employment not found"),
+     *     @OA\Response(response=422, description="Validation error or no salary defined"),
+     *     @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
+    public function calculatePreview(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'employment_id' => 'required|exists:employments,id',
+                'fte' => 'required|numeric|min:0|max:100',
+                'effective_date' => 'nullable|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+
+            // Fetch employment record
+            $employment = Employment::find($validated['employment_id']);
+            if (! $employment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employment record not found',
+                ], 404);
+            }
+
+            // Validate salary is defined
+            if (is_null($employment->pass_probation_salary) && is_null($employment->probation_salary)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employment must have a salary defined before allocation can be calculated.',
+                    'data' => [
+                        'employment_id' => $employment->id,
+                        'has_probation_salary' => ! is_null($employment->probation_salary),
+                        'has_pass_probation_salary' => ! is_null($employment->pass_probation_salary),
+                    ],
+                ], 422);
+            }
+
+            // Determine effective date
+            $effectiveDate = isset($validated['effective_date'])
+                ? Carbon::parse($validated['effective_date'])
+                : Carbon::today();
+
+            // Calculate using the service
+            $fteDecimal = $validated['fte'] / 100;
+            $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
+                $employment,
+                $fteDecimal,
+                $effectiveDate
+            );
+
+            // Determine if in probation period
+            $isProbationPeriod = $employment->pass_probation_date
+                ? $effectiveDate->lt(Carbon::parse($employment->pass_probation_date))
+                : false;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Allocation preview calculated successfully',
+                'data' => [
+                    'fte_decimal' => $fteDecimal,
+                    'fte_percentage' => $validated['fte'],
+                    'allocated_amount' => $salaryContext['allocated_amount'],
+                    'salary_type' => $salaryContext['salary_type'],
+                    'salary_amount' => $employment->getSalaryAmountForDate($effectiveDate),
+                    'is_probation_period' => $isProbationPeriod,
+                    'pass_probation_date' => $employment->pass_probation_date,
+                    'effective_date' => $effectiveDate->toDateString(),
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to calculate allocation preview',
                 'error' => $e->getMessage(),
             ], 500);
         }

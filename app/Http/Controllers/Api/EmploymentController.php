@@ -374,17 +374,17 @@ class EmploymentController extends Controller
 
     #[OA\Post(
         path: '/employments',
-        operationId: 'createEmploymentWithFundingAllocations',
+        operationId: 'createEmployment',
         tags: ['Employments'],
-        summary: 'Create employment record with funding allocations',
-        description: 'Creates an employment record and associated funding allocations using grant items for all funding sources',
+        summary: 'Create employment record (optionally with funding allocations)',
+        description: 'Creates an employment record. Funding allocations are optional and can be added separately via the EmployeeFundingAllocation API. If allocations are provided, they will be created together with the employment.',
         security: [['bearerAuth' => []]],
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(ref: '#/components/schemas/Employment')
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Employment and allocations created successfully'),
+            new OA\Response(response: 201, description: 'Employment created successfully'),
             new OA\Response(response: 400, description: 'Bad request'),
             new OA\Response(response: 401, description: 'Unauthenticated'),
             new OA\Response(response: 422, description: 'Validation error'),
@@ -409,14 +409,20 @@ class EmploymentController extends Controller
             // SECTION 2: BUSINESS LOGIC VALIDATION
             // ============================================================================
 
-            // Validate that the total effort of all allocations equals exactly 100%
-            $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
-            if ($totalEffort != 100) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Total effort of all allocations must equal exactly 100%',
-                    'current_total' => $totalEffort,
-                ], 422);
+            // Check if allocations are provided and validate total effort
+            // Note: Allocations are now optional - employment can be created without allocations
+            $hasAllocations = ! empty($validated['allocations']) && is_array($validated['allocations']) && count($validated['allocations']) > 0;
+            
+            if ($hasAllocations) {
+                // Validate that the total effort of all allocations equals exactly 100%
+                $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
+                if ($totalEffort != 100) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Total effort of all allocations must equal exactly 100%',
+                        'current_total' => $totalEffort,
+                    ], 422);
+                }
             }
 
             // Check if employee already has active employment (using date-based logic)
@@ -468,9 +474,12 @@ class EmploymentController extends Controller
             $startDate = Carbon::parse($validated['start_date']);
 
             // ============================================================================
-            // SECTION 5: PROCESS ALLOCATIONS
+            // SECTION 5: PROCESS ALLOCATIONS (OPTIONAL)
+            // Note: Allocations are now optional - employment can be created without allocations
+            // Allocations can be added later via POST /employee-funding-allocations
             // ============================================================================
-            foreach ($validated['allocations'] as $index => $allocationData) {
+            if ($hasAllocations) {
+                foreach ($validated['allocations'] as $index => $allocationData) {
                 try {
                     $allocationType = 'grant';
 
@@ -539,11 +548,14 @@ class EmploymentController extends Controller
                     $errors[] = "Allocation #{$index}: ".$e->getMessage();
                 }
             }
+            } // End of hasAllocations block
 
             // ============================================================================
             // SECTION 6: HANDLE ERRORS AND ROLLBACK IF NECESSARY
+            // Note: Only rollback if allocations were requested but ALL failed
+            // If no allocations were requested, employment creation is successful
             // ============================================================================
-            if (empty($createdFundingAllocations) && ! empty($errors)) {
+            if ($hasAllocations && empty($createdFundingAllocations) && ! empty($errors)) {
                 DB::rollBack();
 
                 return response()->json([
@@ -582,16 +594,24 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 8: RETURN SUCCESS RESPONSE
             // ============================================================================
+            
+            // Determine appropriate message based on whether allocations were created
+            $message = $hasAllocations
+                ? 'Employment and funding allocations created successfully'
+                : 'Employment created successfully. Add funding allocations via the separate allocation API when ready.';
+            
             $response = [
                 'success' => true,
-                'message' => 'Employment and funding allocations created successfully',
+                'message' => $message,
                 'data' => [
                     'employment' => $employmentWithRelations,
                     'funding_allocations' => $fundingAllocationsWithRelations,
                 ],
                 'summary' => [
                     'employment_created' => true,
+                    'employment_id' => $employment->id,  // Include employment_id for frontend to use in allocation creation
                     'funding_allocations_created' => count($createdFundingAllocations),
+                    'allocations_required' => ! $hasAllocations,  // Flag to indicate allocations should be added
                 ],
             ];
 
@@ -1392,7 +1412,6 @@ class EmploymentController extends Controller
             $fundingAllocations = EmployeeFundingAllocation::with([
                 'grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
                 'grantItem.grant:id,name,code',
-                'grant:id,name,code',
                 'employment:id,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title,department_id',
