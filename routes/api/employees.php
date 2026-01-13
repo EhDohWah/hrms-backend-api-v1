@@ -42,6 +42,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/employee/{employeeId}', [EmployeeFundingAllocationController::class, 'getEmployeeAllocations'])->middleware('permission:employees.read');
         Route::get('/{id}', [EmployeeFundingAllocationController::class, 'show'])->middleware('permission:employees.read');
         Route::get('/by-grant-item/{grantItemId}', [EmployeeFundingAllocationController::class, 'getByGrantItem'])->middleware('permission:employees.read');
+        
+        // Calculate preview - for real-time UI feedback (no persistence)
+        Route::post('/calculate-preview', [EmployeeFundingAllocationController::class, 'calculatePreview'])->middleware('permission:employees.read');
+        
         Route::post('/', [EmployeeFundingAllocationController::class, 'store'])->middleware('permission:employees.edit');
         Route::post('/bulk-deactivate', [EmployeeFundingAllocationController::class, 'bulkDeactivate'])->middleware('permission:employees.edit');
         Route::put('/{id}', [EmployeeFundingAllocationController::class, 'update'])->middleware('permission:employees.edit');
