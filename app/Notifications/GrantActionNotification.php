@@ -3,12 +3,13 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class GrantActionNotification extends Notification implements ShouldQueue
+class GrantActionNotification extends Notification implements ShouldQueue, ShouldBroadcastNow
 {
     use Queueable;
 
@@ -116,6 +117,8 @@ class GrantActionNotification extends Notification implements ShouldQueue
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
+        \Log::info('[GrantActionNotification] toBroadcast called for user: ' . $notifiable->id);
+        
         $actionText = match ($this->action) {
             'created' => 'created',
             'updated' => 'updated',
@@ -129,6 +132,11 @@ class GrantActionNotification extends Notification implements ShouldQueue
         $performerName = $this->performedBy->name ?? 'System';
 
         $message = "Grant {$grantName} (Code: {$grantCode}) has been {$actionText} by {$performerName}.";
+
+        \Log::info('[GrantActionNotification] Broadcasting to channel: App.Models.User.' . $notifiable->id, [
+            'message' => $message,
+            'grant_id' => $grantId,
+        ]);
 
         return new BroadcastMessage([
             'type' => 'grant_action',

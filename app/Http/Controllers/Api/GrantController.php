@@ -1462,9 +1462,14 @@ class GrantController extends Controller
             $performedBy = auth()->user();
             if ($performedBy) {
                 $users = User::all();
+                \Log::info('[GrantController] Sending notifications to ' . $users->count() . ' users for grant: ' . $grant->id);
                 foreach ($users as $user) {
+                    \Log::info('[GrantController] Notifying user: ' . $user->id . ' - ' . $user->email);
                     $user->notify(new GrantActionNotification('created', $grant, $performedBy));
                 }
+                \Log::info('[GrantController] All notifications sent');
+            } else {
+                \Log::warning('[GrantController] No performedBy user found - notifications not sent');
             }
 
             return response()->json([
