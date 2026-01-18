@@ -155,16 +155,12 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
 
         $message = "Grant {$grantName} (Code: {$grantCode}) has been {$actionText} by {$performerName}.";
 
-<<<<<<< HEAD
         \Log::info('[GrantActionNotification] Broadcasting to channel: App.Models.User.' . $notifiable->id, [
             'message' => $message,
             'grant_id' => $grantId,
         ]);
 
-        return new BroadcastMessage([
-=======
         return new BroadcastMessage(array_merge([
->>>>>>> employment-update
             'type' => 'grant_action',
             'action' => $this->action,
             'message' => $message,

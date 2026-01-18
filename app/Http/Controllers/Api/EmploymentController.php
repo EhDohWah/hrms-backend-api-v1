@@ -1020,7 +1020,10 @@ class EmploymentController extends Controller
     public function show($id)
     {
         try {
-            $employment = Employment::findOrFail($id);
+            // Load employment with employee relationship
+            $employment = Employment::with([
+                'employee:id,staff_id,first_name_en,last_name_en,organization,status'
+            ])->findOrFail($id);
 
             // Add global benefit percentages from benefit_settings table
             $employment->health_welfare_percentage = \App\Models\BenefitSetting::getActiveSetting('health_welfare_percentage');
