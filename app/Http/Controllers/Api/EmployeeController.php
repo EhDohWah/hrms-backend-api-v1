@@ -30,6 +30,7 @@ use App\Models\Site;
 use App\Models\TravelRequest;
 use App\Models\User;
 use App\Notifications\EmployeeActionNotification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -281,7 +282,7 @@ class EmployeeController extends Controller
                 'I' => ['header' => 'gender', 'width' => 10, 'validation' => 'String - NOT NULL - Values: M, F'],
                 'J' => ['header' => 'date_of_birth', 'width' => 15, 'validation' => 'Date - NOT NULL - Format: YYYY-MM-DD or Excel date'],
                 'K' => ['header' => 'age', 'width' => 10, 'validation' => 'Formula - AUTO CALCULATED - Do not edit'],
-                'L' => ['header' => 'status', 'width' => 15, 'validation' => 'String - NULLABLE - Max 20 chars - Employment status'],
+                'L' => ['header' => 'status', 'width' => 20, 'validation' => 'String - NULLABLE - Values: Expats (Local), Local ID Staff, Local non ID Staff'],
                 'M' => ['header' => 'nationality', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
                 'N' => ['header' => 'religion', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
                 'O' => ['header' => 'id_type', 'width' => 15, 'validation' => 'String - NULLABLE - Values: 10 years ID, Burmese ID, CI, Borderpass, Thai ID, Passport, Other'],
@@ -345,8 +346,8 @@ class EmployeeController extends Controller
 
             // Add sample data (2 rows)
             $sampleData = [
-                ['SMRU', 'EMP001', 'Mr.', 'John', 'Doe', 'นาย', 'จอห์น', 'โด', 'M', '1990-01-15', '', 'Active', 'Thai', 'Buddhist', 'Thai ID', '1234567890123', 'SS123456', 'TAX123456', 'DL123456', 'Bangkok Bank', 'Headquarters', 'John Doe', '1234567890', '0812345678', '123 Main St, Bangkok', '456 Home St, Bangkok', 'Single', '', '', 'Jane Doe', 'Sister', '0823456789', 'Robert Doe', 'Engineer', '0834567890', 'Mary Doe', 'Teacher', '0845678901', 'Jane Doe', 'Sister', '0823456789', '', '', '', '', '', '', 'Completed', 'New employee'],
-                ['BHF', 'EMP002', 'Ms.', 'Sarah', 'Smith', 'นางสาว', 'ซาร่าห์', 'สมิธ', 'F', '1985-05-20', '', 'Active', 'American', 'Christian', 'Passport', 'P1234567', 'SS234567', 'TAX234567', '', 'Kasikorn Bank', 'Silom Branch', 'Sarah Smith', '0987654321', '0898765432', '789 Office Rd, Bangkok', '321 Apartment, Bangkok', 'Married', 'Tom Smith', '0887654321', 'Emergency Contact', 'Friend', '0876543210', 'David Smith', 'Doctor', '0865432109', 'Linda Smith', 'Nurse', '0854321098', 'Tom Smith', 'Spouse', '0887654321', '', '', '', '', '', '', 'Exempt', 'Senior staff'],
+                ['SMRU', 'EMP001', 'Mr.', 'John', 'Doe', 'นาย', 'จอห์น', 'โด', 'M', '1990-01-15', '', 'Local ID Staff', 'Thai', 'Buddhist', 'Thai ID', '1234567890123', 'SS123456', 'TAX123456', 'DL123456', 'Bangkok Bank', 'Headquarters', 'John Doe', '1234567890', '0812345678', '123 Main St, Bangkok', '456 Home St, Bangkok', 'Single', '', '', 'Jane Doe', 'Sister', '0823456789', 'Robert Doe', 'Engineer', '0834567890', 'Mary Doe', 'Teacher', '0845678901', 'Jane Doe', 'Sister', '0823456789', '', '', '', '', '', '', 'Completed', 'New employee'],
+                ['BHF', 'EMP002', 'Ms.', 'Sarah', 'Smith', 'นางสาว', 'ซาร่าห์', 'สมิธ', 'F', '1985-05-20', '', 'Expats (Local)', 'American', 'Christian', 'Passport', 'P1234567', 'SS234567', 'TAX234567', '', 'Kasikorn Bank', 'Silom Branch', 'Sarah Smith', '0987654321', '0898765432', '789 Office Rd, Bangkok', '321 Apartment, Bangkok', 'Married', 'Tom Smith', '0887654321', 'Emergency Contact', 'Friend', '0876543210', 'David Smith', 'Doctor', '0865432109', 'Linda Smith', 'Nurse', '0854321098', 'Tom Smith', 'Spouse', '0887654321', '', '', '', '', '', '', 'Exempt', 'Senior staff'],
             ];
 
             foreach ($sampleData as $rowIndex => $rowData) {
@@ -397,6 +398,22 @@ class EmployeeController extends Controller
                 $validation->setPromptTitle('ID Type');
                 $validation->setPrompt('Select ID type');
                 $validation->setFormula1('"10 years ID,Burmese ID,CI,Borderpass,Thai ID,Passport,Other"');
+            }
+
+            // Identity Status dropdown (column L)
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('L'.$row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setAllowBlank(true);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Identity Status');
+                $validation->setError('Please select from the list');
+                $validation->setPromptTitle('Identity Status');
+                $validation->setPrompt('Select employee identity status');
+                $validation->setFormula1('"Expats (Local),Local ID Staff,Local non ID Staff"');
             }
 
             // Marital Status dropdown (column AA)
@@ -734,13 +751,14 @@ class EmployeeController extends Controller
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('created', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('created', $employee, $performedBy, 'employees'),
+                    'created'
+                );
             }
 
             return response()->json([
@@ -838,15 +856,15 @@ class EmployeeController extends Controller
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Refresh employee to get latest data
                 $employee->refresh();
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -928,13 +946,14 @@ class EmployeeController extends Controller
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('deleted', $employeeData, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('deleted', $employeeData, $performedBy, 'employees'),
+                    'deleted'
+                );
             }
 
             return response()->json([
@@ -1237,15 +1256,15 @@ class EmployeeController extends Controller
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Refresh employee to get latest data
                 $employee->refresh();
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -1335,15 +1354,15 @@ class EmployeeController extends Controller
             // Reload employee with relations if needed for API response
             $employee->load('employeeIdentification', 'employeeLanguages');
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Refresh employee to get latest data
                 $employee->refresh();
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -1436,15 +1455,15 @@ class EmployeeController extends Controller
                 'emergency_contact_person_phone',
             ]);
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Refresh employee to get latest data
                 $employee->refresh();
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -1537,15 +1556,15 @@ class EmployeeController extends Controller
                 'bank_account_number',
             ]);
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Refresh employee to get latest data
                 $employee->refresh();
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'employees',
+                    new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                    'updated'
+                );
             }
 
             return response()->json([

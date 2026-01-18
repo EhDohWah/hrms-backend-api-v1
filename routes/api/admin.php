@@ -104,12 +104,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [LookupController::class, 'destroy']);
     });
 
-    // Notification routes
+    // Notification routes (Enhanced with filtering, pagination, and bulk operations)
     Route::prefix('notifications')->group(function () {
+        // Core CRUD operations
         Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::get('/stats', [NotificationController::class, 'stats']);
+        Route::get('/filter-options', [NotificationController::class, 'filterOptions']);
         Route::get('/{id}', [NotificationController::class, 'show']);
+
+        // Mark as read operations
         Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead']);
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+
+        // Delete operations
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
+        Route::post('/bulk-delete', [NotificationController::class, 'bulkDestroy']);
+        Route::post('/clear-read', [NotificationController::class, 'clearRead']);
     });
 
     // Activity Log routes

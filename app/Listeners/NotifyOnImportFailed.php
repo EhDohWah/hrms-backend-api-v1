@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Models\User;
 use App\Notifications\ImportFailedNotification;
+use App\Services\NotificationService;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Log;
 
@@ -25,11 +26,11 @@ class NotifyOnImportFailed
         if ($payload && preg_match('/"userId";i:(\d+);/', $payload, $m)) {
             $user = User::find($m[1]);
             if ($user) {
-                $user->notify(new ImportFailedNotification(
-                    'Import failed',
-                    null,
-                    (preg_match('/"importId";s:\d+:"([^"]+)";/', $payload, $i) ? $i[1] : null)
-                ));
+                $importId = preg_match('/"importId";s:\d+:"([^"]+)";/', $payload, $i) ? $i[1] : null;
+                app(NotificationService::class)->notifyUser(
+                    $user,
+                    new ImportFailedNotification('Import failed', null, $importId, 'import')
+                );
             }
         }
     }

@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\NotificationCategory;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,14 +21,32 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
 
     public $performedBy;
 
+    public $module;
+
     /**
      * Create a new notification instance.
+     *
+     * @param  string  $action  Action type: 'created', 'updated', 'deleted'
+     * @param  mixed  $grant  Grant model or data array
+     * @param  mixed  $performedBy  User who performed the action
+     * @param  string  $module  Module name for categorization (default: 'grants_list')
      */
-    public function __construct(string $action, $grant, $performedBy)
+    public function __construct(string $action, $grant, $performedBy, string $module = 'grants_list')
     {
-        $this->action = $action; // 'created', 'updated', 'deleted'
+        $this->action = $action;
         $this->grant = $grant;
-        $this->performedBy = $performedBy; // User who performed the action
+        $this->performedBy = $performedBy;
+        $this->module = $module;
+    }
+
+    /**
+     * Get notification metadata (category and labels)
+     */
+    protected function getMetadata(): array
+    {
+        $service = app(NotificationService::class);
+
+        return $service->getNotificationMetadata($this->module);
     }
 
     /**
@@ -99,10 +119,11 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
         $grantCode = $this->getGrantProperty('code', 'N/A');
         $grantId = $this->getGrantProperty('id');
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Grant {$grantName} (Code: {$grantCode}) has been {$actionText} by {$performerName}.";
 
-        return [
+        return array_merge([
             'type' => 'grant_action',
             'action' => $this->action,
             'message' => $message,
@@ -112,7 +133,7 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
@@ -130,15 +151,20 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
         $grantCode = $this->getGrantProperty('code', 'N/A');
         $grantId = $this->getGrantProperty('id');
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Grant {$grantName} (Code: {$grantCode}) has been {$actionText} by {$performerName}.";
 
+<<<<<<< HEAD
         \Log::info('[GrantActionNotification] Broadcasting to channel: App.Models.User.' . $notifiable->id, [
             'message' => $message,
             'grant_id' => $grantId,
         ]);
 
         return new BroadcastMessage([
+=======
+        return new BroadcastMessage(array_merge([
+>>>>>>> employment-update
             'type' => 'grant_action',
             'action' => $this->action,
             'message' => $message,
@@ -148,7 +174,7 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ]);
+        ], $metadata));
     }
 
     /**
@@ -169,10 +195,11 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
         $grantCode = $this->getGrantProperty('code', 'N/A');
         $grantId = $this->getGrantProperty('id');
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Grant {$grantName} (Code: {$grantCode}) has been {$actionText} by {$performerName}.";
 
-        return [
+        return array_merge([
             'type' => 'grant_action',
             'action' => $this->action,
             'message' => $message,
@@ -182,6 +209,6 @@ class GrantActionNotification extends Notification implements ShouldQueue, Shoul
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 }

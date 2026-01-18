@@ -6,6 +6,7 @@ use App\Models\Grant;
 use App\Models\GrantItem;
 use App\Models\User;
 use App\Notifications\ImportedCompletedNotification;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
@@ -107,7 +108,10 @@ class GrantsImport implements WithMultipleSheets
 
         $user = User::find($this->userId);
         if ($user) {
-            $user->notify(new ImportedCompletedNotification($message));
+            app(NotificationService::class)->notifyUser(
+                $user,
+                new ImportedCompletedNotification($message, 'import')
+            );
         }
     }
 }

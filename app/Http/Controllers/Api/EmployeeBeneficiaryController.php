@@ -7,6 +7,7 @@ use App\Http\Resources\EmployeeBeneficiaryResource;
 use App\Models\EmployeeBeneficiary;
 use App\Models\User;
 use App\Notifications\EmployeeActionNotification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -104,14 +105,15 @@ class EmployeeBeneficiaryController extends Controller
         $employeeBeneficiary = EmployeeBeneficiary::create($validatedData);
         $employeeBeneficiary->load('employee');
 
-        // Send notification to all users about employee update
+        // Send notification using NotificationService
         $performedBy = auth()->user();
         if ($performedBy && $employeeBeneficiary->employee) {
             $employee = $employeeBeneficiary->employee;
-            $users = User::all();
-            foreach ($users as $user) {
-                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-            }
+            app(NotificationService::class)->notifyByModule(
+                'employees',
+                new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                'updated'
+            );
         }
 
         return response()->json([
@@ -248,14 +250,15 @@ class EmployeeBeneficiaryController extends Controller
         $employeeBeneficiary->update($validatedData);
         $employeeBeneficiary->load('employee');
 
-        // Send notification to all users about employee update
+        // Send notification using NotificationService
         $performedBy = auth()->user();
         if ($performedBy && $employeeBeneficiary->employee) {
             $employee = $employeeBeneficiary->employee;
-            $users = User::all();
-            foreach ($users as $user) {
-                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-            }
+            app(NotificationService::class)->notifyByModule(
+                'employees',
+                new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                'updated'
+            );
         }
 
         return response()->json([
@@ -311,12 +314,13 @@ class EmployeeBeneficiaryController extends Controller
 
         $employeeBeneficiary->delete();
 
-        // Send notification to all users about employee update
+        // Send notification using NotificationService
         if ($performedBy && $employee) {
-            $users = User::all();
-            foreach ($users as $user) {
-                $user->notify(new EmployeeActionNotification('updated', $employee, $performedBy));
-            }
+            app(NotificationService::class)->notifyByModule(
+                'employees',
+                new EmployeeActionNotification('updated', $employee, $performedBy, 'employees'),
+                'updated'
+            );
         }
 
         return response()->json([

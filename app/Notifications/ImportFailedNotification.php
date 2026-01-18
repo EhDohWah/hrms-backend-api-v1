@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\NotificationCategory;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -12,22 +14,38 @@ class ImportFailedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    // public $importId;
     public $message;
 
     public $errorDetails;
 
     public $importId;
 
+    public $module;
+
     /**
      * Create a new notification instance.
+     *
+     * @param  string  $message  Error message
+     * @param  string|null  $errorDetails  Detailed error information
+     * @param  string|null  $importId  Import identifier
+     * @param  string  $module  Module name for categorization (default: 'import')
      */
-    public function __construct($message, $errorDetails = null, $importId = null)
+    public function __construct($message, $errorDetails = null, $importId = null, string $module = 'import')
     {
-        // $this->importId = $importId;
         $this->message = $message;
         $this->errorDetails = $errorDetails;
         $this->importId = $importId;
+        $this->module = $module;
+    }
+
+    /**
+     * Get notification metadata (category and labels)
+     */
+    protected function getMetadata(): array
+    {
+        $service = app(NotificationService::class);
+
+        return $service->getNotificationMetadata($this->module);
     }
 
     /**
@@ -60,23 +78,27 @@ class ImportFailedNotification extends Notification implements ShouldQueue
      */
     public function toDatabase(object $notifiable): array
     {
-        return [
+        $metadata = $this->getMetadata();
+
+        return array_merge([
             'type' => 'import_failed',
             'message' => $this->message,
             'error_details' => $this->errorDetails,
             'import_id' => $this->importId,
             'failed_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage([
+        $metadata = $this->getMetadata();
+
+        return new BroadcastMessage(array_merge([
             'type' => 'import_failed',
             'message' => $this->message,
             'import_id' => $this->importId,
             'failed_at' => now()->toDateTimeString(),
-        ]);
+        ], $metadata));
     }
 
     /**
@@ -86,12 +108,14 @@ class ImportFailedNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        return [
+        $metadata = $this->getMetadata();
+
+        return array_merge([
             'type' => 'import_failed',
             'message' => $this->message,
             'error_details' => $this->errorDetails,
             'import_id' => $this->importId,
             'failed_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 }
