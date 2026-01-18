@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\NotificationCategory;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -18,14 +20,32 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
 
     public $performedBy;
 
+    public $module;
+
     /**
      * Create a new notification instance.
+     *
+     * @param  string  $action  Action type: 'created', 'updated', 'deleted'
+     * @param  mixed  $employee  Employee model or data array
+     * @param  mixed  $performedBy  User who performed the action
+     * @param  string  $module  Module name for categorization (default: 'employees')
      */
-    public function __construct(string $action, $employee, $performedBy)
+    public function __construct(string $action, $employee, $performedBy, string $module = 'employees')
     {
-        $this->action = $action; // 'created', 'updated', 'deleted'
+        $this->action = $action;
         $this->employee = $employee;
-        $this->performedBy = $performedBy; // User who performed the action
+        $this->performedBy = $performedBy;
+        $this->module = $module;
+    }
+
+    /**
+     * Get notification metadata (category and labels)
+     */
+    protected function getMetadata(): array
+    {
+        $service = app(NotificationService::class);
+
+        return $service->getNotificationMetadata($this->module);
     }
 
     /**
@@ -85,10 +105,11 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
         $staffId = $this->employee->staff_id ?? 'N/A';
         $employeeId = $this->employee->id ?? null;
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Employee {$employeeName} (Staff ID: {$staffId}) has been {$actionText} by {$performerName}.";
 
-        return [
+        return array_merge([
             'type' => 'employee_action',
             'action' => $this->action,
             'message' => $message,
@@ -98,7 +119,7 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
@@ -115,10 +136,11 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
         $staffId = $this->employee->staff_id ?? 'N/A';
         $employeeId = $this->employee->id ?? null;
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Employee {$employeeName} (Staff ID: {$staffId}) has been {$actionText} by {$performerName}.";
 
-        return new BroadcastMessage([
+        return new BroadcastMessage(array_merge([
             'type' => 'employee_action',
             'action' => $this->action,
             'message' => $message,
@@ -128,7 +150,7 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ]);
+        ], $metadata));
     }
 
     /**
@@ -150,10 +172,11 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
         $staffId = $this->employee->staff_id ?? 'N/A';
         $employeeId = $this->employee->id ?? null;
         $performerName = $this->performedBy->name ?? 'System';
+        $metadata = $this->getMetadata();
 
         $message = "Employee {$employeeName} (Staff ID: {$staffId}) has been {$actionText} by {$performerName}.";
 
-        return [
+        return array_merge([
             'type' => 'employee_action',
             'action' => $this->action,
             'message' => $message,
@@ -163,6 +186,6 @@ class EmployeeActionNotification extends Notification implements ShouldQueue
             'performed_by_id' => $this->performedBy->id ?? null,
             'performed_by_name' => $performerName,
             'created_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Imports;
 use App\Models\Employee;
 use App\Models\User;
 use App\Notifications\ImportedCompletedNotification;
+use App\Notifications\ImportFailedNotification;
+use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +22,7 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Events\AfterImport;
 use Maatwebsite\Excel\Validators\Failure;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
@@ -27,7 +30,7 @@ use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithEvents, WithHeadingRow
+class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithEvents, WithHeadingRow, WithStartRow
 {
     use Importable, RegistersEventListeners;
 
@@ -50,6 +53,17 @@ class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEm
         Cache::put("import_{$this->importId}_processed_staff_ids", [], 3600);
         Cache::put("import_{$this->importId}_seen_staff_ids", [], 3600);
         Cache::put("import_{$this->importId}_processed_count", 0, 3600);
+    }
+
+    /**
+     * Specify which row to start reading data from.
+     * Row 1: Column headers
+     * Row 2: Validation rules/instructions (SKIP)
+     * Row 3+: Actual employee data
+     */
+    public function startRow(): int
+    {
+        return 3;
     }
 
     public function bindValue(Cell $cell, $value)
@@ -459,7 +473,10 @@ class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEm
 
                 $user = User::find($this->userId);
                 if ($user) {
-                    $user->notify(new ImportedCompletedNotification($message));
+                    app(NotificationService::class)->notifyUser(
+                        $user,
+                        new ImportedCompletedNotification($message, 'import')
+                    );
                 }
 
                 // Clean up cache after notification (optional - cache will expire anyway)
@@ -487,7 +504,10 @@ class EmployeesImport extends DefaultValueBinder implements ShouldQueue, SkipsEm
 
         $user = User::find($this->userId);
         if ($user) {
-            $user->notify(new ImportFailedNotification($errorMessage, $errorDetails, $this->importId));
+            app(NotificationService::class)->notifyUser(
+                $user,
+                new ImportFailedNotification($errorMessage, $errorDetails, $this->importId, 'import')
+            );
         }
     }
 }

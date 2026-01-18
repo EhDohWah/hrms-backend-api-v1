@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\GrantActionNotification;
 use App\Notifications\GrantItemActionNotification;
 use App\Notifications\ImportedCompletedNotification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1458,13 +1459,14 @@ class GrantController extends Controller
 
             $grant = Grant::create($data);
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantActionNotification('created', $grant, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantActionNotification('created', $grant, $performedBy, 'grants_list'),
+                    'created'
+                );
             }
 
             return response()->json([
@@ -1604,13 +1606,14 @@ class GrantController extends Controller
 
             DB::commit();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy && $grantItem->grant) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantItemActionNotification('created', $grantItem, $grantItem->grant, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantItemActionNotification('created', $grantItem, $grantItem->grant, $performedBy, 'grants_list'),
+                    'created'
+                );
             }
 
             return response()->json([
@@ -1786,13 +1789,14 @@ class GrantController extends Controller
                 ->where('status', 'active')
                 ->count();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy && $grantItem->grant) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantItemActionNotification('updated', $grantItem, $grantItem->grant, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantItemActionNotification('updated', $grantItem, $grantItem->grant, $performedBy, 'grants_list'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -1908,20 +1912,20 @@ class GrantController extends Controller
 
             DB::commit();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                // Create a temporary grant object with the stored data for notification
                 $grantForNotification = (object) [
                     'id' => $grantData['id'] ?? null,
                     'name' => $grantData['name'] ?? 'Unknown Grant',
                     'code' => $grantData['code'] ?? 'N/A',
                 ];
 
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantActionNotification('deleted', $grantForNotification, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantActionNotification('deleted', $grantForNotification, $performedBy, 'grants_list'),
+                    'deleted'
+                );
             }
 
             return response()->json([
@@ -2019,7 +2023,6 @@ class GrantController extends Controller
             // Send notification to all users
             $performedBy = auth()->user();
             if ($performedBy && $grantData) {
-                // Create temporary objects with the stored data for notification
                 $grantItemForNotification = (object) [
                     'id' => $grantItemData['id'] ?? null,
                     'grant_position' => $grantItemData['grant_position'] ?? 'Unknown Position',
@@ -2031,10 +2034,11 @@ class GrantController extends Controller
                     'code' => $grantData['code'] ?? 'N/A',
                 ];
 
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantItemActionNotification('deleted', $grantItemForNotification, $grantForNotification, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantItemActionNotification('deleted', $grantItemForNotification, $grantForNotification, $performedBy, 'grants_list'),
+                    'deleted'
+                );
             }
 
             return response()->json([
@@ -2161,13 +2165,14 @@ class GrantController extends Controller
             $grant->updated_by = auth()->user()->name ?? 'system';
             $grant->save();
 
-            // Send notification to all users
+            // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                $users = User::all();
-                foreach ($users as $user) {
-                    $user->notify(new GrantActionNotification('updated', $grant, $performedBy));
-                }
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantActionNotification('updated', $grant, $performedBy, 'grants_list'),
+                    'updated'
+                );
             }
 
             return response()->json([
@@ -2432,7 +2437,7 @@ class GrantController extends Controller
 
             DB::commit();
 
-            // Send notification to all users about the bulk delete
+            // Send notification using NotificationService about the bulk delete
             $performedBy = auth()->user();
             if ($performedBy && $grants->isNotEmpty()) {
                 $grantNames = $grants->pluck('name')->take(3)->implode(', ');
@@ -2440,16 +2445,17 @@ class GrantController extends Controller
                     ? "{$grantNames} and ".($count - 3).' more'
                     : $grantNames;
 
-                $users = User::all();
-                foreach ($users as $user) {
-                    // Create a summary grant object for notification
-                    $grantForNotification = (object) [
-                        'id' => null,
-                        'name' => "Bulk delete: {$message}",
-                        'code' => "{$count} grants",
-                    ];
-                    $user->notify(new GrantActionNotification('deleted', $grantForNotification, $performedBy));
-                }
+                $grantForNotification = (object) [
+                    'id' => null,
+                    'name' => "Bulk delete: {$message}",
+                    'code' => "{$count} grants",
+                ];
+
+                app(NotificationService::class)->notifyByModule(
+                    'grants_list',
+                    new GrantActionNotification('deleted', $grantForNotification, $performedBy, 'grants_list'),
+                    'deleted'
+                );
             }
 
             return response()->json([
@@ -2491,7 +2497,10 @@ class GrantController extends Controller
 
             $user = User::find(auth()->id());
             if ($user) {
-                $user->notify(new ImportedCompletedNotification($message));
+                app(NotificationService::class)->notifyUser(
+                    $user,
+                    new ImportedCompletedNotification($message, 'import')
+                );
             }
         } catch (\Exception $e) {
             // Log the error but don't fail the import response

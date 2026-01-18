@@ -16,6 +16,7 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Validators\Failure;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -23,7 +24,7 @@ use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithHeadingRow
+class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithHeadingRow, WithStartRow
 {
     use Importable;
 
@@ -34,6 +35,17 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
         // 2) Tell PhpSpreadsheet to use it for cell caching
         Settings::setCache($psr16);
+    }
+
+    /**
+     * Specify which row to start reading data from.
+     * Row 1: Column headers
+     * Row 2: Validation rules/instructions (SKIP)
+     * Row 3+: Actual employee data
+     */
+    public function startRow(): int
+    {
+        return 3;
     }
 
     /** @var array Rows successfully prepared for insert */

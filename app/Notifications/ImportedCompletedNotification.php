@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\NotificationCategory;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -12,16 +14,34 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    // public $importId;
     public $message;
+
+    public $module;
+
+    public $entityId;
 
     /**
      * Create a new notification instance.
+     *
+     * @param  string  $message  Success message
+     * @param  string  $module  Module name for categorization (default: 'import')
+     * @param  int|string|null  $entityId  Optional entity ID for action URL
      */
-    public function __construct($message)
+    public function __construct($message, string $module = 'import', int|string|null $entityId = null)
     {
-        // $this->importId = $importId;
         $this->message = $message;
+        $this->module = $module;
+        $this->entityId = $entityId;
+    }
+
+    /**
+     * Get notification metadata (category and labels)
+     */
+    protected function getMetadata(): array
+    {
+        $service = app(NotificationService::class);
+
+        return $service->getNotificationMetadata($this->module);
     }
 
     /**
@@ -49,18 +69,24 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
      */
     public function toDatabase(object $notifiable): array
     {
-        return [
+        $metadata = $this->getMetadata();
+
+        return array_merge([
             'type' => 'import_completed',
             'message' => $this->message,
-        ];
+            'finished_at' => now()->toDateTimeString(),
+        ], $metadata);
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage([
+        $metadata = $this->getMetadata();
+
+        return new BroadcastMessage(array_merge([
             'type' => 'import_completed',
             'message' => $this->message,
-        ]);
+            'finished_at' => now()->toDateTimeString(),
+        ], $metadata));
     }
 
     /**
@@ -70,11 +96,12 @@ class ImportedCompletedNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        return [
+        $metadata = $this->getMetadata();
+
+        return array_merge([
             'type' => 'import_completed',
             'message' => $this->message,
-            // 'import_id' => $this->importId,
             'finished_at' => now()->toDateTimeString(),
-        ];
+        ], $metadata);
     }
 }
