@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\UserProfileUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
@@ -70,12 +72,22 @@ class UserController extends Controller
         $user->profile_picture = $path;
         $user->save();
 
+        $fullUrl = Storage::disk('public')->url($path);
+
+        // Broadcast profile update event for real-time UI updates
+        event(new UserProfileUpdated($user->id, 'profile_picture', [
+            'profile_picture' => $path,
+            'profile_picture_url' => $fullUrl,
+        ]));
+
+        Log::info('Profile picture updated', ['user_id' => $user->id, 'path' => $path]);
+
         return response()->json([
             'success' => true,
             'message' => 'Profile picture updated successfully',
             'data' => [
                 'profile_picture' => $path,
-                'url' => Storage::disk('public')->url($path),
+                'url' => $fullUrl,
             ],
         ], 200);
     }
@@ -108,15 +120,28 @@ class UserController extends Controller
 
         try {
             $user = Auth::user();
+            $oldName = $user->name;
             $user->name = $request->name;
             $user->save();
+
+            // Broadcast profile update event for real-time UI updates
+            event(new UserProfileUpdated($user->id, 'name', [
+                'name' => $user->name,
+                'old_name' => $oldName,
+            ]));
+
+            Log::info('Username updated', ['user_id' => $user->id, 'old_name' => $oldName, 'new_name' => $user->name]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Username updated successfully',
-                'name' => $user->name,
+                'data' => [
+                    'name' => $user->name,
+                ],
             ], 200);
         } catch (\Exception $e) {
+            Log::error('Username update failed', ['user_id' => Auth::id(), 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update username: '.$e->getMessage(),
@@ -157,15 +182,27 @@ class UserController extends Controller
         ]);
 
         try {
+            $oldEmail = $user->email;
             $user->email = $request->email;
             $user->save();
+
+            // Broadcast profile update event for real-time UI updates
+            event(new UserProfileUpdated($user->id, 'email', [
+                'email' => $user->email,
+            ]));
+
+            Log::info('Email updated', ['user_id' => $user->id, 'old_email' => $oldEmail, 'new_email' => $user->email]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Email updated successfully',
-                'email' => $user->email,
+                'data' => [
+                    'email' => $user->email,
+                ],
             ], 200);
         } catch (\Exception $e) {
+            Log::error('Email update failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update email: '.$e->getMessage(),
@@ -221,11 +258,20 @@ class UserController extends Controller
             $user->password = Hash::make($request->new_password);
             $user->save();
 
+            // Broadcast profile update event (no sensitive data)
+            event(new UserProfileUpdated($user->id, 'password', [
+                'password_changed_at' => now()->toIso8601String(),
+            ]));
+
+            Log::info('Password updated', ['user_id' => $user->id]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Password updated successfully',
             ], 200);
         } catch (\Exception $e) {
+            Log::error('Password update failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update password: '.$e->getMessage(),

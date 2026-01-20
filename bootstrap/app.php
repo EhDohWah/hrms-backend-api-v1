@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'module.permission' => \App\Http\Middleware\DynamicModulePermission::class,
             'cors' => \Illuminate\Http\Middleware\HandleCors::class,
         ]);
+
+        // Exempt broadcasting/auth from CSRF verification (uses Bearer token auth)
+        $middleware->validateCsrfTokens(except: [
+            'broadcasting/auth',
+        ]);
     })
     ->withSchedule(function (Schedule $schedule) {
         // Process probation transitions daily at 00:01

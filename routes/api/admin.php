@@ -68,7 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================================================
     Route::prefix('user')->group(function () {
         // Get authenticated user with roles and permissions
-        Route::get('/user', [UserController::class, 'getUser']);
+        // Note: This creates /api/v1/user endpoint (not /api/v1/user/user)
+        Route::get('/', [UserController::class, 'getUser']);
 
         // Self-profile update routes (user updating their own data)
         Route::post('/profile-picture', [UserController::class, 'updateProfilePicture']);
