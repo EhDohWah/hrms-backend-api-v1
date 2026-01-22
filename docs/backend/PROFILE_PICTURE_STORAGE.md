@@ -1,6 +1,6 @@
 # Profile Picture Storage Configuration
 
-> **Document Version:** 1.0
+> **Document Version:** 1.1
 > **Last Updated:** January 2026
 > **Category:** Backend / File Storage
 
@@ -122,6 +122,62 @@ POST /api/v1/user/profile-picture
         "profile_picture": ["The profile picture field is required."]
     }
 }
+```
+
+---
+
+### Get Current User
+
+```
+GET /api/v1/user
+```
+
+**Headers:**
+- `Authorization: Bearer {token}`
+
+**Response (Success):**
+```json
+{
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "profile_picture": "profile_pictures/A8bmeMNRSSyjnmhZVQkjsOjBZxUUW2Ron2G9uBCb.jpg",
+    "profile_picture_updated_at": 1705789200000,
+    "roles": [
+        {
+            "id": 1,
+            "name": "Admin"
+        }
+    ],
+    "permissions": [
+        "users.read",
+        "users.create",
+        "users.update",
+        "users.delete"
+    ]
+}
+```
+
+**Important Notes:**
+- This endpoint is used by the frontend to refresh user data after profile updates
+- It returns the user object with roles and permissions
+- The route is defined in `routes/api/admin.php` inside a `Route::prefix('user')` group
+- The route path is `/` (not `/user`) to create `/api/v1/user` endpoint
+
+**Route Definition:**
+```php
+// routes/api/admin.php
+Route::prefix('user')->group(function () {
+    // Get authenticated user with roles and permissions
+    // Note: This creates /api/v1/user endpoint (not /api/v1/user/user)
+    Route::get('/', [UserController::class, 'getUser']);
+
+    // Self-profile update routes
+    Route::post('/profile-picture', [UserController::class, 'updateProfilePicture']);
+    Route::post('/username', [UserController::class, 'updateUsername']);
+    Route::post('/password', [UserController::class, 'updatePassword']);
+    Route::post('/email', [UserController::class, 'updateEmail']);
+});
 ```
 
 ---
@@ -297,7 +353,70 @@ php artisan storage:link
 
 ---
 
-### Issue 3: Images Not Accessible After Deployment
+### Issue 3: 404 Error on GET /api/v1/user After Route Changes
+
+**Symptom:**
+```
+GET http://127.0.0.1:8000/api/v1/user 404 (Not Found)
+Error: The route api/v1/user could not be found.
+```
+
+**Cause:** Laravel caches routes in production (and sometimes in development). After modifying route files, the cache isn't automatically cleared.
+
+**Solution:**
+
+**Option 1: Clear route cache**
+```bash
+php artisan route:clear
+php artisan config:clear
+```
+
+**Option 2: Restart development server**
+```bash
+# Press Ctrl+C to stop the server, then:
+php artisan serve
+```
+
+**Verification:**
+
+Check if the route exists:
+```bash
+php artisan route:list --path=user
+```
+
+Expected output:
+```
+GET|HEAD  api/v1/user  .......... UserController@getUser
+POST      api/v1/user/profile-picture  .......... UserController@updateProfilePicture
+POST      api/v1/user/username  .......... UserController@updateUsername
+POST      api/v1/user/password  .......... UserController@updatePassword
+POST      api/v1/user/email  .......... UserController@updateEmail
+```
+
+**Common Route Definition Mistake:**
+
+❌ **Incorrect (creates `/api/v1/user/user`):**
+```php
+Route::prefix('user')->group(function () {
+    Route::get('/user', [UserController::class, 'getUser']);
+});
+```
+
+✅ **Correct (creates `/api/v1/user`):**
+```php
+Route::prefix('user')->group(function () {
+    Route::get('/', [UserController::class, 'getUser']);
+});
+```
+
+**Why This Happens:**
+- The `prefix('user')` adds `/user` to all routes in the group
+- Using `Route::get('/user', ...)` adds another `/user`, creating `/user/user`
+- Using `Route::get('/', ...)` correctly creates just `/user`
+
+---
+
+### Issue 4: Images Not Accessible After Deployment
 
 **Cause:** Cloud platforms (Heroku, Laravel Vapor) don't support traditional symlinks.
 
@@ -321,7 +440,7 @@ $path = $request->file('profile_picture')
 
 ---
 
-### Issue 4: Old Profile Picture Not Deleted
+### Issue 5: Old Profile Picture Not Deleted
 
 **Symptom:** Storage fills up with unused images.
 
@@ -334,7 +453,7 @@ if ($user->profile_picture) {
 
 ---
 
-### Issue 5: Image Validation Failing
+### Issue 6: Image Validation Failing
 
 **Common validation rules:**
 ```php
@@ -396,3 +515,4 @@ php artisan storage:link 2>/dev/null || echo "Storage link already exists"
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | Jan 2026 | HRMS Team | Initial documentation |
+| 1.1 | Jan 2026 | HRMS Team | Added GET /user endpoint documentation, route cache issue solution, and route definition best practices |
