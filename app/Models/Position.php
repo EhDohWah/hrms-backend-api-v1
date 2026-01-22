@@ -6,22 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use OpenApi\Attributes as OA;
 
-#[OA\Schema(
-    schema: 'Position',
-    properties: [
-        new OA\Property(property: 'id', type: 'integer', format: 'int64'),
-        new OA\Property(property: 'title', type: 'string'),
-        new OA\Property(property: 'department_id', type: 'integer', format: 'int64'),
-        new OA\Property(property: 'reports_to_position_id', type: 'integer', format: 'int64', nullable: true),
-        new OA\Property(property: 'level', type: 'integer'),
-        new OA\Property(property: 'is_manager', type: 'boolean'),
-        new OA\Property(property: 'is_active', type: 'boolean'),
-        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
-    ]
-)]
+/**
+ * Position Model
+ *
+ * Note: OpenAPI schema is defined in PositionResource to avoid duplication
+ * and to ensure the schema matches the actual API response structure.
+ */
 class Position extends Model
 {
     use HasFactory;

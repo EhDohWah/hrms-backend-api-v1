@@ -5,19 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use OpenApi\Attributes as OA;
 
-#[OA\Schema(
-    schema: 'Department',
-    properties: [
-        new OA\Property(property: 'id', type: 'integer', format: 'int64'),
-        new OA\Property(property: 'name', type: 'string'),
-        new OA\Property(property: 'description', type: 'string', nullable: true),
-        new OA\Property(property: 'is_active', type: 'boolean'),
-        new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
-    ]
-)]
+/**
+ * Department Model
+ *
+ * Note: OpenAPI schema is defined in DepartmentResource to avoid duplication
+ * and to ensure the schema matches the actual API response structure.
+ */
 class Department extends Model
 {
     use HasFactory;
