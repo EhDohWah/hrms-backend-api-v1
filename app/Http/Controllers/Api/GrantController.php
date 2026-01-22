@@ -389,53 +389,27 @@ class GrantController extends Controller
         $file = $request->file('file');
 
         try {
+            // Use GrantsImport class for processing
+            $importId = uniqid('grant_import_');
+            $userId = auth()->id();
+
+            $grantsImport = new \App\Imports\GrantsImport($importId, $userId);
+
+            // Load spreadsheet and process each sheet using GrantSheetImport
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
             $sheets = $spreadsheet->getAllSheets();
 
-            $processedGrants = 0;
-            $processedItems = 0;
-            $errors = [];
-            $skippedGrants = [];
+            $sheetImport = new \App\Imports\GrantSheetImport($grantsImport);
 
-            DB::transaction(function () use ($sheets, &$processedGrants, &$processedItems, &$errors, &$skippedGrants) {
-                foreach ($sheets as $sheet) {
-                    $data = $sheet->toArray(null, true, true, true);
-                    $sheetName = $sheet->getTitle();
+            foreach ($sheets as $sheet) {
+                $sheetImport->processSheet($sheet);
+            }
 
-                    // Validate minimum rows
-                    if (count($data) < 5) {
-                        $errors[] = "Sheet '$sheetName' skipped: Insufficient data rows (minimum 5 required)";
-
-                        continue;
-                    }
-
-                    // Process grant
-                    $grant = $this->createGrant($data, $sheetName, $errors);
-
-                    if (! $grant) {
-                        continue;
-                    } // Error already recorded
-
-                    // Check if grant already exists and wasn't just created
-                    if (! $grant->wasRecentlyCreated) {
-                        $errors[] = "Sheet '$sheetName': Grant '{$grant->code}' already exists - items skipped";
-                        $skippedGrants[] = $grant->code;
-
-                        continue;
-                    }
-
-                    // Process items
-                    try {
-                        $itemsProcessed = $this->processGrantItems($data, $grant, $sheetName, $errors);
-                        if ($itemsProcessed > 0) {
-                            $processedGrants++;
-                            $processedItems += $itemsProcessed;
-                        }
-                    } catch (\Exception $e) {
-                        $errors[] = "Sheet '$sheetName': Error processing items - ".$e->getMessage();
-                    }
-                }
-            });
+            // Get results from the import
+            $processedGrants = $grantsImport->getProcessedGrants();
+            $processedItems = $grantsImport->getProcessedItems();
+            $errors = $grantsImport->getErrors();
+            $skippedGrants = $grantsImport->getSkippedGrants();
 
             $responseData = [
                 'processed_grants' => $processedGrants,
@@ -443,7 +417,7 @@ class GrantController extends Controller
             ];
 
             if (! empty($errors)) {
-                $responseData['warnings'] = $errors;
+                $responseData['errors'] = $errors;
             }
 
             if (! empty($skippedGrants)) {
@@ -451,12 +425,14 @@ class GrantController extends Controller
             }
 
             $message = 'Grant data import completed';
-            if (! empty($skippedGrants)) {
+            if (! empty($errors)) {
+                $message = 'Grant data import completed with errors';
+            } elseif (! empty($skippedGrants)) {
                 $message = 'Grant data import completed with skipped grants';
             }
 
             // Send completion notification to user
-            $this->sendImportNotification($processedGrants, $processedItems, $errors, $skippedGrants);
+            $grantsImport->sendCompletionNotification();
 
             return response()->json([
                 'success' => true,
@@ -471,166 +447,6 @@ class GrantController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    private function createGrant(array $data, string $sheetName, array &$errors)
-    {
-        try {
-            $grantName = trim(str_replace('Grant name -', '', $data[1]['A'] ?? ''));
-            $grantCode = trim(str_replace('Grant code -', '', $data[2]['A'] ?? ''));
-            $organization = trim(str_replace('Subsidiary -', '', $data[3]['A'] ?? ''));
-            $endDate = null;
-
-            // Try to extract end date if available
-            if (isset($data[4]['A'])) {
-                $endDateStr = trim(str_replace('End date -', '', $data[4]['A'] ?? ''));
-                if (! empty($endDateStr)) {
-                    try {
-                        $endDate = \Carbon\Carbon::parse($endDateStr)->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        $errors[] = "Sheet '$sheetName': Invalid end date format - ".$endDateStr;
-                    }
-                }
-            }
-
-            $description = trim(str_replace('Description -', '', $data[5]['A'] ?? ''));
-
-            // Validate required fields
-            if (empty($grantCode)) {
-                $errors[] = "Sheet '$sheetName': Missing grant code";
-
-                return null;
-            }
-
-            if (empty($grantName)) {
-                $errors[] = "Sheet '$sheetName': Missing grant name";
-
-                return null;
-            }
-
-            return Grant::firstOrCreate(
-                ['code' => $grantCode],
-                [
-                    'name' => $grantName,
-                    'end_date' => $endDate,
-                    'organization' => $organization,
-                    'description' => $description,
-                    'created_by' => auth()->user()->name ?? 'system',
-                    'updated_by' => auth()->user()->name ?? 'system',
-                ]
-            );
-        } catch (\Exception $e) {
-            $errors[] = "Sheet '$sheetName': Error creating grant - ".$e->getMessage();
-
-            return null;
-        }
-    }
-
-    /**
-     * Process grant items from Excel data
-     *
-     * @param  array  $data  Array of Excel row data
-     * @param  \App\Models\Grant  $grant  Grant model instance
-     * @param  string  $sheetName  Name of Excel sheet being processed
-     * @param  array  $errors  Array to store error messages
-     * @return int Number of items processed
-     *
-     * @throws \Exception
-     */
-    private function processGrantItems(array $data, Grant $grant, string $sheetName, array &$errors): int
-    {
-        $itemsProcessed = 0;
-        $createdGrantItems = [];
-
-        try {
-            // Skip header rows (1-6), column headers (row 7), validation rules (row 8)
-            // Start processing actual data from row 9
-            $headerRowsCount = 8;
-
-            for ($i = $headerRowsCount + 1; $i <= count($data); $i++) {
-                $row = $data[$i];
-
-                // Use column B as the first required field (grant_position)
-                $grantPosition = trim($row['B'] ?? '');
-                $bgLineCode = trim($row['A'] ?? '');
-
-                // Skip empty rows or non-data rows
-                if (empty($grantPosition)) {
-                    continue;
-                }
-
-                // Additional check: Skip if position looks like a header or validation rule
-                if (stripos($grantPosition, 'String - NOT NULL') !== false ||
-                    stripos($grantPosition, 'Position title') !== false ||
-                    $grantPosition === 'Position') {
-                    continue;
-                }
-
-                // Budget Line Code can be empty for General Fund (hub grants)
-                // Accept any format: 1.2.2.1, BL-001, A.B.C, etc.
-                $bgLineCode = $bgLineCode !== '' ? $bgLineCode : null;
-
-                // Create unique key - handle NULL budget line codes
-                $itemKey = $grant->id.'|'.$grantPosition.'|'.($bgLineCode ?? 'NULL_'.uniqid());
-
-                if (! isset($createdGrantItems[$itemKey])) {
-                    // Check for duplicates ONLY if budget line code exists
-                    // General Fund items (NULL budget line) can have duplicate positions
-                    if ($bgLineCode !== null) {
-                        $existingItem = GrantItem::where('grant_id', $grant->id)
-                            ->where('grant_position', $grantPosition)
-                            ->where('budgetline_code', $bgLineCode)
-                            ->first();
-
-                        if ($existingItem) {
-                            $errors[] = "Sheet '$sheetName' row $i: Duplicate grant item - Position '$grantPosition' with budget line code '$bgLineCode' already exists for this grant";
-
-                            continue;
-                        }
-                    }
-
-                    $grantItem = GrantItem::create([
-                        'grant_id' => $grant->id,
-                        'grant_position' => $grantPosition,
-                        'grant_salary' => isset($row['C']) && $row['C'] !== '' ? $this->toFloat($row['C']) : null,
-                        'grant_benefit' => isset($row['D']) && $row['D'] !== '' ? $this->toFloat($row['D']) : null,
-                        'grant_level_of_effort' => isset($row['E']) && $row['E'] !== '' ?
-                            (float) trim(str_replace('%', '', $row['E'])) / 100 : null,
-                        'grant_position_number' => isset($row['F']) && $row['F'] !== '' ? (int) $row['F'] : 1,
-                        'budgetline_code' => $bgLineCode,
-                        'created_by' => auth()->user()->name ?? 'system',
-                        'updated_by' => auth()->user()->name ?? 'system',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    $createdGrantItems[$itemKey] = $grantItem;
-                } else {
-                    $grantItem = $createdGrantItems[$itemKey];
-                }
-
-                $itemsProcessed++;
-            }
-        } catch (\Exception $e) {
-            $errors[] = "Sheet '$sheetName': Error processing items - ".$e->getMessage();
-            throw $e;
-        }
-
-        return $itemsProcessed;
-    }
-
-    /**
-     * Convert string value to float
-     *
-     * @param  mixed  $value  Value to convert
-     * @return float|null Converted float value or null if input is null
-     */
-    private function toFloat($value): ?float
-    {
-        if (is_null($value)) {
-            return null;
-        }
-
-        return floatval(preg_replace('/[^0-9.-]/', '', $value));
     }
 
     /**
@@ -1101,15 +917,18 @@ class GrantController extends Controller
             $sheet->setTitle('Grant Template');
 
             // Set column widths for better readability
-            $sheet->getColumnDimension('A')->setWidth(25);
-            $sheet->getColumnDimension('B')->setWidth(30);
+            // New structure: A=Labels, B=Values, C-H=Validation instructions (merged)
+            $sheet->getColumnDimension('A')->setWidth(20);
+            $sheet->getColumnDimension('B')->setWidth(35);
             $sheet->getColumnDimension('C')->setWidth(15);
             $sheet->getColumnDimension('D')->setWidth(15);
-            $sheet->getColumnDimension('E')->setWidth(15);
+            $sheet->getColumnDimension('E')->setWidth(18);
             $sheet->getColumnDimension('F')->setWidth(15);
+            $sheet->getColumnDimension('G')->setWidth(10);
+            $sheet->getColumnDimension('H')->setWidth(10);
 
-            // Header styling
-            $headerStyle = [
+            // Label styling (Column A, rows 1-5) - Bold, light blue background, right-aligned
+            $labelStyle = [
                 'font' => [
                     'bold' => true,
                     'size' => 11,
@@ -1117,15 +936,43 @@ class GrantController extends Controller
                 ],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E8F4F8'],
+                    'startColor' => ['rgb' => 'D6EAF8'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => 'CCCCCC'],
+                    ],
+                ],
+            ];
+
+            // Value styling (Column B, rows 1-5) - White background, left-aligned, with borders
+            $valueStyle = [
+                'font' => [
+                    'size' => 11,
+                    'color' => ['rgb' => '000000'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'FFFFFF'],
                 ],
                 'alignment' => [
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
                 ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['rgb' => '333333'],
+                    ],
+                ],
             ];
 
-            // Validation row styling
+            // Validation instruction styling (Column C-H merged, rows 1-5) - Italic, small font, yellow background
             $validationStyle = [
                 'font' => [
                     'italic' => true,
@@ -1136,9 +983,14 @@ class GrantController extends Controller
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
                     'startColor' => ['rgb' => 'FFF9E6'],
                 ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
             ];
 
-            // Column header styling
+            // Column header styling for grant items
             $columnHeaderStyle = [
                 'font' => [
                     'bold' => true,
@@ -1155,38 +1007,81 @@ class GrantController extends Controller
                 ],
             ];
 
-            // Row 1: Grant Name
-            $sheet->setCellValue('A1', 'Grant name - [Enter grant name here]');
-            $sheet->setCellValue('B1', 'String - NOT NULL - Max 255 chars - Unique identifier for the grant');
-            $sheet->getStyle('A1')->applyFromArray($headerStyle);
-            $sheet->getStyle('B1')->applyFromArray($validationStyle);
+            // Spacer row styling
+            $spacerStyle = [
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'E0E0E0'],
+                ],
+            ];
 
-            // Row 2: Grant Code
-            $sheet->setCellValue('A2', 'Grant code - [Enter unique grant code]');
-            $sheet->setCellValue('B2', 'String - NOT NULL - Max 255 chars - Must be unique across all grants');
-            $sheet->getStyle('A2')->applyFromArray($headerStyle);
-            $sheet->getStyle('B2')->applyFromArray($validationStyle);
+            // Row 1: Grant Name - Label in A, Value in B, Validation in C-H (merged)
+            $sheet->setCellValue('A1', 'Grant Name');
+            $sheet->setCellValue('B1', '');
+            $sheet->setCellValue('C1', 'REQUIRED - String - Min 3 chars, Max 255 chars');
+            $sheet->mergeCells('C1:H1');
+            $sheet->getStyle('A1')->applyFromArray($labelStyle);
+            $sheet->getStyle('B1')->applyFromArray($valueStyle);
+            $sheet->getStyle('C1:H1')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(1)->setRowHeight(25);
 
-            // Row 3: Subsidiary/Organization
-            $sheet->setCellValue('A3', 'Subsidiary - [Enter organization name]');
-            $sheet->setCellValue('B3', 'String - NULLABLE - Max 255 chars - Organization managing the grant');
-            $sheet->getStyle('A3')->applyFromArray($headerStyle);
-            $sheet->getStyle('B3')->applyFromArray($validationStyle);
+            // Row 2: Grant Code - Label in A, Value in B, Validation in C-H (merged)
+            $sheet->setCellValue('A2', 'Grant Code');
+            $sheet->setCellValue('B2', '');
+            $sheet->setCellValue('C2', 'REQUIRED - String - Max 50 chars - Must be unique - Alphanumeric, dots, dashes, underscores only');
+            $sheet->mergeCells('C2:H2');
+            $sheet->getStyle('A2')->applyFromArray($labelStyle);
+            $sheet->getStyle('B2')->applyFromArray($valueStyle);
+            $sheet->getStyle('C2:H2')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(2)->setRowHeight(25);
 
-            // Row 4: End Date
-            $sheet->setCellValue('A4', 'End date - [YYYY-MM-DD or leave empty]');
-            $sheet->setCellValue('B4', 'Date - NULLABLE - Format: YYYY-MM-DD or Excel date - Grant expiration date');
-            $sheet->getStyle('A4')->applyFromArray($headerStyle);
-            $sheet->getStyle('B4')->applyFromArray($validationStyle);
+            // Row 3: Subsidiary/Organization - Label in A, Value in B (with dropdown), Validation in C-H (merged)
+            $sheet->setCellValue('A3', 'Subsidiary');
+            $sheet->setCellValue('B3', '');
+            $sheet->setCellValue('C3', 'REQUIRED - Must be SMRU or BHF (use dropdown)');
+            $sheet->mergeCells('C3:H3');
+            $sheet->getStyle('A3')->applyFromArray($labelStyle);
+            $sheet->getStyle('B3')->applyFromArray($valueStyle);
+            $sheet->getStyle('C3:H3')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(3)->setRowHeight(25);
 
-            // Row 5: Description
-            $sheet->setCellValue('A5', 'Description - [Enter grant description]');
-            $sheet->setCellValue('B5', 'Text - NULLABLE - Max 1000 chars - Brief description of the grant');
-            $sheet->getStyle('A5')->applyFromArray($headerStyle);
-            $sheet->getStyle('B5')->applyFromArray($validationStyle);
+            // Add dropdown validation to B3 for Subsidiary field
+            $subsidiaryValidation = $sheet->getCell('B3')->getDataValidation();
+            $subsidiaryValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $subsidiaryValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+            $subsidiaryValidation->setAllowBlank(false);
+            $subsidiaryValidation->setShowDropDown(true);
+            $subsidiaryValidation->setShowInputMessage(true);
+            $subsidiaryValidation->setShowErrorMessage(true);
+            $subsidiaryValidation->setErrorTitle('Invalid Organization');
+            $subsidiaryValidation->setError('Please select SMRU or BHF from the dropdown list.');
+            $subsidiaryValidation->setPromptTitle('Select Organization');
+            $subsidiaryValidation->setPrompt('Choose the organization: SMRU or BHF');
+            $subsidiaryValidation->setFormula1('"SMRU,BHF"');
 
-            // Row 6: Empty spacer
-            $sheet->getRowDimension(6)->setRowHeight(5);
+            // Row 4: End Date - Label in A, Value in B, Validation in C-H (merged)
+            $sheet->setCellValue('A4', 'End Date');
+            $sheet->setCellValue('B4', '');
+            $sheet->setCellValue('C4', 'OPTIONAL - Format: YYYY-MM-DD');
+            $sheet->mergeCells('C4:H4');
+            $sheet->getStyle('A4')->applyFromArray($labelStyle);
+            $sheet->getStyle('B4')->applyFromArray($valueStyle);
+            $sheet->getStyle('C4:H4')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(4)->setRowHeight(25);
+
+            // Row 5: Description - Label in A, Value in B, Validation in C-H (merged)
+            $sheet->setCellValue('A5', 'Description');
+            $sheet->setCellValue('B5', '');
+            $sheet->setCellValue('C5', 'OPTIONAL - Max 1000 chars');
+            $sheet->mergeCells('C5:H5');
+            $sheet->getStyle('A5')->applyFromArray($labelStyle);
+            $sheet->getStyle('B5')->applyFromArray($valueStyle);
+            $sheet->getStyle('C5:H5')->applyFromArray($validationStyle);
+            $sheet->getRowDimension(5)->setRowHeight(25);
+
+            // Row 6: Empty spacer with gray background
+            $sheet->getRowDimension(6)->setRowHeight(8);
+            $sheet->getStyle('A6:H6')->applyFromArray($spacerStyle);
 
             // Row 7: Column Headers for Grant Items
             $sheet->setCellValue('A7', 'Budget Line Code');
@@ -1198,22 +1093,46 @@ class GrantController extends Controller
             $sheet->getStyle('A7:F7')->applyFromArray($columnHeaderStyle);
             $sheet->getRowDimension(7)->setRowHeight(25);
 
-            // Row 8: Validation rules for each column
-            $sheet->setCellValue('A8', 'String - NULLABLE - Max 255 chars - Can be empty for General Fund');
-            $sheet->setCellValue('B8', 'String - NOT NULL - Max 255 chars - Position title/name');
-            $sheet->setCellValue('C8', 'Decimal - NULLABLE - Format: 75000 or 75000.50 - Monthly salary');
-            $sheet->setCellValue('D8', 'Decimal - NULLABLE - Format: 15000 or 15000.00 - Monthly benefit');
-            $sheet->setCellValue('E8', 'Decimal - NULLABLE - Format: 75 or 75% or 0.75 - Effort percentage (0-100)');
-            $sheet->setCellValue('F8', 'Integer - NULLABLE - Default: 1 - Number of positions (min: 1)');
-            $sheet->getStyle('A8:F8')->applyFromArray($validationStyle);
-            $sheet->getRowDimension(8)->setRowHeight(30);
+            // Row 8: Validation rules for each grant item column (reference row)
+            $itemValidationStyle = [
+                'font' => [
+                    'italic' => true,
+                    'size' => 8,
+                    'color' => ['rgb' => '888888'],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'F5F5F5'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ];
+            $sheet->setCellValue('A8', 'OPTIONAL (Max 50 chars)');
+            $sheet->setCellValue('B8', 'REQUIRED (Min 2, Max 255 chars)');
+            $sheet->setCellValue('C8', 'OPTIONAL (0 - 99,999,999.99)');
+            $sheet->setCellValue('D8', 'OPTIONAL (0 - 99,999,999.99)');
+            $sheet->setCellValue('E8', 'OPTIONAL (0-100 or 0-1)');
+            $sheet->setCellValue('F8', 'OPTIONAL (Default: 1, Range: 1-1000)');
+            $sheet->getStyle('A8:F8')->applyFromArray($itemValidationStyle);
+            $sheet->getRowDimension(8)->setRowHeight(35);
 
-            // Wrap text for validation rows
-            $sheet->getStyle('B1:B5')->getAlignment()->setWrapText(true);
-            $sheet->getStyle('A8:F8')->getAlignment()->setWrapText(true);
-
-            // Add borders to the data area
+            // Add borders to the grant items header area
             $sheet->getStyle('A7:F8')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+            // Apply cell protection - Lock Column A rows 1-5 (read-only labels)
+            $sheet->getProtection()->setSheet(true);
+            $sheet->getProtection()->setPassword('grant_template');
+
+            // Unlock value cells (B1-B5) for editing
+            for ($row = 1; $row <= 5; $row++) {
+                $sheet->getStyle('B'.$row)->getProtection()->setLocked(\PhpOffice\PhpSpreadsheet\Style\Protection::PROTECTION_UNPROTECTED);
+            }
+
+            // Unlock entire grant items area (rows 7+) for editing
+            $sheet->getStyle('A7:F1000')->getProtection()->setLocked(\PhpOffice\PhpSpreadsheet\Style\Protection::PROTECTION_UNPROTECTED);
 
             // Add instructions sheet
             $instructionsSheet = $spreadsheet->createSheet();
@@ -1225,89 +1144,140 @@ class GrantController extends Controller
                 [''],
                 ['IMPORTANT: Each sheet represents ONE grant with its grant items.'],
                 [''],
+                ['NEW TEMPLATE STRUCTURE:'],
+                ['This template uses a separate column layout for easier data entry:'],
+                ['- Column A: Field labels (read-only)'],
+                ['- Column B: Your input values'],
+                ['- Column C+: Validation instructions'],
+                [''],
                 ['FILE STRUCTURE:'],
                 ['1. You can have multiple sheets in one Excel file'],
                 ['2. Each sheet will create a separate grant'],
                 ['3. Sheet name can be anything (it will not be imported)'],
                 [''],
                 ['SHEET STRUCTURE (Rows 1-6: Grant Information):'],
-                ['Row 1: Grant name - [Your grant name] (REQUIRED)'],
-                ['Row 2: Grant code - [Unique code] (REQUIRED - Must be unique)'],
-                ['Row 3: Subsidiary - [Organization name] (Optional)'],
-                ['Row 4: End date - [YYYY-MM-DD] (Optional)'],
-                ['Row 5: Description - [Grant description] (Optional)'],
-                ['Row 6: (Leave empty - spacer row)'],
+                ['Row 1: Column A shows "Grant Name", Column B is where you enter the grant name'],
+                ['Row 2: Column A shows "Grant Code", Column B is where you enter the unique code'],
+                ['Row 3: Column A shows "Subsidiary", Column B has a DROPDOWN - select SMRU or BHF'],
+                ['Row 4: Column A shows "End Date", Column B is for date in YYYY-MM-DD format (optional)'],
+                ['Row 5: Column A shows "Description", Column B is for grant description (optional)'],
+                ['Row 6: Spacer row (do not modify)'],
                 [''],
                 ['SHEET STRUCTURE (Row 7+: Grant Items):'],
-                ['Row 7: Column headers (already provided)'],
-                ['Row 8: Validation rules (for reference - delete before import)'],
-                ['Row 9+: Your grant item data'],
+                ['Row 7: Column headers for grant items'],
+                ['Row 8: Validation rules (reference row - you can keep or delete)'],
+                ['Row 9+: Your grant item data - enter data starting from row 9'],
                 [''],
-                ['COLUMN DETAILS:'],
-                ['A. Budget Line Code - Optional, can be empty for General Fund grants'],
-                ['   Examples: 1.2.2.1, BL-001, A.B.C, CODE_123, or leave empty'],
+                ['GRANT HEADER FIELD DETAILS:'],
                 [''],
-                ['B. Position - REQUIRED, position title or name'],
-                ['   Examples: Project Manager, Senior Researcher, Field Officer'],
+                ['Grant Name (Cell B1):'],
+                ['- REQUIRED - Cannot be empty'],
+                ['- Minimum 3 characters, Maximum 255 characters'],
                 [''],
-                ['C. Salary - Optional, monthly salary amount'],
-                ['   Examples: 75000, 75000.50'],
+                ['Grant Code (Cell B2):'],
+                ['- REQUIRED - Cannot be empty'],
+                ['- Maximum 50 characters'],
+                ['- Must be unique across all grants'],
+                ['- Only alphanumeric characters, dots (.), dashes (-), underscores (_) allowed'],
                 [''],
-                ['D. Benefit - Optional, monthly benefit amount'],
-                ['   Examples: 15000, 15000.00'],
+                ['Subsidiary/Organization (Cell B3):'],
+                ['- REQUIRED - Must select from dropdown'],
+                ['- Valid values: SMRU or BHF only'],
+                ['- The system will suggest corrections for typos (e.g., "SMEU" will suggest "SMRU")'],
                 [''],
-                ['E. Level of Effort - Optional, percentage of time on grant'],
-                ['   Examples: 75, 75%, 0.75 (all mean 75%)'],
+                ['End Date (Cell B4):'],
+                ['- OPTIONAL - Can be left empty'],
+                ['- Format: YYYY-MM-DD (e.g., 2024-12-31)'],
                 [''],
-                ['F. Position Number - Optional, number of positions (default: 1)'],
-                ['   Examples: 1, 2, 5'],
+                ['Description (Cell B5):'],
+                ['- OPTIONAL - Can be left empty'],
+                ['- Maximum 1000 characters'],
+                [''],
+                ['GRANT ITEM COLUMN DETAILS:'],
+                [''],
+                ['A. Budget Line Code - OPTIONAL'],
+                ['   - Can be empty for General Fund/Hub grants'],
+                ['   - Maximum 50 characters'],
+                ['   - Examples: 1.2.2.1, BL-001, A.B.C, CODE_123'],
+                [''],
+                ['B. Position - REQUIRED'],
+                ['   - Minimum 2 characters, Maximum 255 characters'],
+                ['   - Examples: Project Manager, Senior Researcher, Field Officer'],
+                [''],
+                ['C. Salary - OPTIONAL'],
+                ['   - Numeric value, range: 0 to 99,999,999.99'],
+                ['   - Examples: 75000, 75000.50'],
+                [''],
+                ['D. Benefit - OPTIONAL'],
+                ['   - Numeric value, range: 0 to 99,999,999.99'],
+                ['   - Examples: 15000, 15000.00'],
+                [''],
+                ['E. Level of Effort - OPTIONAL'],
+                ['   - Accepts multiple formats: 75, 75%, or 0.75 (all mean 75%)'],
+                ['   - Range: 0 to 100 (or 0 to 1 in decimal)'],
+                [''],
+                ['F. Position Number - OPTIONAL'],
+                ['   - Default value: 1'],
+                ['   - Range: 1 to 1000'],
+                ['   - Must be a whole number'],
                 [''],
                 ['VALIDATION RULES:'],
-                ['1. Grant Code must be unique across all grants in the database'],
-                ['2. For Project Grants: Position + Budget Line Code must be unique within each grant'],
-                ['3. For General Fund: Budget Line Code can be empty, duplicate positions allowed'],
-                ['4. Position field is always required'],
-                ['5. All numeric fields accept decimal values'],
+                ['1. Grant Name must be at least 3 characters'],
+                ['2. Grant Code must be unique and use only alphanumeric, dots, dashes, underscores'],
+                ['3. Organization MUST be SMRU or BHF (typos will be detected with suggestions)'],
+                ['4. For Project Grants: Position + Budget Line Code must be unique within each grant'],
+                ['5. For General Fund: Budget Line Code can be empty, duplicate positions allowed'],
+                ['6. Position field is always required for grant items'],
+                [''],
+                ['ERROR MESSAGES:'],
+                ['The import system provides detailed error messages with cell references:'],
+                ['- "Grant name is required (Cell B1)" - Missing grant name'],
+                ['- "Invalid organization: \'SMEU\'. Did you mean \'SMRU\'? (Cell B3)" - Typo detected'],
+                ['- "Sheet \'Grant ABC\' Row 9: Grant salary cannot be negative" - Invalid item data'],
                 [''],
                 ['DUPLICATE HANDLING:'],
-                ['- If grant code exists: entire sheet is skipped'],
-                ['- If grant item exists (same position + budget code): item is skipped'],
+                ['- If grant code exists: entire sheet is skipped, no data imported'],
+                ['- If grant item exists (same position + budget code): item is skipped with error'],
                 ['- General Fund items (empty budget code) can have duplicate positions'],
                 [''],
-                ['EXAMPLE - Project Grant:'],
-                ['Row 1: Grant name - Health Initiative Grant'],
-                ['Row 2: Grant code - GR-2024-001'],
-                ['Row 3: Subsidiary - SMRU'],
-                ['Row 4: End date - 2024-12-31'],
-                ['Row 5: Description - Funding for health initiatives'],
-                ['Row 6: (empty)'],
-                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Manpower'],
-                ['Row 8: 1.2.2.1 | Project Manager | 75000 | 15000 | 75 | 2'],
-                ['Row 9: 1.2.1.2 | Senior Researcher | 60000 | 12000 | 100 | 3'],
+                ['TRANSACTION SAFETY:'],
+                ['- Each sheet is processed as an atomic transaction'],
+                ['- If ANY validation fails, NO data from that sheet is saved'],
+                ['- This ensures data integrity - no partial imports'],
                 [''],
-                ['EXAMPLE - General Fund:'],
-                ['Row 1: Grant name - General Fund'],
-                ['Row 2: Grant code - S22001'],
-                ['Row 3: Subsidiary - BHF'],
-                ['Row 4: End date -'],
-                ['Row 5: Description - BHF hub grant'],
-                ['Row 6: (empty)'],
-                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Manpower'],
-                ['Row 8: (empty) | Manager | 75000 | 15000 | 100 | 2'],
-                ['Row 9: (empty) | Field Officer | 45000 | 9000 | 100 | 3'],
-                ['Row 10: (empty) | Manager | 60000 | 12000 | 75 | 1  (duplicate position OK!)'],
+                ['EXAMPLE - Project Grant (using new template):'],
+                ['Cell A1: "Grant Name"     Cell B1: "Health Initiative Grant"'],
+                ['Cell A2: "Grant Code"     Cell B2: "GR-2024-001"'],
+                ['Cell A3: "Subsidiary"     Cell B3: "SMRU" (selected from dropdown)'],
+                ['Cell A4: "End Date"       Cell B4: "2024-12-31"'],
+                ['Cell A5: "Description"    Cell B5: "Funding for health initiatives"'],
+                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Position Number'],
+                ['Row 9: 1.2.2.1 | Project Manager | 75000 | 15000 | 75 | 2'],
+                ['Row 10: 1.2.1.2 | Senior Researcher | 60000 | 12000 | 100 | 3'],
+                [''],
+                ['EXAMPLE - General Fund (using new template):'],
+                ['Cell A1: "Grant Name"     Cell B1: "General Fund"'],
+                ['Cell A2: "Grant Code"     Cell B2: "S22001"'],
+                ['Cell A3: "Subsidiary"     Cell B3: "BHF" (selected from dropdown)'],
+                ['Cell A4: "End Date"       Cell B4: (empty)'],
+                ['Cell A5: "Description"    Cell B5: "BHF hub grant"'],
+                ['Row 7: Budget Line Code | Position | Salary | Benefit | LOE | Position Number'],
+                ['Row 9: (empty) | Manager | 75000 | 15000 | 100 | 2'],
+                ['Row 10: (empty) | Field Officer | 45000 | 9000 | 100 | 3'],
+                ['Row 11: (empty) | Manager | 60000 | 12000 | 75 | 1  (duplicate position OK!)'],
                 [''],
                 ['TIPS:'],
-                ['- Delete row 8 (validation rules) before importing'],
+                ['- Use the dropdown in Cell B3 to avoid organization typos'],
+                ['- Data entry starts from Row 9 (Row 8 contains validation reference)'],
                 ['- Test with a small file first (1-2 grants)'],
                 ['- Keep a backup of your original data'],
-                ['- Check the import notification for results'],
-                ['- Review any error messages carefully'],
+                ['- Check the import notification for detailed results'],
+                ['- Review any error messages carefully - they include cell/row references'],
                 [''],
                 ['FILE REQUIREMENTS:'],
                 ['- File format: .xlsx, .xls, or .csv'],
                 ['- Maximum file size: 10MB'],
-                ['- Each sheet must have at least 5 rows (grant info)'],
+                ['- Each sheet must have at least 7 rows'],
                 [''],
                 ['For more information, refer to the API documentation or contact your system administrator.'],
             ];
