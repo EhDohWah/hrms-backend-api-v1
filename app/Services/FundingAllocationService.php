@@ -109,7 +109,7 @@ class FundingAllocationService
             'allocated_amount' => $salaryContext['allocated_amount'],
             'salary_type' => $salaryContext['salary_type'],
             'start_date' => $employment->start_date,
-            'end_date' => $employment->end_date ?? null,
+            'end_date' => $employment->end_probation_date ?? null,
             'created_by' => $currentUser,
             'updated_by' => $currentUser,
         ]);
@@ -183,14 +183,71 @@ class FundingAllocationService
     }
 
     /**
-     * Validate total effort equals 100%
+     * Validate total effort equals 100% with floating-point tolerance
+     *
+     * @param  array  $allocations  Array of allocations with 'fte' key (0-100 percentage)
+     *
+     * @throws \InvalidArgumentException if total doesn't equal 100%
      */
     private function validateTotalEffort(array $allocations): void
     {
         $totalEffort = array_sum(array_column($allocations, 'fte'));
-        if ($totalEffort != 100) {
+        $tolerance = 0.01; // Allow small rounding differences (e.g., 33.33 + 33.33 + 33.34)
+
+        if (abs($totalEffort - 100) > $tolerance) {
             throw new \InvalidArgumentException("Total effort of all allocations must equal exactly 100%. Current total: {$totalEffort}%");
         }
+    }
+
+    /**
+     * Validate that projected total FTE will equal 100% after an operation
+     *
+     * This is the smart validation that allows partial updates by calculating:
+     *   projected_total = existing_to_keep + new_allocations
+     *
+     * @param  int  $employmentId  Employment ID
+     * @param  array  $newAllocations  New allocations being added (with 'fte' in 0-100 range)
+     * @param  array  $replaceIds  IDs of existing allocations being replaced
+     * @return array Validation result with breakdown
+     */
+    public function validateProjectedFTE(int $employmentId, array $newAllocations, array $replaceIds = []): array
+    {
+        $today = Carbon::today();
+
+        // Get all currently active allocations for this employment
+        $existingAllocations = EmployeeFundingAllocation::where('employment_id', $employmentId)
+            ->where('status', 'active')
+            ->where('start_date', '<=', $today)
+            ->where(function ($query) use ($today) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', $today);
+            })
+            ->get();
+
+        // Calculate FTE of allocations that will remain (not being replaced)
+        $allocationsToKeep = $existingAllocations->whereNotIn('id', $replaceIds);
+        $existingFteToKeep = $allocationsToKeep->sum('fte') * 100; // Convert from decimal
+
+        // Calculate new FTE being added
+        $newFte = array_sum(array_column($newAllocations, 'fte'));
+
+        // Calculate projected total
+        $projectedTotal = $existingFteToKeep + $newFte;
+
+        // Validate with tolerance
+        $tolerance = 0.01;
+        $isValid = abs($projectedTotal - 100) <= $tolerance;
+
+        return [
+            'valid' => $isValid,
+            'existing_allocations_count' => $existingAllocations->count(),
+            'allocations_being_replaced' => count($replaceIds),
+            'existing_fte_to_keep' => round($existingFteToKeep, 2),
+            'new_fte_being_added' => round($newFte, 2),
+            'projected_total' => round($projectedTotal, 2),
+            'required_total' => 100.00,
+            'difference' => round($projectedTotal - 100, 2),
+        ];
     }
 
     /**
@@ -280,7 +337,7 @@ class FundingAllocationService
 
         foreach ($existingEmployments as $employment) {
             $existingStart = Carbon::parse($employment->start_date);
-            $existingEnd = $employment->end_date ? Carbon::parse($employment->end_date) : null;
+            $existingEnd = $employment->end_probation_date ? Carbon::parse($employment->end_probation_date) : null;
 
             // Check for overlap
             $hasOverlap = false;

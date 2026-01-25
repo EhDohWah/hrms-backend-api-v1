@@ -35,7 +35,7 @@ class ProbationTransitionService
             // Find all employments that are ready for transition today
             $employments = Employment::whereNotNull('pass_probation_date')
                 ->whereDate('pass_probation_date', Carbon::today())
-                ->whereNull('end_date')
+                ->whereNull('end_probation_date')
                 ->where(function ($query) {
                     $query->whereNull('probation_status')
                         ->orWhere('probation_status', 'ongoing')
@@ -243,7 +243,7 @@ class ProbationTransitionService
             foreach ($activeAllocations as $allocation) {
                 $allocation->update([
                     'status' => 'terminated',
-                    'end_date' => $employment->end_date,
+                    'end_date' => $employment->end_probation_date,
                     'updated_by' => $changedBy,
                 ]);
             }
@@ -254,7 +254,7 @@ class ProbationTransitionService
                 'Employment terminated during probation period',
                 sprintf(
                     'Termination date: %s. %d allocations marked as terminated. Probation was not completed.',
-                    $employment->end_date->format('Y-m-d'),
+                    $employment->end_probation_date->format('Y-m-d'),
                     $activeAllocations->count()
                 )
             );
@@ -266,7 +266,7 @@ class ProbationTransitionService
                 reason: 'Employment terminated during probation period',
                 notes: sprintf(
                     'Termination date: %s. %d allocations marked as terminated. Probation was not completed.',
-                    $employment->end_date->format('Y-m-d'),
+                    $employment->end_probation_date->format('Y-m-d'),
                     $activeAllocations->count()
                 ),
                 changedBy: $changedBy
@@ -277,7 +277,7 @@ class ProbationTransitionService
             Log::info('Early termination processed', [
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
-                'end_date' => $employment->end_date->format('Y-m-d'),
+                'end_date' => $employment->end_probation_date->format('Y-m-d'),
                 'terminated_allocations' => $activeAllocations->pluck('id')->toArray(),
                 'changed_by' => $changedBy,
             ]);
@@ -329,9 +329,9 @@ class ProbationTransitionService
                 ];
             }
 
-            // Ensure employment end_date reflects the failure decision
-            if (! $employment->end_date || $employment->end_date->lt($decisionDate)) {
-                $employment->end_date = $decisionDate;
+            // Ensure employment end_probation_date reflects the failure decision
+            if (! $employment->end_probation_date || $employment->end_probation_date->lt($decisionDate)) {
+                $employment->end_probation_date = $decisionDate;
                 $employment->save();
             }
 

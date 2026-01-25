@@ -4,7 +4,10 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class LeaveRequestReportRequest extends FormRequest
+/**
+ * Form Request for exporting individual leave reports.
+ */
+class ExportIndividualLeaveReportRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,8 +27,7 @@ class LeaveRequestReportRequest extends FormRequest
         return [
             'start_date' => 'required|date_format:Y-m-d',
             'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
-            'work_location' => 'required|string|max:255|exists:sites,name',
-            'department' => 'required|string|max:255|exists:departments,name',
+            'staff_id' => 'required|string|max:50|exists:employees,staff_id',
         ];
     }
 
@@ -42,12 +44,9 @@ class LeaveRequestReportRequest extends FormRequest
             'end_date.required' => 'End date is required.',
             'end_date.date_format' => 'End date must be in YYYY-MM-DD format.',
             'end_date.after_or_equal' => 'End date must be after or equal to start date.',
-            'work_location.required' => 'Site/Work location is required.',
-            'work_location.max' => 'Site name must not exceed 255 characters.',
-            'work_location.exists' => 'The selected site does not exist.',
-            'department.required' => 'Department is required.',
-            'department.max' => 'Department name must not exceed 255 characters.',
-            'department.exists' => 'The selected department does not exist.',
+            'staff_id.required' => 'Staff ID is required.',
+            'staff_id.max' => 'Staff ID must not exceed 50 characters.',
+            'staff_id.exists' => 'The selected staff ID does not exist.',
         ];
     }
 }

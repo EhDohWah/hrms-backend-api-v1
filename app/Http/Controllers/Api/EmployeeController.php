@@ -18,7 +18,6 @@ use App\Models\EmployeeBeneficiary;
 use App\Models\EmployeeChild;
 use App\Models\EmployeeEducation;
 use App\Models\EmployeeFundingAllocation;
-use App\Models\EmployeeIdentification;
 use App\Models\EmployeeLanguage;
 use App\Models\EmployeeTraining;
 use App\Models\Employment;
@@ -28,7 +27,6 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\Site;
 use App\Models\TravelRequest;
-use App\Models\User;
 use App\Notifications\EmployeeActionNotification;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -49,13 +47,13 @@ class EmployeeController extends Controller
         path: '/employees/tree-search',
         summary: 'Get all employees for tree search',
         description: 'Returns a list of all employees organized by organization for tree-based search',
-        operationId: 'getEmployeesForTreeSearch',
+        operationId: 'searchForOrgTree',
         security: [['bearerAuth' => []]],
         tags: ['Employees']
     )]
     #[OA\Response(response: 200, description: 'Successful operation')]
     #[OA\Response(response: 500, description: 'Server error')]
-    public function getEmployeesForTreeSearch()
+    public function searchForOrgTree()
     {
         try {
             $employees = Employee::select('id', 'organization', 'staff_id', 'first_name_en', 'last_name_en', 'status')
@@ -149,7 +147,7 @@ class EmployeeController extends Controller
     )]
     #[OA\Response(response: 200, description: 'Employees deleted successfully')]
     #[OA\Response(response: 500, description: 'Server error')]
-    public function deleteSelectedEmployees(Request $request)
+    public function destroyBatch(Request $request)
     {
         $validated = $request->validate([
             'ids' => 'required|array',
@@ -164,7 +162,6 @@ class EmployeeController extends Controller
             // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
             EmployeeFundingAllocation::whereIn('employee_id', $ids)->delete();
             EmployeeBeneficiary::whereIn('employee_id', $ids)->delete();
-            EmployeeIdentification::whereIn('employee_id', $ids)->delete();
             EmployeeChild::whereIn('employee_id', $ids)->delete();
             EmployeeEducation::whereIn('employee_id', $ids)->delete();
             EmployeeLanguage::whereIn('employee_id', $ids)->delete();
@@ -234,25 +231,69 @@ class EmployeeController extends Controller
 
         $import = new \App\Imports\EmployeesImport($importId, $userId);
 
-        // Queue on dedicated import queue
-        Excel::queueImport($import, $file)->onQueue('import');
+        // Always process synchronously (same pattern as GrantsImport)
+        // This ensures consistent behavior in dev and production
+        try {
+            Excel::import($import, $file);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Your file is being imported. You'll be notified when it's done.",
-            'data' => [
+            // Get results from cache (set by EmployeesImport AfterImport event)
+            $cacheKey = "import_result_{$importId}";
+            $result = Cache::get($cacheKey, []);
+
+            $processedCount = $result['processed'] ?? 0;
+            $errors = $result['errors'] ?? [];
+            $warnings = $result['warnings'] ?? [];
+
+            $responseData = [
                 'import_id' => $importId,
-            ],
-        ], 202);
+                'processed_count' => $processedCount,
+            ];
+
+            if (! empty($errors)) {
+                $responseData['errors'] = $errors;
+            }
+
+            if (! empty($warnings)) {
+                $responseData['warnings'] = $warnings;
+            }
+
+            // Determine response message based on results
+            if (! empty($errors)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Import completed with {$processedCount} employees processed and ".count($errors).' errors.',
+                    'data' => $responseData,
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Import completed successfully. {$processedCount} employees processed.",
+                'data' => $responseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Employee import failed: '.$e->getMessage(), [
+                'import_id' => $importId,
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Import failed: '.$e->getMessage(),
+                'data' => ['import_id' => $importId],
+            ], 500);
+        }
     }
 
     /**
      * Download Employee Import Excel Template
      */
     #[OA\Get(
-        path: '/uploads/employee/template',
+        path: '/downloads/employee-template',
         summary: 'Download Employee Import Excel Template',
-        description: 'Downloads an Excel template file with headers, validation rules, and sample data for employee bulk import',
+        description: 'Downloads an Excel template file with headers, validation rules, and sample data for employee bulk import. Organization limited to SMRU/BHF. Status values: Expats (Local), Local ID Staff, Local non ID Staff. Military status stored as Boolean.',
         operationId: 'downloadEmployeeTemplate',
         security: [['bearerAuth' => []]],
         tags: ['Employees']
@@ -269,54 +310,54 @@ class EmployeeController extends Controller
             $sheet = $spreadsheet->createSheet();
             $sheet->setTitle('Employee Data');
 
-            // Define all columns based on EmployeesImport
+            // Define all columns - Updated to match new schema with identification_type and identification_number
             $columns = [
-                'A' => ['header' => 'org', 'width' => 10, 'validation' => 'String - NULLABLE - Max 10 chars - Organization code'],
-                'B' => ['header' => 'staff_id', 'width' => 15, 'validation' => 'String - NOT NULL - Max 50 chars - Must be unique'],
-                'C' => ['header' => 'initial', 'width' => 10, 'validation' => 'String - NULLABLE - Max 10 chars - Initial (EN)'],
-                'D' => ['header' => 'first_name', 'width' => 20, 'validation' => 'String - NOT NULL - Max 255 chars - First name (EN)'],
-                'E' => ['header' => 'last_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Last name (EN)'],
-                'F' => ['header' => 'initial_th', 'width' => 10, 'validation' => 'String - NULLABLE - Max 20 chars - Initial (TH)'],
-                'G' => ['header' => 'first_name_th', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - First name (TH)'],
-                'H' => ['header' => 'last_name_th', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Last name (TH)'],
-                'I' => ['header' => 'gender', 'width' => 10, 'validation' => 'String - NOT NULL - Values: M, F'],
-                'J' => ['header' => 'date_of_birth', 'width' => 15, 'validation' => 'Date - NOT NULL - Format: YYYY-MM-DD or Excel date'],
-                'K' => ['header' => 'age', 'width' => 10, 'validation' => 'Formula - AUTO CALCULATED - Do not edit'],
-                'L' => ['header' => 'status', 'width' => 20, 'validation' => 'String - NULLABLE - Values: Expats (Local), Local ID Staff, Local non ID Staff'],
-                'M' => ['header' => 'nationality', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'N' => ['header' => 'religion', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'O' => ['header' => 'id_type', 'width' => 15, 'validation' => 'String - NULLABLE - Values: 10 years ID, Burmese ID, CI, Borderpass, Thai ID, Passport, Other'],
-                'P' => ['header' => 'id_no', 'width' => 20, 'validation' => 'String - NULLABLE - ID number'],
-                'Q' => ['header' => 'social_security_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'R' => ['header' => 'tax_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'S' => ['header' => 'driver_license', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'T' => ['header' => 'bank_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'U' => ['header' => 'bank_branch', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'V' => ['header' => 'bank_acc_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'W' => ['header' => 'bank_acc_no', 'width' => 20, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'X' => ['header' => 'mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'Y' => ['header' => 'current_address', 'width' => 30, 'validation' => 'Text - NULLABLE'],
-                'Z' => ['header' => 'permanent_address', 'width' => 30, 'validation' => 'Text - NULLABLE'],
-                'AA' => ['header' => 'marital_status', 'width' => 15, 'validation' => 'String - NULLABLE - Values: Single, Married, Divorced, Widowed'],
-                'AB' => ['header' => 'spouse_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
-                'AC' => ['header' => 'spouse_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AD' => ['header' => 'emergency_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'AE' => ['header' => 'relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 100 chars'],
-                'AF' => ['header' => 'emergency_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AG' => ['header' => 'father_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
-                'AH' => ['header' => 'father_occupation', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
-                'AI' => ['header' => 'father_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AJ' => ['header' => 'mother_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
-                'AK' => ['header' => 'mother_occupation', 'width' => 20, 'validation' => 'String - NULLABLE - Max 200 chars'],
-                'AL' => ['header' => 'mother_mobile_no', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AM' => ['header' => 'kin1_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Beneficiary 1'],
-                'AN' => ['header' => 'kin1_relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 255 chars'],
-                'AO' => ['header' => 'kin1_mobile', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AP' => ['header' => 'kin2_name', 'width' => 20, 'validation' => 'String - NULLABLE - Max 255 chars - Beneficiary 2'],
-                'AQ' => ['header' => 'kin2_relationship', 'width' => 15, 'validation' => 'String - NULLABLE - Max 255 chars'],
-                'AR' => ['header' => 'kin2_mobile', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AS' => ['header' => 'military_status', 'width' => 15, 'validation' => 'String - NULLABLE - Max 50 chars'],
-                'AT' => ['header' => 'remark', 'width' => 30, 'validation' => 'String - NULLABLE - Max 255 chars'],
+                'A' => ['header' => 'Org', 'width' => 12, 'validation' => 'REQUIRED - Must be SMRU or BHF - Case insensitive'],
+                'B' => ['header' => 'Staff ID', 'width' => 18, 'validation' => 'REQUIRED - Min 3 chars - Max 50 chars - Alphanumeric and dash only - Must be unique per organization'],
+                'C' => ['header' => 'Initial', 'width' => 10, 'validation' => 'OPTIONAL - Max 10 chars'],
+                'D' => ['header' => 'First Name', 'width' => 20, 'validation' => 'REQUIRED - Min 2 chars - Max 255 chars'],
+                'E' => ['header' => 'Last Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 255 chars'],
+                'F' => ['header' => 'Initial (TH)', 'width' => 10, 'validation' => 'OPTIONAL - Max 10 chars'],
+                'G' => ['header' => 'First Name (TH)', 'width' => 20, 'validation' => 'OPTIONAL - Max 255 chars'],
+                'H' => ['header' => 'Last Name (TH)', 'width' => 20, 'validation' => 'OPTIONAL - Max 255 chars'],
+                'I' => ['header' => 'Gender', 'width' => 10, 'validation' => 'REQUIRED - Must be M or F'],
+                'J' => ['header' => 'Date of Birth', 'width' => 18, 'validation' => 'REQUIRED - Format YYYY-MM-DD - Age must be 18-84 years'],
+                'K' => ['header' => 'Age', 'width' => 10, 'validation' => 'AUTO-CALCULATED - Formula'],
+                'L' => ['header' => 'Status', 'width' => 22, 'validation' => 'REQUIRED - Must be: Expats (Local), Local ID Staff, or Local non ID Staff'],
+                'M' => ['header' => 'Nationality', 'width' => 15, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'N' => ['header' => 'Religion', 'width' => 15, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'O' => ['header' => 'ID Type', 'width' => 18, 'validation' => 'OPTIONAL - Select from dropdown - 10 years ID, Burmese ID, CI, Borderpass, Thai ID, Passport, Other'],
+                'P' => ['header' => 'ID Number', 'width' => 22, 'validation' => 'OPTIONAL - Required if ID type provided'],
+                'Q' => ['header' => 'Social Security No', 'width' => 20, 'validation' => 'OPTIONAL - Max 50 chars'],
+                'R' => ['header' => 'Tax No', 'width' => 20, 'validation' => 'OPTIONAL - Max 50 chars'],
+                'S' => ['header' => 'Driver License', 'width' => 20, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'T' => ['header' => 'Bank Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'U' => ['header' => 'Bank Branch', 'width' => 20, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'V' => ['header' => 'Bank Account Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'W' => ['header' => 'Bank Account No', 'width' => 20, 'validation' => 'OPTIONAL - Max 50 chars'],
+                'X' => ['header' => 'Mobile No', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars - 10+ digits'],
+                'Y' => ['header' => 'Current Address', 'width' => 30, 'validation' => 'OPTIONAL - Text'],
+                'Z' => ['header' => 'Permanent Address', 'width' => 30, 'validation' => 'OPTIONAL - Text'],
+                'AA' => ['header' => 'Marital Status', 'width' => 18, 'validation' => 'OPTIONAL - Single, Married, Divorced, or Widowed - Affects spouse information requirements'],
+                'AB' => ['header' => 'Spouse Name', 'width' => 20, 'validation' => 'OPTIONAL - Required if marital status is Married'],
+                'AC' => ['header' => 'Spouse Mobile No', 'width' => 18, 'validation' => 'OPTIONAL - Recommended if spouse name provided'],
+                'AD' => ['header' => 'Emergency Contact Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'AE' => ['header' => 'Relationship', 'width' => 15, 'validation' => 'OPTIONAL - Max 100 chars'],
+                'AF' => ['header' => 'Emergency Mobile No', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars'],
+                'AG' => ['header' => 'Father Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 200 chars'],
+                'AH' => ['header' => 'Father Occupation', 'width' => 20, 'validation' => 'OPTIONAL - Max 200 chars'],
+                'AI' => ['header' => 'Father Mobile No', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars'],
+                'AJ' => ['header' => 'Mother Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 200 chars'],
+                'AK' => ['header' => 'Mother Occupation', 'width' => 20, 'validation' => 'OPTIONAL - Max 200 chars'],
+                'AL' => ['header' => 'Mother Mobile No', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars'],
+                'AM' => ['header' => 'Kin 1 Name', 'width' => 20, 'validation' => 'OPTIONAL - Beneficiary 1 name'],
+                'AN' => ['header' => 'Kin 1 Relationship', 'width' => 18, 'validation' => 'OPTIONAL - Required if beneficiary 1 name provided'],
+                'AO' => ['header' => 'Kin 1 Mobile', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars'],
+                'AP' => ['header' => 'Kin 2 Name', 'width' => 20, 'validation' => 'OPTIONAL - Beneficiary 2 name'],
+                'AQ' => ['header' => 'Kin 2 Relationship', 'width' => 18, 'validation' => 'OPTIONAL - Required if beneficiary 2 name provided'],
+                'AR' => ['header' => 'Kin 2 Mobile', 'width' => 18, 'validation' => 'OPTIONAL - Max 20 chars'],
+                'AS' => ['header' => 'Military Status', 'width' => 18, 'validation' => 'OPTIONAL - Yes or No'],
+                'AT' => ['header' => 'Remark', 'width' => 30, 'validation' => 'OPTIONAL - Max 255 chars'],
             ];
 
             // Set column widths and headers
@@ -344,10 +385,30 @@ class EmployeeController extends Controller
             $sheet->getStyle('A2:AT2')->applyFromArray($validationStyle);
             $sheet->getRowDimension(2)->setRowHeight(30);
 
-            // Add sample data (2 rows)
+            // Add sample data (2 rows) - Updated with correct column names and values
             $sampleData = [
-                ['SMRU', 'EMP001', 'Mr.', 'John', 'Doe', 'นาย', 'จอห์น', 'โด', 'M', '1990-01-15', '', 'Local ID Staff', 'Thai', 'Buddhist', 'Thai ID', '1234567890123', 'SS123456', 'TAX123456', 'DL123456', 'Bangkok Bank', 'Headquarters', 'John Doe', '1234567890', '0812345678', '123 Main St, Bangkok', '456 Home St, Bangkok', 'Single', '', '', 'Jane Doe', 'Sister', '0823456789', 'Robert Doe', 'Engineer', '0834567890', 'Mary Doe', 'Teacher', '0845678901', 'Jane Doe', 'Sister', '0823456789', '', '', '', '', '', '', 'Completed', 'New employee'],
-                ['BHF', 'EMP002', 'Ms.', 'Sarah', 'Smith', 'นางสาว', 'ซาร่าห์', 'สมิธ', 'F', '1985-05-20', '', 'Expats (Local)', 'American', 'Christian', 'Passport', 'P1234567', 'SS234567', 'TAX234567', '', 'Kasikorn Bank', 'Silom Branch', 'Sarah Smith', '0987654321', '0898765432', '789 Office Rd, Bangkok', '321 Apartment, Bangkok', 'Married', 'Tom Smith', '0887654321', 'Emergency Contact', 'Friend', '0876543210', 'David Smith', 'Doctor', '0865432109', 'Linda Smith', 'Nurse', '0854321098', 'Tom Smith', 'Spouse', '0887654321', '', '', '', '', '', '', 'Exempt', 'Senior staff'],
+                // Row 3: SMRU, Local ID Staff, 10 years ID, Single male
+                [
+                    'SMRU', 'EMP001', 'Mr.', 'John', 'Doe', 'นาย', 'จอห์น', 'โด', 'M', '1990-01-15', '',
+                    'Local ID Staff', 'Thai', 'Buddhist', '10 years ID', '1234567890123',
+                    'SS123456', 'TAX123456', 'DL123456', 'Bangkok Bank', 'Headquarters', 'John Doe', '1234567890',
+                    '0812345678', '123 Main St, Bangkok', '456 Home St, Bangkok',
+                    'Single', '', '', 'Jane Doe', 'Sister', '0823456789',
+                    'Robert Doe', 'Engineer', '0834567890', 'Mary Doe', 'Teacher', '0845678901',
+                    'Jane Doe', 'Sister', '0823456789', '', '', '',
+                    'Yes', 'New employee',
+                ],
+                // Row 4: BHF, Expats (Local), Passport, Married female with spouse info
+                [
+                    'BHF', 'EMP002', 'Ms.', 'Sarah', 'Smith', 'นางสาว', 'ซาร่าห์', 'สมิธ', 'F', '1985-05-20', '',
+                    'Expats (Local)', 'American', 'Christian', 'Passport', 'P1234567',
+                    'SS234567', 'TAX234567', '', 'Kasikorn Bank', 'Silom Branch', 'Sarah Smith', '0987654321',
+                    '0898765432', '789 Office Rd, Bangkok', '321 Apartment, Bangkok',
+                    'Married', 'Tom Smith', '0887654321', 'Emergency Contact', 'Friend', '0876543210',
+                    'David Smith', 'Doctor', '0865432109', 'Linda Smith', 'Nurse', '0854321098',
+                    'Tom Smith', 'Spouse', '0887654321', '', '', '',
+                    'No', 'Senior staff',
+                ],
             ];
 
             foreach ($sampleData as $rowIndex => $rowData) {
@@ -359,7 +420,7 @@ class EmployeeController extends Controller
                         $sheet->setCellValue($col.$rowNum, $value);
 
                         // Add age formula for column K
-                        if ($col === 'K' && isset($rowData[9])) {
+                        if ($col === 'K') {
                             $sheet->setCellValue($col.$rowNum, '=DATEDIF(J'.$rowNum.',TODAY(),"Y")');
                         }
                     }
@@ -368,11 +429,27 @@ class EmployeeController extends Controller
             }
 
             // Add data validation for dropdowns
+            // Organization dropdown (column A) - SMRU/BHF only
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('A'.$row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+                $validation->setAllowBlank(false);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Organization');
+                $validation->setError('Please select SMRU or BHF');
+                $validation->setPromptTitle('Organization');
+                $validation->setPrompt('Select SMRU or BHF');
+                $validation->setFormula1('"SMRU,BHF"');
+            }
+
             // Gender dropdown (column I)
             for ($row = 3; $row <= 1000; $row++) {
                 $validation = $sheet->getCell('I'.$row)->getDataValidation();
                 $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
                 $validation->setAllowBlank(false);
                 $validation->setShowInputMessage(true);
                 $validation->setShowErrorMessage(true);
@@ -384,7 +461,23 @@ class EmployeeController extends Controller
                 $validation->setFormula1('"M,F"');
             }
 
-            // ID Type dropdown (column O)
+            // Status dropdown (column L) - Standardized values
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('L'.$row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+                $validation->setAllowBlank(false);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Status');
+                $validation->setError('Please select from: Expats (Local), Local ID Staff, Local non ID Staff');
+                $validation->setPromptTitle('Status');
+                $validation->setPrompt('Select employee status');
+                $validation->setFormula1('"Expats (Local),Local ID Staff,Local non ID Staff"');
+            }
+
+            // Identification Type dropdown (column O)
             for ($row = 3; $row <= 1000; $row++) {
                 $validation = $sheet->getCell('O'.$row)->getDataValidation();
                 $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
@@ -393,27 +486,11 @@ class EmployeeController extends Controller
                 $validation->setShowInputMessage(true);
                 $validation->setShowErrorMessage(true);
                 $validation->setShowDropDown(true);
-                $validation->setErrorTitle('Invalid ID Type');
+                $validation->setErrorTitle('Invalid Identification Type');
                 $validation->setError('Please select from the list');
-                $validation->setPromptTitle('ID Type');
-                $validation->setPrompt('Select ID type');
+                $validation->setPromptTitle('Identification Type');
+                $validation->setPrompt('Select identification type');
                 $validation->setFormula1('"10 years ID,Burmese ID,CI,Borderpass,Thai ID,Passport,Other"');
-            }
-
-            // Identity Status dropdown (column L)
-            for ($row = 3; $row <= 1000; $row++) {
-                $validation = $sheet->getCell('L'.$row)->getDataValidation();
-                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-                $validation->setAllowBlank(true);
-                $validation->setShowInputMessage(true);
-                $validation->setShowErrorMessage(true);
-                $validation->setShowDropDown(true);
-                $validation->setErrorTitle('Invalid Identity Status');
-                $validation->setError('Please select from the list');
-                $validation->setPromptTitle('Identity Status');
-                $validation->setPrompt('Select employee identity status');
-                $validation->setFormula1('"Expats (Local),Local ID Staff,Local non ID Staff"');
             }
 
             // Marital Status dropdown (column AA)
@@ -430,6 +507,22 @@ class EmployeeController extends Controller
                 $validation->setPromptTitle('Marital Status');
                 $validation->setPrompt('Select marital status');
                 $validation->setFormula1('"Single,Married,Divorced,Widowed"');
+            }
+
+            // Military Status dropdown (column AS) - Maps to Boolean (Yes = true, No = false)
+            for ($row = 3; $row <= 1000; $row++) {
+                $validation = $sheet->getCell('AS'.$row)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                $validation->setAllowBlank(true);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setErrorTitle('Invalid Military Status');
+                $validation->setError('Please select Yes or No');
+                $validation->setPromptTitle('Military Status');
+                $validation->setPrompt('Select Yes or No');
+                $validation->setFormula1('"Yes,No"');
             }
 
             // Freeze header rows
@@ -466,9 +559,56 @@ class EmployeeController extends Controller
         }
     }
 
-    public function exportEmployees()
+    /**
+     * Export employees to Excel with optional filtering
+     */
+    #[OA\Get(
+        path: '/employees/export',
+        summary: 'Export employees to Excel',
+        description: 'Export employees to Excel file with optional filtering by organization and status. Returns formatted Excel with headers, validation rules row, dropdowns, and age formulas.',
+        operationId: 'exportEmployees',
+        security: [['bearerAuth' => []]],
+        tags: ['Employees']
+    )]
+    #[OA\Parameter(
+        name: 'organization',
+        in: 'query',
+        description: 'Filter by organization',
+        required: false,
+        schema: new OA\Schema(type: 'string', enum: ['SMRU', 'BHF'])
+    )]
+    #[OA\Parameter(
+        name: 'status',
+        in: 'query',
+        description: 'Filter by employment status',
+        required: false,
+        schema: new OA\Schema(type: 'string', enum: ['Expats (Local)', 'Local ID Staff', 'Local non ID Staff'])
+    )]
+    #[OA\Response(response: 200, description: 'Excel file download')]
+    #[OA\Response(response: 422, description: 'Validation error')]
+    public function exportEmployees(Request $request)
     {
-        return Excel::download(new EmployeesExport, 'employees.xlsx');
+        $validated = $request->validate([
+            'organization' => 'nullable|string|in:SMRU,BHF',
+            'status' => 'nullable|string|in:Expats (Local),Local ID Staff,Local non ID Staff',
+        ]);
+
+        $export = new EmployeesExport(
+            $validated['organization'] ?? null,
+            $validated['status'] ?? null
+        );
+
+        // Generate descriptive filename
+        $filename = 'employees';
+        if ($validated['organization'] ?? null) {
+            $filename .= '_'.$validated['organization'];
+        }
+        if ($validated['status'] ?? null) {
+            $filename .= '_'.str_replace(' ', '_', $validated['status']);
+        }
+        $filename .= '_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download($export, $filename);
     }
 
     /**
@@ -502,9 +642,9 @@ class EmployeeController extends Controller
                 'filter_status' => 'string|nullable',
                 'filter_gender' => 'string|nullable',
                 'filter_age' => 'integer|nullable',
-                'filter_id_type' => 'string|nullable',
+                'filter_identification_type' => 'string|nullable',
                 'filter_staff_id' => 'string|nullable',
-                'sort_by' => 'string|nullable|in:organization,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,id_type',
+                'sort_by' => 'string|nullable|in:organization,staff_id,first_name_en,last_name_en,gender,date_of_birth,status,age,identification_type',
                 'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
@@ -533,8 +673,8 @@ class EmployeeController extends Controller
                 $query->byAge($validated['filter_age']);
             }
 
-            if (! empty($validated['filter_id_type'])) {
-                $query->byIdType($validated['filter_id_type']);
+            if (! empty($validated['filter_identification_type'])) {
+                $query->byIdType($validated['filter_identification_type']);
             }
 
             if (! empty($validated['filter_staff_id'])) {
@@ -551,10 +691,9 @@ class EmployeeController extends Controller
             } elseif ($sortBy === 'age') {
                 // Sort by age means sort by date_of_birth in reverse order
                 $query->orderBy('employees.date_of_birth', $sortOrder === 'asc' ? 'desc' : 'asc');
-            } elseif ($sortBy === 'id_type') {
-                // Sort by id_type from relationship - need to specify table aliases to avoid ambiguous column names
-                $query->leftJoin('employee_identifications as ei', 'employees.id', '=', 'ei.employee_id')
-                    ->orderBy('ei.id_type', $sortOrder);
+            } elseif ($sortBy === 'identification_type') {
+                // Sort by identification_type - direct column on employees table
+                $query->orderBy('employees.identification_type', $sortOrder);
             } else {
                 $query->orderBy('employees.created_at', 'desc');
             }
@@ -576,8 +715,8 @@ class EmployeeController extends Controller
             if (! empty($validated['filter_age'])) {
                 $appliedFilters['age'] = $validated['filter_age'];
             }
-            if (! empty($validated['filter_id_type'])) {
-                $appliedFilters['id_type'] = explode(',', $validated['filter_id_type']);
+            if (! empty($validated['filter_identification_type'])) {
+                $appliedFilters['identification_type'] = explode(',', $validated['filter_identification_type']);
             }
             if (! empty($validated['filter_staff_id'])) {
                 $appliedFilters['staff_id'] = $validated['filter_staff_id'];
@@ -629,7 +768,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function show(ShowEmployeeRequest $request, string $staff_id)
+    public function showByStaffId(ShowEmployeeRequest $request, string $staff_id)
     {
 
         // 1) base query: Remove 'active' from employment selection
@@ -648,8 +787,7 @@ class EmployeeController extends Controller
             'mobile_phone',
         ])
             ->with([
-                'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-                'employment:id,employee_id,start_date,end_date', // Removed 'active', added 'end_date'
+                'employment:id,employee_id,start_date,end_probation_date',
                 'employeeEducation:id,employee_id,school_name,degree,start_date,end_date',
             ]);
 
@@ -687,7 +825,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function employeeDetails(Request $request, $id)
+    public function show(Request $request, $id)
     {
         $employee = Employee::with([
             'employment',
@@ -702,7 +840,6 @@ class EmployeeController extends Controller
             'employeeFundingAllocations.employment.department',
             'employeeFundingAllocations.employment.position',
             'employeeBeneficiaries',
-            'employeeIdentification',
             'employeeEducation',
             'employeeChildren',
             'employeeLanguages',
@@ -809,44 +946,48 @@ class EmployeeController extends Controller
             $employee = Employee::findOrFail($id);
 
             $validated = $request->validate([
-                'staff_id' => "required|string|max:50|unique:employees,staff_id,{$id}",
-                'organization' => 'nullable|string|in:SMRU,BHF',
+                'staff_id' => "required|string|min:3|max:50|regex:/^[A-Za-z0-9-]+$/|unique:employees,staff_id,{$id}",
+                'organization' => 'required|string|in:SMRU,BHF',
                 'user_id' => 'nullable|integer|exists:users,id',
                 'initial_en' => 'nullable|string|max:10',
                 'initial_th' => 'nullable|string|max:10',
-                'first_name_en' => 'required|string|max:255',
-                'last_name_en' => 'required|string|max:255',
+                'first_name_en' => 'required|string|min:2|max:255',
+                'last_name_en' => 'nullable|string|max:255',
                 'first_name_th' => 'nullable|string|max:255',
                 'last_name_th' => 'nullable|string|max:255',
-                'gender' => 'required|string|max:10',
-                'date_of_birth' => 'required|date',
-                'status' => 'required|string|in:Expats,Local ID,Local non ID',
+                'gender' => 'required|string|in:M,F',
+                'date_of_birth' => 'required|date|before:-18 years|after:1940-01-01',
+                'status' => 'required|string|in:Expats (Local),Local ID Staff,Local non ID Staff',
                 'nationality' => 'nullable|string|max:100',
                 'religion' => 'nullable|string|max:100',
+                // Identification - direct columns (not separate table)
+                'identification_type' => 'nullable|string|in:10YearsID,BurmeseID,CI,Borderpass,ThaiID,Passport,Other',
+                'identification_number' => 'nullable|string|max:50|required_with:identification_type',
                 'social_security_number' => 'nullable|string|max:50',
                 'tax_number' => 'nullable|string|max:50',
                 'bank_name' => 'nullable|string|max:100',
                 'bank_branch' => 'nullable|string|max:100',
                 'bank_account_name' => 'nullable|string|max:100',
-                'bank_account_number' => 'nullable|string|max:100',
+                'bank_account_number' => 'nullable|string|max:50',
                 'mobile_phone' => 'nullable|string|max:20',
                 'permanent_address' => 'nullable|string',
                 'current_address' => 'nullable|string',
+                // Military status - stored as boolean
                 'military_status' => 'nullable|boolean',
-                'marital_status' => 'nullable|string|max:20',
+                'marital_status' => 'nullable|string|in:Single,Married,Divorced,Widowed',
                 'spouse_name' => 'nullable|string|max:100',
                 'spouse_phone_number' => 'nullable|string|max:20',
                 'emergency_contact_person_name' => 'nullable|string|max:100',
-                'emergency_contact_person_relationship' => 'nullable|string|max:50',
+                'emergency_contact_person_relationship' => 'nullable|string|max:100',
                 'emergency_contact_person_phone' => 'nullable|string|max:20',
-                'father_name' => 'nullable|string|max:100',
-                'father_occupation' => 'nullable|string|max:100',
+                'father_name' => 'nullable|string|max:200',
+                'father_occupation' => 'nullable|string|max:200',
                 'father_phone_number' => 'nullable|string|max:20',
-                'mother_name' => 'nullable|string|max:100',
-                'mother_occupation' => 'nullable|string|max:100',
+                'mother_name' => 'nullable|string|max:200',
+                'mother_occupation' => 'nullable|string|max:200',
                 'mother_phone_number' => 'nullable|string|max:20',
-                'driver_license_number' => 'nullable|string|max:50',
-                'remark' => 'nullable|string',
+                'driver_license_number' => 'nullable|string|max:100',
+                'remark' => 'nullable|string|max:255',
             ]);
 
             $employee->update($validated + [
@@ -919,7 +1060,6 @@ class EmployeeController extends Controller
             // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
             EmployeeFundingAllocation::where('employee_id', $id)->delete();
             EmployeeBeneficiary::where('employee_id', $id)->delete();
-            EmployeeIdentification::where('employee_id', $id)->delete();
             EmployeeChild::where('employee_id', $id)->delete();
             EmployeeEducation::where('employee_id', $id)->delete();
             EmployeeLanguage::where('employee_id', $id)->delete();
@@ -989,7 +1129,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 200, description: 'Successful operation'),
         ]
     )]
-    public function getSiteRecords()
+    public function siteRecords()
     {
         $sites = Site::all();
 
@@ -1009,7 +1149,7 @@ class EmployeeController extends Controller
         security: [['bearerAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'staff_id', in: 'query', required: false, description: 'Staff ID to filter by', schema: new OA\Schema(type: 'string')),
-            new OA\Parameter(name: 'status', in: 'query', required: false, description: 'Employee status to filter by', schema: new OA\Schema(type: 'string', enum: ['Expats', 'Local ID', 'Local non ID'])),
+            new OA\Parameter(name: 'status', in: 'query', required: false, description: 'Employee status to filter by', schema: new OA\Schema(type: 'string', enum: ['Expats (Local)', 'Local ID Staff', 'Local non ID Staff'])),
             new OA\Parameter(name: 'organization', in: 'query', required: false, description: 'Employee organization to filter by', schema: new OA\Schema(type: 'string', enum: ['SMRU', 'BHF'])),
         ],
         responses: [
@@ -1021,7 +1161,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'staff_id' => 'nullable|string|max:50',
-            'status' => 'nullable|in:Expats,Local ID,Local non ID',
+            'status' => 'nullable|in:Expats (Local),Local ID Staff,Local non ID Staff',
             'organization' => 'nullable|in:SMRU,BHF',
         ]);
 
@@ -1170,7 +1310,7 @@ class EmployeeController extends Controller
     }
 
     // employee grant-item add
-    public function addEmployeeGrantItem(Request $request)
+    public function attachGrantItem(Request $request)
     {
         try {
             $validated = $request->validate([
@@ -1242,7 +1382,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function updateEmployeeBasicInformation(UpdateEmployeeRequest $request, Employee $employee)
+    public function updateBasicInfo(UpdateEmployeeRequest $request, Employee $employee)
     {
         \Log::info('Employee injected by route model binding', ['employee' => $employee]);
 
@@ -1291,7 +1431,7 @@ class EmployeeController extends Controller
         path: '/employees/{employee}/personal-information',
         summary: 'Update employee personal information',
         description: 'Update the personal information of an employee, including identification and languages',
-        operationId: 'updateEmployeePersonalInformation',
+        operationId: 'updatePersonalInfo',
         tags: ['Employees'],
         security: [['sanctum' => []]],
         parameters: [
@@ -1307,7 +1447,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function updateEmployeePersonalInformation(UpdateEmployeePersonalRequest $request, Employee $employee)
+    public function updatePersonalInfo(UpdateEmployeePersonalRequest $request, Employee $employee)
     {
         \Log::info('Employee injected by route model binding', ['employee' => $employee]);
 
@@ -1317,18 +1457,27 @@ class EmployeeController extends Controller
             // Get only main Employee table fields (filter out relations)
             $validated = $request->safe()->except(['employee_identification', 'languages']);
 
-            // Update Employee main table
-            $employee->update($validated);
+            // Handle identification fields - support both new direct format and legacy nested format
+            if ($request->has('identification_type')) {
+                $validated['identification_type'] = $request->input('identification_type');
+            }
+            if ($request->has('identification_number')) {
+                $validated['identification_number'] = $request->input('identification_number');
+            }
 
-            // --------- Update Employee Identification (One-to-One) ---------
-            if ($request->has('employee_identification')) {
+            // Legacy support: Handle identification fields from nested input
+            if ($request->has('employee_identification') && ! $request->has('identification_type')) {
                 $identData = $request->input('employee_identification');
-                if ($employee->employeeIdentification) {
-                    $employee->employeeIdentification()->update($identData);
-                } else {
-                    $employee->employeeIdentification()->create($identData);
+                if (isset($identData['id_type'])) {
+                    $validated['identification_type'] = $identData['id_type'];
+                }
+                if (isset($identData['document_number'])) {
+                    $validated['identification_number'] = $identData['document_number'];
                 }
             }
+
+            // Update Employee main table
+            $employee->update($validated);
 
             // --------- Update Employee Languages (Many) ---------
             if ($request->has('languages')) {
@@ -1352,7 +1501,7 @@ class EmployeeController extends Controller
             $this->clearEmployeeStatisticsCache();
 
             // Reload employee with relations if needed for API response
-            $employee->load('employeeIdentification', 'employeeLanguages');
+            $employee->load('employeeLanguages');
 
             // Send notification using NotificationService
             $performedBy = auth()->user();
@@ -1390,7 +1539,7 @@ class EmployeeController extends Controller
         path: '/employees/{employee}/family-information',
         summary: 'Update employee family information',
         description: 'Update the family information of an employee including parents and emergency contact',
-        operationId: 'updateEmployeeFamilyInformation',
+        operationId: 'updateFamilyInfo',
         tags: ['Employees'],
         security: [['bearerAuth' => []]],
         parameters: [
@@ -1405,7 +1554,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function updateEmployeeFamilyInformation(UpdateEmployeeFamilyRequest $request, Employee $employee)
+    public function updateFamilyInfo(UpdateEmployeeFamilyRequest $request, Employee $employee)
     {
         try {
             $validated = $request->validated();
@@ -1492,7 +1641,7 @@ class EmployeeController extends Controller
     }
 
     // Add method to check import status
-    public function getImportStatus(string $importId)
+    public function importStatus(string $importId)
     {
         $stats = Cache::get("import_{$importId}_stats");
 
@@ -1514,7 +1663,7 @@ class EmployeeController extends Controller
         path: '/employees/{id}/bank-information',
         summary: 'Update employee bank information',
         description: 'Updates bank details for a specific employee including bank name, branch, account name and account number',
-        operationId: 'updateEmployeeBankInformation',
+        operationId: 'updateBankInfo',
         tags: ['Employees'],
         security: [['bearerAuth' => []]],
         parameters: [
@@ -1532,7 +1681,7 @@ class EmployeeController extends Controller
             new OA\Response(response: 500, description: 'Server error'),
         ]
     )]
-    public function updateBankInformation(UpdateEmployeeBankRequest $request, $id)
+    public function updateBankInfo(UpdateEmployeeBankRequest $request, $id)
     {
         try {
             $employee = Employee::findOrFail($id);

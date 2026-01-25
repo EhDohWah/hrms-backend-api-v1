@@ -127,7 +127,7 @@ class PayrollController extends Controller
      *     )
      * )
      */
-    public function getEmployeeEmploymentDetail(Request $request)
+    public function employeeEmploymentDetail(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'employee_id' => 'required|exists:employees,id',
@@ -307,7 +307,7 @@ class PayrollController extends Controller
      *     )
      * )
      */
-    public function getEmployeeEmploymentDetailWithCalculations(Request $request)
+    public function employeeEmploymentDetailWithCalculations(Request $request)
     {
         try {
             // Validate request parameters
@@ -2041,7 +2041,7 @@ class PayrollController extends Controller
      *     )
      * )
      */
-    public function getTaxSummary(string $id)
+    public function taxSummary(string $id)
     {
         try {
             $payroll = Payroll::with(['employment.employee'])->findOrFail($id);
@@ -2634,7 +2634,7 @@ class PayrollController extends Controller
      *     )
      * )
      */
-    public function getBudgetHistory(Request $request)
+    public function budgetHistory(Request $request)
     {
         // Validate request
         $validator = Validator::make($request->all(), [

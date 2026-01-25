@@ -7,7 +7,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Read operations
     Route::middleware(['permission:employees.read'])->group(function () {
         Route::get('/personnel-actions', [PersonnelActionController::class, 'index']);
-        Route::get('/personnel-actions/constants', [PersonnelActionController::class, 'getConstants']);
+        Route::get('/personnel-actions/constants', [PersonnelActionController::class, 'constants']);
         Route::get('/personnel-actions/{personnelAction}', [PersonnelActionController::class, 'show']);
     });
 

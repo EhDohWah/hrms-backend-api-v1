@@ -15,7 +15,7 @@ class DashboardController extends Controller
     /**
      * Get all available widgets (for admin widget management)
      */
-    public function getAllWidgets(): JsonResponse
+    public function index(): JsonResponse
     {
         $widgets = DashboardWidget::orderBy('category')
             ->orderBy('default_order')
@@ -32,7 +32,7 @@ class DashboardController extends Controller
     /**
      * Get widgets available for a specific user based on their permissions
      */
-    public function getAvailableWidgets(Request $request): JsonResponse
+    public function available(Request $request): JsonResponse
     {
         $user = Auth::user();
 
@@ -55,7 +55,7 @@ class DashboardController extends Controller
     /**
      * Get current user's dashboard configuration
      */
-    public function getUserDashboard(): JsonResponse
+    public function show(): JsonResponse
     {
         $user = Auth::user();
 
@@ -90,7 +90,7 @@ class DashboardController extends Controller
         if ($userWidgets->isEmpty()) {
             $user->assignDefaultWidgets();
 
-            return $this->getUserDashboard(); // Recursive call to get the newly assigned widgets
+            return $this->show(); // Recursive call to get the newly assigned widgets
         }
 
         return response()->json([
@@ -322,7 +322,7 @@ class DashboardController extends Controller
     /**
      * Get widgets for a specific user (admin endpoint for user management)
      */
-    public function getUserWidgets(int $userId): JsonResponse
+    public function showUserWidgets(int $userId): JsonResponse
     {
         $targetUser = \App\Models\User::findOrFail($userId);
 
@@ -347,9 +347,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * Set widgets for a specific user (admin endpoint for user management)
+     * Update widgets for a specific user (admin endpoint for user management)
      */
-    public function setUserWidgets(Request $request, int $userId): JsonResponse
+    public function updateUserWidgets(Request $request, int $userId): JsonResponse
     {
         $request->validate([
             'widget_ids' => 'required|array',
@@ -379,7 +379,7 @@ class DashboardController extends Controller
     /**
      * Get available widgets for a specific user based on their permissions (admin endpoint)
      */
-    public function getAvailableWidgetsForUser(int $userId): JsonResponse
+    public function availableForUser(int $userId): JsonResponse
     {
         $targetUser = \App\Models\User::findOrFail($userId);
 

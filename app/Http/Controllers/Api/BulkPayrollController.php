@@ -307,7 +307,7 @@ class BulkPayrollController extends Controller
      *     @OA\Response(response=201, description="Batch created successfully")
      * )
      */
-    public function create(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'pay_period' => 'required|string|date_format:Y-m',

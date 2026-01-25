@@ -24,23 +24,21 @@ class UpdateEmploymentRequest extends FormRequest
     {
         return [
             // Employment fields (matching actual database schema)
+            'position_id' => ['sometimes', 'integer', 'exists:positions,id'],
+            'department_id' => ['sometimes', 'integer', 'exists:departments,id'],
+            'section_department_id' => ['nullable', 'integer', 'exists:section_departments,id'],
+            'site_id' => ['sometimes', 'integer', 'exists:sites,id'],
             'employment_type' => ['sometimes', 'string', Rule::in(['Full-time', 'Part-time', 'Contract', 'Temporary'])],
             'pay_method' => ['nullable', 'string', Rule::in(['Transferred to bank', 'Cash cheque'])],
-            'pass_probation_date' => ['nullable', 'date', 'after:start_date'],
             'start_date' => ['sometimes', 'date'],
-            'end_date' => ['nullable', 'date', 'after:start_date'],
-            'department_id' => ['sometimes', 'integer', 'exists:departments,id'],
-            'position_id' => ['sometimes', 'integer', 'exists:positions,id'],
-            'section_department' => ['nullable', 'string', 'max:255'],
-            'site_id' => ['sometimes', 'integer', 'exists:sites,id'],
-            'pass_probation_salary' => ['sometimes', 'numeric', 'min:0'],
+            'pass_probation_date' => ['nullable', 'date', 'after:start_date'],
+            'end_probation_date' => ['nullable', 'date', 'after:start_date'],
             'probation_salary' => ['nullable', 'numeric', 'min:0', 'lte:pass_probation_salary'],
+            'pass_probation_salary' => ['sometimes', 'numeric', 'min:0'],
             'health_welfare' => ['sometimes', 'boolean'],
-            'health_welfare_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pvd' => ['sometimes', 'boolean'],
-            'pvd_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'saving_fund' => ['sometimes', 'boolean'],
-            'saving_fund_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // NOTE: Benefit percentages are managed globally in benefit_settings table
             'status' => ['sometimes', 'boolean'],
         ];
     }
@@ -51,14 +49,15 @@ class UpdateEmploymentRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'position_id.exists' => 'Selected position does not exist.',
+            'department_id.exists' => 'Selected department does not exist.',
+            'section_department_id.exists' => 'Selected section department does not exist.',
+            'site_id.exists' => 'Selected site does not exist.',
             'employment_type.in' => 'Invalid employment type. Must be Full-time, Part-time, Contract, or Temporary.',
             'pay_method.in' => 'Invalid pay method. Must be "Transferred to bank" or "Cash cheque".',
             'pass_probation_date.after' => 'Pass probation date must be after employment start date.',
+            'end_probation_date.after' => 'End probation date must be after start date.',
             'probation_salary.lte' => 'Probation salary must be less than or equal to pass probation salary.',
-            'end_date.after' => 'Employment end date must be after start date.',
-            'department_id.exists' => 'Selected department does not exist.',
-            'position_id.exists' => 'Selected position does not exist.',
-            'site_id.exists' => 'Selected site does not exist.',
             'pass_probation_salary.min' => 'Pass probation salary must be at least 0.',
             'health_welfare.boolean' => 'Health welfare must be true or false.',
             'pvd.boolean' => 'PVD must be true or false.',

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexPositionRequest;
-use App\Http\Requests\ListPositionOptionsRequest;
+use App\Http\Requests\OptionsPositionRequest;
 use App\Http\Requests\StorePositionRequest;
 use App\Http\Requests\UpdatePositionRequest;
 use App\Http\Resources\PositionDetailResource;
@@ -32,7 +32,7 @@ class PositionController extends Controller
     #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
     #[OA\Parameter(name: 'limit', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 1000, default: 200))]
     #[OA\Response(response: 200, description: 'Successful operation')]
-    public function options(ListPositionOptionsRequest $request)
+    public function options(OptionsPositionRequest $request)
     {
         $validated = $request->validated();
 

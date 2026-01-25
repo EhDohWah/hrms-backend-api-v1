@@ -22,7 +22,7 @@ class LookupController extends Controller
     )]
     #[OA\Response(response: 200, description: 'Successful operation')]
     #[OA\Response(response: 500, description: 'Server error')]
-    public function getLookupLists()
+    public function lists()
     {
         try {
             $result = Lookup::getAllLookups();
@@ -479,7 +479,7 @@ class LookupController extends Controller
     )]
     #[OA\Response(response: 200, description: 'Successful operation')]
     #[OA\Response(response: 500, description: 'Server error')]
-    public function getTypes()
+    public function types()
     {
         try {
             $types = Lookup::getAllTypes();
@@ -511,7 +511,7 @@ class LookupController extends Controller
     #[OA\Parameter(name: 'type', in: 'path', required: true, description: 'Lookup type', schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Successful operation')]
     #[OA\Response(response: 404, description: 'No lookups found for this type')]
-    public function getByType($type)
+    public function byType($type)
     {
         try {
             // Validate that the type exists

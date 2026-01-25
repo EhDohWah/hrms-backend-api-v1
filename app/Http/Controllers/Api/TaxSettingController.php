@@ -322,7 +322,7 @@ class TaxSettingController extends Controller
             new OA\Response(response: 200, description: 'Tax settings for year retrieved successfully'),
         ]
     )]
-    public function getByYear(int $year)
+    public function byYear(int $year)
     {
         try {
             $settings = TaxSetting::getSettingsForYear($year);
@@ -357,7 +357,7 @@ class TaxSettingController extends Controller
             new OA\Response(response: 404, description: 'Tax setting not found'),
         ]
     )]
-    public function getValue(Request $request, string $key)
+    public function value(Request $request, string $key)
     {
         try {
             $year = $request->get('year', date('Y'));
@@ -398,7 +398,7 @@ class TaxSettingController extends Controller
             new OA\Response(response: 200, description: 'Allowed keys retrieved successfully'),
         ]
     )]
-    public function getAllowedKeys()
+    public function allowedKeys()
     {
         try {
             return response()->json([

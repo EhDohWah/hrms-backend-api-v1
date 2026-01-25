@@ -29,7 +29,7 @@ class EmploymentObserver
             $dateValidation = $this->fundingService->validateEmploymentDates(
                 $employee,
                 Carbon::parse($employment->start_date),
-                $employment->end_date ? Carbon::parse($employment->end_date) : null
+                $employment->end_probation_date ? Carbon::parse($employment->end_probation_date) : null
             );
 
             if (! $dateValidation['valid']) {
@@ -65,11 +65,11 @@ class EmploymentObserver
     public function updating(Employment $employment): void
     {
         // Only validate dates if they're being changed
-        if ($employment->isDirty(['start_date', 'end_date'])) {
+        if ($employment->isDirty(['start_date', 'end_probation_date'])) {
             $dateValidation = $this->fundingService->validateEmploymentDates(
                 $employment->employee,
                 Carbon::parse($employment->start_date),
-                $employment->end_date ? Carbon::parse($employment->end_date) : null,
+                $employment->end_probation_date ? Carbon::parse($employment->end_probation_date) : null,
                 $employment->id // Exclude current employment from validation
             );
 
@@ -89,7 +89,7 @@ class EmploymentObserver
         }
 
         // Check if critical changes affect existing funding allocations
-        if ($employment->isDirty(['start_date', 'end_date', 'department_id', 'position_id'])) {
+        if ($employment->isDirty(['start_date', 'end_probation_date', 'department_id', 'position_id'])) {
             $this->validateFundingAllocationImpact($employment);
         }
     }
@@ -110,7 +110,7 @@ class EmploymentObserver
             ]);
 
             // Update related funding allocations if dates changed
-            if (isset($changes['start_date']) || isset($changes['end_date'])) {
+            if (isset($changes['start_date']) || isset($changes['end_probation_date'])) {
                 $this->updateRelatedAllocations($employment);
             }
         }
@@ -187,8 +187,8 @@ class EmploymentObserver
         }
 
         // If employment has end date, probation should be before end date
-        if ($employment->end_date) {
-            $endDate = Carbon::parse($employment->end_date);
+        if ($employment->end_probation_date) {
+            $endDate = Carbon::parse($employment->end_probation_date);
             if ($probationDate->gte($endDate)) {
                 throw new \InvalidArgumentException(
                     'Pass probation date must be before employment end date'
@@ -267,8 +267,8 @@ class EmploymentObserver
         }
 
         // If end date is moved backward, check if it affects allocations
-        if (isset($changes['end_date']) && $changes['end_date']) {
-            $newEndDate = Carbon::parse($changes['end_date']);
+        if (isset($changes['end_probation_date']) && $changes['end_probation_date']) {
+            $newEndDate = Carbon::parse($changes['end_probation_date']);
 
             $affectedAllocations = $employment->employeeFundingAllocations()
                 ->where(function ($query) use ($newEndDate) {
@@ -294,7 +294,7 @@ class EmploymentObserver
     {
         $changes = $employment->getChanges();
 
-        if (! isset($changes['start_date']) && ! isset($changes['end_date'])) {
+        if (! isset($changes['start_date']) && ! isset($changes['end_probation_date'])) {
             return;
         }
 
@@ -314,8 +314,8 @@ class EmploymentObserver
             }
 
             // Update end date if employment end date changed
-            if (isset($changes['end_date'])) {
-                $updateData['end_date'] = $employment->end_date;
+            if (isset($changes['end_probation_date'])) {
+                $updateData['end_date'] = $employment->end_probation_date;
             }
 
             if (! empty($updateData)) {

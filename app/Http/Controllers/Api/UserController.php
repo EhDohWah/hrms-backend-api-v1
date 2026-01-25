@@ -286,13 +286,13 @@ class UserController extends Controller
         path: '/user/user',
         summary: 'Get authenticated user details',
         description: "Returns the authenticated user's basic details along with their roles and permissions.",
-        operationId: 'getUser',
+        operationId: 'me',
         security: [['bearerAuth' => []]],
         tags: ['Users']
     )]
     #[OA\Response(response: 200, description: 'User details retrieved successfully')]
     #[OA\Response(response: 401, description: 'Unauthenticated')]
-    public function getUser(Request $request)
+    public function me(Request $request)
     {
         $user = $request->user();
         $user->load('roles', 'permissions');
@@ -310,13 +310,13 @@ class UserController extends Controller
         path: '/api/v1/me/permissions',
         summary: "Get current user's module permissions",
         description: "Retrieve current user's permissions organized by module with Read/Edit flags",
-        operationId: 'getMyPermissions',
+        operationId: 'myPermissions',
         security: [['bearerAuth' => []]],
         tags: ['Users']
     )]
     #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
     #[OA\Response(response: 401, description: 'Unauthenticated')]
-    public function getMyPermissions(Request $request): JsonResponse
+    public function myPermissions(Request $request): JsonResponse
     {
         $user = $request->user();
         $modules = Module::active()->ordered()->get();

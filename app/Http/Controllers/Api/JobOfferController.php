@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\JobOfferRequest;
+use App\Http\Requests\StoreJobOfferRequest;
 use App\Http\Resources\JobOfferResource;
 use App\Models\JobOffer;
 use Illuminate\Http\Request;
@@ -328,7 +328,7 @@ class JobOfferController extends Controller
      *     )
      * )
      */
-    public function store(JobOfferRequest $request)
+    public function store(StoreJobOfferRequest $request)
     {
         try {
             $jobOffer = JobOffer::create($request->validated());
@@ -523,7 +523,7 @@ class JobOfferController extends Controller
      *     )
      * )
      */
-    public function update(JobOfferRequest $request, $id)
+    public function update(StoreJobOfferRequest $request, $id)
     {
         try {
             $jobOffer = JobOffer::findOrFail($id);
@@ -819,7 +819,7 @@ class JobOfferController extends Controller
      *     )
      * )
      */
-    public function getByCandidateName($candidateName)
+    public function byCandidateName($candidateName)
     {
         try {
             // Decode URL-encoded candidate name

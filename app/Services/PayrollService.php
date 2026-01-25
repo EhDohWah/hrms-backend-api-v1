@@ -8,6 +8,7 @@ use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
 use App\Models\InterOrganizationAdvance;
 use App\Models\Payroll;
+use App\Models\PayrollGrantAllocation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -485,7 +486,7 @@ class PayrollService
     {
         $calculations = $payrollData['calculations'];
 
-        return Payroll::create([
+        $payroll = Payroll::create([
             'employment_id' => $employment->id,
             'employee_funding_allocation_id' => $allocation->id,
             'gross_salary' => $calculations['gross_salary'],
@@ -511,6 +512,11 @@ class PayrollService
             'pay_period_date' => $payPeriodDate,
             'notes' => 'Processed via PayrollService on '.now()->format('Y-m-d H:i:s'),
         ]);
+
+        // Snapshot the funding allocation for budget history reporting
+        PayrollGrantAllocation::createFromAllocation($payroll, $allocation);
+
+        return $payroll;
     }
 
     /**

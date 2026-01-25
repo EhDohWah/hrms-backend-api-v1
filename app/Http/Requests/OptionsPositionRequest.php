@@ -4,7 +4,10 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ListDepartmentOptionsRequest extends FormRequest
+/**
+ * Form Request for retrieving position options (dropdown/select lists).
+ */
+class OptionsPositionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,10 +25,11 @@ class ListDepartmentOptionsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'department_id' => ['sometimes', 'integer', 'exists:departments,id'],
             'search' => ['sometimes', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:1000'],
-            'order_by' => ['sometimes', 'string', 'in:name,created_at'],
+            'order_by' => ['sometimes', 'string', 'in:title,level,created_at'],
             'order_direction' => ['sometimes', 'string', 'in:asc,desc'],
         ];
     }

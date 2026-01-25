@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\IndividualLeaveRequestReportRequest;
-use App\Http\Requests\LeaveRequestReportRequest;
+use App\Http\Requests\ExportIndividualLeaveReportRequest;
+use App\Http\Requests\ExportLeaveReportRequest;
 use App\Models\Employee;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
@@ -83,7 +83,7 @@ class LeaveRequestReportController extends Controller
      *     )
      * )
      */
-    public function exportPDF(LeaveRequestReportRequest $request)
+    public function exportPDF(ExportLeaveReportRequest $request)
     {
         // Get validated start and end dates
         $startDate = Carbon::parse($request->input('start_date'));
@@ -370,7 +370,7 @@ class LeaveRequestReportController extends Controller
      *     )
      * )
      */
-    public function exportIndividualPDF(IndividualLeaveRequestReportRequest $request)
+    public function exportIndividualPDF(ExportIndividualLeaveReportRequest $request)
     {
         // Get validated input
         $startDate = Carbon::parse($request->input('start_date'));

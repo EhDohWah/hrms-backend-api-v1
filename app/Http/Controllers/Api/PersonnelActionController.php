@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\PersonnelActionRequest;
+use App\Http\Requests\StorePersonnelActionRequest;
 use App\Models\PersonnelAction;
 use App\Services\PersonnelActionService;
 use Illuminate\Http\JsonResponse;
@@ -158,7 +158,7 @@ class PersonnelActionController extends Controller
      *     )
      * )
      */
-    public function store(PersonnelActionRequest $request): JsonResponse
+    public function store(StorePersonnelActionRequest $request): JsonResponse
     {
         $personnelAction = $this->personnelActionService->createPersonnelAction(
             array_merge($request->validated(), [
@@ -270,7 +270,7 @@ class PersonnelActionController extends Controller
      *     )
      * )
      */
-    public function update(PersonnelActionRequest $request, PersonnelAction $personnelAction): JsonResponse
+    public function update(StorePersonnelActionRequest $request, PersonnelAction $personnelAction): JsonResponse
     {
         $personnelAction->update(array_merge($request->validated(), [
             'updated_by' => auth()->id(),
@@ -393,7 +393,7 @@ class PersonnelActionController extends Controller
      *     )
      * )
      */
-    public function getConstants(): JsonResponse
+    public function constants(): JsonResponse
     {
         return response()->json([
             'success' => true,

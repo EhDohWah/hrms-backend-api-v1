@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexSiteRequest;
-use App\Http\Requests\ListSiteOptionsRequest;
+use App\Http\Requests\OptionsSiteRequest;
 use App\Http\Requests\StoreSiteRequest;
 use App\Http\Requests\UpdateSiteRequest;
 use App\Http\Resources\SiteResource;
@@ -29,7 +29,7 @@ class SiteController extends Controller
     #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
     #[OA\Response(response: 200, description: 'Successful operation')]
-    public function options(ListSiteOptionsRequest $request)
+    public function options(OptionsSiteRequest $request)
     {
         $validated = $request->validated();
 

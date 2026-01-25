@@ -72,16 +72,6 @@ return [
             'after_commit' => false,
         ],
 
-        // Add dedicated import queue
-        'import' => [
-            'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'jobs'),
-            'queue' => 'import',
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1800), // 30 minutes for imports
-            'after_commit' => false,
-        ],
-
     ],
 
     /*

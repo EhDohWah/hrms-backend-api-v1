@@ -31,6 +31,7 @@ class EmployeeFundingAllocationController extends Controller
     public function __construct(
         private readonly EmployeeFundingAllocationService $employeeFundingAllocationService
     ) {}
+
     /**
      * @OA\Get(
      *     path="/employee-funding-allocations",
@@ -72,7 +73,7 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $query = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -155,13 +156,13 @@ class EmployeeFundingAllocationController extends Controller
      *     @OA\Response(response=404, description="Grant item not found")
      * )
      */
-    public function getByGrantItem($grantItemId)
+    public function byGrantItem($grantItemId)
     {
         try {
             // Get all allocations for this grant item
             $allocations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date',
+                'employment:id,employment_type,start_date,end_probation_date',
                 'grantItem.grant:id,name,code',
             ])
                 ->where('grant_item_id', $grantItemId)
@@ -309,6 +310,7 @@ class EmployeeFundingAllocationController extends Controller
     {
         try {
             // Validate the request
+            // Note: replace_allocation_ids allows partial updates by specifying which allocations to replace
             $validator = Validator::make($request->all(), [
                 'employee_id' => 'required|exists:employees,id',
                 'employment_id' => 'required|exists:employments,id',
@@ -319,6 +321,8 @@ class EmployeeFundingAllocationController extends Controller
                 'allocations.*.grant_item_id' => 'required|exists:grant_items,id',
                 'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
+                'replace_allocation_ids' => 'nullable|array',
+                'replace_allocation_ids.*' => 'exists:employee_funding_allocations,id',
             ]);
 
             if ($validator->fails()) {
@@ -351,36 +355,86 @@ class EmployeeFundingAllocationController extends Controller
 
             // Determine effective date for salary calculation
             $effectiveDate = Carbon::parse($validated['start_date']);
-
-            // Validate that the total effort of all new allocations equals exactly 100%
-            $totalNewEffort = array_sum(array_column($validated['allocations'], 'fte'));
-            if ($totalNewEffort != 100) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Total effort of all allocations must equal exactly 100%',
-                    'current_total' => $totalNewEffort,
-                ], 422);
-            }
-
-            // Check if employee already has any active allocations for this employment (based on dates)
             $today = Carbon::today();
-            $existingActiveAllocations = EmployeeFundingAllocation::where('employee_id', $validated['employee_id'])
+
+            // ============================================================
+            // SMART FTE VALIDATION
+            // ============================================================
+            // Instead of requiring the request to equal 100%, we calculate
+            // what the TOTAL will be after this operation:
+            //   projected_total = existing_to_keep + new_allocations
+            //
+            // This allows partial updates like:
+            //   - Adding 40% when 60% already exists (total = 100%)
+            //   - Replacing 80% with two 40% allocations (total = 100%)
+            // ============================================================
+
+            // Step 1: Get all currently active allocations for this employment
+            $existingAllocations = EmployeeFundingAllocation::where('employee_id', $validated['employee_id'])
                 ->where('employment_id', $validated['employment_id'])
+                ->where('status', 'active')
                 ->where('start_date', '<=', $today)
                 ->where(function ($query) use ($today) {
                     $query->whereNull('end_date')
                         ->orWhere('end_date', '>=', $today);
                 })
-                ->exists();
+                ->get();
 
-            if ($existingActiveAllocations) {
+            // Step 2: Determine which allocations will be replaced (marked historical)
+            $replaceIds = $validated['replace_allocation_ids'] ?? [];
+
+            // Validate that replace_allocation_ids belong to this employment
+            if (! empty($replaceIds)) {
+                $invalidIds = collect($replaceIds)->diff($existingAllocations->pluck('id'));
+                if ($invalidIds->isNotEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Some replace_allocation_ids do not belong to this employment or are not active',
+                        'invalid_ids' => $invalidIds->values(),
+                    ], 422);
+                }
+            }
+
+            // Step 3: Calculate FTE of allocations that will remain (not being replaced)
+            $allocationsToKeep = $existingAllocations->whereNotIn('id', $replaceIds);
+            $existingFteToKeep = $allocationsToKeep->sum('fte') * 100; // Convert from decimal
+
+            // Step 4: Calculate FTE of new allocations being added
+            $newFte = array_sum(array_column($validated['allocations'], 'fte'));
+
+            // Step 5: Calculate projected total after this operation
+            $projectedTotal = $existingFteToKeep + $newFte;
+
+            // Step 6: Validate with floating-point tolerance (handles 33.33 + 33.33 + 33.34 = 100)
+            $tolerance = 0.01;
+            if (abs($projectedTotal - 100) > $tolerance) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employee already has active funding allocations for this employment. Please use the update endpoint to modify existing allocations or end them first.',
+                    'message' => 'Total FTE must equal 100% after this operation',
+                    'breakdown' => [
+                        'existing_allocations_count' => $existingAllocations->count(),
+                        'allocations_being_replaced' => count($replaceIds),
+                        'existing_fte_to_keep' => round($existingFteToKeep, 2),
+                        'new_fte_being_added' => round($newFte, 2),
+                        'projected_total' => round($projectedTotal, 2),
+                        'required_total' => 100.00,
+                        'difference' => round($projectedTotal - 100, 2),
+                    ],
                 ], 422);
             }
 
             DB::beginTransaction();
+
+            // Step 7: Mark replaced allocations as 'historical'
+            if (! empty($replaceIds)) {
+                $endDate = Carbon::parse($validated['start_date'])->subDay();
+                EmployeeFundingAllocation::whereIn('id', $replaceIds)
+                    ->update([
+                        'status' => 'historical',
+                        'end_date' => $endDate,
+                        'updated_by' => $currentUser,
+                    ]);
+            }
 
             $createdAllocations = [];
             $errors = [];
@@ -498,7 +552,7 @@ class EmployeeFundingAllocationController extends Controller
                 'salary_info' => [
                     'salary_type_used' => $employment->getSalaryTypeForDate($effectiveDate),
                     'salary_amount_used' => $employment->getSalaryAmountForDate($effectiveDate),
-                    'is_probation_period' => $employment->pass_probation_date 
+                    'is_probation_period' => $employment->pass_probation_date
                         ? $effectiveDate->lt(Carbon::parse($employment->pass_probation_date))
                         : false,
                     'pass_probation_date' => $employment->pass_probation_date,
@@ -685,7 +739,7 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $allocation = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -890,7 +944,44 @@ class EmployeeFundingAllocationController extends Controller
 
             // Convert fte from percentage to decimal if provided
             if (isset($validated['fte'])) {
-                $validated['fte'] = $validated['fte'] / 100;
+                $newFteDecimal = $validated['fte'] / 100;
+
+                // ============================================================
+                // VALIDATE TOTAL FTE AFTER UPDATE
+                // ============================================================
+                // Ensure the total FTE for this employment remains 100% after update
+                // Total = (all active allocations) - (this allocation's old FTE) + (new FTE)
+                // ============================================================
+                $today = Carbon::today();
+                $otherAllocations = EmployeeFundingAllocation::where('employment_id', $allocation->employment_id)
+                    ->where('id', '!=', $allocation->id)
+                    ->where('status', 'active')
+                    ->where('start_date', '<=', $today)
+                    ->where(function ($query) use ($today) {
+                        $query->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $today);
+                    })
+                    ->sum('fte');
+
+                $projectedTotal = ($otherAllocations + $newFteDecimal) * 100;
+                $tolerance = 0.01;
+
+                if (abs($projectedTotal - 100) > $tolerance) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Total FTE must equal 100% after this update',
+                        'breakdown' => [
+                            'other_allocations_fte' => round($otherAllocations * 100, 2),
+                            'new_fte_for_this_allocation' => round($newFteDecimal * 100, 2),
+                            'projected_total' => round($projectedTotal, 2),
+                            'required_total' => 100.00,
+                        ],
+                    ], 422);
+                }
+
+                $validated['fte'] = $newFteDecimal;
             }
 
             // Add updated_by field
@@ -984,6 +1075,229 @@ class EmployeeFundingAllocationController extends Controller
     }
 
     /**
+     * Batch update employee funding allocations.
+     *
+     * Atomically processes updates, creates, and deletes for an employment.
+     * Validates that the final total FTE equals 100% before committing.
+     *
+     * @OA\Put(
+     *     path="/employee-funding-allocations/batch",
+     *     operationId="batchUpdateEmployeeFundingAllocations",
+     *     tags={"Employee Funding Allocations"},
+     *     summary="Batch update employee funding allocations",
+     *     description="Atomically process updates, creates, and deletes. Validates total FTE = 100%.",
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"employee_id", "employment_id"},
+     *
+     *             @OA\Property(property="employee_id", type="integer"),
+     *             @OA\Property(property="employment_id", type="integer"),
+     *             @OA\Property(property="updates", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="creates", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="deletes", type="array", @OA\Items(type="integer"))
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=200, description="Batch update successful"),
+     *     @OA\Response(response=422, description="Validation error or FTE != 100%"),
+     *     @OA\Response(response=401, description="Unauthenticated")
+     * )
+     */
+    public function batchUpdate(Request $request)
+    {
+        // Step 1: Validate request structure
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required|integer|exists:employees,id',
+            'employment_id' => 'required|integer|exists:employments,id',
+            'updates' => 'nullable|array',
+            'updates.*.id' => 'required|integer|exists:employee_funding_allocations,id',
+            'updates.*.grant_item_id' => 'required|integer|exists:grant_items,id',
+            'updates.*.fte' => 'required|numeric|min:1|max:100',
+            'creates' => 'nullable|array',
+            'creates.*.grant_item_id' => 'required|integer|exists:grant_items,id',
+            'creates.*.fte' => 'required|numeric|min:1|max:100',
+            'deletes' => 'nullable|array',
+            'deletes.*' => 'integer|exists:employee_funding_allocations,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $employeeId = $request->input('employee_id');
+        $employmentId = $request->input('employment_id');
+        $updates = $request->input('updates', []);
+        $creates = $request->input('creates', []);
+        $deletes = $request->input('deletes', []);
+
+        // Step 2: Calculate projected total FTE after all operations
+        // Formula: untouched_allocations + updates + creates = 100%
+        $currentAllocations = EmployeeFundingAllocation::where('employee_id', $employeeId)
+            ->where('employment_id', $employmentId)
+            ->where('status', 'active')
+            ->get()
+            ->keyBy('id');
+
+        $updateIds = collect($updates)->pluck('id')->toArray();
+
+        // FTE from allocations that won't be modified or deleted
+        $untouchedFte = 0;
+        foreach ($currentAllocations as $allocation) {
+            $isBeingUpdated = in_array($allocation->id, $updateIds);
+            $isBeingDeleted = in_array($allocation->id, $deletes);
+
+            if (! $isBeingUpdated && ! $isBeingDeleted) {
+                $untouchedFte += (float) $allocation->fte * 100;
+            }
+        }
+
+        // FTE from updates and creates (already in percentage)
+        $updatesFte = collect($updates)->sum('fte');
+        $createsFte = collect($creates)->sum('fte');
+
+        $projectedTotal = $untouchedFte + $updatesFte + $createsFte;
+
+        // Step 3: Validate total = 100% with tolerance for floating-point
+        $tolerance = 0.01;
+        if (abs($projectedTotal - 100) > $tolerance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Total FTE must equal 100%',
+                'breakdown' => [
+                    'untouched_fte' => round($untouchedFte, 2),
+                    'updates_fte' => round($updatesFte, 2),
+                    'creates_fte' => round($createsFte, 2),
+                    'projected_total' => round($projectedTotal, 2),
+                    'required_total' => 100,
+                ],
+            ], 422);
+        }
+
+        // Step 4: Get employment for salary calculation
+        $employment = Employment::find($employmentId);
+        if (! $employment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employment not found',
+            ], 404);
+        }
+
+        // Determine salary type and base salary
+        $today = Carbon::today();
+        $isProbation = ! $employment->end_probation_date
+            || Carbon::parse($employment->end_probation_date)->isAfter($today);
+
+        $salaryType = $isProbation ? 'probation_salary' : 'pass_probation_salary';
+        $baseSalary = $isProbation
+            ? (float) ($employment->probation_salary ?? 0)
+            : (float) ($employment->pass_probation_salary ?? 0);
+
+        $userName = Auth::user()->name ?? 'system';
+
+        // Step 5: Execute all operations in a single transaction
+        DB::beginTransaction();
+
+        try {
+            $deletedCount = 0;
+            $updatedCount = 0;
+            $createdCount = 0;
+
+            // Process deletes - mark as historical for audit trail
+            foreach ($deletes as $deleteId) {
+                $allocation = $currentAllocations->get($deleteId);
+                if ($allocation) {
+                    $allocation->update([
+                        'status' => 'historical',
+                        'end_date' => $today->toDateString(),
+                        'updated_by' => $userName,
+                    ]);
+                    $deletedCount++;
+                }
+            }
+
+            // Process updates
+            foreach ($updates as $updateData) {
+                $allocation = $currentAllocations->get($updateData['id']);
+                if ($allocation) {
+                    $fteDecimal = (float) $updateData['fte'] / 100;
+                    $allocatedAmount = $baseSalary * $fteDecimal;
+
+                    $allocation->update([
+                        'grant_item_id' => $updateData['grant_item_id'],
+                        'fte' => $fteDecimal,
+                        'allocated_amount' => $allocatedAmount,
+                        'salary_type' => $salaryType,
+                        'updated_by' => $userName,
+                    ]);
+                    $updatedCount++;
+                }
+            }
+
+            // Process creates
+            foreach ($creates as $createData) {
+                $fteDecimal = (float) $createData['fte'] / 100;
+                $allocatedAmount = $baseSalary * $fteDecimal;
+
+                EmployeeFundingAllocation::create([
+                    'employee_id' => $employeeId,
+                    'employment_id' => $employmentId,
+                    'grant_item_id' => $createData['grant_item_id'],
+                    'fte' => $fteDecimal,
+                    'allocation_type' => 'grant',
+                    'allocated_amount' => $allocatedAmount,
+                    'salary_type' => $salaryType,
+                    'status' => 'active',
+                    'start_date' => $today->toDateString(),
+                    'end_date' => null,
+                    'created_by' => $userName,
+                    'updated_by' => $userName,
+                ]);
+                $createdCount++;
+            }
+
+            DB::commit();
+
+            // Step 6: Return fresh allocations
+            $freshAllocations = EmployeeFundingAllocation::with(['grantItem.grant'])
+                ->where('employee_id', $employeeId)
+                ->where('employment_id', $employmentId)
+                ->where('status', 'active')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Allocations updated successfully',
+                'data' => [
+                    'allocations' => EmployeeFundingAllocationResource::collection($freshAllocations),
+                    'summary' => [
+                        'deleted_count' => $deletedCount,
+                        'updated_count' => $updatedCount,
+                        'created_count' => $createdCount,
+                        'total_fte' => round($freshAllocations->sum('fte') * 100, 2),
+                    ],
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Batch update failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * @OA\Get(
      *     path="/employee-funding-allocations/employee/{employeeId}",
      *     operationId="getEmployeeFundingAllocationsByEmployeeId",
@@ -1026,7 +1340,7 @@ class EmployeeFundingAllocationController extends Controller
      *     @OA\Response(response=404, description="Employee not found")
      * )
      */
-    public function getEmployeeAllocations($employeeId)
+    public function employeeAllocations($employeeId)
     {
         try {
             $employee = Employee::select('id', 'staff_id', 'first_name_en', 'last_name_en')
@@ -1034,7 +1348,7 @@ class EmployeeFundingAllocationController extends Controller
 
             $today = Carbon::today();
             $allocations = EmployeeFundingAllocation::with([
-                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -1133,7 +1447,7 @@ class EmployeeFundingAllocationController extends Controller
      *     @OA\Response(response=500, description="Server error")
      * )
      */
-    public function getGrantStructure()
+    public function grantStructure()
     {
         try {
             $grants = \App\Models\Grant::with([
@@ -1449,7 +1763,7 @@ class EmployeeFundingAllocationController extends Controller
             // Load the created allocations with relationships
             $allocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_date,department_id,position_id',
+                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -1616,7 +1930,7 @@ class EmployeeFundingAllocationController extends Controller
                 $cell = $sheet->getCellByColumnAndRow($col, 2);
                 $cell->setValue($header);
                 $cell->getStyle()->getFont()->setBold(true)->setSize(11);
-                
+
                 // Highlight Grant Item ID column (column E - the most important one)
                 if ($header === 'Grant Item ID') {
                     $cell->getStyle()->getFill()
@@ -1630,7 +1944,7 @@ class EmployeeFundingAllocationController extends Controller
                         ->getStartColor()->setRGB('4472C4'); // Blue - Standard
                     $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
                 }
-                
+
                 $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $col++;
             }
@@ -1645,7 +1959,7 @@ class EmployeeFundingAllocationController extends Controller
                     $sheet->setCellValue("B{$row}", $grant->code);
                     $sheet->setCellValue("C{$row}", $grant->name);
                     $sheet->setCellValue("D{$row}", $grant->organization);
-                    
+
                     // Highlight Grant Item ID cell (Column E) - This is what users need!
                     $sheet->setCellValue("E{$row}", $item->id);
                     $sheet->getStyle("E{$row}")->getFill()
@@ -1658,7 +1972,7 @@ class EmployeeFundingAllocationController extends Controller
                     $sheet->getStyle("E{$row}")->getBorders()->getAllBorders()
                         ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM)
                         ->getColor()->setRGB('28A745');
-                    
+
                     $sheet->setCellValue("F{$row}", $item->grant_position);
                     $sheet->setCellValue("G{$row}", $item->budgetline_code);
                     $sheet->setCellValue("H{$row}", $item->grant_salary);

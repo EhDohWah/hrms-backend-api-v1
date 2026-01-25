@@ -687,7 +687,7 @@ class TravelRequestController extends Controller
      *     )
      * )
      */
-    public function getOptions()
+    public function options()
     {
         return response()->json([
             'success' => true,

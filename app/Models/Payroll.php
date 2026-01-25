@@ -159,7 +159,7 @@ class Payroll extends Model
     {
         return $query->with([
             'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
-            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_date',
+            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
             'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',
@@ -299,7 +299,7 @@ class Payroll extends Model
     {
         return $query->with([
             'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
-            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_date',
+            'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
             'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',

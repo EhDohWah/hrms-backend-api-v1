@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
 
-#[OA\Schema(schema: 'Employment', required: ['employee_id', 'employment_type', 'start_date', 'site_id', 'pass_probation_salary'], properties: [new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true), new OA\Property(property: 'employee_id', type: 'integer', format: 'int64'), new OA\Property(property: 'employment_type', type: 'string'), new OA\Property(property: 'start_date', type: 'string', format: 'date'), new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true), new OA\Property(property: 'pass_probation_date', type: 'string', format: 'date', nullable: true, description: 'First day employee receives pass_probation_salary - typically 3 months after start_date'), new OA\Property(property: 'pay_method', type: 'string', nullable: true), new OA\Property(property: 'site_id', type: 'integer', format: 'int64', nullable: true, description: 'Site/organizational location'), new OA\Property(property: 'section_department_id', type: 'integer', format: 'int64', nullable: true, description: 'Section department within main department'), new OA\Property(property: 'section_department', type: 'string', nullable: true, description: 'Legacy text field - being migrated to section_department_id'), new OA\Property(property: 'pass_probation_salary', type: 'number', format: 'float'), new OA\Property(property: 'probation_salary', type: 'number', format: 'float', nullable: true), new OA\Property(property: 'health_welfare', type: 'boolean', default: false), new OA\Property(property: 'health_welfare_percentage', type: 'number', format: 'float', nullable: true, description: 'Health & Welfare percentage (0-100)'), new OA\Property(property: 'pvd', type: 'boolean', default: false), new OA\Property(property: 'pvd_percentage', type: 'number', format: 'float', nullable: true, description: 'PVD percentage (0-100)'), new OA\Property(property: 'saving_fund', type: 'boolean', default: false), new OA\Property(property: 'saving_fund_percentage', type: 'number', format: 'float', nullable: true, description: 'Saving Fund percentage (0-100)'), new OA\Property(property: 'status', type: 'boolean', default: true, description: 'Employment status: true=Active, false=Inactive'), new OA\Property(property: 'created_by', type: 'string', nullable: true), new OA\Property(property: 'updated_by', type: 'string', nullable: true), new OA\Property(property: 'created_at', type: 'string', format: 'date-time', readOnly: true), new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', readOnly: true)])]
+#[OA\Schema(schema: 'Employment', required: ['employee_id', 'employment_type', 'start_date', 'pass_probation_salary'], properties: [new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true), new OA\Property(property: 'employee_id', type: 'integer', format: 'int64'), new OA\Property(property: 'employment_type', type: 'string', description: 'Full-time, Part-time, Contract, Temporary'), new OA\Property(property: 'pay_method', type: 'string', nullable: true, description: 'Transferred to bank, Cash cheque'), new OA\Property(property: 'start_date', type: 'string', format: 'date'), new OA\Property(property: 'pass_probation_date', type: 'string', format: 'date', nullable: true, description: 'First day employee receives pass_probation_salary - typically 3 months after start_date'), new OA\Property(property: 'end_probation_date', type: 'string', format: 'date', nullable: true, description: 'End date for contract/temporary employment'), new OA\Property(property: 'position_id', type: 'integer', format: 'int64', nullable: true), new OA\Property(property: 'department_id', type: 'integer', format: 'int64', nullable: true), new OA\Property(property: 'section_department_id', type: 'integer', format: 'int64', nullable: true, description: 'Sub-department within department'), new OA\Property(property: 'site_id', type: 'integer', format: 'int64', nullable: true, description: 'Organizational unit/site'), new OA\Property(property: 'probation_salary', type: 'number', format: 'float', nullable: true), new OA\Property(property: 'pass_probation_salary', type: 'number', format: 'float'), new OA\Property(property: 'health_welfare', type: 'boolean', default: false, description: 'Health benefits flag (opt-in/out)'), new OA\Property(property: 'pvd', type: 'boolean', default: false, description: 'Provident fund flag (opt-in/out)'), new OA\Property(property: 'saving_fund', type: 'boolean', default: false, description: 'Saving fund flag (opt-in/out)'), new OA\Property(property: 'status', type: 'boolean', default: true, description: 'Employment status: true=Active, false=Inactive'), new OA\Property(property: 'created_by', type: 'string', nullable: true), new OA\Property(property: 'updated_by', type: 'string', nullable: true), new OA\Property(property: 'created_at', type: 'string', format: 'date-time', readOnly: true), new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', readOnly: true)])]
 class Employment extends Model
 {
     use HasFactory, LogsActivity;
@@ -21,25 +21,23 @@ class Employment extends Model
     /** Mass-assignable attributes */
     protected $fillable = [
         'employee_id',
-        'employment_type',
-        'start_date',
-        'end_date',
-        'pass_probation_date',
-        'pay_method',
-        'department_id',
         'position_id',
-        'site_id',
+        'department_id',
         'section_department_id',
-        'section_department', // Legacy - being phased out
-        'pass_probation_salary',
+        'site_id',
+        'employment_type',
+        'pay_method',
+        'start_date',
+        'pass_probation_date',
+        'end_probation_date',
         'probation_salary',
+        'pass_probation_salary',
         'health_welfare',
         'pvd',
         'saving_fund',
         'status',
         // NOTE: probation_status removed - use probation_records table instead
-        // NOTE: Benefit percentages (health_welfare_percentage, pvd_percentage, saving_fund_percentage)
-        //       are managed globally in benefit_settings table, not per-employment
+        // NOTE: Benefit percentages are managed globally in benefit_settings table
         'created_by',
         'updated_by',
     ];
@@ -47,10 +45,10 @@ class Employment extends Model
     /** Attribute casting for type safety */
     protected $casts = [
         'start_date' => 'date:Y-m-d',
-        'end_date' => 'date:Y-m-d',
         'pass_probation_date' => 'date:Y-m-d',
-        'pass_probation_salary' => 'decimal:2',
+        'end_probation_date' => 'date:Y-m-d',
         'probation_salary' => 'decimal:2',
+        'pass_probation_salary' => 'decimal:2',
         'health_welfare' => 'boolean',
         'pvd' => 'boolean',
         'saving_fund' => 'boolean',
@@ -301,7 +299,7 @@ class Employment extends Model
         $today = now()->startOfDay();
 
         return $this->start_date <= $today &&
-               ($this->end_date === null || $this->end_date >= $today);
+               ($this->end_probation_date === null || $this->end_probation_date >= $today);
     }
 
     /**
@@ -309,11 +307,11 @@ class Employment extends Model
      */
     public function wasTerminatedEarly(): bool
     {
-        if (! $this->end_date || ! $this->pass_probation_date) {
+        if (! $this->end_probation_date || ! $this->pass_probation_date) {
             return false;
         }
 
-        return $this->end_date < $this->pass_probation_date;
+        return $this->end_probation_date < $this->pass_probation_date;
     }
 
     /**
@@ -375,7 +373,7 @@ class Employment extends Model
         $alreadyPassed = $activeProbation && $activeProbation->event_type === \App\Models\ProbationRecord::EVENT_PASSED;
 
         return $this->pass_probation_date->isToday() &&
-               ! $this->end_date &&
+               ! $this->end_probation_date &&
                ! $alreadyPassed;
     }
 
@@ -504,7 +502,7 @@ class Employment extends Model
     public function getIsActiveAttribute(): bool
     {
         return $this->start_date &&
-               (! $this->end_date || $this->end_date > now());
+               (! $this->end_probation_date || $this->end_probation_date > now());
     }
 
     public function getFormattedSalaryAttribute(): string
@@ -516,15 +514,15 @@ class Employment extends Model
     public function scopeActive($query)
     {
         return $query->where(function ($q) {
-            $q->whereNull('end_date')
-                ->orWhere('end_date', '>', now());
+            $q->whereNull('end_probation_date')
+                ->orWhere('end_probation_date', '>', now());
         });
     }
 
     public function scopeInactive($query)
     {
-        return $query->whereNotNull('end_date')
-            ->where('end_date', '<=', now());
+        return $query->whereNotNull('end_probation_date')
+            ->where('end_probation_date', '<=', now());
     }
 
     public function scopeByDateRange($query, $startDate, $endDate = null)
@@ -532,8 +530,8 @@ class Employment extends Model
         return $query->where('start_date', '>=', $startDate)
             ->when($endDate, function ($q) use ($endDate) {
                 $q->where(function ($subQuery) use ($endDate) {
-                    $subQuery->whereNull('end_date')
-                        ->orWhere('end_date', '<=', $endDate);
+                    $subQuery->whereNull('end_probation_date')
+                        ->orWhere('end_probation_date', '<=', $endDate);
                 });
             });
     }

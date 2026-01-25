@@ -41,7 +41,7 @@ class ProcessProbationCompletions extends Command
         try {
             $query = Employment::whereNotNull('pass_probation_date')
                 ->whereDate('pass_probation_date', today())
-                ->whereNull('end_date')
+                ->whereNull('end_probation_date')
                 ->where(function ($q) {
                     $q->whereNull('probation_status')
                         ->orWhere('probation_status', 'ongoing')

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreResignationRequest;
 use App\Http\Requests\UpdateResignationRequest;
 use App\Models\Employee;
+use App\Models\Employment;
 use App\Models\Resignation;
 use App\Traits\HasCacheManagement;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1130,6 +1132,182 @@ class ResignationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to search employees',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate a recommendation letter PDF for a resigned employee.
+     *
+     * @OA\Get(
+     *     path="/api/v1/resignations/{id}/recommendation-letter",
+     *     summary="Generate recommendation letter PDF",
+     *     description="Generates a recommendation letter PDF for a resigned employee, including their employment history and tenure information",
+     *     operationId="generateRecommendationLetter",
+     *     tags={"Resignations"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="Resignation ID",
+     *         required=true,
+     *
+     *         @OA\Schema(type="integer", format="int64", example=1)
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="PDF generated successfully",
+     *
+     *         @OA\MediaType(
+     *             mediaType="application/pdf",
+     *
+     *             @OA\Schema(type="string", format="binary")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=404,
+     *         description="Resignation not found",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Resignation not found")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=400,
+     *         description="Resignation not acknowledged",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Recommendation letter can only be generated for acknowledged resignations")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to generate recommendation letter"),
+     *             @OA\Property(property="error", type="string", example="Internal server error occurred")
+     *         )
+     *     )
+     * )
+     */
+    public function generateRecommendationLetter($id)
+    {
+        try {
+            // Find the resignation with related data
+            $resignation = Resignation::with([
+                'employee',
+                'department',
+                'position',
+            ])->findOrFail($id);
+
+            // Check if resignation is acknowledged
+            if ($resignation->acknowledgement_status !== 'Acknowledged') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Recommendation letter can only be generated for acknowledged resignations',
+                ], 400);
+            }
+
+            $employee = $resignation->employee;
+
+            // Get employment history for this employee
+            $employmentHistory = Employment::where('employee_id', $employee->id)
+                ->with(['department', 'position'])
+                ->orderBy('start_date', 'asc')
+                ->get();
+
+            // Calculate total tenure
+            $firstEmployment = $employmentHistory->first();
+            $startDate = $firstEmployment ? $firstEmployment->start_date : null;
+            $endDate = $resignation->last_working_date;
+
+            $tenureYears = 0;
+            $tenureMonths = 0;
+            if ($startDate && $endDate) {
+                $start = \Carbon\Carbon::parse($startDate);
+                $end = \Carbon\Carbon::parse($endDate);
+                $tenureYears = $start->diffInYears($end);
+                $tenureMonths = $start->diffInMonths($end) % 12;
+            }
+
+            // Format tenure text
+            $tenureText = '';
+            if ($tenureYears > 0) {
+                $tenureText .= $tenureYears.' '.($tenureYears == 1 ? 'year' : 'years');
+            }
+            if ($tenureMonths > 0) {
+                if ($tenureText) {
+                    $tenureText .= ' and ';
+                }
+                $tenureText .= $tenureMonths.' '.($tenureMonths == 1 ? 'month' : 'months');
+            }
+            if (! $tenureText) {
+                $tenureText = 'less than a month';
+            }
+
+            // Prepare data for the recommendation letter template
+            $data = [
+                'date' => now()->format('jS F, Y'),
+                'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
+                'staff_id' => $employee->staff_id,
+                'organization' => $employee->organization ?? 'SMRU',
+                'current_position' => $resignation->position->position ?? 'N/A',
+                'current_department' => $resignation->department->department ?? 'N/A',
+                'start_date' => $startDate ? \Carbon\Carbon::parse($startDate)->format('jS F, Y') : 'N/A',
+                'end_date' => $endDate ? \Carbon\Carbon::parse($endDate)->format('jS F, Y') : 'N/A',
+                'tenure_text' => $tenureText,
+                'employment_history' => $employmentHistory->map(function ($emp) {
+                    return [
+                        'position' => $emp->position->position ?? 'N/A',
+                        'department' => $emp->department->department ?? 'N/A',
+                        'start_date' => $emp->start_date ? \Carbon\Carbon::parse($emp->start_date)->format('M Y') : 'N/A',
+                        'end_date' => $emp->end_date ? \Carbon\Carbon::parse($emp->end_date)->format('M Y') : 'Present',
+                    ];
+                }),
+            ];
+
+            // Load the recommendation letter view and pass the data
+            $pdf = PDF::loadView('recommendationLetter', $data);
+
+            // Set paper to A4 size
+            $pdf->setPaper('a4', 'portrait');
+
+            // Generate a filename based on the employee details
+            $filename = 'recommendation-letter-'.$employee->staff_id.'-'.date('Y-m-d').'.pdf';
+
+            // Return the PDF as a download
+            return $pdf->download($filename)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Resignation not found',
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Failed to generate recommendation letter', [
+                'resignation_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate recommendation letter',
                 'error' => $e->getMessage(),
             ], 500);
         }

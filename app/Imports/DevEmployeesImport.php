@@ -104,7 +104,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                 }
             }
 
-            // 2) Normalize id_type
+            // 2) Normalize identification_type (support both old and new column names)
             $map = [
                 '10 years ID' => '10YearsID',
                 'Burmese ID' => 'BurmeseID',
@@ -114,9 +114,13 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                 'Passport' => 'Passport',
                 'Other' => 'Other',
             ];
-            if (! empty($r['id_type'])) {
-                $r['id_type'] = $map[$r['id_type']] ?? 'Other';
+            // Support both old (id_type) and new (identification_type) column names
+            $idTypeValue = $r['identification_type'] ?? $r['id_type'] ?? null;
+            if (! empty($idTypeValue)) {
+                $r['identification_type'] = $map[$idTypeValue] ?? 'Other';
             }
+            // Support both old (id_no) and new (identification_number) column names
+            $r['identification_number'] = $r['identification_number'] ?? $r['id_no'] ?? null;
 
             // 3) Cast Excel's =YEARFRAC(K2,TODAY()) result into an integer age
             $rawAge = trim((string) ($r['age'] ?? ''));
@@ -161,7 +165,6 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
             DB::transaction(function () use ($normalized) {
                 $employeeBatch = [];
-                $identBatch = [];
                 $beneBatch = [];
                 $allStaffIds = [];
 
@@ -218,6 +221,18 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                         $dateOfBirth = null;
                     }
 
+                    // Convert military_status to boolean
+                    $militaryStatus = null;
+                    $milValue = $row['military_status'] ?? null;
+                    if ($milValue !== null && $milValue !== '') {
+                        $milLower = strtolower(trim($milValue));
+                        if (in_array($milLower, ['completed', 'exempt', 'inservice', 'yes', 'true', '1'])) {
+                            $militaryStatus = true;
+                        } elseif (in_array($milLower, ['notapplicable', 'n/a', 'no', 'false', '0'])) {
+                            $militaryStatus = false;
+                        }
+                    }
+
                     $employeeBatch[] = [
                         'staff_id' => $staffId,
                         'organization' => $row['org'] ?? null,
@@ -232,6 +247,8 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                         'status' => $row['status'] ?? null,
                         'nationality' => $row['nationality'] ?? null,
                         'religion' => $row['religion'] ?? null,
+                        'identification_type' => $row['identification_type'] ?? null,
+                        'identification_number' => $row['identification_number'] ?? null,
                         'social_security_number' => $row['social_security_no'] ?? null,
                         'tax_number' => $row['tax_no'] ?? null,
                         'driver_license_number' => $row['driver_license'] ?? null,
@@ -254,7 +271,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                         'mother_name' => $row['mother_name'] ?? null,
                         'mother_occupation' => $row['mother_occupation'] ?? null,
                         'mother_phone_number' => $row['mother_mobile_no'] ?? null,
-                        'military_status' => $row['military_status'] ?? null,
+                        'military_status' => $militaryStatus,
                         'remark' => $row['remark'] ?? null,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -289,7 +306,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
                 Log::info('Retrieved employee IDs', ['count' => count($employeeMap)]);
 
-                // 4) Build identifications & beneficiaries batches
+                // 4) Build beneficiaries batch (identification is now stored directly in employees table)
                 foreach ($normalized as $index => $row) {
                     if (! isset($row['staff_id'])) {
                         continue;
@@ -303,19 +320,6 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                         continue;
                     }
                     $empId = $employeeMap[$staffId];
-
-                    // Identification (columns: ID type / ID no)
-                    if (! empty($row['id_type']) && ! empty($row['id_no'])) {
-                        $identBatch[] = [
-                            'employee_id' => $empId,
-                            'id_type' => $row['id_type'],
-                            'document_number' => $row['id_no'],
-                            'issue_date' => null,
-                            'expiry_date' => null,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
-                    }
 
                     // Beneficiary 1 (columns: kin1_name, kin1_relationship, kin1_mobile)
                     if (! empty($row['kin1_name'])) {
@@ -341,17 +345,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                     }
                 }
 
-                // 5) Bulk‐insert identifications & beneficiaries
-                if (count($identBatch)) {
-                    Log::info('Inserting identification batch', ['count' => count($identBatch)]);
-                    try {
-                        DB::table('employee_identifications')->insert($identBatch);
-                    } catch (\Exception $e) {
-                        Log::error('Failed to insert identifications', ['error' => $e->getMessage()]);
-                        $this->errors[] = 'Failed to insert identifications: '.$e->getMessage();
-                    }
-                }
-
+                // 5) Bulk‐insert beneficiaries
                 if (count($beneBatch)) {
                     Log::info('Inserting beneficiary batch', ['count' => count($beneBatch)]);
                     try {
@@ -364,7 +358,6 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
                 Log::info('Employee import completed successfully', [
                     'employees_processed' => count($this->processedEmployees),
-                    'identifications_added' => count($identBatch),
                     'beneficiaries_added' => count($beneBatch),
                 ]);
             });
@@ -400,8 +393,8 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
             '*.status' => 'nullable|string|max:50',
             '*.nationality' => 'nullable|string|max:100',
             '*.religion' => 'nullable|string|max:100',
-            '*.id_type' => ['nullable', Rule::in(['ThaiID', '10YearsID', 'Passport', 'CI', 'Borderpass', 'BurmeseID', 'Other'])],
-            '*.id_no' => 'nullable|string',
+            '*.identification_type' => ['nullable', Rule::in(['ThaiID', '10YearsID', 'Passport', 'CI', 'Borderpass', 'BurmeseID', 'Other'])],
+            '*.identification_number' => 'nullable|string|max:50',
             '*.social_security_no' => 'nullable|string|max:50',
             '*.tax_no' => 'nullable|string|max:50',
             '*.driver_license' => 'nullable|string|max:100',

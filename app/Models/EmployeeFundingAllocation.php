@@ -68,6 +68,37 @@ class EmployeeFundingAllocation extends Model
         return $this->belongsTo(GrantItem::class);
     }
 
+    /**
+     * Get the history records for this allocation
+     */
+    public function history()
+    {
+        return $this->hasMany(EmployeeFundingAllocationHistory::class);
+    }
+
+    /**
+     * Get payroll snapshots that include this allocation
+     */
+    public function payrollAllocations()
+    {
+        return $this->hasMany(PayrollGrantAllocation::class);
+    }
+
+    /**
+     * Get payrolls associated with this allocation
+     */
+    public function payrolls()
+    {
+        return $this->hasManyThrough(
+            Payroll::class,
+            PayrollGrantAllocation::class,
+            'employee_funding_allocation_id', // FK on payroll_grant_allocations
+            'id', // FK on payrolls
+            'id', // Local key on employee_funding_allocations
+            'payroll_id' // Local key on payroll_grant_allocations
+        );
+    }
+
     // Query scopes for better performance
     public function scopeActive($query)
     {
@@ -123,7 +154,7 @@ class EmployeeFundingAllocation extends Model
     {
         return $query->with([
             'employee:id,staff_id,first_name_en,last_name_en,organization',
-            'employment:id,employee_id,start_date,end_date,pass_probation_salary,department_id,position_id',
+            'employment:id,employee_id,start_date,end_probation_date,pass_probation_salary,department_id,position_id',
             'grantItem:id,grant_id,grant_position,grant_salary,budgetline_code,grant_position_number',
             'grantItem.grant:id,name,code',
             'employment.department:id,name',

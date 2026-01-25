@@ -431,7 +431,7 @@ class AdminController extends Controller
         tags: ['Admin']
     )]
     #[OA\Response(response: 200, description: 'Roles retrieved successfully')]
-    public function getRoles()
+    public function roles()
     {
         $roles = Role::query()->orderBy('name')->get();
 
@@ -452,7 +452,7 @@ class AdminController extends Controller
         tags: ['Admin']
     )]
     #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
-    public function getPermissions()
+    public function permissions()
     {
         $permissions = Permission::query()->orderBy('name')->get();
 

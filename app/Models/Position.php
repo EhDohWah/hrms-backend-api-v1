@@ -6,13 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use OpenApi\Attributes as OA;
 
 /**
  * Position Model
- *
- * Note: OpenAPI schema is defined in PositionResource to avoid duplication
- * and to ensure the schema matches the actual API response structure.
  */
+#[OA\Schema(
+    schema: 'Position',
+    title: 'Position',
+    description: 'Position model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'title', type: 'string', example: 'Software Engineer'),
+        new OA\Property(property: 'department_id', type: 'integer', example: 1),
+        new OA\Property(property: 'level', type: 'integer', nullable: true, example: 3),
+        new OA\Property(property: 'is_manager', type: 'boolean', example: false),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true),
+    ]
+)]
 class Position extends Model
 {
     use HasFactory;

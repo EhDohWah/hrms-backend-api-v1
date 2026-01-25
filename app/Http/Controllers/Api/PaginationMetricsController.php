@@ -30,7 +30,7 @@ class PaginationMetricsController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function getStatistics()
+    public function statistics()
     {
         try {
             $statistics = $this->metricsService->getStatistics();
@@ -63,7 +63,7 @@ class PaginationMetricsController extends Controller
             new OA\Response(response: 200, description: 'Daily metrics retrieved successfully'),
         ]
     )]
-    public function getDailyMetrics(Request $request, ?string $date = null)
+    public function dailyMetrics(Request $request, ?string $date = null)
     {
         try {
             $metrics = $this->metricsService->getDailyMetrics($date);
@@ -96,7 +96,7 @@ class PaginationMetricsController extends Controller
             new OA\Response(response: 200, description: 'Slow queries report retrieved successfully'),
         ]
     )]
-    public function getSlowQueriesReport()
+    public function slowQueriesReport()
     {
         try {
             $report = $this->metricsService->getSlowQueriesReport();

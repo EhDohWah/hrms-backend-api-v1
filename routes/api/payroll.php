@@ -15,11 +15,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Read routes
         Route::get('/', [PayrollController::class, 'index'])->middleware('permission:employee_salary.read');
         Route::get('/search', [PayrollController::class, 'search'])->middleware('permission:employee_salary.read');
-        Route::get('/budget-history', [PayrollController::class, 'getBudgetHistory'])->middleware('permission:employee_salary.read');
-        Route::get('/employee-employment', [PayrollController::class, 'getEmployeeEmploymentDetail'])->middleware('permission:employee_salary.read');
-        Route::get('/employee-employment-calculated', [PayrollController::class, 'getEmployeeEmploymentDetailWithCalculations'])->middleware('permission:employee_salary.read');
+        Route::get('/budget-history', [PayrollController::class, 'budgetHistory'])->middleware('permission:employee_salary.read');
+        Route::get('/employee-employment', [PayrollController::class, 'employeeEmploymentDetail'])->middleware('permission:employee_salary.read');
+        Route::get('/employee-employment-calculated', [PayrollController::class, 'employeeEmploymentDetailWithCalculations'])->middleware('permission:employee_salary.read');
         Route::get('/preview-advances', [PayrollController::class, 'previewAdvances'])->middleware('permission:employee_salary.read');
-        Route::get('/tax-summary/{id}', [PayrollController::class, 'getTaxSummary'])->middleware('permission:employee_salary.read');
+        Route::get('/tax-summary/{id}', [PayrollController::class, 'taxSummary'])->middleware('permission:employee_salary.read');
         Route::get('/{id}', [PayrollController::class, 'show'])->middleware('permission:employee_salary.read');
         Route::post('/calculate', [PayrollController::class, 'calculatePayroll'])->middleware('permission:employee_salary.read');
 
@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Bulk Payroll Creation routes with real-time progress tracking
         Route::prefix('bulk')->middleware('permission:employee_salary.edit')->group(function () {
             Route::post('/preview', [BulkPayrollController::class, 'preview']);
-            Route::post('/create', [BulkPayrollController::class, 'create']);
+            Route::post('/create', [BulkPayrollController::class, 'store']);
             Route::get('/status/{batchId}', [BulkPayrollController::class, 'status']);
             Route::get('/errors/{batchId}', [BulkPayrollController::class, 'downloadErrors']);
         });
@@ -71,8 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('tax-settings')->group(function () {
         Route::get('/', [TaxSettingController::class, 'index'])->middleware('permission:tax_settings.read');
         Route::get('/{id}', [TaxSettingController::class, 'show'])->middleware('permission:tax_settings.read');
-        Route::get('/by-year/{year}', [TaxSettingController::class, 'getByYear'])->middleware('permission:tax_settings.read');
-        Route::get('/value/{key}', [TaxSettingController::class, 'getValue'])->middleware('permission:tax_settings.read');
+        Route::get('/by-year/{year}', [TaxSettingController::class, 'byYear'])->middleware('permission:tax_settings.read');
+        Route::get('/value/{key}', [TaxSettingController::class, 'value'])->middleware('permission:tax_settings.read');
         Route::post('/', [TaxSettingController::class, 'store'])->middleware('permission:tax_settings.edit');
         Route::put('/{id}', [TaxSettingController::class, 'update'])->middleware('permission:tax_settings.edit');
         Route::delete('/{id}', [TaxSettingController::class, 'destroy'])->middleware('permission:tax_settings.edit');

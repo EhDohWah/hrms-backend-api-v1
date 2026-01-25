@@ -21,7 +21,7 @@ return new class extends Migration
 
             // Index for date-based queries and sorting
             $table->index('start_date', 'idx_employments_start_date');
-            $table->index('end_date', 'idx_employments_end_date');
+            $table->index('end_probation_date', 'idx_employments_end_probation_date');
 
             // Index for site filtering
             $table->index('site_id', 'idx_employments_site_id');
@@ -34,7 +34,7 @@ return new class extends Migration
             $table->index('employment_type', 'idx_employments_employment_type');
 
             // Composite index for active employment queries
-            $table->index(['start_date', 'end_date'], 'idx_employments_active_period');
+            $table->index(['start_date', 'end_probation_date'], 'idx_employments_active_period');
         });
 
         // Add indexes to employees table
@@ -85,7 +85,7 @@ return new class extends Migration
         Schema::table('employments', function (Blueprint $table) {
             $table->dropIndex('idx_employments_employee_id');
             $table->dropIndex('idx_employments_start_date');
-            $table->dropIndex('idx_employments_end_date');
+            $table->dropIndex('idx_employments_end_probation_date');
             $table->dropIndex('idx_employments_site_id');
             $table->dropIndex('idx_employments_department_id');
             $table->dropIndex('idx_employments_position_id');

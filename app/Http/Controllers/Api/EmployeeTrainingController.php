@@ -405,7 +405,7 @@ class EmployeeTrainingController extends Controller
             new OA\Response(response: 500, description: 'Server error'),
         ]
     )]
-    public function getEmployeeTrainingSummary(Request $request, $employee_id)
+    public function employeeSummary(Request $request, $employee_id)
     {
         try {
             // Validate query parameters
@@ -528,7 +528,7 @@ class EmployeeTrainingController extends Controller
             new OA\Response(response: 500, description: 'Server error'),
         ]
     )]
-    public function getTrainingAttendanceList(Request $request, $training_id)
+    public function attendanceList(Request $request, $training_id)
     {
         try {
             // Validate query parameters

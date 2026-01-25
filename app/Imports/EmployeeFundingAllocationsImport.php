@@ -60,8 +60,8 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
         $this->existingEmployments = Employment::join('employees', 'employments.employee_id', '=', 'employees.id')
             ->where('employments.status', true)
             ->where(function ($query) {
-                $query->whereNull('employments.end_date')
-                    ->orWhere('employments.end_date', '>=', now());
+                $query->whereNull('employments.end_probation_date')
+                    ->orWhere('employments.end_probation_date', '>=', now());
             })
             ->pluck('employments.id', 'employees.staff_id')
             ->toArray();

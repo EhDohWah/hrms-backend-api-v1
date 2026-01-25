@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Reports;
 
 use App\Exports\InterviewReportExport;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\InterviewReportRequest;
+use App\Http\Requests\ExportInterviewReportRequest;
 use App\Models\Interview;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -75,7 +75,7 @@ class InterviewReportController extends Controller
      *     )
      * )
      */
-    public function exportPDF(InterviewReportRequest $request)
+    public function exportPDF(ExportInterviewReportRequest $request)
     {
         // Get validated start and end dates
         $startDate = Carbon::parse($request->input('start_date'));
@@ -176,7 +176,7 @@ class InterviewReportController extends Controller
      *     )
      * )
      */
-    public function exportExcel(InterviewReportRequest $request)
+    public function exportExcel(ExportInterviewReportRequest $request)
     {
         $start = Carbon::parse($request->start_date)->startOfDay()->toDateString();
         $end = Carbon::parse($request->end_date)->endOfDay()->toDateString();

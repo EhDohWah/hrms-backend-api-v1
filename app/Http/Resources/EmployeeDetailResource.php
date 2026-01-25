@@ -17,7 +17,7 @@ class EmployeeDetailResource extends JsonResource
         // Eager‑loaded relations are assumed:
         // 'employment.department', 'employment.position', 'employment.workLocation',
         // 'employeeGrantAllocations.grantItemAllocation.grant',
-        // 'employeeBeneficiaries', 'employeeIdentification'
+        // 'employeeBeneficiaries'
 
         return [
             'id' => $this->id,
@@ -35,6 +35,8 @@ class EmployeeDetailResource extends JsonResource
             'status' => $this->status,
             'nationality' => $this->nationality,
             'religion' => $this->religion,
+            'identification_type' => $this->identification_type,
+            'identification_number' => $this->identification_number,
             'social_security_number' => $this->social_security_number,
             'tax_number' => $this->tax_number,
             'bank_name' => $this->bank_name,
@@ -65,8 +67,8 @@ class EmployeeDetailResource extends JsonResource
                 return [
                     'employment_type' => $this->employment->employment_type,
                     'start_date' => $this->employment->start_date,
-                    'probation_end_date' => $this->employment->probation_end_date,
-                    'end_date' => $this->employment->end_date,
+                    'pass_probation_date' => $this->employment->pass_probation_date,
+                    'end_probation_date' => $this->employment->end_probation_date,
                     'pass_probation_salary' => $this->employment->pass_probation_salary,
                     'probation_salary' => $this->employment->probation_salary,
                     'active' => $this->employment->active,
@@ -130,19 +132,6 @@ class EmployeeDetailResource extends JsonResource
                         'beneficiary_name' => $beneficiary->beneficiary_name,
                         'beneficiary_relationship' => $beneficiary->beneficiary_relationship,
                         'phone_number' => $beneficiary->phone_number,
-                    ];
-                });
-            }),
-
-            // — Identifications —
-            'identifications' => $this->whenLoaded('employeeIdentification', function () {
-                return $this->employeeIdentification->map(function ($identification) {
-                    return [
-                        'id' => $identification->id,
-                        'id_type' => $identification->id_type,
-                        'document_number' => $identification->document_number,
-                        'issue_date' => $identification->issue_date,
-                        'expiry_date' => $identification->expiry_date,
                     ];
                 });
             }),

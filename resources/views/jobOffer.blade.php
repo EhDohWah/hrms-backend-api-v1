@@ -32,7 +32,7 @@
             margin-top: 20px;
             margin-bottom: 30px;
         }
-        .subject, .greeting, .content, {
+        .subject, .greeting, .content {
             margin-bottom: 10px;
         }
 

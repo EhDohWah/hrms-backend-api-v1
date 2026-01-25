@@ -25,9 +25,11 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'last_name_th', type: 'string', maxLength: 255, nullable: true),
         new OA\Property(property: 'gender', type: 'string', maxLength: 10),
         new OA\Property(property: 'date_of_birth', type: 'string', format: 'date'),
-        new OA\Property(property: 'status', type: 'string', default: 'Expats', enum: ['Expats', 'Local ID', 'Local non ID']),
+        new OA\Property(property: 'status', type: 'string', default: 'Local ID Staff', enum: ['Expats (Local)', 'Local ID Staff', 'Local non ID Staff']),
         new OA\Property(property: 'nationality', type: 'string', maxLength: 100, nullable: true),
         new OA\Property(property: 'religion', type: 'string', maxLength: 100, nullable: true),
+        new OA\Property(property: 'identification_type', type: 'string', maxLength: 50, nullable: true),
+        new OA\Property(property: 'identification_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'social_security_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'tax_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'bank_name', type: 'string', maxLength: 100, nullable: true),
@@ -77,6 +79,8 @@ class Employee extends Model
         'status',
         'nationality',
         'religion',
+        'identification_type',
+        'identification_number',
         'social_security_number',
         'tax_number',
         'bank_name',
@@ -153,14 +157,6 @@ class Employee extends Model
     public function employeeBeneficiaries()
     {
         return $this->hasMany(EmployeeBeneficiary::class);
-    }
-
-    /**
-     * Get the identification record for the employee
-     */
-    public function employeeIdentification()
-    {
-        return $this->hasOne(EmployeeIdentification::class);
     }
 
     public function employeeFundingAllocations()
@@ -241,6 +237,14 @@ class Employee extends Model
         return $this->hasMany(LeaveBalance::class);
     }
 
+    /**
+     * Get the holiday compensation records for the employee.
+     */
+    public function holidayCompensationRecords()
+    {
+        return $this->hasMany(HolidayCompensationRecord::class);
+    }
+
     // Query optimization scopes
     public function scopeForPagination($query)
     {
@@ -265,8 +269,7 @@ class Employee extends Model
     public function scopeWithOptimizedRelations($query)
     {
         return $query->with([
-            'employeeIdentification:id,employee_id,id_type,document_number,issue_date,expiry_date',
-            'employment:id,employee_id,start_date,end_date',
+            'employment:id,employee_id,start_date,end_probation_date',
         ]);
     }
 
@@ -314,9 +317,7 @@ class Employee extends Model
             $idTypes = explode(',', $idTypes);
         }
 
-        return $query->whereHas('employeeIdentification', function ($q) use ($idTypes) {
-            $q->whereIn('id_type', array_filter($idTypes));
-        });
+        return $query->whereIn('identification_type', array_filter($idTypes));
     }
 
     // Computed attributes
@@ -331,7 +332,7 @@ class Employee extends Model
 
     public function getIdTypeAttribute()
     {
-        return $this->employeeIdentification?->id_type;
+        return $this->identification_type;
     }
 
     // Helper methods for statistics
@@ -347,14 +348,14 @@ class Employee extends Model
                 'activeCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
                     ->where(function ($q) use ($now) {
-                        $q->whereNull('employments.end_date')
-                            ->orWhere('employments.end_date', '>', $now);
+                        $q->whereNull('employments.end_probation_date')
+                            ->orWhere('employments.end_probation_date', '>', $now);
                     })
                     ->count(),
                 'inactiveCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
-                    ->whereNotNull('employments.end_date')
-                    ->where('employments.end_date', '<=', $now)
+                    ->whereNotNull('employments.end_probation_date')
+                    ->where('employments.end_probation_date', '<=', $now)
                     ->count(),
                 'newJoinerCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')

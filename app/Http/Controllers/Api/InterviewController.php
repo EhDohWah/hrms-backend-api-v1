@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\InterviewRequest;
+use App\Http\Requests\StoreInterviewRequest;
 use App\Http\Resources\InterviewResource;
 use App\Models\Interview;
 use Illuminate\Http\Request;
@@ -298,7 +298,7 @@ class InterviewController extends Controller
      *     )
      * )
      */
-    public function store(InterviewRequest $request)
+    public function store(StoreInterviewRequest $request)
     {
         try {
             $validated = $request->validated();
@@ -497,7 +497,7 @@ class InterviewController extends Controller
      *     )
      * )
      */
-    public function update(InterviewRequest $request, $id)
+    public function update(StoreInterviewRequest $request, $id)
     {
         try {
             $interview = Interview::findOrFail($id);
@@ -665,7 +665,7 @@ class InterviewController extends Controller
      *     )
      * )
      */
-    public function getByCandidateName($candidateName)
+    public function byCandidateName($candidateName)
     {
         try {
             $interview = Interview::whereRaw('LOWER(candidate_name) = ?', [strtolower($candidateName)])

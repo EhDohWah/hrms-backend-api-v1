@@ -39,8 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/users', [AdminController::class, 'store']);
 
         // Legacy role/permission endpoints (kept for backward compatibility)
-        Route::get('/all-roles', [AdminController::class, 'getRoles']); // Renamed to avoid conflict
-        Route::get('/permissions', [AdminController::class, 'getPermissions']);
+        Route::get('/all-roles', [AdminController::class, 'roles']); // Renamed to avoid conflict
+        Route::get('/permissions', [AdminController::class, 'permissions']);
     });
 
     // Admin Role Management routes (use 'roles' module permission)
@@ -56,7 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // User Permission Management routes (uses 'users' module permission)
     Route::prefix('admin')->middleware('module.permission:users')->group(function () {
         Route::prefix('user-permissions')->group(function () {
-            Route::get('/{userId}', [UserPermissionController::class, 'getUserPermissions']);
+            Route::get('/{userId}', [UserPermissionController::class, 'show']);
             Route::put('/{userId}', [UserPermissionController::class, 'updateUserPermissions']);
             Route::get('/{userId}/summary', [UserPermissionController::class, 'summary']);
         });
@@ -69,7 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('user')->group(function () {
         // Get authenticated user with roles and permissions
         // Note: This creates /api/v1/user endpoint (not /api/v1/user/user)
-        Route::get('/', [UserController::class, 'getUser']);
+        Route::get('/', [UserController::class, 'me']);
 
         // Self-profile update routes (user updating their own data)
         Route::post('/profile-picture', [UserController::class, 'updateProfilePicture']);
@@ -79,7 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Current user's module permissions (for frontend menu building)
-    Route::get('/me/permissions', [UserController::class, 'getMyPermissions']);
+    Route::get('/me/permissions', [UserController::class, 'myPermissions']);
 
     // ============================================================================
     // LOOKUPS ROUTES
@@ -91,10 +91,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // These are needed by many modules for dropdowns (gender, status, etc.)
     Route::prefix('lookups')->group(function () {
         Route::get('/', [LookupController::class, 'index']);
-        Route::get('/lists', [LookupController::class, 'getLookupLists']);
+        Route::get('/lists', [LookupController::class, 'lists']);
         Route::get('/search', [LookupController::class, 'search']);
-        Route::get('/types', [LookupController::class, 'getTypes']);
-        Route::get('/type/{type}', [LookupController::class, 'getByType']);
+        Route::get('/types', [LookupController::class, 'types']);
+        Route::get('/type/{type}', [LookupController::class, 'byType']);
         Route::get('/{id}', [LookupController::class, 'show']);
     });
 
@@ -136,9 +136,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================================================
     Route::prefix('dashboard')->group(function () {
         // Current user's dashboard
-        Route::get('/my-widgets', [DashboardController::class, 'getUserDashboard']);
+        Route::get('/my-widgets', [DashboardController::class, 'show']);
         Route::put('/my-widgets', [DashboardController::class, 'updateUserDashboard']);
-        Route::get('/available-widgets', [DashboardController::class, 'getAvailableWidgets']);
+        Route::get('/available-widgets', [DashboardController::class, 'available']);
         Route::post('/widgets/add', [DashboardController::class, 'addWidget']);
         Route::delete('/widgets/{widgetId}', [DashboardController::class, 'removeWidget']);
         Route::post('/widgets/{widgetId}/toggle-visibility', [DashboardController::class, 'toggleWidgetVisibility']);
@@ -149,10 +149,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin dashboard widget management (for user management)
     Route::prefix('admin/dashboard')->middleware('module.permission:users')->group(function () {
-        Route::get('/widgets', [DashboardController::class, 'getAllWidgets']);
-        Route::get('/users/{userId}/widgets', [DashboardController::class, 'getUserWidgets']);
-        Route::put('/users/{userId}/widgets', [DashboardController::class, 'setUserWidgets']);
-        Route::get('/users/{userId}/available-widgets', [DashboardController::class, 'getAvailableWidgetsForUser']);
+        Route::get('/widgets', [DashboardController::class, 'index']);
+        Route::get('/users/{userId}/widgets', [DashboardController::class, 'showUserWidgets']);
+        Route::put('/users/{userId}/widgets', [DashboardController::class, 'updateUserWidgets']);
+        Route::get('/users/{userId}/available-widgets', [DashboardController::class, 'availableForUser']);
     });
 
     // Authentication routes

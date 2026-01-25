@@ -4,7 +4,10 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class InterviewReportRequest extends FormRequest
+/**
+ * Form Request for exporting interview reports.
+ */
+class ExportInterviewReportRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

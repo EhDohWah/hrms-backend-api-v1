@@ -83,21 +83,21 @@ class EmploymentController extends Controller
             $query = Employment::select([
                 'id',
                 'employee_id',
+                'position_id',
+                'department_id',
+                'section_department_id',
+                'site_id',
                 'employment_type',
                 'pay_method',
-                'pass_probation_date',
                 'start_date',
-                'end_date',
-                'department_id',
-                'position_id',
-                'site_id',
-                'pass_probation_salary',
+                'pass_probation_date',
+                'end_probation_date',
                 'probation_salary',
+                'pass_probation_salary',
                 'health_welfare',
                 'pvd',
                 'saving_fund',
                 'status',
-                // NOTE: probation_status removed - use probation_records table
                 'created_at',
                 'updated_at',
                 'created_by',
@@ -321,8 +321,8 @@ class EmploymentController extends Controller
             // Filter active/inactive employments if requested
             if (! $includeInactive) {
                 $employmentsQuery->where(function ($query) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>', now());
+                    $query->whereNull('end_probation_date')
+                        ->orWhere('end_probation_date', '>', now());
                 });
             }
 
@@ -332,7 +332,7 @@ class EmploymentController extends Controller
             // Calculate employment statistics
             $totalEmployments = $employments->count();
             $activeEmployments = $employments->filter(function ($employment) {
-                return ! $employment->end_date || $employment->end_date > now();
+                return ! $employment->end_probation_date || $employment->end_probation_date > now();
             })->count();
             $inactiveEmployments = $totalEmployments - $activeEmployments;
 
@@ -412,7 +412,7 @@ class EmploymentController extends Controller
             // Check if allocations are provided and validate total effort
             // Note: Allocations are now optional - employment can be created without allocations
             $hasAllocations = ! empty($validated['allocations']) && is_array($validated['allocations']) && count($validated['allocations']) > 0;
-            
+
             if ($hasAllocations) {
                 // Validate that the total effort of all allocations equals exactly 100%
                 $totalEffort = array_sum(array_column($validated['allocations'], 'fte'));
@@ -430,8 +430,8 @@ class EmploymentController extends Controller
             $existingActiveEmployment = Employment::where('employee_id', $validated['employee_id'])
                 ->where('start_date', '<=', $today)
                 ->where(function ($query) use ($today) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>=', $today);
+                    $query->whereNull('end_probation_date')
+                        ->orWhere('end_probation_date', '>=', $today);
                 })
                 ->exists();
 
@@ -480,74 +480,74 @@ class EmploymentController extends Controller
             // ============================================================================
             if ($hasAllocations) {
                 foreach ($validated['allocations'] as $index => $allocationData) {
-                try {
-                    $allocationType = 'grant';
+                    try {
+                        $allocationType = 'grant';
 
-                    // ============================================================================
-                    // SECTION 5A: HANDLE GRANT ALLOCATIONS
-                    // ============================================================================
-                    if ($allocationType === 'grant') {
-                        // Validate grant item exists
-                        if (empty($allocationData['grant_item_id'])) {
-                            $errors[] = "Allocation #{$index}: grant_item_id is required for grant allocations";
-
-                            continue;
-                        }
-
-                        $grantItem = GrantItem::find($allocationData['grant_item_id']);
-                        if (! $grantItem) {
-                            $errors[] = "Allocation #{$index}: Grant item not found";
-
-                            continue;
-                        }
-
-                        // Check grant capacity constraints using date-based logic
-                        if ($grantItem->grant_position_number > 0) {
-                            $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-                                ->where('allocation_type', 'grant')
-                                ->where('start_date', '<=', $today)
-                                ->where(function ($query) use ($today) {
-                                    $query->whereNull('end_date')
-                                        ->orWhere('end_date', '>=', $today);
-                                })
-                                ->count();
-
-                            if ($currentAllocations >= $grantItem->grant_position_number) {
-                                $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
+                        // ============================================================================
+                        // SECTION 5A: HANDLE GRANT ALLOCATIONS
+                        // ============================================================================
+                        if ($allocationType === 'grant') {
+                            // Validate grant item exists
+                            if (empty($allocationData['grant_item_id'])) {
+                                $errors[] = "Allocation #{$index}: grant_item_id is required for grant allocations";
 
                                 continue;
                             }
+
+                            $grantItem = GrantItem::find($allocationData['grant_item_id']);
+                            if (! $grantItem) {
+                                $errors[] = "Allocation #{$index}: Grant item not found";
+
+                                continue;
+                            }
+
+                            // Check grant capacity constraints using date-based logic
+                            if ($grantItem->grant_position_number > 0) {
+                                $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
+                                    ->where('allocation_type', 'grant')
+                                    ->where('start_date', '<=', $today)
+                                    ->where(function ($query) use ($today) {
+                                        $query->whereNull('end_probation_date')
+                                            ->orWhere('end_probation_date', '>=', $today);
+                                    })
+                                    ->count();
+
+                                if ($currentAllocations >= $grantItem->grant_position_number) {
+                                    $errors[] = "Allocation #{$index}: Grant position '{$grantItem->grant_position}' has reached its maximum capacity of {$grantItem->grant_position_number} allocations. Currently allocated: {$currentAllocations}";
+
+                                    continue;
+                                }
+                            }
+
+                            $fteDecimal = $allocationData['fte'] / 100;
+                            $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
+                                $employment,
+                                $fteDecimal,
+                                $startDate
+                            );
+
+                            // Create grant funding allocation
+                            $fundingAllocation = EmployeeFundingAllocation::create(array_merge([
+                                'employee_id' => $employment->employee_id,
+                                'employment_id' => $employment->id,
+                                'grant_item_id' => $allocationData['grant_item_id'],
+                                'grant_id' => null,
+                                'fte' => $fteDecimal,
+                                'allocation_type' => 'grant',
+                                'status' => 'active',
+                                'start_date' => $validated['start_date'],
+                                'end_date' => $allocationData['end_date'] ?? $validated['end_probation_date'] ?? null,
+                                'created_by' => $currentUser,
+                                'updated_by' => $currentUser,
+                            ], $salaryContext));
+
+                            $createdFundingAllocations[] = $fundingAllocation;
                         }
 
-                        $fteDecimal = $allocationData['fte'] / 100;
-                        $salaryContext = $this->employeeFundingAllocationService->deriveSalaryContext(
-                            $employment,
-                            $fteDecimal,
-                            $startDate
-                        );
-
-                        // Create grant funding allocation
-                        $fundingAllocation = EmployeeFundingAllocation::create(array_merge([
-                            'employee_id' => $employment->employee_id,
-                            'employment_id' => $employment->id,
-                            'grant_item_id' => $allocationData['grant_item_id'],
-                            'grant_id' => null,
-                            'fte' => $fteDecimal,
-                            'allocation_type' => 'grant',
-                            'status' => 'active',
-                            'start_date' => $validated['start_date'],
-                            'end_date' => $validated['end_date'] ?? null,
-                            'created_by' => $currentUser,
-                            'updated_by' => $currentUser,
-                        ], $salaryContext));
-
-                        $createdFundingAllocations[] = $fundingAllocation;
+                    } catch (\Exception $e) {
+                        $errors[] = "Allocation #{$index}: ".$e->getMessage();
                     }
-
-                } catch (\Exception $e) {
-                    $errors[] = "Allocation #{$index}: ".$e->getMessage();
                 }
-            }
             } // End of hasAllocations block
 
             // ============================================================================
@@ -594,12 +594,12 @@ class EmploymentController extends Controller
             // ============================================================================
             // SECTION 8: RETURN SUCCESS RESPONSE
             // ============================================================================
-            
+
             // Determine appropriate message based on whether allocations were created
             $message = $hasAllocations
                 ? 'Employment and funding allocations created successfully'
                 : 'Employment created successfully. Add funding allocations via the separate allocation API when ready.';
-            
+
             $response = [
                 'success' => true,
                 'message' => $message,
@@ -733,11 +733,11 @@ class EmploymentController extends Controller
                 'pass_probation_salary',
                 'pass_probation_date',
                 'probation_salary',
-                'end_date',
+                'end_probation_date',
                 'pay_method',
                 'site_code',
                 'department',
-                'section_department',
+                'section_department_id',
                 'position',
                 'health_welfare',
                 'pvd',
@@ -755,11 +755,11 @@ class EmploymentController extends Controller
                 'Decimal(10,2) - NOT NULL - Regular salary after probation',
                 'Date (YYYY-MM-DD) - NULLABLE - Probation end date (default: 3 months after start)',
                 'Decimal(10,2) - NULLABLE - Salary during probation period',
-                'Date (YYYY-MM-DD) - NULLABLE - Employment end date (for contracts)',
-                'String - NULLABLE - Values: Monthly, Weekly, Daily, Hourly, Bank Transfer, Cash, Cheque',
+                'Date (YYYY-MM-DD) - NULLABLE - End date for contract/temporary employment',
+                'String - NULLABLE - Values: Transferred to bank, Cash cheque',
                 'String - NULLABLE - Site code (must exist in sites table, e.g., MRM, BHF)',
                 'String - NULLABLE - Department name (must exist in departments table)',
-                'String - NULLABLE - Section department name (must exist in section_departments table)',
+                'Integer - NULLABLE - Section department ID (must exist in section_departments table)',
                 'String - NULLABLE - Position title (must exist in positions table)',
                 'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0) - Percentages managed globally',
                 'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0) - Percentages managed globally',
@@ -897,11 +897,11 @@ class EmploymentController extends Controller
                 'D' => 20,  // pass_probation_salary
                 'E' => 20,  // pass_probation_date
                 'F' => 18,  // probation_salary
-                'G' => 15,  // end_date
-                'H' => 18,  // pay_method
+                'G' => 18,  // end_probation_date
+                'H' => 20,  // pay_method
                 'I' => 15,  // site_code
                 'J' => 20,  // department
-                'K' => 22,  // section_department
+                'K' => 22,  // section_department_id
                 'L' => 20,  // position
                 'M' => 18,  // health_welfare
                 'N' => 12,  // pvd
@@ -939,7 +939,7 @@ class EmploymentController extends Controller
                 ['   - staff_id: Must match an existing employee'],
                 ['   - site_code: Must match an existing site code (e.g., MRM, BHF, SMRU)'],
                 ['   - department: Must match an existing department name'],
-                ['   - section_department: Must match an existing section department name'],
+                ['   - section_department_id: Must be a valid section department ID'],
                 ['   - position: Must match an existing position title'],
                 [''],
                 ['5. Salary Fields: Enter as decimal numbers (e.g., 50000.00)'],
@@ -1400,7 +1400,7 @@ class EmploymentController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function getFundingAllocations($id)
+    public function fundingAllocations($id)
     {
         try {
             // Find the employment record with employee information
@@ -1493,12 +1493,6 @@ class EmploymentController extends Controller
             $validator = Validator::make($request->all(), [
                 // Employment fields - all optional for updates
                 'employee_id' => 'nullable|exists:employees,id',
-                'employment_type' => 'nullable|string',
-                'pay_method' => 'nullable|string',
-                'pass_probation_date' => 'nullable|date',
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date|after_or_equal:start_date',
-                'department_id' => 'nullable|exists:departments,id',
                 'position_id' => [
                     'nullable',
                     'integer',
@@ -1512,16 +1506,20 @@ class EmploymentController extends Controller
                         }
                     },
                 ],
-                'section_department' => 'nullable|string|max:255',
+                'department_id' => 'nullable|exists:departments,id',
+                'section_department_id' => 'nullable|exists:section_departments,id',
                 'site_id' => 'nullable|exists:sites,id',
-                'pass_probation_salary' => 'nullable|numeric',
+                'employment_type' => 'nullable|string',
+                'pay_method' => 'nullable|string',
+                'start_date' => 'nullable|date',
+                'pass_probation_date' => 'nullable|date',
+                'end_probation_date' => 'nullable|date|after_or_equal:start_date',
                 'probation_salary' => 'nullable|numeric',
+                'pass_probation_salary' => 'nullable|numeric',
                 'health_welfare' => 'nullable|boolean',
-                'health_welfare_percentage' => 'nullable|numeric|min:0|max:100',
                 'pvd' => 'nullable|boolean',
-                'pvd_percentage' => 'nullable|numeric|min:0|max:100',
                 'saving_fund' => 'nullable|boolean',
-                'saving_fund_percentage' => 'nullable|numeric|min:0|max:100',
+                // NOTE: Benefit percentages are managed globally in benefit_settings table
 
                 // Allocation fields - optional for updates
                 'allocations' => 'nullable|array|min:1',
@@ -1590,11 +1588,11 @@ class EmploymentController extends Controller
             }
 
             // Validate date constraints if dates are being updated
-            if (isset($validated['start_date']) && isset($validated['end_date'])) {
-                if ($validated['end_date'] && $validated['start_date'] > $validated['end_date']) {
+            if (isset($validated['start_date']) && isset($validated['end_probation_date'])) {
+                if ($validated['end_probation_date'] && $validated['start_date'] > $validated['end_probation_date']) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'End date must be after or equal to start date',
+                        'message' => 'End probation date must be after or equal to start date',
                     ], 422);
                 }
             }
@@ -1643,9 +1641,9 @@ class EmploymentController extends Controller
             }
 
             // Check for early termination (employment ended before probation completion)
-            if (isset($validated['end_date']) &&
+            if (isset($validated['end_probation_date']) &&
                 $employment->pass_probation_date &&
-                Carbon::parse($validated['end_date'])->lt($employment->pass_probation_date)) {
+                Carbon::parse($validated['end_probation_date'])->lt($employment->pass_probation_date)) {
 
                 $result = $probationService->handleEarlyTermination($employment);
 
@@ -1729,7 +1727,7 @@ class EmploymentController extends Controller
                                 'allocated_amount' => $salaryContext['allocated_amount'],
                                 'salary_type' => $salaryContext['salary_type'],
                                 'start_date' => $allocationStartDate,
-                                'end_date' => $validated['end_date'] ?? $employment->end_date,
+                                'end_date' => $allocationData['end_date'] ?? $validated['end_probation_date'] ?? $employment->end_probation_date,
                                 'created_by' => $currentUser,
                                 'updated_by' => $currentUser,
                             ]);
@@ -1884,7 +1882,7 @@ class EmploymentController extends Controller
             new OA\Response(response: 500, description: 'Server error'),
         ]
     )]
-    public function getProbationHistory($id)
+    public function probationHistory($id)
     {
         try {
             $employment = Employment::with('probationHistory')->findOrFail($id);

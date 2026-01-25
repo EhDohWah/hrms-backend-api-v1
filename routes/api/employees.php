@@ -14,12 +14,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Employees routes (use submenu-specific permissions: employees.read/edit)
     Route::prefix('employees')->group(function () {
         // Read routes
-        Route::get('/tree-search', [EmployeeController::class, 'getEmployeesForTreeSearch'])->middleware('permission:employees.read');
+        Route::get('/tree-search', [EmployeeController::class, 'searchForOrgTree'])->middleware('permission:employees.read');
+        Route::get('/export', [EmployeeController::class, 'exportEmployees'])->middleware('permission:employees.read');
         Route::get('/', [EmployeeController::class, 'index'])->middleware('permission:employees.read');
-        Route::get('/{id}', [EmployeeController::class, 'employeeDetails'])->middleware('permission:employees.read');
         Route::get('/filter', [EmployeeController::class, 'filterEmployees'])->middleware('permission:employees.read');
-        Route::get('/site-records', [EmployeeController::class, 'getSiteRecords'])->middleware('permission:employees.read');
-        Route::get('/staff-id/{staff_id}', [EmployeeController::class, 'show'])->where('staff_id', '[0-9]{4}')->middleware('permission:employees.read');
+        Route::get('/site-records', [EmployeeController::class, 'siteRecords'])->middleware('permission:employees.read');
+        Route::get('/staff-id/{staff_id}', [EmployeeController::class, 'showByStaffId'])->where('staff_id', '[0-9]{4}')->middleware('permission:employees.read');
+        Route::get('/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.read');
 
         // Edit routes (create, update, delete, import)
         Route::post('/upload', [EmployeeController::class, 'uploadEmployeeData'])->middleware('permission:employees.edit');
@@ -27,27 +28,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [EmployeeController::class, 'update'])->middleware('permission:employees.edit');
         Route::delete('/{id}', [EmployeeController::class, 'destroy'])->middleware('permission:employees.edit');
         Route::post('/{id}/profile-picture', [EmployeeController::class, 'uploadProfilePicture'])->middleware('permission:employees.edit');
-        Route::delete('/delete-selected/{ids}', [EmployeeController::class, 'deleteSelectedEmployees'])->middleware('permission:employees.edit');
+        Route::delete('/batch/{ids}', [EmployeeController::class, 'destroyBatch'])->middleware('permission:employees.edit');
 
-        Route::put('/{employee}/basic-information', [EmployeeController::class, 'updateEmployeeBasicInformation'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
-        Route::put('/{employee}/personal-information', [EmployeeController::class, 'updateEmployeePersonalInformation'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
-        Route::put('/{employee}/family-information', [EmployeeController::class, 'updateEmployeeFamilyInformation'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
-        Route::put('/{id}/bank-information', [EmployeeController::class, 'updateBankInformation'])->where('id', '[0-9]+')->middleware('permission:employees.edit');
+        Route::put('/{employee}/basic-information', [EmployeeController::class, 'updateBasicInfo'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
+        Route::put('/{employee}/personal-information', [EmployeeController::class, 'updatePersonalInfo'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
+        Route::put('/{employee}/family-information', [EmployeeController::class, 'updateFamilyInfo'])->where('employee', '[0-9]+')->middleware('permission:employees.edit');
+        Route::put('/{id}/bank-information', [EmployeeController::class, 'updateBankInfo'])->where('id', '[0-9]+')->middleware('permission:employees.edit');
     });
 
     // Employee funding allocation routes
     Route::prefix('employee-funding-allocations')->group(function () {
         Route::get('/', [EmployeeFundingAllocationController::class, 'index'])->middleware('permission:employees.read');
-        Route::get('/grant-structure', [EmployeeFundingAllocationController::class, 'getGrantStructure'])->middleware('permission:employees.read');
-        Route::get('/employee/{employeeId}', [EmployeeFundingAllocationController::class, 'getEmployeeAllocations'])->middleware('permission:employees.read');
+        Route::get('/grant-structure', [EmployeeFundingAllocationController::class, 'grantStructure'])->middleware('permission:employees.read');
+        Route::get('/employee/{employeeId}', [EmployeeFundingAllocationController::class, 'employeeAllocations'])->middleware('permission:employees.read');
         Route::get('/{id}', [EmployeeFundingAllocationController::class, 'show'])->middleware('permission:employees.read');
-        Route::get('/by-grant-item/{grantItemId}', [EmployeeFundingAllocationController::class, 'getByGrantItem'])->middleware('permission:employees.read');
-        
+        Route::get('/by-grant-item/{grantItemId}', [EmployeeFundingAllocationController::class, 'byGrantItem'])->middleware('permission:employees.read');
+
         // Calculate preview - for real-time UI feedback (no persistence)
         Route::post('/calculate-preview', [EmployeeFundingAllocationController::class, 'calculatePreview'])->middleware('permission:employees.read');
-        
+
         Route::post('/', [EmployeeFundingAllocationController::class, 'store'])->middleware('permission:employees.edit');
         Route::post('/bulk-deactivate', [EmployeeFundingAllocationController::class, 'bulkDeactivate'])->middleware('permission:employees.edit');
+        Route::put('/batch', [EmployeeFundingAllocationController::class, 'batchUpdate'])->middleware('permission:employees.edit');
         Route::put('/{id}', [EmployeeFundingAllocationController::class, 'update'])->middleware('permission:employees.edit');
         Route::delete('/{id}', [EmployeeFundingAllocationController::class, 'destroy'])->middleware('permission:employees.edit');
         Route::put('/employee/{employeeId}', [EmployeeFundingAllocationController::class, 'updateEmployeeAllocations'])->middleware('permission:employees.edit');
@@ -101,8 +103,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Employee training routes - Uses employee_training permission
     Route::prefix('employee-trainings')->group(function () {
         Route::get('/', [EmployeeTrainingController::class, 'index'])->middleware('permission:employee_training.read');
-        Route::get('/employee/{employee_id}/summary', [EmployeeTrainingController::class, 'getEmployeeTrainingSummary'])->middleware('permission:employee_training.read');
-        Route::get('/training/{training_id}/attendance', [EmployeeTrainingController::class, 'getTrainingAttendanceList'])->middleware('permission:employee_training.read');
+        Route::get('/employee/{employee_id}/summary', [EmployeeTrainingController::class, 'employeeSummary'])->middleware('permission:employee_training.read');
+        Route::get('/training/{training_id}/attendance', [EmployeeTrainingController::class, 'attendanceList'])->middleware('permission:employee_training.read');
         Route::get('/{id}', [EmployeeTrainingController::class, 'show'])->middleware('permission:employee_training.read');
         Route::post('/', [EmployeeTrainingController::class, 'store'])->middleware('permission:employee_training.edit');
         Route::put('/{id}', [EmployeeTrainingController::class, 'update'])->middleware('permission:employee_training.edit');

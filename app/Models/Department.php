@@ -5,13 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use OpenApi\Attributes as OA;
 
 /**
  * Department Model
- *
- * Note: OpenAPI schema is defined in DepartmentResource to avoid duplication
- * and to ensure the schema matches the actual API response structure.
  */
+#[OA\Schema(
+    schema: 'Department',
+    title: 'Department',
+    description: 'Department model',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'name', type: 'string', example: 'Human Resources'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, example: 'HR Department'),
+        new OA\Property(property: 'is_active', type: 'boolean', example: true),
+    ]
+)]
 class Department extends Model
 {
     use HasFactory;

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexSectionDepartmentRequest;
-use App\Http\Requests\ListSectionDepartmentOptionsRequest;
+use App\Http\Requests\OptionsSectionDepartmentRequest;
 use App\Http\Requests\StoreSectionDepartmentRequest;
 use App\Http\Requests\UpdateSectionDepartmentRequest;
 use App\Http\Resources\SectionDepartmentResource;
@@ -30,7 +30,7 @@ class SectionDepartmentController extends Controller
     #[OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'is_active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
     #[OA\Response(response: 200, description: 'Successful operation')]
-    public function options(ListSectionDepartmentOptionsRequest $request)
+    public function options(OptionsSectionDepartmentRequest $request)
     {
         $validated = $request->validated();
 
@@ -145,7 +145,7 @@ class SectionDepartmentController extends Controller
     )]
     #[OA\Parameter(name: 'departmentId', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Successful operation')]
-    public function getByDepartment($departmentId)
+    public function byDepartment($departmentId)
     {
         $sectionDepartments = SectionDepartment::with('department')
             ->withCounts()

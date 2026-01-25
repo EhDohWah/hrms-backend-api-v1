@@ -5,7 +5,13 @@ namespace App\Http\Requests;
 use App\Models\PersonnelAction;
 use Illuminate\Foundation\Http\FormRequest;
 
-class PersonnelActionRequest extends FormRequest
+/**
+ * Form Request for storing and updating Personnel Actions.
+ *
+ * This request handles validation for both POST (store) and PUT (update) operations.
+ * Authorization is determined by the HTTP method being used.
+ */
+class StorePersonnelActionRequest extends FormRequest
 {
     public function authorize(): bool
     {

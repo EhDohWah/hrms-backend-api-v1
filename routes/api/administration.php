@@ -61,7 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('section-departments')->middleware('module.permission:section_departments')->group(function () {
         Route::get('/options', [SectionDepartmentController::class, 'options']);
         Route::get('/', [SectionDepartmentController::class, 'index']);
-        Route::get('/by-department/{departmentId}', [SectionDepartmentController::class, 'getByDepartment']);
+        Route::get('/by-department/{departmentId}', [SectionDepartmentController::class, 'byDepartment']);
         Route::get('/{id}', [SectionDepartmentController::class, 'show']);
         Route::post('/', [SectionDepartmentController::class, 'store']);
         Route::put('/{id}', [SectionDepartmentController::class, 'update']);

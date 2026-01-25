@@ -4,7 +4,12 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class JobOfferRequest extends FormRequest
+/**
+ * Form Request for storing and updating Job Offers.
+ *
+ * This request handles validation for both POST (store) and PUT (update) operations.
+ */
+class StoreJobOfferRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

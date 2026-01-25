@@ -1,6 +1,6 @@
 # 📇 HRMS Documentation Quick Index
 
-**Last Updated**: November 20, 2025
+**Last Updated**: January 24, 2026
 
 Quick reference index for finding specific documentation files. Files are organized alphabetically within categories.
 
@@ -129,6 +129,13 @@ Quick reference index for finding specific documentation files. Files are organi
 ### Travel Management
 - `/travel/TRAVEL_REQUEST_COMPLETE_DOCUMENTATION.md` - Travel requests
 
+### Controller Standards & API Migration (NEW - 2026-01-24)
+- `CONTROLLER_NAMING_STANDARDS.md` - Controller method naming conventions
+- `CONTROLLER_METHOD_STANDARDIZATION_PLAN.md` - Complete refactoring plan
+- `CODE_REVIEW_CHECKLIST.md` - Code review checklist for controllers
+- `API_MIGRATION_GUIDE.md` - **Frontend migration guide for route changes**
+- `CONTROLLER_NAMING_ANALYSIS.md` - Initial analysis report
+
 ---
 
 ## 🐛 Bug Fixes & Troubleshooting
@@ -250,6 +257,7 @@ Quick reference index for finding specific documentation files. Files are organi
 - Employment: `/employment/FRONTEND_EMPLOYMENT_MIGRATION_GUIDE.md`
 - Testing: `/testing/FRONTEND_TESTING_GUIDE.md`
 - Migration: `/general/FRONTEND_MIGRATION_CHECKLIST.md`
+- **API Route Changes**: `API_MIGRATION_GUIDE.md` (NEW - Route changes for leave/grant endpoints)
 
 ### For System Administrators
 - Startup: `/general/LARAVEL_STARTUP_COMMANDS.md`

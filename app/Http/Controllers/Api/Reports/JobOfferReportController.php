@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\JobOfferReportRequest;
+use App\Http\Requests\ExportJobOfferReportRequest;
 use App\Models\JobOffer;
 use Carbon\Carbon;
 use OpenApi\Annotations as OA;
@@ -73,7 +73,7 @@ class JobOfferReportController extends Controller
      *     )
      * )
      */
-    public function exportPDF(JobOfferReportRequest $request)
+    public function exportPDF(ExportJobOfferReportRequest $request)
     {
         $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
         $endDate = Carbon::parse($request->input('end_date'))->endOfDay();

@@ -45,7 +45,7 @@ class EmployeeFundingAllocationResource extends JsonResource
                     'id' => $this->employment->id,
                     'employment_type' => $this->employment->employment_type,
                     'start_date' => $this->employment->start_date,
-                    'end_date' => $this->employment->end_date,
+                    'end_probation_date' => $this->employment->end_probation_date,
                 ];
             }),
 

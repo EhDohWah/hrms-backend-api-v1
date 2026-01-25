@@ -4,7 +4,12 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class InterviewRequest extends FormRequest
+/**
+ * Form Request for storing and updating Interviews.
+ *
+ * This request handles validation for both POST (store) and PUT (update) operations.
+ */
+class StoreInterviewRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

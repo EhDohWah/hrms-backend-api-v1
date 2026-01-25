@@ -54,7 +54,7 @@ class LeaveRequestFeatureTest extends TestCase
             'created_by' => 'System',
         ]);
 
-        // Create test leave balance
+        // Create test leave balance (leave_type_id is required for balances)
         $this->leaveBalance = LeaveBalance::create([
             'employee_id' => $this->employee->id,
             'leave_type_id' => $this->leaveType->id,
@@ -74,9 +74,9 @@ class LeaveRequestFeatureTest extends TestCase
         $fillable = $leaveRequest->getFillable();
 
         // Test that all required fields are fillable
+        // Note: leave_type_id is now in leave_request_items table (multi-type support)
         $expectedFields = [
             'employee_id',
-            'leave_type_id',
             'start_date',
             'end_date',
             'total_days',
@@ -120,22 +120,21 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $this->assertInstanceOf(Employee::class, $leaveRequest->employee);
         $this->assertEquals($this->employee->id, $leaveRequest->employee->id);
     }
 
-    public function test_leave_request_has_leave_type_relationship(): void
+    public function test_leave_request_has_items_relationship(): void
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
-        $this->assertInstanceOf(LeaveType::class, $leaveRequest->leaveType);
-        $this->assertEquals($this->leaveType->id, $leaveRequest->leaveType->id);
+        // Factory's configure() method creates a default item with leave type
+        $this->assertTrue($leaveRequest->items()->exists());
+        $this->assertNotNull($leaveRequest->items->first()->leaveType);
     }
 
     // ==================== DATABASE SCHEMA TESTS ====================
@@ -151,8 +150,9 @@ class LeaveRequestFeatureTest extends TestCase
 
     public function test_database_schema_has_required_columns(): void
     {
+        // Note: leave_type_id is now in leave_request_items table (multi-type support)
         $requiredColumns = [
-            'id', 'employee_id', 'leave_type_id', 'start_date', 'end_date',
+            'id', 'employee_id', 'start_date', 'end_date',
             'total_days', 'reason', 'status', 'attachment_notes',
             'created_by', 'updated_by', 'created_at', 'updated_at',
         ];
@@ -168,16 +168,15 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $this->assertInstanceOf(LeaveRequest::class, $leaveRequest);
         $this->assertEquals($this->employee->id, $leaveRequest->employee_id);
-        $this->assertEquals($this->leaveType->id, $leaveRequest->leave_type_id);
+        // Leave type is now in items relationship
+        $this->assertTrue($leaveRequest->items()->exists());
         $this->assertDatabaseHas('leave_requests', [
             'id' => $leaveRequest->id,
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
     }
 
@@ -185,7 +184,6 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $pendingRequest = LeaveRequest::factory()->pending()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $this->assertEquals('pending', $pendingRequest->status);
@@ -194,7 +192,6 @@ class LeaveRequestFeatureTest extends TestCase
 
         $approvedRequest = LeaveRequest::factory()->approved()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $this->assertEquals('approved', $approvedRequest->status);
@@ -210,7 +207,6 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequestData = [
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'start_date' => Carbon::tomorrow()->format('Y-m-d'),
             'end_date' => Carbon::tomorrow()->addDays(2)->format('Y-m-d'),
             'total_days' => 3,
@@ -224,14 +220,12 @@ class LeaveRequestFeatureTest extends TestCase
 
         $this->assertInstanceOf(LeaveRequest::class, $leaveRequest);
         $this->assertEquals($this->employee->id, $leaveRequest->employee_id);
-        $this->assertEquals($this->leaveType->id, $leaveRequest->leave_type_id);
         $this->assertEquals('pending', $leaveRequest->status);
         $this->assertFalse($leaveRequest->supervisor_approved);
         $this->assertFalse($leaveRequest->hr_site_admin_approved);
 
         $this->assertDatabaseHas('leave_requests', [
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'total_days' => 3,
             'status' => 'pending',
             'supervisor_approved' => false,
@@ -243,7 +237,6 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequest = LeaveRequest::factory()->pending()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         // Update with approvals
@@ -269,17 +262,14 @@ class LeaveRequestFeatureTest extends TestCase
         // Create some test data
         LeaveRequest::factory()->count(3)->pending()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         LeaveRequest::factory()->count(2)->approved()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         LeaveRequest::factory()->count(1)->declined()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $statistics = LeaveRequest::getStatistics();
@@ -307,7 +297,6 @@ class LeaveRequestFeatureTest extends TestCase
 
         LeaveRequest::create([
             'employee_id' => 99999, // Non-existent employee
-            'leave_type_id' => $this->leaveType->id,
             'start_date' => Carbon::tomorrow()->format('Y-m-d'),
             'end_date' => Carbon::tomorrow()->addDays(1)->format('Y-m-d'),
             'total_days' => 2,
@@ -315,17 +304,19 @@ class LeaveRequestFeatureTest extends TestCase
         ]);
     }
 
-    public function test_leave_request_requires_valid_leave_type_id(): void
+    public function test_leave_request_item_requires_valid_leave_type_id(): void
     {
+        $leaveRequest = LeaveRequest::factory()->make([
+            'employee_id' => $this->employee->id,
+        ]);
+        $leaveRequest->save();
+
+        // Attempting to create an item with invalid leave type should fail
         $this->expectException(\Illuminate\Database\QueryException::class);
 
-        LeaveRequest::create([
-            'employee_id' => $this->employee->id,
+        $leaveRequest->items()->create([
             'leave_type_id' => 99999, // Non-existent leave type
-            'start_date' => Carbon::tomorrow()->format('Y-m-d'),
-            'end_date' => Carbon::tomorrow()->addDays(1)->format('Y-m-d'),
-            'total_days' => 2,
-            'status' => 'pending',
+            'days' => 2,
         ]);
     }
 
@@ -338,13 +329,11 @@ class LeaveRequestFeatureTest extends TestCase
         // Create requests for our test employee
         LeaveRequest::factory()->count(3)->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         // Create requests for other employee
         LeaveRequest::factory()->count(2)->create([
             'employee_id' => $otherEmployee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $requests = LeaveRequest::where('employee_id', $this->employee->id)->get();
@@ -359,12 +348,10 @@ class LeaveRequestFeatureTest extends TestCase
     {
         LeaveRequest::factory()->count(2)->pending()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         LeaveRequest::factory()->count(3)->approved()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $pendingRequests = LeaveRequest::where('status', 'pending')->get();
@@ -386,14 +373,12 @@ class LeaveRequestFeatureTest extends TestCase
     {
         LeaveRequest::factory()->count(2)->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'supervisor_approved' => true,
             'hr_site_admin_approved' => false,
         ]);
 
         LeaveRequest::factory()->count(3)->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'supervisor_approved' => true,
             'hr_site_admin_approved' => true,
         ]);
@@ -415,7 +400,6 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
         $leaveRequestWithEmployee = LeaveRequest::with('employee')->find($leaveRequest->id);
@@ -425,18 +409,18 @@ class LeaveRequestFeatureTest extends TestCase
         $this->assertEquals($this->employee->first_name_en, $leaveRequestWithEmployee->employee->first_name_en);
     }
 
-    public function test_leave_request_loads_leave_type_relationship(): void
+    public function test_leave_request_loads_items_with_leave_types(): void
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
         ]);
 
-        $leaveRequestWithType = LeaveRequest::with('leaveType')->find($leaveRequest->id);
+        // Load items with their leave types
+        $leaveRequestWithItems = LeaveRequest::with('items.leaveType')->find($leaveRequest->id);
 
-        $this->assertTrue($leaveRequestWithType->relationLoaded('leaveType'));
-        $this->assertEquals($this->leaveType->name, $leaveRequestWithType->leaveType->name);
-        $this->assertEquals($this->leaveType->description, $leaveRequestWithType->leaveType->description);
+        $this->assertTrue($leaveRequestWithItems->relationLoaded('items'));
+        $this->assertTrue($leaveRequestWithItems->items->first()->relationLoaded('leaveType'));
+        $this->assertNotNull($leaveRequestWithItems->items->first()->leaveType->name);
     }
 
     // ==================== DATA INTEGRITY TESTS ====================
@@ -445,7 +429,6 @@ class LeaveRequestFeatureTest extends TestCase
     {
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'supervisor_approved' => 1, // Integer 1
             'hr_site_admin_approved' => true, // Boolean true
         ]);
@@ -465,7 +448,6 @@ class LeaveRequestFeatureTest extends TestCase
 
         $leaveRequest = LeaveRequest::factory()->create([
             'employee_id' => $this->employee->id,
-            'leave_type_id' => $this->leaveType->id,
             'supervisor_approved_date' => $approvalDate,
             'hr_site_admin_approved_date' => $approvalDate,
         ]);

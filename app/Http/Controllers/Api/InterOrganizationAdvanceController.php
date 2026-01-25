@@ -228,7 +228,7 @@ class InterOrganizationAdvanceController extends Controller
     }
 
     #[OA\Get(path: '/api/inter-organization-advances/summary', summary: 'Get inter-organization advances summary and statistics', tags: ['Inter-Organization Advances'], responses: [new OA\Response(response: 200, description: 'Success')])]
-    public function getSummary(Request $request)
+    public function summary(Request $request)
     {
         try {
             $validated = $request->validate([

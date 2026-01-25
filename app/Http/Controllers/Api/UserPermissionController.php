@@ -27,7 +27,7 @@ class UserPermissionController extends Controller
         path: '/api/v1/admin/user-permissions/{userId}',
         summary: 'Get user module permissions',
         description: 'Retrieve user permissions organized by module with Read/Edit flags',
-        operationId: 'getUserPermissions',
+        operationId: 'showUserPermissions',
         security: [['bearerAuth' => []]],
         tags: ['User Permissions']
     )]
@@ -35,7 +35,7 @@ class UserPermissionController extends Controller
     #[OA\Response(response: 200, description: 'Permissions retrieved successfully')]
     #[OA\Response(response: 404, description: 'User not found')]
     #[OA\Response(response: 401, description: 'Unauthenticated')]
-    public function getUserPermissions(int $userId): JsonResponse
+    public function show(int $userId): JsonResponse
     {
         // Find user with permissions
         $user = User::with('roles')->findOrFail($userId);

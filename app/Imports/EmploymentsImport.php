@@ -290,7 +290,7 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                         'employee_id' => $employeeId,
                         'employment_type' => $employmentType,
                         'start_date' => $startDate,
-                        'end_date' => $endDate,
+                        'end_probation_date' => $endDate,
                         'pass_probation_date' => $passProbDate,
                         'pay_method' => $payMethod,
                         'site_id' => $siteId,
