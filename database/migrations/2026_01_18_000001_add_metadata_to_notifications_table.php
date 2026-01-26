@@ -36,8 +36,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('notifications', function (Blueprint $table) {
+            // Drop composite indexes first
             $table->dropIndex(['notifiable_type', 'notifiable_id', 'category']);
             $table->dropIndex(['notifiable_type', 'notifiable_id', 'read_at']);
+
+            // Drop individual column indexes (required for SQL Server)
+            $table->dropIndex('notifications_category_index');
+            $table->dropIndex('notifications_module_index');
+
+            // Now we can safely drop the columns
             $table->dropColumn(['category', 'module', 'expires_at']);
         });
     }

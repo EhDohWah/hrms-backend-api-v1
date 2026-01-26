@@ -81,16 +81,24 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remove employments indexes
+        // Remove employments indexes (with existence checks for MySQL compatibility)
         Schema::table('employments', function (Blueprint $table) {
-            $table->dropIndex('idx_employments_employee_id');
-            $table->dropIndex('idx_employments_start_date');
-            $table->dropIndex('idx_employments_end_probation_date');
-            $table->dropIndex('idx_employments_site_id');
-            $table->dropIndex('idx_employments_department_id');
-            $table->dropIndex('idx_employments_position_id');
-            $table->dropIndex('idx_employments_employment_type');
-            $table->dropIndex('idx_employments_active_period');
+            $indexes = [
+                'idx_employments_employee_id',
+                'idx_employments_start_date',
+                'idx_employments_end_probation_date',
+                'idx_employments_site_id',
+                'idx_employments_department_id',
+                'idx_employments_position_id',
+                'idx_employments_employment_type',
+                'idx_employments_active_period',
+            ];
+
+            foreach ($indexes as $index) {
+                if (Schema::hasIndex('employments', $index)) {
+                    $table->dropIndex($index);
+                }
+            }
         });
 
         // Remove employees indexes
@@ -101,7 +109,9 @@ return new class extends Migration
             if (Schema::hasIndex('employees', 'idx_employees_organization')) {
                 $table->dropIndex('idx_employees_organization');
             }
-            $table->dropIndex('idx_employees_full_name');
+            if (Schema::hasIndex('employees', 'idx_employees_full_name')) {
+                $table->dropIndex('idx_employees_full_name');
+            }
         });
 
         // Remove employee_funding_allocations indexes
@@ -109,8 +119,12 @@ return new class extends Migration
             if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_id')) {
                 $table->dropIndex('idx_efa_employment_id');
             }
-            $table->dropIndex('idx_efa_allocation_type');
-            $table->dropIndex('idx_efa_employment_type');
+            if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_allocation_type')) {
+                $table->dropIndex('idx_efa_allocation_type');
+            }
+            if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_type')) {
+                $table->dropIndex('idx_efa_employment_type');
+            }
         });
 
         // Remove sites indexes
