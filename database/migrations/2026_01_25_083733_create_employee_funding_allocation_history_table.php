@@ -31,26 +31,16 @@ return new class extends Migration
             $table->id();
 
             // Reference to the allocation (may be deleted, so nullable)
-            $table->foreignId('employee_funding_allocation_id')
-                ->nullable()
-                ->constrained('employee_funding_allocations')
-                ->nullOnDelete();
+            $table->unsignedBigInteger('employee_funding_allocation_id')->nullable();
 
             // Employee and employment context
             // Note: Using noActionOnDelete to avoid SQL Server cascade path conflicts
-            $table->foreignId('employee_id')
-                ->constrained('employees')
-                ->noActionOnDelete();
+            $table->unsignedBigInteger('employee_id');
 
-            $table->foreignId('employment_id')
-                ->constrained('employments')
-                ->noActionOnDelete();
+            $table->unsignedBigInteger('employment_id');
 
             // Grant item reference (may be deleted)
-            $table->foreignId('grant_item_id')
-                ->nullable()
-                ->constrained('grant_items')
-                ->nullOnDelete();
+            $table->unsignedBigInteger('grant_item_id')->nullable();
 
             // =================================================
             // SNAPSHOT DATA (preserved even if source changes)
@@ -91,15 +81,39 @@ return new class extends Migration
                 ->comment('JSON: What specifically changed (old vs new values)');
 
             // Who made the change
-            $table->foreignId('changed_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->unsignedBigInteger('changed_by')->nullable();
 
             $table->string('changed_by_name', 100)->nullable()
                 ->comment('Snapshot of user name in case user is deleted');
 
             $table->timestamps();
+
+            // Foreign keys with CUSTOM SHORT NAMES (MySQL 64-char limit)
+            // Naming: efah = employee_funding_allocation_history
+            $table->foreign('employee_funding_allocation_id', 'efah_efa_id_fk')
+                ->references('id')
+                ->on('employee_funding_allocations')
+                ->onDelete('set null');
+
+            $table->foreign('employee_id', 'efah_employee_id_fk')
+                ->references('id')
+                ->on('employees')
+                ->noActionOnDelete();
+
+            $table->foreign('employment_id', 'efah_employment_id_fk')
+                ->references('id')
+                ->on('employments')
+                ->noActionOnDelete();
+
+            $table->foreign('grant_item_id', 'efah_grant_item_id_fk')
+                ->references('id')
+                ->on('grant_items')
+                ->onDelete('set null');
+
+            $table->foreign('changed_by', 'efah_changed_by_fk')
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null');
 
             // Indexes for common queries
             $table->index(['employee_id', 'effective_date'], 'efah_employee_date_idx');
