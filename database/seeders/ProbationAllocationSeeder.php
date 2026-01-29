@@ -73,7 +73,6 @@ class ProbationAllocationSeeder extends Seeder
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -168,7 +167,6 @@ class ProbationAllocationSeeder extends Seeder
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-02-01',
             'pass_probation_date' => '2025-05-01',
@@ -337,7 +335,6 @@ class ProbationAllocationSeeder extends Seeder
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-03-15',
             'pass_probation_date' => '2025-06-15',

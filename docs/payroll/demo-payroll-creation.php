@@ -40,7 +40,6 @@ echo "💼 Creating Employment Record...\n";
 
 $employment = Employment::create([
     'employee_id' => $employee->id,
-    'employment_type' => 'Full-time',
     'start_date' => '2025-01-01',
     'pay_method' => 'Bank Transfer',
     'department_id' => 1, // Assumes exists
@@ -184,7 +183,7 @@ echo "📊 PAYROLL SUMMARY\n";
 echo "==================\n";
 echo "Employee: {$employee->first_name_en} {$employee->last_name_en} (ID: {$employee->id})\n";
 echo "Staff ID: {$employee->staff_id}\n";
-echo "Employment: {$employment->employment_type} (Total FTE: {$totalFTE})\n";
+echo "Employment ID: {$employment->id} (Total FTE: {$totalFTE})\n";
 echo "Pay Period: {$payroll->pay_period_date}\n\n";
 
 echo "💰 COMPENSATION BREAKDOWN\n";

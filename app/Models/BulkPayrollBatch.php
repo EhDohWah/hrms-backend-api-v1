@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property string $pay_period Format: YYYY-MM
- * @property array|null $filters JSON filters (organization, department, grant, employment_type)
+ * @property array|null $filters JSON filters (organization, department, grant)
  * @property int $total_employees
  * @property int $total_payrolls Total payroll records (> employees due to multiple allocations)
  * @property int $processed_payrolls

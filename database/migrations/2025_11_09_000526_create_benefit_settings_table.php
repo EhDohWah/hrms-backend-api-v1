@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable()->comment('Human-readable description of the setting');
             $table->date('effective_date')->nullable()->comment('Date when this setting becomes effective');
             $table->boolean('is_active')->default(true)->comment('Whether this setting is currently active');
-            $table->json('applies_to')->nullable()->comment('JSON conditions for applicability (organization, employment_type, etc.)');
+            $table->json('applies_to')->nullable()->comment('JSON conditions for applicability (organization, etc.)');
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();

@@ -229,6 +229,26 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                 }
             }
 
+            // Convert Excel numeric date for identification issue date
+            if (! empty($r['id_issue_date']) && is_numeric($r['id_issue_date'])) {
+                try {
+                    $r['id_issue_date'] = ExcelDate::excelToDateTimeObject($r['id_issue_date'])
+                        ->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // Leave as-is, validation will catch invalid dates
+                }
+            }
+
+            // Convert Excel numeric date for identification expiry date
+            if (! empty($r['id_expiry_date']) && is_numeric($r['id_expiry_date'])) {
+                try {
+                    $r['id_expiry_date'] = ExcelDate::excelToDateTimeObject($r['id_expiry_date'])
+                        ->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // Leave as-is, validation will catch invalid dates
+                }
+            }
+
             // Drop age formula column (not needed for import)
             unset($r['age']);
 
@@ -371,6 +391,8 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                             'marital_status' => $maritalValidation['maritalStatus'],
                             'identification_type' => $identificationTypeValidation['identificationType'],
                             'identification_number' => $this->trimOrNull($row['id_number'] ?? null),
+                            'identification_issue_date' => $this->parseDate($row['id_issue_date'] ?? null),
+                            'identification_expiry_date' => $this->parseDate($row['id_expiry_date'] ?? null),
                             'military_status' => $this->convertMilitaryStatusToBoolean($row['military_status'] ?? null),
                             'initial_en' => $this->trimOrNull($row['initial'] ?? null),
                             'last_name_en' => $this->trimOrNull($row['last_name'] ?? null),
@@ -565,6 +587,27 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
         return $trimmed === '' ? null : $trimmed;
     }
 
+    /**
+     * Parse date value and return Y-m-d format or null.
+     * Handles both Excel numeric dates and string dates.
+     */
+    protected function parseDate($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            if (is_numeric($value)) {
+                return ExcelDate::excelToDateTimeObject($value)->format('Y-m-d');
+            }
+
+            return \Carbon\Carbon::parse(trim($value))->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     // 🟢 Only use column-level validation (no unique:employees,staff_id here)
     public function rules(): array
     {
@@ -584,6 +627,8 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
             '*.religion' => 'nullable|string|max:100',
             '*.id_type' => 'nullable|string|max:100',
             '*.id_number' => 'nullable|string',
+            '*.id_issue_date' => 'nullable|date',
+            '*.id_expiry_date' => 'nullable|date',
             '*.social_security_no' => 'nullable|string|max:50',
             '*.tax_no' => 'nullable|string|max:50',
             '*.driver_license' => 'nullable|string|max:100',
@@ -1195,6 +1240,34 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
 
         if (! empty($identificationNumber) && empty($identificationType)) {
             $errors[] = "Row {$rowNumber}: Identification number provided but identification type is missing (Cells O{$rowNumber}, P{$rowNumber})";
+        }
+
+        // === Identification Dates Validation ===
+        $idIssueDate = trim($row['id_issue_date'] ?? '');
+        $idExpiryDate = trim($row['id_expiry_date'] ?? '');
+
+        if (! empty($idIssueDate) && ! empty($idExpiryDate)) {
+            try {
+                $issueDate = \Carbon\Carbon::parse($idIssueDate);
+                $expiryDate = \Carbon\Carbon::parse($idExpiryDate);
+
+                if ($expiryDate->lte($issueDate)) {
+                    $errors[] = "Row {$rowNumber}: ID expiry date must be after issue date (Cells Q{$rowNumber}, R{$rowNumber})";
+                }
+            } catch (\Exception $e) {
+                // Date parsing errors will be caught by other validation
+            }
+        }
+
+        if (! empty($idIssueDate)) {
+            try {
+                $issueDate = \Carbon\Carbon::parse($idIssueDate);
+                if ($issueDate->isFuture()) {
+                    $errors[] = "Row {$rowNumber}: ID issue date cannot be in the future (Cell Q{$rowNumber})";
+                }
+            } catch (\Exception $e) {
+                // Date parsing errors will be caught by other validation
+            }
         }
 
         // === Beneficiary Information Complete ===

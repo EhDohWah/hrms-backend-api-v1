@@ -222,7 +222,6 @@ class PayrollController extends Controller
      *                         @OA\Property(property="employee_name", type="string", example="John Doe"),
      *                         @OA\Property(property="department", type="string", example="IT Department"),
      *                         @OA\Property(property="position", type="string", example="Senior Developer"),
-     *                         @OA\Property(property="employment_type", type="string", example="Full-time"),
      *                         @OA\Property(property="fte_percentage", type="number", format="float", example=50.0, description="FTE percentage (0-100)"),
      *                         @OA\Property(property="funding_source", type="string", example="Grant ABC"),
      *                         @OA\Property(property="funding_type", type="string", example="grant"),
@@ -2154,7 +2153,6 @@ class PayrollController extends Controller
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
             'department' => $employment->department->name ?? 'N/A',
             'position' => $employment->position->title ?? 'N/A',
-            'employment_type' => $employment->employment_type,
             'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
             'pass_probation_salary' => $employment->pass_probation_salary,
             'probation_salary' => $employment->probation_salary,

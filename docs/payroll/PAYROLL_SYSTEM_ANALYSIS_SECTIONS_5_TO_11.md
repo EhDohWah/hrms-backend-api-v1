@@ -1225,13 +1225,17 @@ To restrict users to their own organization, you could add:
 public function index(Request $request)
 {
     $query = Payroll::query();
-    
-    // Restrict to user's organization
-    $userOrganization = auth()->user()->employee->organization;
-    if ($userOrganization) {
-        $query->bySubsidiary($userOrganization);
-    }
-    
+
+    // Note: Users are not linked to employees in this system.
+    // Organization-based access control would need to be implemented
+    // through role-based permissions or a separate configuration table.
+
+    // Example alternative approach:
+    // $allowedOrganizations = auth()->user()->allowed_organizations; // If implemented
+    // if ($allowedOrganizations) {
+    //     $query->whereIn('organization', $allowedOrganizations);
+    // }
+
     // ... rest of query
 }
 ```

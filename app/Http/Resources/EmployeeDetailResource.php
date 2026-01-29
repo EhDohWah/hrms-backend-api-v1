@@ -21,7 +21,6 @@ class EmployeeDetailResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'user_id' => $this->user_id,
             'staff_id' => $this->staff_id,
             'organization' => $this->organization,
             'initial_en' => $this->initial_en,
@@ -37,6 +36,8 @@ class EmployeeDetailResource extends JsonResource
             'religion' => $this->religion,
             'identification_type' => $this->identification_type,
             'identification_number' => $this->identification_number,
+            'identification_issue_date' => $this->identification_issue_date,
+            'identification_expiry_date' => $this->identification_expiry_date,
             'social_security_number' => $this->social_security_number,
             'tax_number' => $this->tax_number,
             'bank_name' => $this->bank_name,
@@ -65,7 +66,6 @@ class EmployeeDetailResource extends JsonResource
             // — Employment & Position —
             'employment' => $this->whenLoaded('employment', function () {
                 return [
-                    'employment_type' => $this->employment->employment_type,
                     'start_date' => $this->employment->start_date,
                     'pass_probation_date' => $this->employment->pass_probation_date,
                     'end_probation_date' => $this->employment->end_probation_date,

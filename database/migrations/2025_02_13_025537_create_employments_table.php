@@ -19,7 +19,6 @@ return new class extends Migration
             $table->foreignId('section_department_id')->nullable()->constrained('section_departments')->nullOnDelete()->comment('Sub-department within department'); // Section department reference
             $table->foreignId('site_id')->nullable()->constrained('sites')->nullOnDelete()->comment('Organizational unit/site'); // Site/organizational location
 
-            $table->string('employment_type')->comment('Full-time, Part-time, Contract, Temporary'); // Required - type of employment
             $table->string('pay_method')->comment('Transferred to bank, Cash cheque')->nullable(); // Optional - pay method
 
             $table->date('start_date'); // Required - when employment started

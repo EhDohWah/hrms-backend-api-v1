@@ -90,7 +90,6 @@ public function latestEmployment(): HasOne // Orders by created_at desc
 
 **Key Methods:**
 ```php
-public function hasUserAccount(): bool
 public function isOnProbation(): bool
 public function getCurrentSalary(): float
 public function getFullNameAttribute(): string

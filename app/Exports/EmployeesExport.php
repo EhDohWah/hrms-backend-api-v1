@@ -78,6 +78,8 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
             'Religion',
             'ID Type',
             'ID Number',
+            'ID Issue Date',
+            'ID Expiry Date',
             'Social Security No',
             'Tax No',
             'Driver License',
@@ -148,6 +150,8 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
             $employee->religion,
             $identificationTypeDisplay, // Reverse mapped display value
             $employee->identification_number, // Direct column now
+            $employee->identification_issue_date,
+            $employee->identification_expiry_date,
             $employee->social_security_number,
             $employee->tax_number,
             $employee->driver_license_number,
@@ -196,6 +200,8 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
     {
         return [
             'J' => NumberFormat::FORMAT_DATE_YYYYMMDD2, // date_of_birth column
+            'Q' => NumberFormat::FORMAT_DATE_YYYYMMDD2, // identification_issue_date column
+            'R' => NumberFormat::FORMAT_DATE_YYYYMMDD2, // identification_expiry_date column
         ];
     }
 
@@ -249,6 +255,8 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
             'OPTIONAL - Max 100 chars',
             'OPTIONAL - Select from dropdown',
             'OPTIONAL - Required if identification type provided',
+            'OPTIONAL - Format YYYY-MM-DD',
+            'OPTIONAL - Format YYYY-MM-DD - Must be after issue date',
             'OPTIONAL - Max 50 chars',
             'OPTIONAL - Max 50 chars',
             'OPTIONAL - Max 100 chars',
@@ -309,11 +317,11 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
         // Identification Type dropdown (Column O)
         $this->addDropdown($sheet, 'O3:O'.$maxRow, '"10 years ID","Burmese ID",CI,Borderpass,"Thai ID",Passport,Other', 'Identification Type', 'Select identification type');
 
-        // Marital Status dropdown (Column AA)
-        $this->addDropdown($sheet, 'AA3:AA'.$maxRow, 'Single,Married,Divorced,Widowed', 'Marital Status', 'Select marital status');
+        // Marital Status dropdown (Column AC - shifted by 2 due to new ID date columns)
+        $this->addDropdown($sheet, 'AC3:AC'.$maxRow, 'Single,Married,Divorced,Widowed', 'Marital Status', 'Select marital status');
 
-        // Military Status dropdown (Column AS)
-        $this->addDropdown($sheet, 'AS3:AS'.$maxRow, 'Yes,No', 'Military Status', 'Select Yes or No');
+        // Military Status dropdown (Column AU - shifted by 2 due to new ID date columns)
+        $this->addDropdown($sheet, 'AU3:AU'.$maxRow, 'Yes,No', 'Military Status', 'Select Yes or No');
     }
 
     protected function addDropdown($sheet, $range, $options, $title, $prompt)

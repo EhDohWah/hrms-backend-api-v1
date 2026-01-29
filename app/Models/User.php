@@ -63,14 +63,6 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the employee record associated with the user.
-     */
-    public function employee()
-    {
-        return $this->hasOne(Employee::class, 'user_id');
-    }
-
-    /**
      * Override toArray to transform permissions to flat array of names
      * This ensures the frontend receives ['user.read', 'user.create']
      * instead of full permission objects when user is serialized

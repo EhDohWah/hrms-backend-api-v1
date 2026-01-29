@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employment_id')->constrained('employments'); // Required - links to employment record
             $table->foreignId('employee_id')->constrained('employees'); // Required - links to employee record
-            $table->string('employment_type'); // Required - type of employment
             $table->date('start_date'); // Required - when employment started
             $table->date('pass_probation_date')->nullable(); // Optional - when probation ends
             $table->string('pay_method')->nullable(); // Optional - pay method

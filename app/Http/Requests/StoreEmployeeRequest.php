@@ -51,6 +51,8 @@ class StoreEmployeeRequest extends FormRequest
             // Identification - direct columns (not separate table)
             'identification_type' => 'nullable|string|in:10YearsID,BurmeseID,CI,Borderpass,ThaiID,Passport,Other',
             'identification_number' => 'nullable|string|max:50|required_with:identification_type',
+            'identification_issue_date' => 'nullable|date|before_or_equal:today',
+            'identification_expiry_date' => 'nullable|date|after:identification_issue_date',
 
             // Additional info
             'nationality' => 'nullable|string|max:100',

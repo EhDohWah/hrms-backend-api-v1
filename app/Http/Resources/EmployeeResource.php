@@ -27,6 +27,8 @@ class EmployeeResource extends JsonResource
             'status' => $this->status,
             'identification_type' => $this->identification_type,
             'identification_number' => $this->identification_number,
+            'identification_issue_date' => $this->identification_issue_date,
+            'identification_expiry_date' => $this->identification_expiry_date,
             'social_security_number' => $this->social_security_number,
             'tax_number' => $this->tax_number,
             'mobile_phone' => $this->mobile_phone,

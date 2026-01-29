@@ -228,14 +228,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                     $seenStaffIds[] = $staffId;
                     $allStaffIds[] = $staffId;
 
-                    // Parse employment type
-                    $employmentType = trim($row['employment_type'] ?? 'Full-time');
-                    if (! in_array($employmentType, ['Full-time', 'Part-time', 'Contract', 'Temporary'])) {
-                        $errors[] = "Row {$index}: Invalid employment type '{$employmentType}'";
-
-                        continue;
-                    }
-
                     // Parse dates
                     $startDate = $this->parseDate($row['start_date'] ?? null);
                     $passProbDate = $this->parseDate($row['pass_probation_date'] ?? null);
@@ -288,7 +280,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                     // Prepare employment data
                     $employmentData = [
                         'employee_id' => $employeeId,
-                        'employment_type' => $employmentType,
                         'start_date' => $startDate,
                         'end_probation_date' => $endDate,
                         'pass_probation_date' => $passProbDate,
@@ -374,7 +365,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
     {
         return [
             '*.staff_id' => 'required|string',
-            '*.employment_type' => 'required|string|in:Full-time,Part-time,Contract,Temporary',
             '*.start_date' => 'required|date',
             '*.pass_probation_salary' => 'required|numeric',
             '*.pass_probation_date' => 'nullable|date',

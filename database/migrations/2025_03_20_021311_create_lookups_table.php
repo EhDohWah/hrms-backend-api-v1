@@ -90,12 +90,6 @@ return new class extends Migration
             ['type' => 'identification_types', 'value' => 'Myanmar ID', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'identification_types', 'value' => 'N/A', 'created_at' => now(), 'updated_at' => now()],
 
-            // Employment type options
-            ['type' => 'employment_type', 'value' => 'Full-time', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'Part-time', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'Contract', 'created_at' => now(), 'updated_at' => now()],
-            ['type' => 'employment_type', 'value' => 'Temporary', 'created_at' => now(), 'updated_at' => now()],
-
             // Employee language options
             ['type' => 'employee_language', 'value' => 'English', 'created_at' => now(), 'updated_at' => now()],
             ['type' => 'employee_language', 'value' => 'Thai', 'created_at' => now(), 'updated_at' => now()],

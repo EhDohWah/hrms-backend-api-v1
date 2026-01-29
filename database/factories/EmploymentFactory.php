@@ -25,7 +25,6 @@ class EmploymentFactory extends Factory
 
         return [
             'employee_id' => Employee::factory(),
-            'employment_type' => fake()->randomElement(['Full-time', 'Part-time', 'Contract', 'Temporary']),
             'pay_method' => fake()->randomElement(['Transferred to bank', 'Cash cheque']),
             'pass_probation_date' => fake()->dateTimeBetween($startDate, '+6 months'),
             'start_date' => $startDate,

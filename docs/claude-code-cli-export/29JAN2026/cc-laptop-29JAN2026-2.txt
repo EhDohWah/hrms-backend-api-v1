@@ -1,0 +1,1137 @@
+
+ ▐▛███▜▌   Claude Code v2.1.20
+▝▜█████▛▘  Opus 4.5 · Claude Max
+  ▘▘ ▝▝    ~\Desktop\HR Management System\3. Implementation\hrms-dev\hrms-b…
+
+✻ Conversation compacted (ctrl+o for history)
+
+  ⎿  Referenced file app\Http\Controllers\Api\EmployeeController.php
+  ⎿  Read app\Exports\GrantItemsReferenceExport.php (273 lines)
+  ⎿  Read app\Exports\EmployeeFundingAllocationTemplateExport.php (306 lines)
+  ⎿  Read app\Exports\EmploymentTemplateExport.php (354 lines)
+  ⎿  Referenced file app\Exports\EmployeeTemplateExport.php
+
+● I'll continue updating the controllers to use the new Export classes. Let me
+  read the EmploymentController to update its template download method.
+
+● Read 2 files (ctrl+o to expand)
+
+● Let me search for the template download methods in both controllers.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Let me read the specific portions of these controllers with the template
+  download methods.
+
+● Read 2 files (ctrl+o to expand)
+
+● Let me read the remaining portions of these methods.
+
+● Read 2 files (ctrl+o to expand)
+
+● Now I have the full picture. Let me read the imports section of both
+  controllers to add the necessary Export class imports, then update the
+  methods.
+
+● Read 2 files (ctrl+o to expand)
+
+● Now I'll update both controllers to use the new Export classes.
+
+● Update(app\Http\Controllers\Api\EmploymentController.php)
+  ⎿  Added 1 line
+      2                                                                  
+      3  namespace App\Http\Controllers\Api;                             
+      4                                                                  
+      5 +use App\Exports\EmploymentTemplateExport;                       
+      6  use App\Http\Controllers\Controller;                            
+      7  use App\Http\Requests\StoreEmploymentRequest;                   
+      8  use App\Http\Requests\UpdateProbationStatusRequest;             
+
+● Update(app\Http\Controllers\Api\EmployeeFundingAllocationController.php)
+  ⎿  Added 2 lines
+      2                                                                  
+      3  namespace App\Http\Controllers\Api;                             
+      4                                                                  
+      5 +use App\Exports\EmployeeFundingAllocationTemplateExport;        
+      6 +use App\Exports\GrantItemsReferenceExport;                      
+      7  use App\Http\Controllers\Controller;                            
+      8  use App\Http\Resources\EmployeeFundingAllocationResource;       
+      9  use App\Models\Employee;                                        
+
+● Now let me replace the downloadEmploymentTemplate() method in
+  EmploymentController. I'll read the exact section to ensure I get the full
+  method.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I'll replace the downloadEmploymentTemplate() method with the simplified
+  version using the Export class.
+
+● Update(app\Http\Controllers\Api\EmploymentController.php)
+  ⎿  Added 5 lines, removed 248 lines
+      707      public function downloadEmploymentTemplate()              
+      708      {                                                         
+      709          try {                                                 
+      710 -            $spreadsheet = new                                
+          -\PhpOffice\PhpSpreadsheet\Spreadsheet;                        
+      711 -            $sheet = $spreadsheet->getActiveSheet();          
+      712 -            $sheet->setTitle('Employment Import');            
+      710 +            $export = new EmploymentTemplateExport;           
+      711 +            $tempFile = $export->generate();                  
+      712 +            $filename = $export->getFilename();               
+      713                                                                
+      714 -            // ============================================   
+      715 -            // SECTION 1: DEFINE HEADERS                      
+      716 -            // ============================================   
+      717 -            $headers = [                                      
+      718 -                'staff_id',                                   
+      719 -                'start_date',                                 
+      720 -                'pass_probation_salary',                      
+      721 -                'pass_probation_date',                        
+      722 -                'probation_salary',                           
+      723 -                'end_probation_date',                         
+      724 -                'pay_method',                                 
+      725 -                'site_code',                                  
+      726 -                'department',                                 
+      727 -                'section_department_id',                      
+      728 -                'position',                                   
+      729 -                'health_welfare',                             
+      730 -                'pvd',                                        
+      731 -                'saving_fund',                                
+      732 -                'status',                                     
+      733 -            ];                                                
+      734 -                                                              
+      735 -            // ============================================   
+      736 -            // SECTION 2: DEFINE VALIDATION RULES             
+      737 -            // ============================================   
+      738 -            $validationRules = [                              
+      739 -                'String - NOT NULL - Employee staff ID (must  
+          -exist in system)',                                            
+      740 -                'Date (YYYY-MM-DD) - NOT NULL - Employment    
+          -start date',                                                  
+      741 -                'Decimal(10,2) - NOT NULL - Regular salary    
+          -after probation',                                             
+      742 -                'Date (YYYY-MM-DD) - NULLABLE - Probation end 
+          - date (default: 3 months after start)',                       
+      743 -                'Decimal(10,2) - NULLABLE - Salary during     
+          -probation period',                                            
+      744 -                'Date (YYYY-MM-DD) - NULLABLE - End date for  
+          -employment termination',                                      
+      745 -                'String - NULLABLE - Values: Transferred to   
+          -bank, Cash cheque',                                           
+      746 -                'String - NULLABLE - Site code (must exist in 
+          - sites table, e.g., MRM, BHF)',                               
+      747 -                'String - NULLABLE - Department name (must    
+          -exist in departments table)',                                 
+      748 -                'Integer - NULLABLE - Section department ID   
+          -(must exist in section_departments table)',                   
+      749 -                'String - NULLABLE - Position title (must     
+          -exist in positions table)',                                   
+      750 -                'Boolean (1/0) - NULLABLE - Health welfare    
+          -benefit enabled (default: 0) - Percentages managed globally', 
+      751 -                'Boolean (1/0) - NULLABLE - Provident fund    
+          -enabled (default: 0) - Percentages managed globally',         
+      752 -                'Boolean (1/0) - NULLABLE - Saving fund       
+          -enabled (default: 0) - Percentages managed globally',         
+      753 -                'Boolean (1/0) - NULLABLE - Employment        
+          -status: 1=Active, 0=Inactive (default: 1)',                   
+      754 -            ];                                                
+      755 -                                                              
+      756 -            // ============================================   
+      757 -            // SECTION 3: WRITE HEADERS (Row 1)               
+      758 -            // ============================================   
+      759 -            $col = 1;                                         
+      760 -            foreach ($headers as $header) {                   
+      761 -                $cell = $sheet->getCellByColumnAndRow($col,   
+          -1);                                                           
+      762 -                $cell->setValue($header);                     
+      763 -                                                              
+      764 -                // Style header                               
+      765 -                                                              
+          -$cell->getStyle()->getFont()->setBold(true)->setSize(11);     
+      766 -                $cell->getStyle()->getFill()                  
+      767 -                    ->setFillType(\PhpOffice\PhpSpreadsheet\S 
+          -tyle\Fill::FILL_SOLID)                                        
+      768 -                    ->getStartColor()->setRGB('4472C4');      
+      769 -                                                              
+          -$cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');   
+      770 -                                                              
+          -$cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\P 
+          -hpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);            
+      771 -                                                              
+      772 -                $col++;                                       
+      773 -            }                                                 
+      774 -                                                              
+      775 -            // ============================================   
+      776 -            // SECTION 4: WRITE VALIDATION RULES (Row 2)      
+      777 -            // ============================================   
+      778 -            $col = 1;                                         
+      779 -            foreach ($validationRules as $rule) {             
+      780 -                $cell = $sheet->getCellByColumnAndRow($col,   
+          -2);                                                           
+      781 -                $cell->setValue($rule);                       
+      782 -                                                              
+      783 -                // Style validation row                       
+      784 -                                                              
+          -$cell->getStyle()->getFont()->setItalic(true)->setSize(9);    
+      785 -                $cell->getStyle()->getFill()                  
+      786 -                    ->setFillType(\PhpOffice\PhpSpreadsheet\S 
+          -tyle\Fill::FILL_SOLID)                                        
+      787 -                    ->getStartColor()->setRGB('E7E6E6');      
+      788 -                $cell->getStyle()->getAlignment()->setWrapTex 
+          -t(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignmen 
+          -t::VERTICAL_TOP);                                             
+      789 -                                                              
+      790 -                $col++;                                       
+      791 -            }                                                 
+      792 -                                                              
+      793 -            // Set row height for validation rules            
+      794 -            $sheet->getRowDimension(2)->setRowHeight(60);     
+      795 -                                                              
+      796 -            // ============================================   
+      797 -            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)          
+      798 -            // ============================================   
+      799 -            $sampleData = [                                   
+      800 -                [                                             
+      801 -                    'EMP001', '2025-01-15', '50000.00',       
+          -'2025-04-15', '45000.00', '',                                 
+      802 -                    'Monthly', 'MRM', 'Human Resources', '',  
+          -'HR Manager', '1', '1', '0', '1',                             
+      803 -                ],                                            
+      804 -                [                                             
+      805 -                    'EMP002', '2025-02-01', '30000.00',       
+          -'2025-05-01', '', '',                                         
+      806 -                    'Hourly', 'BHF', 'Finance', 'Accounting', 
+          - 'Accountant', '0', '1', '1', '1',                            
+      807 -                ],                                            
+      808 -                [                                             
+      809 -                    'EMP003', '2025-03-01', '60000.00', '',   
+          -'', '2025-12-31',                                             
+      810 -                    'Bank Transfer', 'SMRU', 'IT', '',        
+          -'Software Developer', '1', '0', '0', '1',                     
+      811 -                ],                                            
+      812 -            ];                                                
+      813 -                                                              
+      814 -            $row = 3;                                         
+      815 -            foreach ($sampleData as $data) {                  
+      816 -                $col = 1;                                     
+      817 -                foreach ($data as $value) {                   
+      818 -                    $sheet->getCellByColumnAndRow($col,       
+          -$row)->setValue($value);                                      
+      819 -                    $col++;                                   
+      820 -                }                                             
+      821 -                $row++;                                       
+      822 -            }                                                 
+      823 -                                                              
+      824 -            // ============================================   
+      825 -            // SECTION 6: ADD DATA VALIDATION                 
+      826 -            // ============================================   
+      827 -                                                              
+      828 -            // Pay Method dropdown (Column G, rows 6+)        
+      829 -            $payMethodValidation =                            
+          -$sheet->getCell('G6')->getDataValidation();                   
+      830 -            $payMethodValidation->setType(\PhpOffice\PhpSprea 
+          -dsheet\Cell\DataValidation::TYPE_LIST);                       
+      831 -            $payMethodValidation->setErrorStyle(\PhpOffice\Ph 
+          -pSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);         
+      832 -            $payMethodValidation->setAllowBlank(true);        
+      833 -            $payMethodValidation->setShowInputMessage(true);  
+      834 -            $payMethodValidation->setFormula1('"Monthly,Weekl 
+          -y,Daily,Hourly,Bank Transfer,Cash,Cheque"');                  
+      835 -            $payMethodValidation->setPromptTitle('Pay         
+          -Method');                                                     
+      836 -            $payMethodValidation->setPrompt('Select pay       
+          -method');                                                     
+      837 -                                                              
+      838 -            for ($i = 6; $i <= 1000; $i++) {                  
+      839 -                                                              
+          -$sheet->getCell("G{$i}")->setDataValidation(clone             
+          -$payMethodValidation);                                        
+      840 -            }                                                 
+      841 -                                                              
+      842 -            // Boolean fields (1/0) validation                
+      843 -            $booleanColumns = ['L', 'M', 'N', 'O']; //        
+          -health_welfare, pvd, saving_fund, status                      
+      844 -            foreach ($booleanColumns as $column) {            
+      845 -                $booleanValidation =                          
+          -$sheet->getCell("{$column}6")->getDataValidation();           
+      846 -                $booleanValidation->setType(\PhpOffice\PhpSpr 
+          -eadsheet\Cell\DataValidation::TYPE_LIST);                     
+      847 -                $booleanValidation->setErrorStyle(\PhpOffice\ 
+          -PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);       
+      848 -                $booleanValidation->setAllowBlank(true);      
+      849 -                $booleanValidation->setFormula1('"1,0"');     
+      850 -                $booleanValidation->setPromptTitle('Boolean   
+          -Value');                                                      
+      851 -                $booleanValidation->setPrompt('Enter 1 for    
+          -Yes/True or 0 for No/False');                                 
+      852 -                                                              
+      853 -                for ($i = 6; $i <= 1000; $i++) {              
+      854 -                                                              
+          -$sheet->getCell("{$column}{$i}")->setDataValidation(clone     
+          -$booleanValidation);                                          
+      855 -                }                                             
+      856 -            }                                                 
+      857 -                                                              
+      858 -            // ============================================   
+      859 -            // SECTION 7: SET COLUMN WIDTHS                   
+      860 -            // ============================================   
+      861 -            $columnWidths = [                                 
+      862 -                'A' => 15,  // staff_id                       
+      863 -                'B' => 15,  // start_date                     
+      864 -                'C' => 20,  // pass_probation_salary          
+      865 -                'D' => 20,  // pass_probation_date            
+      866 -                'E' => 18,  // probation_salary               
+      867 -                'F' => 18,  // end_probation_date             
+      868 -                'G' => 20,  // pay_method                     
+      869 -                'H' => 15,  // site_code                      
+      870 -                'I' => 20,  // department                     
+      871 -                'J' => 22,  // section_department_id          
+      872 -                'K' => 20,  // position                       
+      873 -                'L' => 18,  // health_welfare                 
+      874 -                'M' => 12,  // pvd                            
+      875 -                'N' => 15,  // saving_fund                    
+      876 -                'O' => 12,  // status                         
+      877 -            ];                                                
+      878 -                                                              
+      879 -            foreach ($columnWidths as $column => $width) {    
+      880 -                                                              
+          -$sheet->getColumnDimension($column)->setWidth($width);        
+      881 -            }                                                 
+      882 -                                                              
+      883 -            // ============================================   
+      884 -            // SECTION 8: ADD INSTRUCTIONS SHEET              
+      885 -            // ============================================   
+      886 -            $instructionsSheet = $spreadsheet->createSheet(); 
+      887 -            $instructionsSheet->setTitle('Instructions');     
+      888 -                                                              
+      889 -            $instructions = [                                 
+      890 -                ['Employment Import Template -                
+          -Instructions'],                                               
+      891 -                [''],                                         
+      892 -                ['IMPORTANT NOTES:'],                         
+      893 -                ['1. Required Fields (Cannot be empty):'],    
+      894 -                ['   - staff_id: Employee staff ID (must      
+          -exist in system)'],                                           
+      895 -                ['   - start_date: Employment start date      
+          -(YYYY-MM-DD format)'],                                        
+      896 -                ['   - pass_probation_salary: Regular salary  
+          -after probation'],                                            
+      897 -                [''],                                         
+      898 -                ['2. Date Format: All dates must be in        
+          -YYYY-MM-DD format (e.g., 2025-01-15)'],                       
+      899 -                [''],                                         
+      900 -                ['3. Boolean Fields: Use 1 for Yes/True, 0    
+          -for No/False'],                                               
+      901 -                ['   - health_welfare, pvd, saving_fund,      
+          -status'],                                                     
+      902 -                ['   - Note: Benefit percentages are managed  
+          -globally in system settings'],                                
+      903 -                [''],                                         
+      904 -                ['4. Foreign Keys (Must exist in              
+          -database):'],                                                 
+      905 -                ['   - staff_id: Must match an existing       
+          -employee'],                                                   
+      906 -                ['   - site_code: Must match an existing site 
+          - code (e.g., MRM, BHF, SMRU)'],                               
+      907 -                ['   - department: Must match an existing     
+          -department name'],                                            
+      908 -                ['   - section_department_id: Must be a valid 
+          - section department ID'],                                     
+      909 -                ['   - position: Must match an existing       
+          -position title'],                                             
+      910 -                [''],                                         
+      911 -                ['5. Salary Fields: Enter as decimal numbers  
+          -(e.g., 50000.00)'],                                           
+      912 -                [''],                                         
+      913 -                ['6. Probation Date: If not provided,         
+          -defaults to 3 months after start_date'],                      
+      914 -                [''],                                         
+      915 -                ['7. Benefit Percentages:'],                  
+      916 -                ['   - Percentages are managed globally in    
+          -system settings'],                                            
+      917 -                ['   - Only enable/disable benefits using 1   
+          -(enabled) or 0 (disabled)'],                                  
+      918 -                ['   - Contact administrator to view or       
+          -modify benefit percentages'],                                 
+      919 -                [''],                                         
+      920 -                ['8. Status: 1 = Active, 0 = Inactive         
+          -(default is 1)'],                                             
+      921 -                [''],                                         
+      922 -                ['9. This import creates/updates EMPLOYMENT   
+          -records only'],                                               
+      923 -                ['   Funding allocations must be added        
+          -separately via the UI'],                                      
+      924 -                [''],                                         
+      925 -                ['10. Existing employments (matched by        
+          -staff_id) will be UPDATED'],                                  
+      926 -                ['    New staff_ids will create NEW           
+          -employment records'],                                         
+      927 -            ];                                                
+      928 -                                                              
+      929 -            $row = 1;                                         
+      930 -            foreach ($instructions as $instruction) {         
+      931 -                $instructionsSheet->setCellValue("A{$row}",   
+          -$instruction[0]);                                             
+      932 -                if ($row === 1) {                             
+      933 -                    $instructionsSheet->getStyle("A{$row}")-> 
+          -getFont()->setBold(true)->setSize(14);                        
+      934 -                } elseif ($row === 3 ||                       
+          -strpos($instruction[0], ':') !== false) {                     
+      935 -                    $instructionsSheet->getStyle("A{$row}")-> 
+          -getFont()->setBold(true);                                     
+      936 -                }                                             
+      937 -                $row++;                                       
+      938 -            }                                                 
+      939 -                                                              
+      940 -                                                              
+          -$instructionsSheet->getColumnDimension('A')->setWidth(80);    
+      941 -                                                              
+      942 -            // Set active sheet back to main sheet            
+      943 -            $spreadsheet->setActiveSheetIndex(0);             
+      944 -                                                              
+      945 -            // ============================================   
+      946 -            // SECTION 9: GENERATE AND DOWNLOAD FILE          
+      947 -            // ============================================   
+      948 -            $filename =                                       
+          -'employment_import_template_'.date('Y-m-d_His').'.xlsx';      
+      949 -            $writer = new                                     
+          -\PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);          
+      950 -                                                              
+      951 -            $tempFile = tempnam(sys_get_temp_dir(),           
+          -'employment_template_');                                      
+      952 -            $writer->save($tempFile);                         
+      953 -                                                              
+      954 -            $headers = [                                      
+      714 +            return response()->download($tempFile, $filename, 
+          + [                                                            
+      715                  'Content-Type' => 'application/vnd.openxmlfor 
+           mats-officedocument.spreadsheetml.sheet',                     
+      716                  'Content-Disposition' => 'attachment;         
+           filename="'.$filename.'"',                                    
+      717                  'Cache-Control' => 'max-age=0',               
+      718 -            ];                                                
+      719 -                                                              
+      720 -            return response()->download($tempFile, $filename, 
+          - $headers)->deleteFileAfterSend(true);                        
+      721 -                                                              
+      718 +            ])->deleteFileAfterSend(true);                    
+      719          } catch (\Exception $e) {                             
+      720              return response()->json([                         
+      721                  'success' => false,                           
+
+● Now let me update the EmployeeFundingAllocationController. I need to read the
+  end of the downloadTemplate() method first.
+
+● Read 1 file (ctrl+o to expand)
+
+● Now I'll replace both methods in EmployeeFundingAllocationController. Let me
+  first replace downloadGrantItemsReference().
+
+● Update(app\Http\Controllers\Api\EmployeeFundingAllocationController.php)
+  ⎿  Added 5 lines, removed 173 lines
+      1894      public function downloadGrantItemsReference()            
+      1895      {                                                        
+      1896          try {                                                
+      1897 -            $spreadsheet = new                               
+           -\PhpOffice\PhpSpreadsheet\Spreadsheet;                       
+      1898 -            $sheet = $spreadsheet->getActiveSheet();         
+      1899 -            $sheet->setTitle('Grant Items Reference');       
+      1897 +            $export = new GrantItemsReferenceExport;         
+      1898 +            $tempFile = $export->generate();                 
+      1899 +            $filename = $export->getFilename();              
+      1900                                                               
+      1901 -            // Add important notice at the top               
+      1902 -            $sheet->mergeCells('A1:L1');                     
+      1903 -            $sheet->setCellValue('A1', '⚠️ IMPORTANT: Copy   
+           -the "Grant Item ID" (Column E - Green) to your Funding       
+           -Allocation Import Template');                                
+      1904 -            $sheet->getStyle('A1')->getFont()->setBold(true) 
+           -->setSize(12)->getColor()->setRGB('FFFFFF');                 
+      1905 -            $sheet->getStyle('A1')->getFill()                
+      1906 -                ->setFillType(\PhpOffice\PhpSpreadsheet\Styl 
+           -e\Fill::FILL_SOLID)                                          
+      1907 -                ->getStartColor()->setRGB('FF6B6B'); // Red  
+           -background for attention                                     
+      1908 -            $sheet->getStyle('A1')->getAlignment()           
+      1909 -                ->setHorizontal(\PhpOffice\PhpSpreadsheet\St 
+           -yle\Alignment::HORIZONTAL_CENTER)                            
+      1910 -                ->setVertical(\PhpOffice\PhpSpreadsheet\Styl 
+           -e\Alignment::VERTICAL_CENTER);                               
+      1911 -            $sheet->getRowDimension(1)->setRowHeight(30);    
+      1912 -                                                             
+      1913 -            // Headers                                       
+      1914 -            $headers = [                                     
+      1915 -                'Grant ID',                                  
+      1916 -                'Grant Code',                                
+      1917 -                'Grant Name',                                
+      1918 -                'Grant Organization',                        
+      1919 -                'Grant Item ID',                             
+      1920 -                'Grant Position',                            
+      1921 -                'Budget Line Code',                          
+      1922 -                'Grant Salary',                              
+      1923 -                'Grant Benefit',                             
+      1924 -                'Level of Effort (%)',                       
+      1925 -                'Position Number',                           
+      1926 -                'Grant Status',                              
+      1927 -            ];                                               
+      1928 -                                                             
+      1929 -            // Write headers with special highlighting for   
+           -Grant Item ID (Row 2 now)                                    
+      1930 -            $col = 1;                                        
+      1931 -            foreach ($headers as $header) {                  
+      1932 -                $cell = $sheet->getCellByColumnAndRow($col,  
+           -2);                                                          
+      1933 -                $cell->setValue($header);                    
+      1934 -                                                             
+           -$cell->getStyle()->getFont()->setBold(true)->setSize(11);    
+      1935 -                                                             
+      1936 -                // Highlight Grant Item ID column (column E  
+           -- the most important one)                                    
+      1937 -                if ($header === 'Grant Item ID') {           
+      1938 -                    $cell->getStyle()->getFill()             
+      1939 -                        ->setFillType(\PhpOffice\PhpSpreadsh 
+           -eet\Style\Fill::FILL_SOLID)                                  
+      1940 -                        ->getStartColor()->setRGB('28A745'); 
+           - // Green - Important!                                       
+      1941 -                                                             
+           -$cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');  
+      1942 -                                                             
+           -$cell->getStyle()->getFont()->setSize(12)->setBold(true);    
+      1943 -                } else {                                     
+      1944 -                    $cell->getStyle()->getFill()             
+      1945 -                        ->setFillType(\PhpOffice\PhpSpreadsh 
+           -eet\Style\Fill::FILL_SOLID)                                  
+      1946 -                        ->getStartColor()->setRGB('4472C4'); 
+           - // Blue - Standard                                          
+      1947 -                                                             
+           -$cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');  
+      1948 -                }                                            
+      1949 -                                                             
+      1950 -                                                             
+           -$cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\ 
+           -PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);          
+      1951 -                $col++;                                      
+      1952 -            }                                                
+      1953 -                                                             
+      1954 -            // Fetch all grants with their items             
+      1955 -            $grants =                                        
+           -Grant::with('grantItems')->orderBy('code')->get();           
+      1956 -                                                             
+      1957 -            $row = 3; // Start from row 3 (after notice and  
+           -headers)                                                     
+      1958 -            foreach ($grants as $grant) {                    
+      1959 -                foreach ($grant->grantItems as $item) {      
+      1960 -                    $sheet->setCellValue("A{$row}",          
+           -$grant->id);                                                 
+      1961 -                    $sheet->setCellValue("B{$row}",          
+           -$grant->code);                                               
+      1962 -                    $sheet->setCellValue("C{$row}",          
+           -$grant->name);                                               
+      1963 -                    $sheet->setCellValue("D{$row}",          
+           -$grant->organization);                                       
+      1964 -                                                             
+      1965 -                    // Highlight Grant Item ID cell (Column  
+           -E) - This is what users need!                                
+      1966 -                    $sheet->setCellValue("E{$row}",          
+           -$item->id);                                                  
+      1967 -                    $sheet->getStyle("E{$row}")->getFill()   
+      1968 -                        ->setFillType(\PhpOffice\PhpSpreadsh 
+           -eet\Style\Fill::FILL_SOLID)                                  
+      1969 -                        ->getStartColor()->setRGB('D4EDDA'); 
+           - // Light green background                                   
+      1970 -                    $sheet->getStyle("E{$row}")->getFont()-> 
+           -setBold(true)->setSize(11)->getColor()->setRGB('155724');    
+      1971 -                                                             
+           -$sheet->getStyle("E{$row}")->getAlignment()                  
+      1972 -                        ->setHorizontal(\PhpOffice\PhpSpread 
+           -sheet\Style\Alignment::HORIZONTAL_CENTER);                   
+      1973 -                    // Add border to make it stand out       
+      1974 -                                                             
+           -$sheet->getStyle("E{$row}")->getBorders()->getAllBorders()   
+      1975 -                        ->setBorderStyle(\PhpOffice\PhpSprea 
+           -dsheet\Style\Border::BORDER_MEDIUM)                          
+      1976 -                        ->getColor()->setRGB('28A745');      
+      1977 -                                                             
+      1978 -                    $sheet->setCellValue("F{$row}",          
+           -$item->grant_position);                                      
+      1979 -                    $sheet->setCellValue("G{$row}",          
+           -$item->budgetline_code);                                     
+      1980 -                    $sheet->setCellValue("H{$row}",          
+           -$item->grant_salary);                                        
+      1981 -                    $sheet->setCellValue("I{$row}",          
+           -$item->grant_benefit);                                       
+      1982 -                    $sheet->setCellValue("J{$row}",          
+           -$item->grant_level_of_effort);                               
+      1983 -                    $sheet->setCellValue("K{$row}",          
+           -$item->grant_position_number);                               
+      1984 -                    $sheet->setCellValue("L{$row}",          
+           -$grant->status);                                             
+      1985 -                    $row++;                                  
+      1986 -                }                                            
+      1987 -            }                                                
+      1988 -                                                             
+      1989 -            // Set column widths                             
+      1990 -            $columnWidths = [                                
+      1991 -                'A' => 12, 'B' => 15, 'C' => 30, 'D' => 18,  
+      1992 -                'E' => 15, 'F' => 25, 'G' => 18, 'H' => 15,  
+      1993 -                'I' => 15, 'J' => 18, 'K' => 15, 'L' => 15,  
+      1994 -            ];                                               
+      1995 -                                                             
+      1996 -            foreach ($columnWidths as $column => $width) {   
+      1997 -                                                             
+           -$sheet->getColumnDimension($column)->setWidth($width);       
+      1998 -            }                                                
+      1999 -                                                             
+      2000 -            // Add instructions sheet                        
+      2001 -            $instructionsSheet =                             
+           -$spreadsheet->createSheet();                                 
+      2002 -            $instructionsSheet->setTitle('Instructions');    
+      2003 -                                                             
+      2004 -            $instructions = [                                
+      2005 -                ['Grant Items Reference - How to Use'],      
+      2006 -                [''],                                        
+      2007 -                ['⭐ QUICK START:'],                          
+      2008 -                ['Look for the GREEN column (Column E) -     
+           -that\'s the "Grant Item ID" you need!'],                     
+      2009 -                ['Copy this ID to your funding allocation    
+           -import template.'],                                          
+      2010 -                [''],                                        
+      2011 -                ['PURPOSE:'],                                
+      2012 -                ['This file contains all available grants    
+           -and their grant items with IDs.'],                           
+      2013 -                ['Use this reference when filling out the    
+           -Employee Funding Allocation import template.'],              
+      2014 -                [''],                                        
+      2015 -                ['HOW TO USE:'],                             
+      2016 -                ['1. Find the grant you want to allocate     
+           -funding from'],                                              
+      2017 -                ['2. Locate the specific grant item          
+           -(position) within that grant'],                              
+      2018 -                ['3. Copy the "Grant Item ID" from Column E  
+           -(GREEN HIGHLIGHTED) to your import file'],                   
+      2019 -                [''],                                        
+      2020 -                ['COLOR CODING:'],                           
+      2021 -                ['🟢 GREEN COLUMN (E) = Grant Item ID - THIS 
+           - IS WHAT YOU NEED!'],                                        
+      2022 -                ['🔵 BLUE COLUMNS = Reference information to 
+           - help you find the right grant item'],                       
+      2023 -                [''],                                        
+      2024 -                ['IMPORTANT NOTES:'],                        
+      2025 -                ['- Grant Item ID is required for funding    
+           -allocation imports'],                                        
+      2026 -                ['- Each grant item represents a specific    
+           -position/funding source'],                                   
+      2027 -                ['- Position Number shows how many employees 
+           - can be allocated to this grant item'],                      
+      2028 -                ['- Grant Status shows if the grant is       
+           -Active, Expired, or Ending Soon'],                           
+      2029 -                [''],                                        
+      2030 -                ['COLUMNS EXPLAINED:'],                      
+      2031 -                ['- Grant ID: Unique identifier for the      
+           -grant'],                                                     
+      2032 -                ['- Grant Code: Short code for the grant'],  
+      2033 -                ['- Grant Name: Full name of the grant'],    
+      2034 -                ['- Grant Organization: Organization         
+           -managing the grant (SMRU/BHF)'],                             
+      2035 -                ['- Grant Item ID: ID to use in funding      
+           -allocation imports (REQUIRED)'],                             
+      2036 -                ['- Grant Position: Position title for this  
+           -grant item'],                                                
+      2037 -                ['- Budget Line Code: Budget line code for   
+           -accounting'],                                                
+      2038 -                ['- Grant Salary: Budgeted salary for this   
+           -position'],                                                  
+      2039 -                ['- Grant Benefit: Budgeted benefits for     
+           -this position'],                                             
+      2040 -                ['- Level of Effort: Expected effort         
+           -percentage'],                                                
+      2041 -                ['- Position Number: Maximum number of       
+           -employees for this position'],                               
+      2042 -                ['- Grant Status: Current status of the      
+           -grant'],                                                     
+      2043 -            ];                                               
+      2044 -                                                             
+      2045 -            $row = 1;                                        
+      2046 -            foreach ($instructions as $instruction) {        
+      2047 -                $instructionsSheet->setCellValue("A{$row}",  
+           -$instruction[0]);                                            
+      2048 -                if ($row === 1) {                            
+      2049 -                    $instructionsSheet->getStyle("A{$row}")- 
+           ->getFont()->setBold(true)->setSize(14);                      
+      2050 -                } elseif (in_array($row, [3, 7, 11, 15])) {  
+      2051 -                    $instructionsSheet->getStyle("A{$row}")- 
+           ->getFont()->setBold(true);                                   
+      2052 -                }                                            
+      2053 -                $row++;                                      
+      2054 -            }                                                
+      2055 -                                                             
+      2056 -                                                             
+           -$instructionsSheet->getColumnDimension('A')->setWidth(100);  
+      2057 -            $spreadsheet->setActiveSheetIndex(0);            
+      2058 -                                                             
+      2059 -            // Generate and download                         
+      2060 -            $filename =                                      
+           -'grant_items_reference_'.date('Y-m-d_His').'.xlsx';          
+      2061 -            $writer = new                                    
+           -\PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);         
+      2062 -                                                             
+      2063 -            $tempFile = tempnam(sys_get_temp_dir(),          
+           -'grant_items_ref_');                                         
+      2064 -            $writer->save($tempFile);                        
+      2065 -                                                             
+      2066 -            $headers = [                                     
+      1901 +            return response()->download($tempFile,           
+           +$filename, [                                                 
+      1902                  'Content-Type' => 'application/vnd.openxmlfo 
+            rmats-officedocument.spreadsheetml.sheet',                   
+      1903                  'Content-Disposition' => 'attachment;        
+            filename="'.$filename.'"',                                   
+      1904                  'Cache-Control' => 'max-age=0',              
+      1905 -            ];                                               
+      1906 -                                                             
+      1907 -            return response()->download($tempFile,           
+           -$filename, $headers)->deleteFileAfterSend(true);             
+      1908 -                                                             
+      1905 +            ])->deleteFileAfterSend(true);                   
+      1906          } catch (\Exception $e) {                            
+      1907              return response()->json([                        
+      1908                  'success' => false,                          
+
+● Now let me replace the downloadTemplate() method in
+  EmployeeFundingAllocationController. Let me first read the updated file to
+  find the method.
+
+● Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now let me replace the downloadTemplate() method with the simplified version.
+
+● Update(app\Http\Controllers\Api\EmployeeFundingAllocationController.php)
+  ⎿  Added 5 lines, removed 218 lines
+      1928      public function downloadTemplate()                       
+      1929      {                                                        
+      1930          try {                                                
+      1931 -            $spreadsheet = new                               
+           -\PhpOffice\PhpSpreadsheet\Spreadsheet;                       
+      1932 -            $sheet = $spreadsheet->getActiveSheet();         
+      1933 -            $sheet->setTitle('Funding Allocation Import');   
+      1931 +            $export = new                                    
+           +EmployeeFundingAllocationTemplateExport;                     
+      1932 +            $tempFile = $export->generate();                 
+      1933 +            $filename = $export->getFilename();              
+      1934                                                               
+      1935 -            // ============================================  
+      1936 -            // SECTION 1: DEFINE HEADERS                     
+      1937 -            // ============================================  
+      1938 -            $headers = [                                     
+      1939 -                'staff_id',                                  
+      1940 -                'grant_item_id',                             
+      1941 -                'fte',                                       
+      1942 -                'allocated_amount',                          
+      1943 -                'start_date',                                
+      1944 -                'end_date',                                  
+      1945 -                'notes',                                     
+      1946 -            ];                                               
+      1947 -                                                             
+      1948 -            // ============================================  
+      1949 -            // SECTION 2: DEFINE VALIDATION RULES            
+      1950 -            // ============================================  
+      1951 -            $validationRules = [                             
+      1952 -                'String - NOT NULL - Employee staff ID (must 
+           - exist in system)',                                          
+      1953 -                'Integer - NOT NULL - Grant item ID (use     
+           -Grant Items Reference file)',                                
+      1954 -                'Decimal (0-100) - NOT NULL - FTE percentage 
+           - (e.g., 50 for 50%, 100 for 100%)',                          
+      1955 -                'Decimal(15,2) - NULLABLE - Pre-calculated   
+           -allocated amount (auto-calculated if empty)',                
+      1956 -                'Date (YYYY-MM-DD) - NOT NULL - Allocation   
+           -start date',                                                 
+      1957 -                'Date (YYYY-MM-DD) - NULLABLE - Allocation   
+           -end date (leave empty for ongoing)',                         
+      1958 -                'Text - NULLABLE - Additional notes or       
+           -comments',                                                   
+      1959 -            ];                                               
+      1960 -                                                             
+      1961 -            // ============================================  
+      1962 -            // SECTION 3: WRITE HEADERS (Row 1)              
+      1963 -            // ============================================  
+      1964 -            $col = 1;                                        
+      1965 -            foreach ($headers as $header) {                  
+      1966 -                $cell = $sheet->getCellByColumnAndRow($col,  
+           -1);                                                          
+      1967 -                $cell->setValue($header);                    
+      1968 -                                                             
+      1969 -                // Style header                              
+      1970 -                                                             
+           -$cell->getStyle()->getFont()->setBold(true)->setSize(11);    
+      1971 -                $cell->getStyle()->getFill()                 
+      1972 -                    ->setFillType(\PhpOffice\PhpSpreadsheet\ 
+           -Style\Fill::FILL_SOLID)                                      
+      1973 -                    ->getStartColor()->setRGB('4472C4');     
+      1974 -                                                             
+           -$cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');  
+      1975 -                                                             
+           -$cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\ 
+           -PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);          
+      1976 -                                                             
+      1977 -                $col++;                                      
+      1978 -            }                                                
+      1979 -                                                             
+      1980 -            // ============================================  
+      1981 -            // SECTION 4: WRITE VALIDATION RULES (Row 2)     
+      1982 -            // ============================================  
+      1983 -            $col = 1;                                        
+      1984 -            foreach ($validationRules as $rule) {            
+      1985 -                $cell = $sheet->getCellByColumnAndRow($col,  
+           -2);                                                          
+      1986 -                $cell->setValue($rule);                      
+      1987 -                                                             
+      1988 -                // Style validation row                      
+      1989 -                                                             
+           -$cell->getStyle()->getFont()->setItalic(true)->setSize(9);   
+      1990 -                $cell->getStyle()->getFill()                 
+      1991 -                    ->setFillType(\PhpOffice\PhpSpreadsheet\ 
+           -Style\Fill::FILL_SOLID)                                      
+      1992 -                    ->getStartColor()->setRGB('E7E6E6');     
+      1993 -                $cell->getStyle()->getAlignment()->setWrapTe 
+           -xt(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignm 
+           -ent::VERTICAL_TOP);                                          
+      1994 -                                                             
+      1995 -                $col++;                                      
+      1996 -            }                                                
+      1997 -                                                             
+      1998 -            // Set row height for validation rules           
+      1999 -            $sheet->getRowDimension(2)->setRowHeight(60);    
+      2000 -                                                             
+      2001 -            // ============================================  
+      2002 -            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)         
+      2003 -            // ============================================  
+      2004 -            $sampleData = [                                  
+      2005 -                ['EMP001', '1', '100', '', '2025-01-01', '', 
+           - 'Full-time allocation to Grant Item 1'],                    
+      2006 -                ['EMP002', '2', '60', '30000.00',            
+           -'2025-01-15', '2025-12-31', 'Part-time 60% allocation'],     
+      2007 -                ['EMP002', '3', '40', '20000.00',            
+           -'2025-01-15', '2025-12-31', 'Split funding - remaining       
+           -40%'],                                                       
+      2008 -            ];                                               
+      2009 -                                                             
+      2010 -            $row = 3;                                        
+      2011 -            foreach ($sampleData as $data) {                 
+      2012 -                $col = 1;                                    
+      2013 -                foreach ($data as $value) {                  
+      2014 -                    $sheet->getCellByColumnAndRow($col,      
+           -$row)->setValue($value);                                     
+      2015 -                    $col++;                                  
+      2016 -                }                                            
+      2017 -                $row++;                                      
+      2018 -            }                                                
+      2019 -                                                             
+      2020 -            // ============================================  
+      2021 -            // SECTION 6: SET COLUMN WIDTHS                  
+      2022 -            // ============================================  
+      2023 -            $columnWidths = [                                
+      2024 -                'A' => 15,  // staff_id                      
+      2025 -                'B' => 18,  // grant_item_id                 
+      2026 -                'C' => 12,  // fte                           
+      2027 -                'D' => 18,  // allocated_amount              
+      2028 -                'E' => 15,  // start_date                    
+      2029 -                'F' => 15,  // end_date                      
+      2030 -                'G' => 35,  // notes                         
+      2031 -            ];                                               
+      2032 -                                                             
+      2033 -            foreach ($columnWidths as $column => $width) {   
+      2034 -                                                             
+           -$sheet->getColumnDimension($column)->setWidth($width);       
+      2035 -            }                                                
+      2036 -                                                             
+      2037 -            // ============================================  
+      2038 -            // SECTION 7: ADD INSTRUCTIONS SHEET             
+      2039 -            // ============================================  
+      2040 -            $instructionsSheet =                             
+           -$spreadsheet->createSheet();                                 
+      2041 -            $instructionsSheet->setTitle('Instructions');    
+      2042 -                                                             
+      2043 -            $instructions = [                                
+      2044 -                ['Employee Funding Allocation Import         
+           -Template - Instructions'],                                   
+      2045 -                [''],                                        
+      2046 -                ['BEFORE YOU START:'],                       
+      2047 -                ['1. Download the "Grant Items Reference"    
+           -file to get valid Grant Item IDs'],                          
+      2048 -                ['2. The Grant Items Reference contains all  
+           -grants and their items with IDs'],                           
+      2049 -                ['3. You will need the Grant Item ID (Column 
+           - E) from that file'],                                        
+      2050 -                [''],                                        
+      2051 -                ['REQUIRED FIELDS (Cannot be empty):'],      
+      2052 -                ['- staff_id: Employee staff ID (must exist  
+           -in system)'],                                                
+      2053 -                ['- grant_item_id: Grant item ID from Grant  
+           -Items Reference file'],                                      
+      2054 -                ['- fte: FTE percentage (0-100, e.g., 50 for 
+           - 50%, 100 for 100%)'],                                       
+      2055 -                ['- start_date: Allocation start date        
+           -(YYYY-MM-DD format)'],                                       
+      2056 -                [''],                                        
+      2057 -                ['OPTIONAL FIELDS:'],                        
+      2058 -                ['- allocated_amount: Leave empty for        
+           -auto-calculation based on salary'],                          
+      2059 -                ['- end_date: Leave empty for ongoing        
+           -allocation'],                                                
+      2060 -                ['- notes: Any additional comments or        
+           -information'],                                               
+      2061 -                [''],                                        
+      2062 -                ['HOW IT WORKS:'],                           
+      2063 -                ['1. System uses staff_id to find the        
+           -employee'],                                                  
+      2064 -                ['2. System automatically finds the active   
+           -employment for that employee'],                              
+      2065 -                ['3. System creates funding allocation       
+           -linking employee to grant item'],                            
+      2066 -                ['4. If allocated_amount is empty, system    
+           -calculates it based on FTE and salary'],                     
+      2067 -                [''],                                        
+      2068 -                ['DATE FORMAT:'],                            
+      2069 -                ['All dates must be in YYYY-MM-DD format     
+           -(e.g., 2025-01-15)'],                                        
+      2070 -                [''],                                        
+      2071 -                ['FTE (Full-Time Equivalent):'],             
+      2072 -                ['- Enter as percentage without % symbol'],  
+      2073 -                ['- Examples: 100 = full-time, 50 =          
+           -half-time, 25 = quarter-time'],                              
+      2074 -                ['- For split funding: Create multiple rows  
+           -for the same employee'],                                     
+      2075 -                ['- Example: Employee 60% on Grant A + 40%   
+           -on Grant B = 2 rows'],                                       
+      2076 -                [''],                                        
+      2077 -                ['GRANT ITEM ID:'],                          
+      2078 -                ['- Download "Grant Items Reference" file to 
+           - see all available grant items'],                            
+      2079 -                ['- Each grant has multiple grant items      
+           -(positions)'],                                               
+      2080 -                ['- Copy the Grant Item ID from the          
+           -reference file'],                                            
+      2081 -                ['- One grant has many grant items - choose  
+           -the correct item for the position'],                         
+      2082 -                [''],                                        
+      2083 -                ['VALIDATION RULES:'],                       
+      2084 -                ['- staff_id must exist in the system'],     
+      2085 -                ['- grant_item_id must be valid (check Grant 
+           - Items Reference)'],                                         
+      2086 -                ['- FTE must be between 0 and 100'],         
+      2087 -                ['- start_date is required'],                
+      2088 -                ['- end_date is optional (leave empty for    
+           -ongoing)'],                                                  
+      2089 -                ['- Employee must have an active employment  
+           -record'],                                                    
+      2090 -                ['- Total FTE per employee should equal      
+           -100%'],                                                      
+      2091 -                [''],                                        
+      2092 -                ['EXAMPLE SCENARIOS:'],                      
+      2093 -                ['Single Funding (100%):'],                  
+      2094 -                ['  EMP001 | 5 | 100 | | 2025-01-01 | |      
+           -Full-time on one grant'],                                    
+      2095 -                [''],                                        
+      2096 -                ['Split Funding (60/40):'],                  
+      2097 -                ['  EMP002 | 10 | 60 | | 2025-01-01 | | 60%  
+           -on Grant Item 10'],                                          
+      2098 -                ['  EMP002 | 15 | 40 | | 2025-01-01 | | 40%  
+           -on Grant Item 15'],                                          
+      2099 -                [''],                                        
+      2100 -                ['Split Funding (50/30/20):'],               
+      2101 -                ['  EMP003 | 20 | 50 | | 2025-01-01 | |      
+           -Half-time on Grant Item 20'],                                
+      2102 -                ['  EMP003 | 25 | 30 | | 2025-01-01 | | 30%  
+           -on Grant Item 25'],                                          
+      2103 -                ['  EMP003 | 30 | 20 | | 2025-01-01 | | 20%  
+           -on Grant Item 30'],                                          
+      2104 -                [''],                                        
+      2105 -                ['BEST PRACTICES:'],                         
+      2106 -                ['- Always download the latest Grant Items   
+           -Reference before importing'],                                
+      2107 -                ['- Verify staff_id exists in the system'],  
+      2108 -                ['- Keep total FTE per employee = 100%'],    
+      2109 -                ['- Use consistent date formats              
+           -(YYYY-MM-DD)'],                                              
+      2110 -                ['- Test with a small batch first (2-3       
+           -employees)'],                                                
+      2111 -                ['- Review the Grant Items Reference to      
+           -understand grant structure'],                                
+      2112 -                [''],                                        
+      2113 -                ['AFTER UPLOAD:'],                           
+      2114 -                ['- You will receive a notification when     
+           -import completes'],                                          
+      2115 -                ['- Check notification for success/error     
+           -summary'],                                                   
+      2116 -                ['- Review created/updated allocations in    
+           -the system'],                                                
+      2117 -                ['- Verify that allocations are correctly    
+           -linked to grant items'],                                     
+      2118 -            ];                                               
+      2119 -                                                             
+      2120 -            $row = 1;                                        
+      2121 -            foreach ($instructions as $instruction) {        
+      2122 -                $instructionsSheet->setCellValue("A{$row}",  
+           -$instruction[0]);                                            
+      2123 -                if ($row === 1) {                            
+      2124 -                    $instructionsSheet->getStyle("A{$row}")- 
+           ->getFont()->setBold(true)->setSize(14);                      
+      2125 -                } elseif ($row === 3 ||                      
+           -strpos($instruction[0], ':') !== false) {                    
+      2126 -                    $instructionsSheet->getStyle("A{$row}")- 
+           ->getFont()->setBold(true);                                   
+      2127 -                }                                            
+      2128 -                $row++;                                      
+      2129 -            }                                                
+      2130 -                                                             
+      2131 -                                                             
+           -$instructionsSheet->getColumnDimension('A')->setWidth(100);  
+      2132 -                                                             
+      2133 -            // Set active sheet back to main sheet           
+      2134 -            $spreadsheet->setActiveSheetIndex(0);            
+      2135 -                                                             
+      2136 -            // ============================================  
+      2137 -            // SECTION 8: GENERATE AND DOWNLOAD FILE         
+      2138 -            // ============================================  
+      2139 -            $filename = 'employee_funding_allocation_import_ 
+           -template_'.date('Y-m-d_His').'.xlsx';                        
+      2140 -            $writer = new                                    
+           -\PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);         
+      2141 -                                                             
+      2142 -            $tempFile = tempnam(sys_get_temp_dir(),          
+           -'funding_allocation_template_');                             
+      2143 -            $writer->save($tempFile);                        
+      2144 -                                                             
+      2145 -            $headers = [                                     
+      1935 +            return response()->download($tempFile,           
+           +$filename, [                                                 
+      1936                  'Content-Type' => 'application/vnd.openxmlfo 
+            rmats-officedocument.spreadsheetml.sheet',                   
+      1937                  'Content-Disposition' => 'attachment;        
+            filename="'.$filename.'"',                                   
+      1938                  'Cache-Control' => 'max-age=0',              
+      1939 -            ];                                               
+      1940 -                                                             
+      1941 -            return response()->download($tempFile,           
+           -$filename, $headers)->deleteFileAfterSend(true);             
+      1942 -                                                             
+      1939 +            ])->deleteFileAfterSend(true);                   
+      1940          } catch (\Exception $e) {                            
+      1941              return response()->json([                        
+      1942                  'success' => false,                          
+
+● All controllers have been updated. Let me verify the GrantController is
+  already using Export classes, and then run Laravel Pint to format all files.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● The GrantController already uses the GrantTemplateExport class. Now let me run
+   Laravel Pint to format all the files.
+
+● Bash(cd "C:\Users\Turtle\Desktop\HR Management System\3.
+      Implementation\hrms-dev\hrms-backend-api-v1" && vendor/bin/pint --dirty)
+  ⎿  {
+       "result": "pass"
+     }
+
+● All template download functionality has been refactored for consistency.
+  Here's a summary of what was done:
+
+  Summary
+
+  New Export Classes Created
+
+  1. app/Exports/EmployeeTemplateExport.php - Employee import template with all
+  47+ columns, dropdowns, and instructions
+  2. app/Exports/EmploymentTemplateExport.php - Employment import template with
+  15 columns, pay method and boolean dropdowns
+  3. app/Exports/EmployeeFundingAllocationTemplateExport.php - Funding 
+  allocation template with 7 columns and detailed instructions
+  4. app/Exports/GrantItemsReferenceExport.php - Reference file pulling grant
+  items from database with highlighted Grant Item ID column
+
+  Controllers Updated
+
+  1. EmployeeController - downloadEmployeeTemplate() now uses 
+  EmployeeTemplateExport
+  2. EmploymentController - downloadEmploymentTemplate() now uses 
+  EmploymentTemplateExport
+  3. EmployeeFundingAllocationController:
+    - downloadGrantItemsReference() now uses GrantItemsReferenceExport
+    - downloadTemplate() now uses EmployeeFundingAllocationTemplateExport
+  4. GrantController - Already using GrantTemplateExport (no changes needed)
+
+  Code Reduction
+
+  Each controller method was reduced from ~200-300 lines of inline code to ~15
+  lines using the Export classes. The Export classes follow a consistent
+  pattern:
+  - generate() method returns temp file path
+  - getFilename() method returns suggested download filename
+  - Reusable and testable independently
+
+✻ Baked for 9m 59s
+
+❯ On my forntend project, how many percentag of boostrap implemented and    
+  how many percentage of Ant-design-veu is implemented?                     
+
+● I'll analyze the frontend project to determine the usage percentage of
+  Bootstrap vs Ant Design Vue.
+
+● Explore(Analyze Bootstrap vs Ant Design usage)
+  ⎿  Done (37 tool uses · 47.5k tokens · 3m 43s)
+
+● Frontend Framework Usage Analysis
+
+  Based on the analysis of your frontend project at hrms-frontend-dev:
+
+  Overall Percentages
+  ┌────────────────┬───────────────────────┬───────────────────────┐
+  │   Framework    │     File Coverage     │ Component/Class Usage │
+  ├────────────────┼───────────────────────┼───────────────────────┤
+  │ Bootstrap      │ 93.5% (386/413 files) │ ~85%                  │
+  ├────────────────┼───────────────────────┼───────────────────────┤
+  │ Ant Design Vue │ 22.5% (93/413 files)  │ ~15%                  │
+  └────────────────┴───────────────────────┴───────────────────────┘
+  Key Findings
+
+  Bootstrap (Dominant - ~85%)
+  - Used in 386 out of 413 Vue files
+  - Handles: Layout, grid system, utilities, modals, buttons, forms
+  - 31,465 .modal class instances alone
+  - ~14,600+ class instances total
+
+  Ant Design Vue (Complementary - ~15%)
+  - Used in 93 Vue files
+  - 327 component instances total
+  - Primary use: <a-table> (77), <a-button> (71), <a-select> (22),
+  <a-pagination> (16)
+
+  Usage Pattern
+
+  Bootstrap:      ████████████████████████████████████  85%
+  Ant Design Vue: ██████                                15%
+
+  Architecture Summary
+
+  Your project uses a hybrid approach:
+  - Bootstrap provides the foundation (layout, grid, spacing, basic components)
+  - Ant Design Vue handles data-heavy components (tables, complex selects, date
+  pickers)
+
+  Both frameworks are registered globally in main.js:
+  // Bootstrap
+  import 'bootstrap/dist/css/bootstrap.min.css'
+  app.use(BootstrapVue3)
+
+  // Ant Design Vue  
+  import 'ant-design-vue/dist/reset.css'
+  app.use(Antd)
+
+  This hybrid strategy allows you to leverage Bootstrap's strong layout
+  utilities while using Ant Design's sophisticated data presentation components
+  where needed.
+
+✻ Worked for 4m 7s

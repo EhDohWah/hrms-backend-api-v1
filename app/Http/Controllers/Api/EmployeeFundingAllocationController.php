@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\EmployeeFundingAllocationTemplateExport;
+use App\Exports\GrantItemsReferenceExport;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\EmployeeFundingAllocationResource;
 use App\Models\Employee;
@@ -73,7 +75,7 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $query = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
+                'employment:id,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -162,7 +164,7 @@ class EmployeeFundingAllocationController extends Controller
             // Get all allocations for this grant item
             $allocations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_probation_date',
+                'employment:id,start_date,end_probation_date',
                 'grantItem.grant:id,name,code',
             ])
                 ->where('grant_item_id', $grantItemId)
@@ -540,7 +542,7 @@ class EmployeeFundingAllocationController extends Controller
             // Load the created allocations with relationships
             $allocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date',
+                'employment:id,start_date',
                 'grantItem.grant:id,name,code',
             ])->whereIn('id', collect($createdAllocations)->pluck('id'))->get();
 
@@ -739,7 +741,7 @@ class EmployeeFundingAllocationController extends Controller
         try {
             $allocation = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
+                'employment:id,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -995,7 +997,7 @@ class EmployeeFundingAllocationController extends Controller
             // Reload with relationships
             $allocation->load([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date',
+                'employment:id,start_date',
                 'grantItem.grant:id,name,code',
             ]);
 
@@ -1147,6 +1149,27 @@ class EmployeeFundingAllocationController extends Controller
             ->keyBy('id');
 
         $updateIds = collect($updates)->pluck('id')->toArray();
+        $currentAllocationIds = $currentAllocations->keys()->toArray();
+
+        // Validate that all update IDs belong to active allocations for this employee/employment
+        $invalidUpdateIds = array_diff($updateIds, $currentAllocationIds);
+        if (! empty($invalidUpdateIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some allocation IDs to update are not active or do not belong to this employee/employment',
+                'invalid_ids' => array_values($invalidUpdateIds),
+            ], 422);
+        }
+
+        // Validate that all delete IDs belong to active allocations for this employee/employment
+        $invalidDeleteIds = array_diff($deletes, $currentAllocationIds);
+        if (! empty($invalidDeleteIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some allocation IDs to delete are not active or do not belong to this employee/employment',
+                'invalid_ids' => array_values($invalidDeleteIds),
+            ], 422);
+        }
 
         // FTE from allocations that won't be modified or deleted
         $untouchedFte = 0;
@@ -1348,7 +1371,7 @@ class EmployeeFundingAllocationController extends Controller
 
             $today = Carbon::today();
             $allocations = EmployeeFundingAllocation::with([
-                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
+                'employment:id,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -1763,7 +1786,7 @@ class EmployeeFundingAllocationController extends Controller
             // Load the created allocations with relationships
             $allocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,end_probation_date,department_id,position_id',
+                'employment:id,start_date,end_probation_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -1892,183 +1915,15 @@ class EmployeeFundingAllocationController extends Controller
     public function downloadGrantItemsReference()
     {
         try {
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
-            $sheet = $spreadsheet->getActiveSheet();
-            $sheet->setTitle('Grant Items Reference');
+            $export = new GrantItemsReferenceExport;
+            $tempFile = $export->generate();
+            $filename = $export->getFilename();
 
-            // Add important notice at the top
-            $sheet->mergeCells('A1:L1');
-            $sheet->setCellValue('A1', '⚠️ IMPORTANT: Copy the "Grant Item ID" (Column E - Green) to your Funding Allocation Import Template');
-            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12)->getColor()->setRGB('FFFFFF');
-            $sheet->getStyle('A1')->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('FF6B6B'); // Red background for attention
-            $sheet->getStyle('A1')->getAlignment()
-                ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
-                ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-            $sheet->getRowDimension(1)->setRowHeight(30);
-
-            // Headers
-            $headers = [
-                'Grant ID',
-                'Grant Code',
-                'Grant Name',
-                'Grant Organization',
-                'Grant Item ID',
-                'Grant Position',
-                'Budget Line Code',
-                'Grant Salary',
-                'Grant Benefit',
-                'Level of Effort (%)',
-                'Position Number',
-                'Grant Status',
-            ];
-
-            // Write headers with special highlighting for Grant Item ID (Row 2 now)
-            $col = 1;
-            foreach ($headers as $header) {
-                $cell = $sheet->getCellByColumnAndRow($col, 2);
-                $cell->setValue($header);
-                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
-
-                // Highlight Grant Item ID column (column E - the most important one)
-                if ($header === 'Grant Item ID') {
-                    $cell->getStyle()->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                        ->getStartColor()->setRGB('28A745'); // Green - Important!
-                    $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
-                    $cell->getStyle()->getFont()->setSize(12)->setBold(true);
-                } else {
-                    $cell->getStyle()->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                        ->getStartColor()->setRGB('4472C4'); // Blue - Standard
-                    $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
-                }
-
-                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                $col++;
-            }
-
-            // Fetch all grants with their items
-            $grants = Grant::with('grantItems')->orderBy('code')->get();
-
-            $row = 3; // Start from row 3 (after notice and headers)
-            foreach ($grants as $grant) {
-                foreach ($grant->grantItems as $item) {
-                    $sheet->setCellValue("A{$row}", $grant->id);
-                    $sheet->setCellValue("B{$row}", $grant->code);
-                    $sheet->setCellValue("C{$row}", $grant->name);
-                    $sheet->setCellValue("D{$row}", $grant->organization);
-
-                    // Highlight Grant Item ID cell (Column E) - This is what users need!
-                    $sheet->setCellValue("E{$row}", $item->id);
-                    $sheet->getStyle("E{$row}")->getFill()
-                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                        ->getStartColor()->setRGB('D4EDDA'); // Light green background
-                    $sheet->getStyle("E{$row}")->getFont()->setBold(true)->setSize(11)->getColor()->setRGB('155724');
-                    $sheet->getStyle("E{$row}")->getAlignment()
-                        ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-                    // Add border to make it stand out
-                    $sheet->getStyle("E{$row}")->getBorders()->getAllBorders()
-                        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM)
-                        ->getColor()->setRGB('28A745');
-
-                    $sheet->setCellValue("F{$row}", $item->grant_position);
-                    $sheet->setCellValue("G{$row}", $item->budgetline_code);
-                    $sheet->setCellValue("H{$row}", $item->grant_salary);
-                    $sheet->setCellValue("I{$row}", $item->grant_benefit);
-                    $sheet->setCellValue("J{$row}", $item->grant_level_of_effort);
-                    $sheet->setCellValue("K{$row}", $item->grant_position_number);
-                    $sheet->setCellValue("L{$row}", $grant->status);
-                    $row++;
-                }
-            }
-
-            // Set column widths
-            $columnWidths = [
-                'A' => 12, 'B' => 15, 'C' => 30, 'D' => 18,
-                'E' => 15, 'F' => 25, 'G' => 18, 'H' => 15,
-                'I' => 15, 'J' => 18, 'K' => 15, 'L' => 15,
-            ];
-
-            foreach ($columnWidths as $column => $width) {
-                $sheet->getColumnDimension($column)->setWidth($width);
-            }
-
-            // Add instructions sheet
-            $instructionsSheet = $spreadsheet->createSheet();
-            $instructionsSheet->setTitle('Instructions');
-
-            $instructions = [
-                ['Grant Items Reference - How to Use'],
-                [''],
-                ['⭐ QUICK START:'],
-                ['Look for the GREEN column (Column E) - that\'s the "Grant Item ID" you need!'],
-                ['Copy this ID to your funding allocation import template.'],
-                [''],
-                ['PURPOSE:'],
-                ['This file contains all available grants and their grant items with IDs.'],
-                ['Use this reference when filling out the Employee Funding Allocation import template.'],
-                [''],
-                ['HOW TO USE:'],
-                ['1. Find the grant you want to allocate funding from'],
-                ['2. Locate the specific grant item (position) within that grant'],
-                ['3. Copy the "Grant Item ID" from Column E (GREEN HIGHLIGHTED) to your import file'],
-                [''],
-                ['COLOR CODING:'],
-                ['🟢 GREEN COLUMN (E) = Grant Item ID - THIS IS WHAT YOU NEED!'],
-                ['🔵 BLUE COLUMNS = Reference information to help you find the right grant item'],
-                [''],
-                ['IMPORTANT NOTES:'],
-                ['- Grant Item ID is required for funding allocation imports'],
-                ['- Each grant item represents a specific position/funding source'],
-                ['- Position Number shows how many employees can be allocated to this grant item'],
-                ['- Grant Status shows if the grant is Active, Expired, or Ending Soon'],
-                [''],
-                ['COLUMNS EXPLAINED:'],
-                ['- Grant ID: Unique identifier for the grant'],
-                ['- Grant Code: Short code for the grant'],
-                ['- Grant Name: Full name of the grant'],
-                ['- Grant Organization: Organization managing the grant (SMRU/BHF)'],
-                ['- Grant Item ID: ID to use in funding allocation imports (REQUIRED)'],
-                ['- Grant Position: Position title for this grant item'],
-                ['- Budget Line Code: Budget line code for accounting'],
-                ['- Grant Salary: Budgeted salary for this position'],
-                ['- Grant Benefit: Budgeted benefits for this position'],
-                ['- Level of Effort: Expected effort percentage'],
-                ['- Position Number: Maximum number of employees for this position'],
-                ['- Grant Status: Current status of the grant'],
-            ];
-
-            $row = 1;
-            foreach ($instructions as $instruction) {
-                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
-                if ($row === 1) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
-                } elseif (in_array($row, [3, 7, 11, 15])) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
-                }
-                $row++;
-            }
-
-            $instructionsSheet->getColumnDimension('A')->setWidth(100);
-            $spreadsheet->setActiveSheetIndex(0);
-
-            // Generate and download
-            $filename = 'grant_items_reference_'.date('Y-m-d_His').'.xlsx';
-            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-
-            $tempFile = tempnam(sys_get_temp_dir(), 'grant_items_ref_');
-            $writer->save($tempFile);
-
-            $headers = [
+            return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'max-age=0',
-            ];
-
-            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
-
+            ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -2094,228 +1949,15 @@ class EmployeeFundingAllocationController extends Controller
     public function downloadTemplate()
     {
         try {
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
-            $sheet = $spreadsheet->getActiveSheet();
-            $sheet->setTitle('Funding Allocation Import');
+            $export = new EmployeeFundingAllocationTemplateExport;
+            $tempFile = $export->generate();
+            $filename = $export->getFilename();
 
-            // ============================================
-            // SECTION 1: DEFINE HEADERS
-            // ============================================
-            $headers = [
-                'staff_id',
-                'grant_item_id',
-                'fte',
-                'allocated_amount',
-                'start_date',
-                'end_date',
-                'notes',
-            ];
-
-            // ============================================
-            // SECTION 2: DEFINE VALIDATION RULES
-            // ============================================
-            $validationRules = [
-                'String - NOT NULL - Employee staff ID (must exist in system)',
-                'Integer - NOT NULL - Grant item ID (use Grant Items Reference file)',
-                'Decimal (0-100) - NOT NULL - FTE percentage (e.g., 50 for 50%, 100 for 100%)',
-                'Decimal(15,2) - NULLABLE - Pre-calculated allocated amount (auto-calculated if empty)',
-                'Date (YYYY-MM-DD) - NOT NULL - Allocation start date',
-                'Date (YYYY-MM-DD) - NULLABLE - Allocation end date (leave empty for ongoing)',
-                'Text - NULLABLE - Additional notes or comments',
-            ];
-
-            // ============================================
-            // SECTION 3: WRITE HEADERS (Row 1)
-            // ============================================
-            $col = 1;
-            foreach ($headers as $header) {
-                $cell = $sheet->getCellByColumnAndRow($col, 1);
-                $cell->setValue($header);
-
-                // Style header
-                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
-                $cell->getStyle()->getFill()
-                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('4472C4');
-                $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
-                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-                $col++;
-            }
-
-            // ============================================
-            // SECTION 4: WRITE VALIDATION RULES (Row 2)
-            // ============================================
-            $col = 1;
-            foreach ($validationRules as $rule) {
-                $cell = $sheet->getCellByColumnAndRow($col, 2);
-                $cell->setValue($rule);
-
-                // Style validation row
-                $cell->getStyle()->getFont()->setItalic(true)->setSize(9);
-                $cell->getStyle()->getFill()
-                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('E7E6E6');
-                $cell->getStyle()->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
-
-                $col++;
-            }
-
-            // Set row height for validation rules
-            $sheet->getRowDimension(2)->setRowHeight(60);
-
-            // ============================================
-            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)
-            // ============================================
-            $sampleData = [
-                ['EMP001', '1', '100', '', '2025-01-01', '', 'Full-time allocation to Grant Item 1'],
-                ['EMP002', '2', '60', '30000.00', '2025-01-15', '2025-12-31', 'Part-time 60% allocation'],
-                ['EMP002', '3', '40', '20000.00', '2025-01-15', '2025-12-31', 'Split funding - remaining 40%'],
-            ];
-
-            $row = 3;
-            foreach ($sampleData as $data) {
-                $col = 1;
-                foreach ($data as $value) {
-                    $sheet->getCellByColumnAndRow($col, $row)->setValue($value);
-                    $col++;
-                }
-                $row++;
-            }
-
-            // ============================================
-            // SECTION 6: SET COLUMN WIDTHS
-            // ============================================
-            $columnWidths = [
-                'A' => 15,  // staff_id
-                'B' => 18,  // grant_item_id
-                'C' => 12,  // fte
-                'D' => 18,  // allocated_amount
-                'E' => 15,  // start_date
-                'F' => 15,  // end_date
-                'G' => 35,  // notes
-            ];
-
-            foreach ($columnWidths as $column => $width) {
-                $sheet->getColumnDimension($column)->setWidth($width);
-            }
-
-            // ============================================
-            // SECTION 7: ADD INSTRUCTIONS SHEET
-            // ============================================
-            $instructionsSheet = $spreadsheet->createSheet();
-            $instructionsSheet->setTitle('Instructions');
-
-            $instructions = [
-                ['Employee Funding Allocation Import Template - Instructions'],
-                [''],
-                ['BEFORE YOU START:'],
-                ['1. Download the "Grant Items Reference" file to get valid Grant Item IDs'],
-                ['2. The Grant Items Reference contains all grants and their items with IDs'],
-                ['3. You will need the Grant Item ID (Column E) from that file'],
-                [''],
-                ['REQUIRED FIELDS (Cannot be empty):'],
-                ['- staff_id: Employee staff ID (must exist in system)'],
-                ['- grant_item_id: Grant item ID from Grant Items Reference file'],
-                ['- fte: FTE percentage (0-100, e.g., 50 for 50%, 100 for 100%)'],
-                ['- start_date: Allocation start date (YYYY-MM-DD format)'],
-                [''],
-                ['OPTIONAL FIELDS:'],
-                ['- allocated_amount: Leave empty for auto-calculation based on salary'],
-                ['- end_date: Leave empty for ongoing allocation'],
-                ['- notes: Any additional comments or information'],
-                [''],
-                ['HOW IT WORKS:'],
-                ['1. System uses staff_id to find the employee'],
-                ['2. System automatically finds the active employment for that employee'],
-                ['3. System creates funding allocation linking employee to grant item'],
-                ['4. If allocated_amount is empty, system calculates it based on FTE and salary'],
-                [''],
-                ['DATE FORMAT:'],
-                ['All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)'],
-                [''],
-                ['FTE (Full-Time Equivalent):'],
-                ['- Enter as percentage without % symbol'],
-                ['- Examples: 100 = full-time, 50 = half-time, 25 = quarter-time'],
-                ['- For split funding: Create multiple rows for the same employee'],
-                ['- Example: Employee 60% on Grant A + 40% on Grant B = 2 rows'],
-                [''],
-                ['GRANT ITEM ID:'],
-                ['- Download "Grant Items Reference" file to see all available grant items'],
-                ['- Each grant has multiple grant items (positions)'],
-                ['- Copy the Grant Item ID from the reference file'],
-                ['- One grant has many grant items - choose the correct item for the position'],
-                [''],
-                ['VALIDATION RULES:'],
-                ['- staff_id must exist in the system'],
-                ['- grant_item_id must be valid (check Grant Items Reference)'],
-                ['- FTE must be between 0 and 100'],
-                ['- start_date is required'],
-                ['- end_date is optional (leave empty for ongoing)'],
-                ['- Employee must have an active employment record'],
-                ['- Total FTE per employee should equal 100%'],
-                [''],
-                ['EXAMPLE SCENARIOS:'],
-                ['Single Funding (100%):'],
-                ['  EMP001 | 5 | 100 | | 2025-01-01 | | Full-time on one grant'],
-                [''],
-                ['Split Funding (60/40):'],
-                ['  EMP002 | 10 | 60 | | 2025-01-01 | | 60% on Grant Item 10'],
-                ['  EMP002 | 15 | 40 | | 2025-01-01 | | 40% on Grant Item 15'],
-                [''],
-                ['Split Funding (50/30/20):'],
-                ['  EMP003 | 20 | 50 | | 2025-01-01 | | Half-time on Grant Item 20'],
-                ['  EMP003 | 25 | 30 | | 2025-01-01 | | 30% on Grant Item 25'],
-                ['  EMP003 | 30 | 20 | | 2025-01-01 | | 20% on Grant Item 30'],
-                [''],
-                ['BEST PRACTICES:'],
-                ['- Always download the latest Grant Items Reference before importing'],
-                ['- Verify staff_id exists in the system'],
-                ['- Keep total FTE per employee = 100%'],
-                ['- Use consistent date formats (YYYY-MM-DD)'],
-                ['- Test with a small batch first (2-3 employees)'],
-                ['- Review the Grant Items Reference to understand grant structure'],
-                [''],
-                ['AFTER UPLOAD:'],
-                ['- You will receive a notification when import completes'],
-                ['- Check notification for success/error summary'],
-                ['- Review created/updated allocations in the system'],
-                ['- Verify that allocations are correctly linked to grant items'],
-            ];
-
-            $row = 1;
-            foreach ($instructions as $instruction) {
-                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
-                if ($row === 1) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
-                } elseif ($row === 3 || strpos($instruction[0], ':') !== false) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
-                }
-                $row++;
-            }
-
-            $instructionsSheet->getColumnDimension('A')->setWidth(100);
-
-            // Set active sheet back to main sheet
-            $spreadsheet->setActiveSheetIndex(0);
-
-            // ============================================
-            // SECTION 8: GENERATE AND DOWNLOAD FILE
-            // ============================================
-            $filename = 'employee_funding_allocation_import_template_'.date('Y-m-d_His').'.xlsx';
-            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-
-            $tempFile = tempnam(sys_get_temp_dir(), 'funding_allocation_template_');
-            $writer->save($tempFile);
-
-            $headers = [
+            return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'max-age=0',
-            ];
-
-            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
-
+            ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

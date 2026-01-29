@@ -444,7 +444,6 @@ class PayrollService
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
             'department' => $employment->department->name ?? 'N/A',
             'position' => $employment->position->title ?? 'N/A',
-            'employment_type' => $employment->employment_type,
             'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
             'funding_source' => $this->getFundingSourceName($allocation),
             'funding_type' => $allocation->allocation_type,

@@ -19,8 +19,14 @@ class EmployeeFundingAllocationResource extends JsonResource
             'employee_id' => $this->employee_id,
             'employment_id' => $this->employment_id,
             'grant_item_id' => $this->grant_item_id,
+            // Always include grant_id for frontend consumption (null if relationship not loaded)
+            // This ensures consistent data structure regardless of eager loading
+            'grant_id' => $this->relationLoaded('grantItem') && $this->grantItem !== null
+                ? $this->grantItem->grant_id
+                : null,
             'fte' => $this->fte * 100, // Convert decimal to percentage for UI
             'allocation_type' => 'grant',
+            'status' => $this->status, // Include status so frontend can filter if needed
             'allocated_amount' => $this->allocated_amount,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
@@ -43,7 +49,6 @@ class EmployeeFundingAllocationResource extends JsonResource
             'employment' => $this->whenLoaded('employment', function () {
                 return [
                     'id' => $this->employment->id,
-                    'employment_type' => $this->employment->employment_type,
                     'start_date' => $this->employment->start_date,
                     'end_probation_date' => $this->employment->end_probation_date,
                 ];

@@ -73,7 +73,6 @@ class EmploymentProbationAllocationTest extends TestCase
 
         $response = $this->postJson('/api/v1/employments', [
             'employee_id' => $employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',

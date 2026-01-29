@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Department;
 use App\Models\Employee;
-use App\Models\Employment;
 use App\Models\Position;
 use App\Models\SectionDepartment;
 use App\Models\Site;
@@ -12,7 +11,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Spatie\Permission\Models\Permission;
@@ -112,10 +110,10 @@ class EmploymentTemplateImportTest extends TestCase
         $response = $this->get('/api/v1/downloads/employment-template');
 
         $response->assertSuccessful();
-        
+
         // Verify we got an Excel file with correct content type
         expect($response->headers->get('content-type'))->toContain('spreadsheet');
-        
+
         // Verify it's a download response with filename
         expect($response->headers->get('content-disposition'))->toContain('employment_import_template');
     }
@@ -130,7 +128,6 @@ class EmploymentTemplateImportTest extends TestCase
         // Headers
         $headers = [
             'staff_id',
-            'employment_type',
             'start_date',
             'pass_probation_salary',
             'pass_probation_date',
@@ -157,7 +154,6 @@ class EmploymentTemplateImportTest extends TestCase
         // Data row (row 3)
         $data = [
             'EMP001', // staff_id
-            'Full-time', // employment_type
             '2025-01-15', // start_date
             '50000.00', // pass_probation_salary
             '2025-04-15', // pass_probation_date
@@ -264,7 +260,6 @@ class EmploymentTemplateImportTest extends TestCase
         // Headers
         $headers = [
             'staff_id',
-            'employment_type',
             'start_date',
             'pass_probation_salary',
             'pass_probation_date',
@@ -291,7 +286,6 @@ class EmploymentTemplateImportTest extends TestCase
         // Data row with only required fields
         $data = [
             'EMP001', // staff_id
-            'Full-time', // employment_type
             '2025-01-15', // start_date
             '50000.00', // pass_probation_salary
             '', // pass_probation_date (optional)

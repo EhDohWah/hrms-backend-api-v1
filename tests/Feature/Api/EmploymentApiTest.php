@@ -116,7 +116,6 @@ class EmploymentApiTest extends TestCase
                     '*' => [
                         'id',
                         'employee_id',
-                        'employment_type',
                         'start_date',
                         'department_id',
                         'position_id',
@@ -130,7 +129,6 @@ class EmploymentApiTest extends TestCase
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Monthly',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -160,7 +158,6 @@ class EmploymentApiTest extends TestCase
                 'data' => [
                     'id',
                     'employee_id',
-                    'employment_type',
                     'allocations' => [
                         '*' => [
                             'id',
@@ -190,7 +187,6 @@ class EmploymentApiTest extends TestCase
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Monthly',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -228,7 +224,6 @@ class EmploymentApiTest extends TestCase
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Monthly',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -279,7 +274,6 @@ class EmploymentApiTest extends TestCase
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'employment_type' => 'Full-time',
             'pay_method' => 'Monthly',
             'start_date' => '2025-01-01',
             'department_id' => $this->department->id,
@@ -315,7 +309,6 @@ class EmploymentApiTest extends TestCase
                 'data' => [
                     'id',
                     'employee_id',
-                    'employment_type',
                     'start_date',
                 ],
             ])
@@ -336,7 +329,6 @@ class EmploymentApiTest extends TestCase
         ]);
 
         $updateData = [
-            'employment_type' => 'Part-time',
             'pass_probation_salary' => 35000,
         ];
 
@@ -346,7 +338,6 @@ class EmploymentApiTest extends TestCase
 
         $this->assertDatabaseHas('employments', [
             'id' => $employment->id,
-            'employment_type' => 'Part-time',
             'pass_probation_salary' => 35000,
         ]);
     }
@@ -458,7 +449,6 @@ class EmploymentApiTest extends TestCase
 
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'employment_type' => 'Full-time',
             'start_date' => '2025-01-01',
             'pass_probation_salary' => 35000,
         ];

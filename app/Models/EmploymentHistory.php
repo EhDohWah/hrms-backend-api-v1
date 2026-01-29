@@ -7,12 +7,11 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'EmploymentHistory',
-    required: ['employment_id', 'employee_id', 'employment_type', 'start_date', 'pass_probation_salary'],
+    required: ['employment_id', 'employee_id', 'start_date', 'pass_probation_salary'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true),
         new OA\Property(property: 'employment_id', type: 'integer', format: 'int64'),
         new OA\Property(property: 'employee_id', type: 'integer', format: 'int64'),
-        new OA\Property(property: 'employment_type', type: 'string'),
         new OA\Property(property: 'start_date', type: 'string', format: 'date'),
         new OA\Property(property: 'pass_probation_date', type: 'string', format: 'date', nullable: true),
         new OA\Property(property: 'pay_method', type: 'string', nullable: true),
@@ -43,7 +42,6 @@ class EmploymentHistory extends Model
     protected $fillable = [
         'employment_id',
         'employee_id',
-        'employment_type',
         'start_date',
         'pass_probation_date',
         'pay_method',

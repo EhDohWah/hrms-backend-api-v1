@@ -16,7 +16,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true),
         new OA\Property(property: 'staff_id', type: 'string', maxLength: 50),
         new OA\Property(property: 'organization', type: 'string', default: 'SMRU', enum: ['SMRU', 'BHF']),
-        new OA\Property(property: 'user_id', type: 'integer', nullable: true),
         new OA\Property(property: 'initial_en', type: 'string', maxLength: 10, nullable: true),
         new OA\Property(property: 'initial_th', type: 'string', maxLength: 10, nullable: true),
         new OA\Property(property: 'first_name_en', type: 'string', maxLength: 255),
@@ -30,6 +29,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'religion', type: 'string', maxLength: 100, nullable: true),
         new OA\Property(property: 'identification_type', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'identification_number', type: 'string', maxLength: 50, nullable: true),
+        new OA\Property(property: 'identification_issue_date', type: 'string', format: 'date', nullable: true),
+        new OA\Property(property: 'identification_expiry_date', type: 'string', format: 'date', nullable: true),
         new OA\Property(property: 'social_security_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'tax_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'bank_name', type: 'string', maxLength: 100, nullable: true),
@@ -65,7 +66,6 @@ class Employee extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'user_id',
         'organization',
         'staff_id',
         'initial_en',
@@ -81,6 +81,8 @@ class Employee extends Model
         'religion',
         'identification_type',
         'identification_number',
+        'identification_issue_date',
+        'identification_expiry_date',
         'social_security_number',
         'tax_number',
         'bank_name',
@@ -114,16 +116,10 @@ class Employee extends Model
      */
     protected $casts = [
         'date_of_birth' => 'date',
+        'identification_issue_date' => 'date',
+        'identification_expiry_date' => 'date',
         'military_status' => 'boolean',
     ];
-
-    /**
-     * Get the user associated with the employee
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
 
     /**
      * Get the employment record associated with the employee
@@ -139,16 +135,6 @@ class Employee extends Model
     public function employments()
     {
         return $this->hasMany(Employment::class);
-    }
-
-    /**
-     * Check if employee has a user account
-     *
-     * @return bool
-     */
-    public function hasUserAccount()
-    {
-        return ! is_null($this->user_id);
     }
 
     /**

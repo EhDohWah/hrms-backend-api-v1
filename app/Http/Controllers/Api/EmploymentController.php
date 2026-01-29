@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\EmploymentTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmploymentRequest;
 use App\Http\Requests\UpdateProbationStatusRequest;
@@ -44,7 +45,7 @@ class EmploymentController extends Controller
     #[OA\Get(
         path: '/employments',
         summary: 'Get employment records with advanced filtering and pagination',
-        description: 'Returns a paginated list of employment records with filtering by organization, employment type, and work location',
+        description: 'Returns a paginated list of employment records with filtering by organization and work location',
         operationId: 'getEmployments',
         security: [['bearerAuth' => []]],
         tags: ['Employments']
@@ -52,7 +53,6 @@ class EmploymentController extends Controller
     #[OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'filter_organization', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
-    #[OA\Parameter(name: 'filter_employment_type', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Employments retrieved successfully')]
     #[OA\Response(response: 422, description: 'Validation error')]
@@ -65,7 +65,6 @@ class EmploymentController extends Controller
                 'page' => 'integer|min:1',
                 'per_page' => 'integer|min:1|max:100',
                 'filter_organization' => 'string|nullable',
-                'filter_employment_type' => 'string|nullable',
                 'filter_site' => 'string|nullable',
                 'filter_department' => 'string|nullable',
                 'sort_by' => 'string|nullable|in:staff_id,employee_name,site,start_date',
@@ -87,7 +86,6 @@ class EmploymentController extends Controller
                 'department_id',
                 'section_department_id',
                 'site_id',
-                'employment_type',
                 'pay_method',
                 'start_date',
                 'pass_probation_date',
@@ -124,12 +122,6 @@ class EmploymentController extends Controller
                 $query->whereHas('employee', function ($q) use ($subsidiaries) {
                     $q->whereIn('organization', $subsidiaries);
                 });
-            }
-
-            // Apply employment type filter
-            if (! empty($validated['filter_employment_type'])) {
-                $employmentTypes = array_map('trim', explode(',', $validated['filter_employment_type']));
-                $query->whereIn('employment_type', $employmentTypes);
             }
 
             // Apply site filter (by site name or ID)
@@ -186,7 +178,6 @@ class EmploymentController extends Controller
             // Use the new caching system instead of manual cache management
             $filters = array_filter([
                 'filter_organization' => $validated['filter_organization'] ?? null,
-                'filter_employment_type' => $validated['filter_employment_type'] ?? null,
                 'filter_site' => $validated['filter_site'] ?? null,
                 'filter_department' => $validated['filter_department'] ?? null,
                 'sort_by' => $sortBy,
@@ -201,9 +192,6 @@ class EmploymentController extends Controller
             $appliedFilters = [];
             if (! empty($validated['filter_organization'])) {
                 $appliedFilters['organization'] = explode(',', $validated['filter_organization']);
-            }
-            if (! empty($validated['filter_employment_type'])) {
-                $appliedFilters['employment_type'] = explode(',', $validated['filter_employment_type']);
             }
             if (! empty($validated['filter_site'])) {
                 $appliedFilters['site'] = explode(',', $validated['filter_site']);
@@ -585,7 +573,7 @@ class EmploymentController extends Controller
 
             $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
                 'employee:id,staff_id,first_name_en,last_name_en',
-                'employment:id,employment_type,start_date,department_id,position_id',
+                'employment:id,start_date,department_id,position_id',
                 'employment.department:id,name',
                 'employment.position:id,title',
                 'grantItem.grant:id,name,code',
@@ -719,280 +707,15 @@ class EmploymentController extends Controller
     public function downloadEmploymentTemplate()
     {
         try {
-            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
-            $sheet = $spreadsheet->getActiveSheet();
-            $sheet->setTitle('Employment Import');
+            $export = new EmploymentTemplateExport;
+            $tempFile = $export->generate();
+            $filename = $export->getFilename();
 
-            // ============================================
-            // SECTION 1: DEFINE HEADERS
-            // ============================================
-            $headers = [
-                'staff_id',
-                'employment_type',
-                'start_date',
-                'pass_probation_salary',
-                'pass_probation_date',
-                'probation_salary',
-                'end_probation_date',
-                'pay_method',
-                'site_code',
-                'department',
-                'section_department_id',
-                'position',
-                'health_welfare',
-                'pvd',
-                'saving_fund',
-                'status',
-            ];
-
-            // ============================================
-            // SECTION 2: DEFINE VALIDATION RULES
-            // ============================================
-            $validationRules = [
-                'String - NOT NULL - Employee staff ID (must exist in system)',
-                'String - NOT NULL - Values: Full-time, Part-time, Contract, Temporary',
-                'Date (YYYY-MM-DD) - NOT NULL - Employment start date',
-                'Decimal(10,2) - NOT NULL - Regular salary after probation',
-                'Date (YYYY-MM-DD) - NULLABLE - Probation end date (default: 3 months after start)',
-                'Decimal(10,2) - NULLABLE - Salary during probation period',
-                'Date (YYYY-MM-DD) - NULLABLE - End date for contract/temporary employment',
-                'String - NULLABLE - Values: Transferred to bank, Cash cheque',
-                'String - NULLABLE - Site code (must exist in sites table, e.g., MRM, BHF)',
-                'String - NULLABLE - Department name (must exist in departments table)',
-                'Integer - NULLABLE - Section department ID (must exist in section_departments table)',
-                'String - NULLABLE - Position title (must exist in positions table)',
-                'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0) - Percentages managed globally',
-                'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0) - Percentages managed globally',
-                'Boolean (1/0) - NULLABLE - Saving fund enabled (default: 0) - Percentages managed globally',
-                'Boolean (1/0) - NULLABLE - Employment status: 1=Active, 0=Inactive (default: 1)',
-            ];
-
-            // ============================================
-            // SECTION 3: WRITE HEADERS (Row 1)
-            // ============================================
-            $col = 1;
-            foreach ($headers as $header) {
-                $cell = $sheet->getCellByColumnAndRow($col, 1);
-                $cell->setValue($header);
-
-                // Style header
-                $cell->getStyle()->getFont()->setBold(true)->setSize(11);
-                $cell->getStyle()->getFill()
-                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('4472C4');
-                $cell->getStyle()->getFont()->getColor()->setRGB('FFFFFF');
-                $cell->getStyle()->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-                $col++;
-            }
-
-            // ============================================
-            // SECTION 4: WRITE VALIDATION RULES (Row 2)
-            // ============================================
-            $col = 1;
-            foreach ($validationRules as $rule) {
-                $cell = $sheet->getCellByColumnAndRow($col, 2);
-                $cell->setValue($rule);
-
-                // Style validation row
-                $cell->getStyle()->getFont()->setItalic(true)->setSize(9);
-                $cell->getStyle()->getFill()
-                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('E7E6E6');
-                $cell->getStyle()->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
-
-                $col++;
-            }
-
-            // Set row height for validation rules
-            $sheet->getRowDimension(2)->setRowHeight(60);
-
-            // ============================================
-            // SECTION 5: ADD SAMPLE DATA (Rows 3-5)
-            // ============================================
-            $sampleData = [
-                [
-                    'EMP001', 'Full-time', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
-                    'Monthly', 'MRM', 'Human Resources', '', 'HR Manager', '1', '1', '0', '1',
-                ],
-                [
-                    'EMP002', 'Part-time', '2025-02-01', '30000.00', '2025-05-01', '', '',
-                    'Hourly', 'BHF', 'Finance', 'Accounting', 'Accountant', '0', '1', '1', '1',
-                ],
-                [
-                    'EMP003', 'Contract', '2025-03-01', '60000.00', '', '', '2025-12-31',
-                    'Bank Transfer', 'SMRU', 'IT', '', 'Software Developer', '1', '0', '0', '1',
-                ],
-            ];
-
-            $row = 3;
-            foreach ($sampleData as $data) {
-                $col = 1;
-                foreach ($data as $value) {
-                    $sheet->getCellByColumnAndRow($col, $row)->setValue($value);
-                    $col++;
-                }
-                $row++;
-            }
-
-            // ============================================
-            // SECTION 6: ADD DATA VALIDATION
-            // ============================================
-
-            // Employment Type dropdown (Column B, rows 6+)
-            $employmentTypeValidation = $sheet->getCell('B6')->getDataValidation();
-            $employmentTypeValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-            $employmentTypeValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
-            $employmentTypeValidation->setAllowBlank(false);
-            $employmentTypeValidation->setShowInputMessage(true);
-            $employmentTypeValidation->setShowErrorMessage(true);
-            $employmentTypeValidation->setFormula1('"Full-time,Part-time,Contract,Temporary"');
-            $employmentTypeValidation->setPromptTitle('Employment Type');
-            $employmentTypeValidation->setPrompt('Select employment type');
-            $employmentTypeValidation->setErrorTitle('Invalid Employment Type');
-            $employmentTypeValidation->setError('Please select a valid employment type');
-
-            // Apply to rows 6-1000
-            for ($i = 6; $i <= 1000; $i++) {
-                $sheet->getCell("B{$i}")->setDataValidation(clone $employmentTypeValidation);
-            }
-
-            // Pay Method dropdown (Column H, rows 6+)
-            $payMethodValidation = $sheet->getCell('H6')->getDataValidation();
-            $payMethodValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-            $payMethodValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-            $payMethodValidation->setAllowBlank(true);
-            $payMethodValidation->setShowInputMessage(true);
-            $payMethodValidation->setFormula1('"Monthly,Weekly,Daily,Hourly,Bank Transfer,Cash,Cheque"');
-            $payMethodValidation->setPromptTitle('Pay Method');
-            $payMethodValidation->setPrompt('Select pay method');
-
-            for ($i = 6; $i <= 1000; $i++) {
-                $sheet->getCell("H{$i}")->setDataValidation(clone $payMethodValidation);
-            }
-
-            // Boolean fields (1/0) validation
-            $booleanColumns = ['M', 'N', 'O', 'P']; // health_welfare, pvd, saving_fund, status
-            foreach ($booleanColumns as $column) {
-                $booleanValidation = $sheet->getCell("{$column}6")->getDataValidation();
-                $booleanValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-                $booleanValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-                $booleanValidation->setAllowBlank(true);
-                $booleanValidation->setFormula1('"1,0"');
-                $booleanValidation->setPromptTitle('Boolean Value');
-                $booleanValidation->setPrompt('Enter 1 for Yes/True or 0 for No/False');
-
-                for ($i = 6; $i <= 1000; $i++) {
-                    $sheet->getCell("{$column}{$i}")->setDataValidation(clone $booleanValidation);
-                }
-            }
-
-            // ============================================
-            // SECTION 7: SET COLUMN WIDTHS
-            // ============================================
-            $columnWidths = [
-                'A' => 15,  // staff_id
-                'B' => 15,  // employment_type
-                'C' => 15,  // start_date
-                'D' => 20,  // pass_probation_salary
-                'E' => 20,  // pass_probation_date
-                'F' => 18,  // probation_salary
-                'G' => 18,  // end_probation_date
-                'H' => 20,  // pay_method
-                'I' => 15,  // site_code
-                'J' => 20,  // department
-                'K' => 22,  // section_department_id
-                'L' => 20,  // position
-                'M' => 18,  // health_welfare
-                'N' => 12,  // pvd
-                'O' => 15,  // saving_fund
-                'P' => 12,  // status
-            ];
-
-            foreach ($columnWidths as $column => $width) {
-                $sheet->getColumnDimension($column)->setWidth($width);
-            }
-
-            // ============================================
-            // SECTION 8: ADD INSTRUCTIONS SHEET
-            // ============================================
-            $instructionsSheet = $spreadsheet->createSheet();
-            $instructionsSheet->setTitle('Instructions');
-
-            $instructions = [
-                ['Employment Import Template - Instructions'],
-                [''],
-                ['IMPORTANT NOTES:'],
-                ['1. Required Fields (Cannot be empty):'],
-                ['   - staff_id: Employee staff ID (must exist in system)'],
-                ['   - employment_type: Full-time, Part-time, Contract, or Temporary'],
-                ['   - start_date: Employment start date (YYYY-MM-DD format)'],
-                ['   - pass_probation_salary: Regular salary after probation'],
-                [''],
-                ['2. Date Format: All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)'],
-                [''],
-                ['3. Boolean Fields: Use 1 for Yes/True, 0 for No/False'],
-                ['   - health_welfare, pvd, saving_fund, status'],
-                ['   - Note: Benefit percentages are managed globally in system settings'],
-                [''],
-                ['4. Foreign Keys (Must exist in database):'],
-                ['   - staff_id: Must match an existing employee'],
-                ['   - site_code: Must match an existing site code (e.g., MRM, BHF, SMRU)'],
-                ['   - department: Must match an existing department name'],
-                ['   - section_department_id: Must be a valid section department ID'],
-                ['   - position: Must match an existing position title'],
-                [''],
-                ['5. Salary Fields: Enter as decimal numbers (e.g., 50000.00)'],
-                [''],
-                ['6. Probation Date: If not provided, defaults to 3 months after start_date'],
-                [''],
-                ['7. Benefit Percentages:'],
-                ['   - Percentages are managed globally in system settings'],
-                ['   - Only enable/disable benefits using 1 (enabled) or 0 (disabled)'],
-                ['   - Contact administrator to view or modify benefit percentages'],
-                [''],
-                ['8. Status: 1 = Active, 0 = Inactive (default is 1)'],
-                [''],
-                ['9. This import creates/updates EMPLOYMENT records only'],
-                ['   Funding allocations must be added separately via the UI'],
-                [''],
-                ['10. Existing employments (matched by staff_id) will be UPDATED'],
-                ['    New staff_ids will create NEW employment records'],
-            ];
-
-            $row = 1;
-            foreach ($instructions as $instruction) {
-                $instructionsSheet->setCellValue("A{$row}", $instruction[0]);
-                if ($row === 1) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true)->setSize(14);
-                } elseif ($row === 3 || strpos($instruction[0], ':') !== false) {
-                    $instructionsSheet->getStyle("A{$row}")->getFont()->setBold(true);
-                }
-                $row++;
-            }
-
-            $instructionsSheet->getColumnDimension('A')->setWidth(80);
-
-            // Set active sheet back to main sheet
-            $spreadsheet->setActiveSheetIndex(0);
-
-            // ============================================
-            // SECTION 9: GENERATE AND DOWNLOAD FILE
-            // ============================================
-            $filename = 'employment_import_template_'.date('Y-m-d_His').'.xlsx';
-            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-
-            $tempFile = tempnam(sys_get_temp_dir(), 'employment_template_');
-            $writer->save($tempFile);
-
-            $headers = [
+            return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                 'Cache-Control' => 'max-age=0',
-            ];
-
-            return response()->download($tempFile, $filename, $headers)->deleteFileAfterSend(true);
-
+            ])->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1409,6 +1132,8 @@ class EmploymentController extends Controller
             ])->findOrFail($id);
 
             // Get funding allocations with related data
+            // Only return active allocations to match batchUpdate behavior
+            // Historical/terminated allocations are excluded to prevent edit conflicts
             $fundingAllocations = EmployeeFundingAllocation::with([
                 'grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
                 'grantItem.grant:id,name,code',
@@ -1417,6 +1142,7 @@ class EmploymentController extends Controller
                 'employment.position:id,title,department_id',
             ])
                 ->where('employment_id', $id)
+                ->where('status', 'active')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -1509,7 +1235,6 @@ class EmploymentController extends Controller
                 'department_id' => 'nullable|exists:departments,id',
                 'section_department_id' => 'nullable|exists:section_departments,id',
                 'site_id' => 'nullable|exists:sites,id',
-                'employment_type' => 'nullable|string',
                 'pay_method' => 'nullable|string',
                 'start_date' => 'nullable|date',
                 'pass_probation_date' => 'nullable|date',
@@ -1781,7 +1506,7 @@ class EmploymentController extends Controller
             if ($allocationsProvided) {
                 $fundingAllocationsWithRelations = EmployeeFundingAllocation::with([
                     'employee:id,staff_id,first_name_en,last_name_en',
-                    'employment:id,employment_type,start_date',
+                    'employment:id,start_date',
                     'grantItem.grant:id,name,code',
                 ])->whereIn('id', collect($createdFundingAllocations)->pluck('id'))->get();
 

@@ -157,7 +157,6 @@ try {
 
     $employment1 = Employment::create([
         'employee_id' => $employee1->id,
-        'employment_type' => 'Full-time',
         'pay_method' => 'Transferred to bank',
         'start_date' => Carbon::today()->subMonths(3),
         'pass_probation_date' => Carbon::today(), // TODAY!
@@ -216,7 +215,6 @@ try {
 
     $employment2 = Employment::create([
         'employee_id' => $employee2->id,
-        'employment_type' => 'Full-time',
         'pay_method' => 'Transferred to bank',
         'start_date' => Carbon::today()->subMonths(2),
         'pass_probation_date' => Carbon::today()->addMonth(), // 1 month from now
@@ -274,7 +272,6 @@ try {
 
     $employment3 = Employment::create([
         'employee_id' => $employee3->id,
-        'employment_type' => 'Full-time',
         'pay_method' => 'Transferred to bank',
         'start_date' => Carbon::today()->subMonths(2),
         'pass_probation_date' => Carbon::today()->addWeek(), // 1 week from now

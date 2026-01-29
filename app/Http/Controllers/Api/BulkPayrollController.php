@@ -43,8 +43,7 @@ class BulkPayrollController extends Controller
      *             @OA\Property(property="filters", type="object",
      *                 @OA\Property(property="subsidiaries", type="array", @OA\Items(type="string")),
      *                 @OA\Property(property="departments", type="array", @OA\Items(type="integer")),
-     *                 @OA\Property(property="grants", type="array", @OA\Items(type="integer")),
-     *                 @OA\Property(property="employment_types", type="array", @OA\Items(type="string"))
+     *                 @OA\Property(property="grants", type="array", @OA\Items(type="integer"))
      *             )
      *         )
      *     ),
@@ -80,7 +79,6 @@ class BulkPayrollController extends Controller
             'filters.subsidiaries' => 'nullable|array',
             'filters.departments' => 'nullable|array',
             'filters.grants' => 'nullable|array',
-            'filters.employment_types' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -145,7 +143,7 @@ class BulkPayrollController extends Controller
                 }
 
                 // Check for missing probation pass date
-                if (! $employment->probation_pass_date && $employment->employment_type !== 'contract') {
+                if (! $employment->probation_pass_date) {
                     $warnings[] = "Employee {$employee->full_name_en} is missing probation pass date";
                 }
 
@@ -157,7 +155,6 @@ class BulkPayrollController extends Controller
                     'organization' => $employee->organization,
                     'department' => $employment->department->name ?? 'N/A',
                     'position' => $employment->position->title ?? 'N/A',
-                    'employment_type' => $employment->employment_type,
                     'allocations' => [],
                     'total_gross' => 0,
                     'total_net' => 0,
@@ -510,11 +507,6 @@ class BulkPayrollController extends Controller
         // Filter by departments
         if (! empty($filters['departments'])) {
             $query->whereIn('department_id', $filters['departments']);
-        }
-
-        // Filter by employment types
-        if (! empty($filters['employment_types'])) {
-            $query->whereIn('employment_type', $filters['employment_types']);
         }
 
         // Filter by grants (through funding allocations)

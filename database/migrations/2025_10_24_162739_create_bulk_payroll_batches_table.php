@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('bulk_payroll_batches', function (Blueprint $table) {
             $table->id();
             $table->string('pay_period'); // Format: YYYY-MM
-            $table->json('filters')->nullable(); // Stores organization, department, grant, employment_type filters
+            $table->json('filters')->nullable(); // Stores organization, department, grant filters
             $table->integer('total_employees')->default(0);
             $table->integer('total_payrolls')->default(0); // Will be > employees due to multiple allocations
             $table->integer('processed_payrolls')->default(0);

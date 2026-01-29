@@ -30,9 +30,6 @@ return new class extends Migration
             $table->index('department_id', 'idx_employments_department_id');
             $table->index('position_id', 'idx_employments_position_id');
 
-            // Index for employment type filtering
-            $table->index('employment_type', 'idx_employments_employment_type');
-
             // Composite index for active employment queries
             $table->index(['start_date', 'end_probation_date'], 'idx_employments_active_period');
         });
@@ -90,7 +87,6 @@ return new class extends Migration
                 'idx_employments_site_id',
                 'idx_employments_department_id',
                 'idx_employments_position_id',
-                'idx_employments_employment_type',
                 'idx_employments_active_period',
             ];
 
