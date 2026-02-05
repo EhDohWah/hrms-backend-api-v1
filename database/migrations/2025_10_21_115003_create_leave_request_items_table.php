@@ -60,7 +60,7 @@ return new class extends Migration
     {
         // Add leave_type_id column back to leave_requests
         Schema::table('leave_requests', function (Blueprint $table) {
-            $table->foreignId('leave_type_id')->nullable()->after('employee_id')->constrained('leave_types');
+            $table->foreignId('leave_type_id')->nullable()->constrained('leave_types');
         });
 
         // Migrate data back from leave_request_items to leave_requests

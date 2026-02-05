@@ -43,7 +43,6 @@ return new class extends Migration
             // Add the column back after id column
             $table->foreignId('user_id')
                 ->nullable()
-                ->after('id')
                 ->constrained('users')
                 ->onDelete('set null');
         });

@@ -16,13 +16,13 @@ return new class extends Migration
     {
         Schema::table('notifications', function (Blueprint $table) {
             // Category for UI grouping (e.g., 'employee', 'grants', 'payroll', 'leaves')
-            $table->string('category', 50)->nullable()->after('data')->index();
+            $table->string('category', 50)->nullable()->index();
 
             // Module identifier matching ModuleSeeder names (e.g., 'employees', 'grants_list')
-            $table->string('module', 100)->nullable()->after('category')->index();
+            $table->string('module', 100)->nullable()->index();
 
             // Optional expiration for auto-cleanup
-            $table->timestamp('expires_at')->nullable()->after('module');
+            $table->timestamp('expires_at')->nullable();
 
             // Composite index for common query patterns
             $table->index(['notifiable_type', 'notifiable_id', 'category']);

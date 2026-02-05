@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -21,7 +22,7 @@ return new class extends Migration
             $table->integer('successful_payrolls')->default(0);
             $table->integer('failed_payrolls')->default(0);
             $table->integer('advances_created')->default(0);
-            $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
+            $table->string('status', 20)->default('pending');
             $table->json('errors')->nullable(); // Array of error objects
             $table->json('summary')->nullable(); // Final summary with totals, breakdown
             $table->string('current_employee')->nullable(); // Currently processing employee name
@@ -36,6 +37,9 @@ return new class extends Migration
             $table->index(['status', 'created_by']);
             $table->index('pay_period');
         });
+
+        // SQL Server doesn't support ENUM - use CHECK constraint instead
+        DB::statement("ALTER TABLE bulk_payroll_batches ADD CONSTRAINT chk_bulk_payroll_status CHECK (status IN ('pending', 'processing', 'completed', 'failed'))");
     }
 
     /**

@@ -32,7 +32,7 @@ class NotificationController extends Controller
         if ($category = $request->input('category')) {
             $query->where(function ($q) use ($category) {
                 // Check if category is in the data JSON field
-                $q->whereRaw("JSON_EXTRACT(data, '$.category') = ?", [$category])
+                $q->whereRaw("JSON_VALUE(data, '$.category') = ?", [$category])
                     ->orWhere('category', $category);
             });
         }
@@ -50,7 +50,7 @@ class NotificationController extends Controller
         // Search in message
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->whereRaw("JSON_EXTRACT(data, '$.message') LIKE ?", ["%{$search}%"]);
+                $q->whereRaw("JSON_VALUE(data, '$.message') LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -222,7 +222,7 @@ class NotificationController extends Controller
 
         // Count by category
         $byCategory = $user->notifications()
-            ->selectRaw("JSON_EXTRACT(data, '$.category') as category, COUNT(*) as count")
+            ->selectRaw("JSON_VALUE(data, '$.category') as category, COUNT(*) as count")
             ->groupBy('category')
             ->pluck('count', 'category')
             ->toArray();

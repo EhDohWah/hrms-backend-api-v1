@@ -46,32 +46,21 @@ class UniversalRestoreService
 
         // Find the deleted record using model class and original ID
 
-        // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit -----------> This is for MS SQL Server <----------
-        // $deletedRecord = DeletedModel::where('model', $modelClass)
-        //     ->where(function ($query) use ($originalId) {
-        //         // For SQL Server, use JSON_VALUE instead of JSON_EXTRACT
-        //         $query->whereRaw("JSON_VALUE([values], '$.id') = ?", [$originalId])
-        //             // Try as string if it's numeric
-        //             ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(string) $originalId])
-        //             // Try as integer if it's a string number
-        //             ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(int) $originalId]);
-        //     })
-        //     ->first();
-
-        // if (! $deletedRecord) {
-        //     throw new Exception(
-        //         "No deleted record found for {$modelClass} with ID {$originalId}. Deleted record: ".json_encode($deletedRecord).'. Type: '.gettype($originalId)
-        //     );
-        // }
-
-        // Try multiple approaches to handle different data types - SQL Server specific | Comment before git commit ------> This is for MySQL <-----
+        // Try multiple approaches to handle different data types
+        // SQL Server uses JSON_VALUE() for JSON field queries
         $deletedRecord = DeletedModel::where('model', $modelClass)
-            ->whereJsonContains('values->id', $originalId)
+            ->where(function ($query) use ($originalId) {
+                $query->whereRaw("JSON_VALUE([values], '$.id') = ?", [$originalId])
+                    // Try as string if it's numeric
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(string) $originalId])
+                    // Try as integer if it's a string number
+                    ->orWhereRaw("JSON_VALUE([values], '$.id') = ?", [(int) $originalId]);
+            })
             ->first();
 
-        if (!$deletedRecord) {
+        if (! $deletedRecord) {
             throw new Exception(
-                "No deleted record found for {$modelClass} with ID {$originalId}. Deleted record: " . json_encode($deletedRecord) . ". Type: " . gettype($originalId)
+                "No deleted record found for {$modelClass} with ID {$originalId}. Deleted record: ".json_encode($deletedRecord).'. Type: '.gettype($originalId)
             );
         }
 
