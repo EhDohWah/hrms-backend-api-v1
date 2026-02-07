@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\SafeDeleteBlockedException;
 use App\Exports\EmployeesExport;
 use App\Exports\EmployeeTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BatchSafeDeleteRequest;
+use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeBankRequest;
@@ -30,6 +33,7 @@ use App\Models\Site;
 use App\Models\TravelRequest;
 use App\Notifications\EmployeeActionNotification;
 use App\Services\NotificationService;
+use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -148,46 +152,26 @@ class EmployeeController extends Controller
     )]
     #[OA\Response(response: 200, description: 'Employees deleted successfully')]
     #[OA\Response(response: 500, description: 'Server error')]
-    public function destroyBatch(Request $request)
+    public function destroyBatch(BatchSafeDeleteRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'required|integer|exists:employees,id',
-        ]);
-        $ids = $validated['ids'];
-
         try {
-            DB::beginTransaction();
-
-            // Delete related records first to maintain referential integrity
-            // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
-            EmployeeFundingAllocation::whereIn('employee_id', $ids)->delete();
-            EmployeeBeneficiary::whereIn('employee_id', $ids)->delete();
-            EmployeeChild::whereIn('employee_id', $ids)->delete();
-            EmployeeEducation::whereIn('employee_id', $ids)->delete();
-            EmployeeLanguage::whereIn('employee_id', $ids)->delete();
-            EmployeeTraining::whereIn('employee_id', $ids)->delete();
-            EmploymentHistory::whereIn('employee_id', $ids)->delete();
-            LeaveBalance::whereIn('employee_id', $ids)->delete();
-            LeaveRequest::whereIn('employee_id', $ids)->delete();
-            TravelRequest::whereIn('employee_id', $ids)->delete();
-            Employment::whereIn('employee_id', $ids)->delete();
-
-            // Delete the employees
-            $count = Employee::whereIn('id', $ids)->delete();
-
-            DB::commit();
+            $service = app(SafeDeleteService::class);
+            $results = $service->bulkDelete(Employee::class, $request->validated()['ids'], $request->input('reason'));
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
+            $successCount = count($results['succeeded']);
+            $failureCount = count($results['failed']);
+
             return response()->json([
-                'success' => true,
-                'message' => $count.' employee(s) deleted successfully',
-                'count' => $count,
-            ]);
+                'success' => $failureCount === 0,
+                'message' => "{$successCount} employee(s) moved to recycle bin"
+                    .($failureCount > 0 ? ", {$failureCount} failed" : ''),
+                'succeeded' => $results['succeeded'],
+                'failed' => $results['failed'],
+            ], $failureCount === 0 ? 200 : 207);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Failed to delete employees: '.$e->getMessage());
 
             return response()->json([
@@ -814,26 +798,11 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function destroy($id)
+    public function destroy($id, SafeDeleteRequest $request)
     {
         try {
             $employee = Employee::findOrFail($id);
-
-            DB::beginTransaction();
-
-            // Delete related records first to maintain referential integrity
-            // Note: Some tables have cascadeOnDelete, but we explicitly delete for better control
-            EmployeeFundingAllocation::where('employee_id', $id)->delete();
-            EmployeeBeneficiary::where('employee_id', $id)->delete();
-            EmployeeChild::where('employee_id', $id)->delete();
-            EmployeeEducation::where('employee_id', $id)->delete();
-            EmployeeLanguage::where('employee_id', $id)->delete();
-            EmployeeTraining::where('employee_id', $id)->delete();
-            EmploymentHistory::where('employee_id', $id)->delete();
-            LeaveBalance::where('employee_id', $id)->delete();
-            LeaveRequest::where('employee_id', $id)->delete();
-            TravelRequest::where('employee_id', $id)->delete();
-            Employment::where('employee_id', $id)->delete();
+            $service = app(SafeDeleteService::class);
 
             // Store employee data before deletion for notification
             $employeeData = (object) [
@@ -843,10 +812,7 @@ class EmployeeController extends Controller
                 'last_name_en' => $employee->last_name_en,
             ];
 
-            // Delete the employee
-            $employee->delete();
-
-            DB::commit();
+            $manifest = $service->delete($employee, $request->input('reason'));
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
@@ -863,16 +829,23 @@ class EmployeeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Employee deleted successfully',
+                'message' => 'Employee moved to recycle bin',
+                'deletion_key' => $manifest->deletion_key,
+                'deleted_records_count' => $manifest->snapshot_count,
             ], 200);
 
+        } catch (SafeDeleteBlockedException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete employee',
+                'blockers' => $e->blockers,
+            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee not found',
             ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Failed to delete employee: '.$e->getMessage());
 
             return response()->json([

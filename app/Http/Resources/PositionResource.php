@@ -7,14 +7,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @OA\Schema(
- *     schema="Position",
- *     title="Position",
- *     description="Position resource for organizational hierarchy",
+ *     schema="PositionResource",
+ *     title="Position Resource",
+ *     description="Position API response resource for organizational hierarchy",
  *
  *     @OA\Property(property="id", type="integer", format="int64", description="Position ID"),
  *     @OA\Property(property="title", type="string", description="Position title"),
  *     @OA\Property(property="department_id", type="integer", description="Department ID"),
- *     @OA\Property(property="department", ref="#/components/schemas/Department", description="Department information"),
+ *     @OA\Property(property="department", ref="#/components/schemas/DepartmentResource", description="Department information"),
  *     @OA\Property(property="manager_name", type="string", nullable=true, description="Name of the manager this position reports to"),
  *     @OA\Property(property="level", type="integer", description="Hierarchy level (1=top, 2=reports to level 1, etc.)"),
  *     @OA\Property(property="is_manager", type="boolean", description="Whether this is a manager position"),

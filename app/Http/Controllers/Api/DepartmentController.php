@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\SafeDeleteBlockedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexDepartmentRequest;
 use App\Http\Requests\OptionsDepartmentRequest;
+use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Requests\StoreDepartmentRequest;
 use App\Http\Requests\UpdateDepartmentRequest;
 use App\Http\Resources\DepartmentDetailResource;
 use App\Http\Resources\DepartmentResource;
 use App\Http\Resources\PositionResource;
 use App\Models\Department;
+use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 #[OA\Tag(name: 'Departments', description: 'API Endpoints for Department management')]
@@ -256,33 +260,41 @@ class DepartmentController extends Controller
     #[OA\Response(response: 200, description: 'Department deleted successfully')]
     #[OA\Response(response: 404, description: 'Department not found')]
     #[OA\Response(response: 422, description: 'Cannot delete department with active positions')]
-    public function destroy($id)
+    public function destroy($id, SafeDeleteRequest $request)
     {
-        $department = Department::find($id);
+        try {
+            $department = Department::findOrFail($id);
+            $service = app(SafeDeleteService::class);
 
-        if (! $department) {
+            $manifest = $service->delete($department, $request->input('reason'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Department moved to recycle bin',
+                'deletion_key' => $manifest->deletion_key,
+                'deleted_records_count' => $manifest->snapshot_count,
+            ]);
+
+        } catch (SafeDeleteBlockedException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete department',
+                'blockers' => $e->blockers,
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Department not found',
             ], 404);
-        }
+        } catch (\Exception $e) {
+            Log::error('Failed to delete department: '.$e->getMessage());
 
-        // Check if department has active positions
-        $activePositionsCount = $department->activePositions()->count();
-
-        if ($activePositionsCount > 0) {
             return response()->json([
                 'success' => false,
-                'message' => "Cannot delete department with {$activePositionsCount} active positions. Please reassign or deactivate positions first.",
-            ], 422);
+                'message' => 'Failed to delete department',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $department->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Department deleted successfully',
-        ]);
     }
 
     /**

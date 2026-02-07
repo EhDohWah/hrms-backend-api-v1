@@ -7,9 +7,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @OA\Schema(
- *     schema="Department",
- *     title="Department",
- *     description="Department resource",
+ *     schema="DepartmentResource",
+ *     title="Department Resource",
+ *     description="Department API response resource",
  *
  *     @OA\Property(property="id", type="integer", format="int64", description="Department ID"),
  *     @OA\Property(property="name", type="string", description="Department name"),

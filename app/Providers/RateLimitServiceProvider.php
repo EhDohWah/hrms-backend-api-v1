@@ -30,9 +30,64 @@ class RateLimitServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
-        // Default API rate limiter
+        // Global API rate limiter - applied to all API routes
+        // Configurable via environment variables for flexibility
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            $maxPerMinute = (int) config('app.rate_limit_per_minute', 120);
+            $maxPerHour = (int) config('app.rate_limit_per_hour', 3600);
+
+            $identifier = $request->user()?->id ?: $request->ip();
+
+            return [
+                Limit::perMinute($maxPerMinute)
+                    ->by($identifier)
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Too many requests. Please slow down.',
+                            'error' => 'Rate limit exceeded',
+                            'retry_after' => $headers['Retry-After'] ?? 60,
+                        ], 429);
+                    }),
+                Limit::perHour($maxPerHour)
+                    ->by($identifier)
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Hourly request limit exceeded. Please try again later.',
+                            'error' => 'Rate limit exceeded',
+                            'retry_after' => $headers['Retry-After'] ?? 3600,
+                        ], 429);
+                    }),
+            ];
+        });
+
+        // Stricter rate limiter for authentication endpoints
+        RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Too many authentication attempts. Please wait before trying again.',
+                        'error' => 'Rate limit exceeded',
+                        'retry_after' => 60,
+                    ], 429);
+                });
+        });
+
+        // Stricter rate limiter for sensitive operations (password reset, etc.)
+        RateLimiter::for('sensitive', function (Request $request) {
+            return Limit::perHour(10)
+                ->by($request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Too many sensitive operation attempts.',
+                        'error' => 'Rate limit exceeded',
+                        'retry_after' => 3600,
+                    ], 429);
+                });
         });
 
         // Grants pagination rate limiter
@@ -63,13 +118,18 @@ class RateLimitServiceProvider extends ServiceProvider
             ];
         });
 
-        // Additional rate limiters for other endpoints
-        RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
-        });
-
+        // Upload rate limiter
         RateLimiter::for('upload', function (Request $request) {
-            return Limit::perMinute(10)->by(optional($request->user())->id ?: $request->ip());
+            return Limit::perMinute(10)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Too many upload attempts. Please wait.',
+                        'error' => 'Rate limit exceeded',
+                        'retry_after' => 60,
+                    ], 429);
+                });
         });
     }
 }

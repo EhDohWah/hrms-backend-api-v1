@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\SafeDeleteBlockedException;
 use App\Exports\GrantTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BatchSafeDeleteRequest;
+use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Resources\GrantResource;
 use App\Models\Grant;
 use App\Models\GrantItem;
@@ -12,9 +15,11 @@ use App\Models\User;
 use App\Notifications\GrantActionNotification;
 use App\Notifications\ImportedCompletedNotification;
 use App\Services\NotificationService;
+use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
@@ -932,35 +937,24 @@ class GrantController extends Controller
      *     )
      * )
      */
-    public function destroy($id)
+    public function destroy($id, SafeDeleteRequest $request)
     {
         try {
-            // Find the grant or return 404
             $grant = Grant::findOrFail($id);
+            $service = app(SafeDeleteService::class);
 
             // Store grant data before deletion for notification
-            $grantData = $grant->toArray();
+            $grantForNotification = (object) [
+                'id' => $grant->id,
+                'name' => $grant->name ?? 'Unknown Grant',
+                'code' => $grant->code ?? 'N/A',
+            ];
 
-            // Use a transaction to ensure all related items are deleted
-            DB::beginTransaction();
-
-            // Delete all related grant items first
-            $grant->grantItems()->delete();
-
-            // Delete the grant
-            $grant->delete();
-
-            DB::commit();
+            $manifest = $service->delete($grant, $request->input('reason'));
 
             // Send notification using NotificationService
             $performedBy = auth()->user();
             if ($performedBy) {
-                $grantForNotification = (object) [
-                    'id' => $grantData['id'] ?? null,
-                    'name' => $grantData['name'] ?? 'Unknown Grant',
-                    'code' => $grantData['code'] ?? 'N/A',
-                ];
-
                 app(NotificationService::class)->notifyByModule(
                     'grants_list',
                     new GrantActionNotification('deleted', $grantForNotification, $performedBy, 'grants_list'),
@@ -970,16 +964,24 @@ class GrantController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Grant deleted successfully',
+                'message' => 'Grant moved to recycle bin',
+                'deletion_key' => $manifest->deletion_key,
+                'deleted_records_count' => $manifest->snapshot_count,
             ], 200);
 
+        } catch (SafeDeleteBlockedException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete grant',
+                'blockers' => $e->blockers,
+            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Grant not found',
             ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
+            Log::error('Failed to delete grant: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -1344,40 +1346,27 @@ class GrantController extends Controller
      *     )
      * )
      */
-    public function destroyBatch(Request $request)
+    public function destroyBatch(BatchSafeDeleteRequest $request)
     {
-        $validated = $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'required|integer|exists:grants,id',
-        ]);
-        $ids = $validated['ids'];
-
         try {
-            DB::beginTransaction();
+            $service = app(SafeDeleteService::class);
+            $results = $service->bulkDelete(Grant::class, $request->validated()['ids'], $request->input('reason'));
 
-            // Store grant data before deletion for notifications
-            $grants = Grant::whereIn('id', $ids)->get();
-
-            // Delete related grant items first (they have foreign key to grants)
-            GrantItem::whereIn('grant_id', $ids)->delete();
-
-            // Delete the grants
-            $count = Grant::whereIn('id', $ids)->delete();
-
-            DB::commit();
+            $successCount = count($results['succeeded']);
+            $failureCount = count($results['failed']);
 
             // Send notification using NotificationService about the bulk delete
             $performedBy = auth()->user();
-            if ($performedBy && $grants->isNotEmpty()) {
-                $grantNames = $grants->pluck('name')->take(3)->implode(', ');
-                $message = $count > 3
-                    ? "{$grantNames} and ".($count - 3).' more'
-                    : $grantNames;
+            if ($performedBy && $successCount > 0) {
+                $names = collect($results['succeeded'])->pluck('display_name')->take(3)->implode(', ');
+                $message = $successCount > 3
+                    ? "{$names} and ".($successCount - 3).' more'
+                    : $names;
 
                 $grantForNotification = (object) [
                     'id' => null,
                     'name' => "Bulk delete: {$message}",
-                    'code' => "{$count} grants",
+                    'code' => "{$successCount} grants",
                 ];
 
                 app(NotificationService::class)->notifyByModule(
@@ -1388,12 +1377,14 @@ class GrantController extends Controller
             }
 
             return response()->json([
-                'success' => true,
-                'message' => $count.' grant(s) deleted successfully',
-                'count' => $count,
-            ]);
+                'success' => $failureCount === 0,
+                'message' => "{$successCount} grant(s) moved to recycle bin"
+                    .($failureCount > 0 ? ", {$failureCount} failed" : ''),
+                'succeeded' => $results['succeeded'],
+                'failed' => $results['failed'],
+            ], $failureCount === 0 ? 200 : 207);
         } catch (\Exception $e) {
-            DB::rollBack();
+            Log::error('Failed to delete grants: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,

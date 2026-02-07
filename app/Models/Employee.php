@@ -231,6 +231,14 @@ class Employee extends Model
         return $this->hasMany(HolidayCompensationRecord::class);
     }
 
+    /**
+     * Get the resignations for the employee.
+     */
+    public function resignations()
+    {
+        return $this->hasMany(Resignation::class);
+    }
+
     // Query optimization scopes
     public function scopeForPagination($query)
     {

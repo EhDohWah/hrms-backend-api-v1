@@ -63,11 +63,17 @@ return [
 
             /*
              * Middleware allows to prevent unexpected access to API documentation
+             *
+             * Security: swagger.auth middleware protects documentation in production.
+             * Configure via environment variables:
+             * - L5_SWAGGER_ENABLE_IN_PRODUCTION=false (default: disable in production)
+             * - L5_SWAGGER_REQUIRE_AUTH=true (require authentication)
+             * - L5_SWAGGER_REQUIRE_ADMIN=true (require admin role if auth required)
              */
             'middleware' => [
-                'api' => [],
+                'api' => ['swagger.auth'],
                 'asset' => [],
-                'docs' => [],
+                'docs' => ['swagger.auth'],
                 'oauth2_callback' => [],
             ],
 

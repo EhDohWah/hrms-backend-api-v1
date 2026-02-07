@@ -183,13 +183,34 @@ class AuthController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return response()->json([
+        // Build response with user data
+        // Note: access_token is still included in body for backward compatibility
+        // but primary auth will be via HttpOnly cookie
+        $response = response()->json([
             'success' => true,
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in' => $expiresIn,
             'user' => $user,
         ]);
+
+        // Set HttpOnly cookie with the token for enhanced security
+        // This prevents XSS attacks from stealing the token via JavaScript
+        $secure = app()->environment('production');
+        $sameSite = $secure ? 'strict' : 'lax';
+        $expiresInMinutes = (int) ceil($expiresIn / 60);
+
+        return $response->cookie(
+            'auth_token',           // name
+            $token,                 // value
+            $expiresInMinutes,      // minutes
+            '/',                    // path
+            null,                   // domain (null = current domain)
+            $secure,                // secure (HTTPS only in production)
+            true,                   // httpOnly
+            false,                  // raw
+            $sameSite               // sameSite
+        );
     }
 
     /**
@@ -233,10 +254,11 @@ class AuthController extends Controller
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
+        // Clear the auth_token cookie
         return response()->json([
             'success' => true,
             'message' => 'Logged out successfully',
-        ]);
+        ])->withoutCookie('auth_token');
     }
 
     /**
@@ -281,12 +303,29 @@ class AuthController extends Controller
         $expiresIn = 21600; // 6 hours in seconds
         $token = $request->user()->createToken($request->user()->name.'-api-token')->plainTextToken;
 
-        return response()->json([
+        $response = response()->json([
             'success' => true,
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in' => $expiresIn,
         ]);
+
+        // Update HttpOnly cookie with new token
+        $secure = app()->environment('production');
+        $sameSite = $secure ? 'strict' : 'lax';
+        $expiresInMinutes = (int) ceil($expiresIn / 60);
+
+        return $response->cookie(
+            'auth_token',
+            $token,
+            $expiresInMinutes,
+            '/',
+            null,
+            $secure,
+            true,
+            false,
+            $sameSite
+        );
     }
 
     // Rate limiting helper methods...

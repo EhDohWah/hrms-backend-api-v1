@@ -65,6 +65,50 @@ trait LogsActivity
     }
 
     /**
+     * Sensitive fields that should never be logged for security reasons.
+     * Override $activityLogExcludedFields in your model to customize.
+     */
+    protected static array $defaultExcludedFields = [
+        // Authentication & Security
+        'password',
+        'password_hash',
+        'remember_token',
+        'api_token',
+        'access_token',
+        'refresh_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+
+        // Personal Identification (PII)
+        'ssn',
+        'social_security_number',
+        'national_id',
+        'passport_number',
+        'bank_account',
+        'bank_account_number',
+        'credit_card',
+
+        // Timestamps handled separately
+        'created_at',
+        'updated_at',
+        'updated_by',
+        'deleted_at',
+    ];
+
+    /**
+     * Get the list of fields to exclude from activity logs.
+     * Models can override this by defining $activityLogExcludedFields property.
+     */
+    protected function getExcludedFields(): array
+    {
+        $modelExcluded = property_exists($this, 'activityLogExcludedFields')
+            ? $this->activityLogExcludedFields
+            : [];
+
+        return array_merge(self::$defaultExcludedFields, $modelExcluded);
+    }
+
+    /**
      * Get the changes made to the model for logging
      */
     protected function getActivityChanges(): ?array
@@ -72,9 +116,9 @@ trait LogsActivity
         $changes = $this->getChanges();
         $original = $this->getOriginal();
 
-        // Remove timestamp fields
-        $ignoreFields = ['created_at', 'updated_at', 'updated_by'];
-        $changes = array_diff_key($changes, array_flip($ignoreFields));
+        // Remove excluded and sensitive fields
+        $excludedFields = $this->getExcludedFields();
+        $changes = array_diff_key($changes, array_flip($excludedFields));
 
         if (empty($changes)) {
             return null;

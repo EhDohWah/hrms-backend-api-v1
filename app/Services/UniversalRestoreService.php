@@ -142,7 +142,7 @@ class UniversalRestoreService
     /**
      * Extract primary identifying information for display
      */
-    private function extractPrimaryInfo(string $modelClass, array $data): string
+    public function extractPrimaryInfo(string $modelClass, array $data): string
     {
         // Define display fields for each model
         $displayFields = [
@@ -150,6 +150,11 @@ class UniversalRestoreService
             'App\Models\User' => ['name', 'email'],
             'App\Models\BlogPost' => ['title'],
             'App\Models\Department' => ['name'],
+            'App\Models\Employee' => ['first_name_en', 'last_name_en', 'staff_id'],
+            'App\Models\Grant' => ['name', 'code'],
+            'App\Models\Position' => ['title'],
+            'App\Models\GrantItem' => ['grant_position', 'budgetline_code'],
+            'App\Models\JobOffer' => ['candidate_name', 'position_name'],
         ];
 
         if (! isset($displayFields[$modelClass])) {

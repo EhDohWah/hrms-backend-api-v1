@@ -68,6 +68,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS
+    |--------------------------------------------------------------------------
+    |
+    | When set to true, all generated URLs will use the HTTPS scheme.
+    | This is useful when your application is behind a load balancer
+    | or reverse proxy that terminates SSL connections.
+    |
+    */
+
+    'force_https' => env('FORCE_HTTPS', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | These values control the global rate limiting for API endpoints.
+    | Adjust based on your expected traffic patterns and server capacity.
+    |
+    */
+
+    'rate_limit_per_minute' => env('API_RATE_LIMIT_PER_MINUTE', 120),
+    'rate_limit_per_hour' => env('API_RATE_LIMIT_PER_HOUR', 3600),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

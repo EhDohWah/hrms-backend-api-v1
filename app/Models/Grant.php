@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,7 @@ use OpenApi\Attributes as OA;
 )]
 class Grant extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'code', 'name', 'organization', 'description', 'end_date', 'created_by', 'updated_by',
