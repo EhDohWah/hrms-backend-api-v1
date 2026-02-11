@@ -56,7 +56,10 @@ return new class extends Migration
             // Timestamps, for auditability
             $table->timestamps();
 
-            // Optionally: add unique or composite keys, or soft deletes, depending on business requirements
+            // Indexes for FK columns (SQL Server does NOT auto-create these)
+            $table->index('employment_id', 'idx_payrolls_employment_id');
+            $table->index('employee_funding_allocation_id', 'idx_payrolls_efa_id');
+            $table->index('pay_period_date', 'idx_payrolls_pay_period');
         });
     }
 

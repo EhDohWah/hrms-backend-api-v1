@@ -56,6 +56,10 @@ return new class extends Migration
             $table->index(['employment_id', 'change_type']);
             $table->index(['change_type', 'approval_status']);
             $table->index(['created_at', 'change_source']);
+
+            // Indexes for FK columns not covered by composites above
+            $table->index('employee_funding_allocation_id', 'idx_acl_efa_id');
+            $table->index('approved_by', 'idx_acl_approved_by');
         });
     }
 

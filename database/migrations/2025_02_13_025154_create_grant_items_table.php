@@ -29,6 +29,9 @@ return new class extends Migration
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
 
+            // Index for FK column (SQL Server does NOT auto-create these)
+            $table->index('grant_id', 'idx_grant_items_grant_id');
+
             // Note: No unique constraint on budgetline_code + position
             // General Fund items have NULL budget line codes, so duplicates would occur
             // Uniqueness is enforced at application level for items WITH budget line codes
@@ -37,34 +40,6 @@ return new class extends Migration
         // insert the default grant items
         // $this->insertDefaultGrantItems();
     }
-
-    // // create a function to insert the default grant items
-    // public function insertDefaultGrantItems()
-    // {
-    //     // insert the default grant items
-    //     DB::table('grant_items')->insert([
-    //         [
-    //             'grant_id' => 1,
-    //             'grant_position' => "SMRU Staff",
-    //             'grant_salary' => null,
-    //             'grant_benefit' => null,
-    //             'grant_level_of_effort' => null,
-    //             'grant_position_number' => null,
-    //             'created_by' => 'system',
-    //             'updated_by' => 'system',
-    //         ],
-    //         [
-    //             'grant_id' => 2,
-    //             'grant_position' => "BHF Staff",
-    //             'grant_salary' => null,
-    //             'grant_benefit' => null,
-    //             'grant_level_of_effort' => null,
-    //             'grant_position_number' => null,
-    //             'created_by' => 'system',
-    //             'updated_by' => 'system',
-    //         ]
-    //     ]);
-    // }
 
     /**
      * Reverse the migrations.

@@ -17,7 +17,7 @@ return new class extends Migration
             // Core fields as per schema
             $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
             $table->unsignedBigInteger('department_id')->nullable();
-            $table->foreign('department_id')->references('id')->on('departments')->onDelete('no action');
+            $table->foreign('department_id')->references('id')->on('departments')->onDelete('set null');
             $table->unsignedBigInteger('position_id')->nullable();
             $table->foreign('position_id')->references('id')->on('positions')->onDelete('no action');
             $table->date('resignation_date');
@@ -40,6 +40,10 @@ return new class extends Migration
             $table->index(['employee_id', 'acknowledgement_status']);
             $table->index(['resignation_date', 'last_working_date']);
             $table->index(['department_id', 'acknowledgement_status']);
+
+            // Indexes for FK columns not covered by composites above
+            $table->index('position_id', 'idx_resignations_position');
+            $table->index('acknowledged_by', 'idx_resignations_ack_by');
         });
     }
 

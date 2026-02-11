@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\SafeDeleteBlockedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexDepartmentRequest;
 use App\Http\Requests\OptionsDepartmentRequest;
-use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Requests\StoreDepartmentRequest;
 use App\Http\Requests\UpdateDepartmentRequest;
 use App\Http\Resources\DepartmentDetailResource;
 use App\Http\Resources\DepartmentResource;
 use App\Http\Resources\PositionResource;
 use App\Models\Department;
-use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -260,27 +257,28 @@ class DepartmentController extends Controller
     #[OA\Response(response: 200, description: 'Department deleted successfully')]
     #[OA\Response(response: 404, description: 'Department not found')]
     #[OA\Response(response: 422, description: 'Cannot delete department with active positions')]
-    public function destroy($id, SafeDeleteRequest $request)
+    public function destroy($id)
     {
         try {
             $department = Department::findOrFail($id);
-            $service = app(SafeDeleteService::class);
 
-            $manifest = $service->delete($department, $request->input('reason'));
+            // Check for deletion blockers
+            $blockers = $department->getDeletionBlockers();
+            if (! empty($blockers)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete department',
+                    'blockers' => $blockers,
+                ], 422);
+            }
+
+            $department->delete();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Department moved to recycle bin',
-                'deletion_key' => $manifest->deletion_key,
-                'deleted_records_count' => $manifest->snapshot_count,
             ]);
 
-        } catch (SafeDeleteBlockedException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete department',
-                'blockers' => $e->blockers,
-            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,

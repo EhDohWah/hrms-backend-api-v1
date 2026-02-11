@@ -27,11 +27,11 @@ return new class extends Migration
             $table->json('summary')->nullable(); // Final summary with totals, breakdown
             $table->string('current_employee')->nullable(); // Currently processing employee name
             $table->string('current_allocation')->nullable(); // Currently processing allocation label
-            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
 
-            // Foreign key
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
+            // Foreign key — SET NULL to preserve financial records when user is deleted
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
 
             // Indexes
             $table->index(['status', 'created_by']);

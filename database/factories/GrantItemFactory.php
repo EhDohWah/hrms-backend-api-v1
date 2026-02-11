@@ -49,7 +49,7 @@ class GrantItemFactory extends Factory
             'grant_benefit' => $benefit,
             'grant_level_of_effort' => $levelOfEffort,
             'grant_position_number' => $positionNumber,
-            'budgetline_code' => $this->faker->numerify('BL-###'),
+            'budgetline_code' => $this->faker->unique()->numerify('BL-####'),
             'created_by' => $this->faker->randomElement(['admin', 'system', 'grant_manager']),
             'updated_by' => $this->faker->randomElement(['admin', 'system', 'grant_manager']),
         ];

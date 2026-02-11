@@ -120,6 +120,10 @@ return new class extends Migration
             $table->index(['employment_id', 'effective_date'], 'efah_employment_date_idx');
             $table->index(['grant_item_id', 'effective_date'], 'efah_grant_date_idx');
             $table->index('change_type', 'efah_change_type_idx');
+
+            // Indexes for FK columns not covered by composites above
+            $table->index('employee_funding_allocation_id', 'idx_efah_efa_id');
+            $table->index('changed_by', 'idx_efah_changed_by');
         });
     }
 

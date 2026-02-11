@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\SafeDeleteBlockedException;
 use App\Exports\EmployeesExport;
 use App\Exports\EmployeeTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BatchSafeDeleteRequest;
-use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeBankRequest;
@@ -18,27 +16,16 @@ use App\Http\Requests\UploadEmployeeImportRequest;
 use App\Http\Resources\EmployeeCollection;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
-use App\Models\EmployeeBeneficiary;
-use App\Models\EmployeeChild;
-use App\Models\EmployeeEducation;
-use App\Models\EmployeeFundingAllocation;
-use App\Models\EmployeeLanguage;
-use App\Models\EmployeeTraining;
 use App\Models\Employment;
-use App\Models\EmploymentHistory;
 use App\Models\GrantItem;
-use App\Models\LeaveBalance;
-use App\Models\LeaveRequest;
 use App\Models\Site;
-use App\Models\TravelRequest;
 use App\Notifications\EmployeeActionNotification;
 use App\Services\NotificationService;
-use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use OpenApi\Attributes as OA;
 
@@ -155,21 +142,43 @@ class EmployeeController extends Controller
     public function destroyBatch(BatchSafeDeleteRequest $request)
     {
         try {
-            $service = app(SafeDeleteService::class);
-            $results = $service->bulkDelete(Employee::class, $request->validated()['ids'], $request->input('reason'));
+            $succeeded = [];
+            $failed = [];
+
+            foreach ($request->validated()['ids'] as $id) {
+                $employee = Employee::find($id);
+                if (! $employee) {
+                    $failed[] = ['id' => $id, 'blockers' => ['Employee not found']];
+
+                    continue;
+                }
+
+                $blockers = $employee->getDeletionBlockers();
+                if (! empty($blockers)) {
+                    $failed[] = ['id' => $id, 'blockers' => $blockers];
+
+                    continue;
+                }
+
+                $employee->delete();
+                $succeeded[] = [
+                    'id' => $id,
+                    'display_name' => $employee->getActivityLogName(),
+                ];
+            }
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
 
-            $successCount = count($results['succeeded']);
-            $failureCount = count($results['failed']);
+            $successCount = count($succeeded);
+            $failureCount = count($failed);
 
             return response()->json([
                 'success' => $failureCount === 0,
                 'message' => "{$successCount} employee(s) moved to recycle bin"
                     .($failureCount > 0 ? ", {$failureCount} failed" : ''),
-                'succeeded' => $results['succeeded'],
-                'failed' => $results['failed'],
+                'succeeded' => $succeeded,
+                'failed' => $failed,
             ], $failureCount === 0 ? 200 : 207);
         } catch (\Exception $e) {
             Log::error('Failed to delete employees: '.$e->getMessage());
@@ -585,7 +594,6 @@ class EmployeeController extends Controller
             'employeeFundingAllocations',
             'employeeFundingAllocations.grantItem',
             'employeeFundingAllocations.grantItem.grant',
-            'employeeFundingAllocations.grant',
             'employeeFundingAllocations.employment',
             'employeeFundingAllocations.employment.department',
             'employeeFundingAllocations.employment.position',
@@ -696,7 +704,10 @@ class EmployeeController extends Controller
             $employee = Employee::findOrFail($id);
 
             $validated = $request->validate([
-                'staff_id' => "required|string|min:3|max:50|regex:/^[A-Za-z0-9-]+$/|unique:employees,staff_id,{$id}",
+                'staff_id' => [
+                    'required', 'string', 'min:3', 'max:50', 'regex:/^[A-Za-z0-9-]+$/',
+                    Rule::unique('employees', 'staff_id')->ignore($id)->whereNull('deleted_at'),
+                ],
                 'organization' => 'required|string|in:SMRU,BHF',
                 'initial_en' => 'nullable|string|max:10',
                 'initial_th' => 'nullable|string|max:10',
@@ -798,11 +809,20 @@ class EmployeeController extends Controller
             new OA\Response(response: 404, description: 'Employee not found'),
         ]
     )]
-    public function destroy($id, SafeDeleteRequest $request)
+    public function destroy($id)
     {
         try {
             $employee = Employee::findOrFail($id);
-            $service = app(SafeDeleteService::class);
+
+            // Check for deletion blockers
+            $blockers = $employee->getDeletionBlockers();
+            if (! empty($blockers)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete employee',
+                    'blockers' => $blockers,
+                ], 422);
+            }
 
             // Store employee data before deletion for notification
             $employeeData = (object) [
@@ -812,7 +832,7 @@ class EmployeeController extends Controller
                 'last_name_en' => $employee->last_name_en,
             ];
 
-            $manifest = $service->delete($employee, $request->input('reason'));
+            $employee->delete();
 
             // Clear cache to ensure fresh statistics
             $this->clearEmployeeStatisticsCache();
@@ -830,16 +850,8 @@ class EmployeeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Employee moved to recycle bin',
-                'deletion_key' => $manifest->deletion_key,
-                'deleted_records_count' => $manifest->snapshot_count,
             ], 200);
 
-        } catch (SafeDeleteBlockedException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete employee',
-                'blockers' => $e->blockers,
-            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,

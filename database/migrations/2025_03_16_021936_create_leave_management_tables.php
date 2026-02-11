@@ -31,7 +31,7 @@ return new class extends Migration
         // Leave Requests - Enhanced with approval fields
         Schema::create('leave_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('leave_type_id')->constrained('leave_types');
             $table->date('start_date');
             $table->date('end_date');
@@ -61,12 +61,12 @@ return new class extends Migration
         // Leave Balances - Enhanced
         Schema::create('leave_balances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('leave_type_id')->constrained('leave_types');
             $table->decimal('total_days', 18, 2)->default(0);
             $table->decimal('used_days', 18, 2)->default(0);
             $table->decimal('remaining_days', 18, 2)->default(0);
-            $table->year('year')->default(date('Y'));
+            $table->year('year')->default(DB::raw('YEAR(GETDATE())'));
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->string('created_by')->nullable();
@@ -75,12 +75,10 @@ return new class extends Migration
             // Unique constraint to prevent duplicate records
             $table->unique(['employee_id', 'leave_type_id', 'year']);
 
-            // Index for performance
+            // Indexes for performance
             $table->index(['employee_id', 'year']);
+            $table->index('leave_type_id', 'idx_leave_bal_type');
         });
-
-        // Insert leave types data immediately after table creation
-        $this->seedLeaveTypes();
 
         // Migrate existing approval data to new structure
         $this->migrateApprovalData();
@@ -97,116 +95,6 @@ return new class extends Migration
         Schema::dropIfExists('leave_balances');
         Schema::dropIfExists('leave_requests');
         Schema::dropIfExists('leave_types');
-    }
-
-    /**
-     * Seed leave types based on the form requirements
-     */
-    private function seedLeaveTypes()
-    {
-        $leaveTypes = [
-            [
-                'name' => 'Annual Leave',
-                'default_duration' => 26.00,
-                'description' => 'Annual vacation / ลาพักร้อนประจำปี (Remain vacation/จำนวนวันลาพักร้อนคงเหลือ ............days/วัน)',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Unpaid Leave',
-                'default_duration' => 0.00,
-                'description' => 'Unpaid Leave / ลาป่วยไม่จ่ายเงิน (state disease/ระบุโรค) 30 days',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Traditional day-off',
-                'default_duration' => 13.00,
-                'description' => 'Traditional day-off /วันพุฒหาประเพณี (Specify Traditional day off/ระบุวันหยุด) need specific (Remaining traditional day-off/จำนวนวันพุฒหาประเพณี คงเหลือ ............days/วัน)',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Sick',
-                'default_duration' => 30.00,
-                'description' => 'Sick/ลาป่วย (state disease/ระบุโรค) 30 days',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Maternity leave',
-                'default_duration' => 98.00,
-                'description' => 'Maternity leave / Paternity leave วันหยุดมาตรดา 98 days',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Compassionate',
-                'default_duration' => 5.00,
-                'description' => 'Compassionate (spouse, children, mother, father, mother/father in law, siblings and grandparents died or severely sick/ญาติ ความ บุตร บิดา มารดา พ่อ/แม่สามี แม่/แม่ยาย พี่น้องชาย หรือสาว ซึ่งถึงแก่อาจกรรม)',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Career development training',
-                'default_duration' => 14.00,
-                'description' => 'Career development training (Career development training request form is optional/แบบฟอร์มขออนุญาตเข้าร่วมการอบรมพัฒนาโดยภายนอก เป็นทางเลือก) 14 days',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Personal leave',
-                'default_duration' => 3.00,
-                'description' => 'Personal leave/ลากิจธุระส่วนตัวเป็น (please specify/โปรดระบุ) 3 day (Remaining Personal leave/จำนวนวันลากิจธุระส่วนตัวคงเหลือ ............days/วัน)',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Military leave',
-                'default_duration' => 60.00,
-                'description' => 'Military leave / ลาเพื่อรับราชการทหาร 60 days',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Sterilization leave',
-                'default_duration' => null,
-                'description' => 'Sterilization leave/ ลาเพื่อทำหมัน (attach medical certificate/แนบใบรับรองแพทย์มาด้วย) Depends on doctor\'s consideration',
-                'requires_attachment' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-            [
-                'name' => 'Other',
-                'default_duration' => null,
-                'description' => 'Other/ อื่น ๆ ',
-                'requires_attachment' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-                'created_by' => 'system',
-            ],
-        ];
-
-        DB::table('leave_types')->insert($leaveTypes);
     }
 
     /**

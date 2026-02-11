@@ -278,14 +278,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                         continue;
                     }
 
-                    // Get allocation_type from row or default to 'grant'
-                    $allocationType = strtolower(trim($row['allocation_type'] ?? 'grant'));
-                    if (! in_array($allocationType, ['grant', 'org_funded'])) {
-                        $errors[] = "Row {$index}: Invalid allocation_type '{$allocationType}' (must be: grant, org_funded)";
-
-                        continue;
-                    }
-
                     // Get allocated_amount from row or calculate it
                     $allocatedAmount = null;
                     if (! empty($row['allocated_amount'])) {
@@ -329,7 +321,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                         'employment_id' => $employmentId,
                         'grant_item_id' => $grantItemId,
                         'fte' => $fteDecimal,
-                        'allocation_type' => $allocationType,
                         'allocated_amount' => $allocatedAmount,
                         'salary_type' => $salaryType,
                         'status' => $status,
@@ -341,12 +332,11 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                         'updated_at' => now(),
                     ];
 
-                    // Check if allocation already exists (match on employee, employment, grant_item, and allocation_type)
+                    // Check if allocation already exists (match on employee, employment, grant_item)
                     $existingAllocation = EmployeeFundingAllocation::where([
                         'employee_id' => $employeeId,
                         'employment_id' => $employmentId,
                         'grant_item_id' => $grantItemId,
-                        'allocation_type' => $allocationType,
                     ])
                         ->first();
 
@@ -417,7 +407,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
             '*.employment_id' => 'nullable|integer',
             '*.grant_item_id' => 'required|integer',
             '*.fte' => 'required|numeric|min:0|max:100',
-            '*.allocation_type' => 'nullable|string|in:grant,org_funded',
             '*.allocated_amount' => 'nullable|numeric|min:0',
             '*.salary_type' => 'nullable|string|in:probation_salary,pass_probation_salary',
             '*.status' => 'nullable|string|in:active,historical,terminated',

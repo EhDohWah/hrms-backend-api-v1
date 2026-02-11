@@ -136,16 +136,12 @@ class JobOfferFactory extends Factory
             'Solutions Architect',
         ];
 
-        $seniorSalaries = [
-            '$90,000 - $120,000 per annum',
-            '$100,000 - $130,000 per annum',
-            '$110,000 - $150,000 per annum',
-            '$120,000 - $160,000 per annum',
-        ];
+        $probationSalary = $this->faker->numberBetween(80000, 120000);
 
         return $this->state(fn (array $attributes) => [
             'position_name' => $this->faker->randomElement($seniorPositions),
-            'salary_detail' => $this->faker->randomElement($seniorSalaries),
+            'probation_salary' => $probationSalary,
+            'post_probation_salary' => $probationSalary + $this->faker->numberBetween(5000, 20000),
         ]);
     }
 }

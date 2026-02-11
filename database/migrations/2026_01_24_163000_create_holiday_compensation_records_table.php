@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::create('holiday_compensation_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('holiday_id')->constrained('holidays');
             $table->date('worked_date')->comment('The holiday date the employee worked');
             $table->decimal('compensation_days', 3, 1)->default(1.0)->comment('Days earned for working');

@@ -8,7 +8,10 @@ use Illuminate\Database\Seeder;
 class BenefitSettingSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed health welfare benefit settings.
+     *
+     * SSF, PVD, and Saving Fund settings are managed in TaxSettingSeeder
+     * (single source of truth). BenefitSetting only holds health welfare tiers.
      */
     public function run(): void
     {
@@ -17,7 +20,7 @@ class BenefitSettingSeeder extends Seeder
                 'setting_key' => 'health_welfare_percentage',
                 'setting_value' => 5.00,
                 'setting_type' => 'percentage',
-                'description' => 'Health and Welfare contribution percentage',
+                'description' => 'Health and Welfare contribution percentage (display only)',
                 'effective_date' => '2025-01-01',
                 'is_active' => true,
                 'applies_to' => null,
@@ -25,43 +28,54 @@ class BenefitSettingSeeder extends Seeder
                 'updated_by' => 'system',
             ],
             [
-                'setting_key' => 'pvd_percentage',
-                'setting_value' => 7.5,
-                'setting_type' => 'percentage',
-                'description' => 'Provident Fund contribution percentage',
-                'effective_date' => '2025-01-01',
-                'is_active' => true,
-                'applies_to' => null,
-                'created_by' => 'system',
-                'updated_by' => 'system',
-            ],
-            [
-                'setting_key' => 'saving_fund_percentage',
-                'setting_value' => 7.5,
-                'setting_type' => 'percentage',
-                'description' => 'Saving Fund contribution percentage',
-                'effective_date' => '2025-01-01',
-                'is_active' => true,
-                'applies_to' => null,
-                'created_by' => 'system',
-                'updated_by' => 'system',
-            ],
-            [
-                'setting_key' => 'social_security_percentage',
-                'setting_value' => 5.00,
-                'setting_type' => 'percentage',
-                'description' => 'Social Security contribution percentage (both employee and employer)',
-                'effective_date' => '2025-01-01',
-                'is_active' => true,
-                'applies_to' => null,
-                'created_by' => 'system',
-                'updated_by' => 'system',
-            ],
-            [
-                'setting_key' => 'social_security_max_amount',
-                'setting_value' => 750.00,
+                'setting_key' => 'health_welfare_high_threshold',
+                'setting_value' => 15000.00,
                 'setting_type' => 'numeric',
-                'description' => 'Maximum Social Security contribution amount in THB',
+                'description' => 'Salary threshold for high tier health welfare contribution (Baht)',
+                'effective_date' => '2025-01-01',
+                'is_active' => true,
+                'applies_to' => null,
+                'created_by' => 'system',
+                'updated_by' => 'system',
+            ],
+            [
+                'setting_key' => 'health_welfare_high_amount',
+                'setting_value' => 150.00,
+                'setting_type' => 'numeric',
+                'description' => 'Health welfare contribution for high tier (salary > high threshold)',
+                'effective_date' => '2025-01-01',
+                'is_active' => true,
+                'applies_to' => null,
+                'created_by' => 'system',
+                'updated_by' => 'system',
+            ],
+            [
+                'setting_key' => 'health_welfare_medium_threshold',
+                'setting_value' => 5000.00,
+                'setting_type' => 'numeric',
+                'description' => 'Salary threshold for medium tier health welfare contribution (Baht)',
+                'effective_date' => '2025-01-01',
+                'is_active' => true,
+                'applies_to' => null,
+                'created_by' => 'system',
+                'updated_by' => 'system',
+            ],
+            [
+                'setting_key' => 'health_welfare_medium_amount',
+                'setting_value' => 100.00,
+                'setting_type' => 'numeric',
+                'description' => 'Health welfare contribution for medium tier (salary > medium threshold)',
+                'effective_date' => '2025-01-01',
+                'is_active' => true,
+                'applies_to' => null,
+                'created_by' => 'system',
+                'updated_by' => 'system',
+            ],
+            [
+                'setting_key' => 'health_welfare_low_amount',
+                'setting_value' => 60.00,
+                'setting_type' => 'numeric',
+                'description' => 'Health welfare contribution for low tier (salary <= medium threshold)',
                 'effective_date' => '2025-01-01',
                 'is_active' => true,
                 'applies_to' => null,

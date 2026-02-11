@@ -7,7 +7,6 @@ use App\Http\Requests\StoreInterOrganizationAdvanceRequest;
 use App\Http\Requests\UpdateInterOrganizationAdvanceRequest;
 use App\Http\Resources\InterOrganizationAdvanceResource;
 use App\Models\InterOrganizationAdvance;
-use App\Models\Organization;
 use App\Models\Payroll;
 use Carbon\Carbon;
 use Illuminate\Http\Request;

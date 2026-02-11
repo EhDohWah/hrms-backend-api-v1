@@ -20,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/employee-employment-calculated', [PayrollController::class, 'employeeEmploymentDetailWithCalculations'])->middleware('permission:employee_salary.read');
         Route::get('/preview-advances', [PayrollController::class, 'previewAdvances'])->middleware('permission:employee_salary.read');
         Route::get('/tax-summary/{id}', [PayrollController::class, 'taxSummary'])->middleware('permission:employee_salary.read');
+        Route::get('/{id}/payslip', [PayrollController::class, 'generatePayslip'])->middleware('permission:employee_salary.read');
         Route::get('/{id}', [PayrollController::class, 'show'])->middleware('permission:employee_salary.read');
         Route::post('/calculate', [PayrollController::class, 'calculatePayroll'])->middleware('permission:employee_salary.read');
 
@@ -60,8 +61,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('tax-brackets')->group(function () {
         Route::get('/', [TaxBracketController::class, 'index'])->middleware('permission:tax_settings.read');
         Route::get('/search', [TaxBracketController::class, 'search'])->middleware('permission:tax_settings.read');
-        Route::get('/{id}', [TaxBracketController::class, 'show'])->middleware('permission:tax_settings.read');
         Route::get('/calculate/{income}', [TaxBracketController::class, 'calculateTax'])->middleware('permission:tax_settings.read');
+        Route::get('/{id}', [TaxBracketController::class, 'show'])->middleware('permission:tax_settings.read');
         Route::post('/', [TaxBracketController::class, 'store'])->middleware('permission:tax_settings.edit');
         Route::put('/{id}', [TaxBracketController::class, 'update'])->middleware('permission:tax_settings.edit');
         Route::delete('/{id}', [TaxBracketController::class, 'destroy'])->middleware('permission:tax_settings.edit');
@@ -70,9 +71,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tax Setting routes - Uses tax_settings permission
     Route::prefix('tax-settings')->group(function () {
         Route::get('/', [TaxSettingController::class, 'index'])->middleware('permission:tax_settings.read');
-        Route::get('/{id}', [TaxSettingController::class, 'show'])->middleware('permission:tax_settings.read');
         Route::get('/by-year/{year}', [TaxSettingController::class, 'byYear'])->middleware('permission:tax_settings.read');
         Route::get('/value/{key}', [TaxSettingController::class, 'value'])->middleware('permission:tax_settings.read');
+        Route::get('/{id}', [TaxSettingController::class, 'show'])->middleware('permission:tax_settings.read');
         Route::post('/', [TaxSettingController::class, 'store'])->middleware('permission:tax_settings.edit');
         Route::put('/{id}', [TaxSettingController::class, 'update'])->middleware('permission:tax_settings.edit');
         Route::delete('/{id}', [TaxSettingController::class, 'destroy'])->middleware('permission:tax_settings.edit');

@@ -46,6 +46,6 @@ class OrganizationHubFund extends Model
      */
     public function hubGrant()
     {
-        return $this->belongsTo(Grant::class, 'hub_grant_id');
+        return $this->belongsTo(Grant::class, 'hub_grant_id')->withTrashed();
     }
 }

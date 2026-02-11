@@ -38,7 +38,7 @@ class EmployeeSeeder extends Seeder
                 // Personal information
                 'gender' => $faker->randomElement(['Male', 'Female', 'Other']),
                 'date_of_birth' => $faker->dateTimeBetween('-60 years', '-20 years')->format('Y-m-d'),
-                'status' => $faker->randomElement(['Expats', 'Local ID', 'Local non ID']),
+                'status' => $faker->randomElement(['Expats (Local)', 'Local ID Staff', 'Local non ID Staff']),
                 'nationality' => $faker->randomElement(['Thai', 'Myanmar', 'American', 'British', 'Australian']),
                 'religion' => $faker->randomElement(['Islam', 'Christianity', 'Hinduism', 'Buddhism', 'Other']),
 
@@ -58,7 +58,7 @@ class EmployeeSeeder extends Seeder
                 'current_address' => $faker->address,
 
                 // Personal status
-                'military_status' => $faker->randomElement(['Exempt', 'Completed', 'Deferred', 'Not Applicable']),
+                'military_status' => $faker->boolean(),
                 'marital_status' => $faker->randomElement(['Single', 'Married', 'Divorced', 'Widowed']),
 
                 // Family information

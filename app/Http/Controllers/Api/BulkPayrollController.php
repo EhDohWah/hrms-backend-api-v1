@@ -93,6 +93,7 @@ class BulkPayrollController extends Controller
             $payPeriod = $request->pay_period;
             $filters = $request->filters ?? [];
             $payPeriodDate = Carbon::createFromFormat('Y-m', $payPeriod)->startOfMonth();
+            $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
             $includeDetails = $request->input('detailed', true); // Default to detailed view
 
             // Build query with filters
@@ -102,9 +103,11 @@ class BulkPayrollController extends Controller
                 'employee',
                 'department',
                 'position',
-                'employee.employeeFundingAllocations' => function ($q) use ($payPeriodDate) {
-                    $q->where(function ($query) use ($payPeriodDate) {
-                        $query->where('start_date', '<=', $payPeriodDate)
+                'employee.employeeFundingAllocations' => function ($q) use ($payPeriodDate, $payPeriodEnd) {
+                    $q->where(function ($query) use ($payPeriodDate, $payPeriodEnd) {
+                        // Allocation must have started on or before end of pay period month
+                        // and must not have ended before the start of pay period month
+                        $query->where('start_date', '<=', $payPeriodEnd)
                             ->where(function ($subQ) use ($payPeriodDate) {
                                 $subQ->whereNull('end_date')
                                     ->orWhere('end_date', '>=', $payPeriodDate);
@@ -137,21 +140,21 @@ class BulkPayrollController extends Controller
                 $allocations = $employee->employeeFundingAllocations;
 
                 if ($allocations->isEmpty()) {
-                    $warnings[] = "Employee {$employee->full_name_en} has no active funding allocations";
+                    $warnings[] = "Employee {$employee->first_name_en} {$employee->last_name_en} has no active funding allocations";
 
                     continue;
                 }
 
                 // Check for missing probation pass date
                 if (! $employment->probation_pass_date) {
-                    $warnings[] = "Employee {$employee->full_name_en} is missing probation pass date";
+                    $warnings[] = "Employee {$employee->first_name_en} {$employee->last_name_en} is missing probation pass date";
                 }
 
                 // Initialize employee data structure
                 $employeeData = [
                     'employment_id' => $employment->id,
                     'staff_id' => $employee->staff_id,
-                    'name' => $employee->full_name_en,
+                    'name' => $employee->first_name_en.' '.$employee->last_name_en,
                     'organization' => $employee->organization,
                     'department' => $employment->department->name ?? 'N/A',
                     'position' => $employment->position->title ?? 'N/A',
@@ -169,8 +172,9 @@ class BulkPayrollController extends Controller
 
                         $totalPayrolls++;
                         $grossSalary = $payrollData['calculations']['gross_salary'];
+                        $grossSalaryByFte = $payrollData['calculations']['gross_salary_by_fte'];
                         $netSalary = $payrollData['calculations']['net_salary'];
-                        $totalGrossSalary += $grossSalary;
+                        $totalGrossSalary += $grossSalaryByFte; // Sum FTE-adjusted salary, not base
                         $totalNetSalary += $netSalary;
 
                         // Check if advance needed
@@ -186,37 +190,36 @@ class BulkPayrollController extends Controller
                                 'grant_name' => $allocation->grantItem->grant->name ?? 'N/A',
                                 'grant_code' => $allocation->grantItem->grant->code ?? 'N/A',
                                 'grant_organization' => $allocation->grantItem->grant->organization ?? 'N/A',
-                                'fte' => number_format($allocation->fte, 2),
-                                'allocation_type' => $allocation->allocation_type,
-                                // Salary fields
-                                'gross_salary' => number_format($grossSalary, 2),
-                                'gross_salary_by_fte' => number_format($payrollData['calculations']['gross_salary_by_FTE'], 2),
+                                'fte' => round($allocation->fte, 4),
+                                // Salary fields (raw numbers — frontend handles formatting)
+                                'gross_salary' => round($grossSalary, 2),
+                                'gross_salary_by_fte' => round($payrollData['calculations']['gross_salary_by_FTE'], 2),
                                 // Deductions breakdown
                                 'deductions' => [
-                                    'tax' => number_format($payrollData['calculations']['tax'], 2),
-                                    'employee_ss' => number_format($payrollData['calculations']['employee_social_security'], 2),
-                                    'employee_hw' => number_format($payrollData['calculations']['employee_health_welfare'], 2),
-                                    'total' => number_format($payrollData['calculations']['total_deduction'], 2),
+                                    'tax' => round($payrollData['calculations']['tax'], 2),
+                                    'employee_ss' => round($payrollData['calculations']['employee_social_security'], 2),
+                                    'employee_hw' => round($payrollData['calculations']['employee_health_welfare'], 2),
+                                    'total' => round($payrollData['calculations']['total_deduction'], 2),
                                 ],
                                 // Employer contributions
                                 'contributions' => [
-                                    'pvd' => number_format($payrollData['calculations']['pvd'], 2),
-                                    'saving_fund' => number_format($payrollData['calculations']['saving_fund'], 2),
-                                    'employer_ss' => number_format($payrollData['calculations']['employer_social_security'], 2),
-                                    'employer_hw' => number_format($payrollData['calculations']['employer_health_welfare'], 2),
-                                    'total' => number_format($payrollData['calculations']['employer_contribution'], 2),
+                                    'pvd' => round($payrollData['calculations']['pvd'], 2),
+                                    'saving_fund' => round($payrollData['calculations']['saving_fund'], 2),
+                                    'employer_ss' => round($payrollData['calculations']['employer_social_security'], 2),
+                                    'employer_hw' => round($payrollData['calculations']['employer_health_welfare'], 2),
+                                    'total' => round($payrollData['calculations']['employer_contribution'], 2),
                                 ],
                                 // Income additions
                                 'income_additions' => [
-                                    'thirteen_month' => number_format($payrollData['calculations']['thirteen_month_salary'], 2),
-                                    'thirteen_month_accrued' => number_format($payrollData['calculations']['thirteen_month_salary_accured'], 2),
-                                    'compensation_refund' => number_format($payrollData['calculations']['compensation_refund'], 2),
-                                    'salary_bonus' => number_format($payrollData['calculations']['salary_bonus'] ?? 0, 2),
+                                    'thirteen_month' => round($payrollData['calculations']['thirteen_month_salary'], 2),
+                                    'thirteen_month_accrued' => round($payrollData['calculations']['thirteen_month_salary_accured'], 2),
+                                    'compensation_refund' => round($payrollData['calculations']['compensation_refund'], 2),
+                                    'salary_bonus' => round($payrollData['calculations']['salary_bonus'] ?? 0, 2),
                                 ],
                                 // Totals
-                                'total_salary' => number_format($payrollData['calculations']['total_salary'], 2),
-                                'total_income' => number_format($payrollData['calculations']['total_income'], 2),
-                                'net_salary' => number_format($netSalary, 2),
+                                'total_salary' => round($payrollData['calculations']['total_salary'], 2),
+                                'total_income' => round($payrollData['calculations']['total_income'], 2),
+                                'net_salary' => round($netSalary, 2),
                                 // Advance info
                                 'needs_advance' => $needsAdvance,
                                 'advance_from' => $needsAdvance ? $allocation->grantItem->grant->organization ?? 'N/A' : null,
@@ -226,19 +229,19 @@ class BulkPayrollController extends Controller
                             $employeeData['allocations'][] = $allocationDetail;
                         }
 
-                        $employeeData['total_gross'] += $grossSalary;
+                        $employeeData['total_gross'] += $grossSalaryByFte;
                         $employeeData['total_net'] += $netSalary;
                         $employeeData['allocation_count']++;
                     } catch (\Exception $e) {
-                        $warnings[] = "Error calculating payroll for {$employee->full_name_en} (Allocation ID: {$allocation->id}): {$e->getMessage()}";
+                        $warnings[] = "Error calculating payroll for {$employee->first_name_en} {$employee->last_name_en} (Allocation ID: {$allocation->id}): {$e->getMessage()}";
                         $employeeData['has_warnings'] = true;
                     }
                 }
 
-                // Format employee totals
+                // Round employee totals (raw numbers — frontend handles formatting)
                 if ($includeDetails) {
-                    $employeeData['total_gross'] = number_format($employeeData['total_gross'], 2);
-                    $employeeData['total_net'] = number_format($employeeData['total_net'], 2);
+                    $employeeData['total_gross'] = round($employeeData['total_gross'], 2);
+                    $employeeData['total_net'] = round($employeeData['total_net'], 2);
                     $employeeDetails[] = $employeeData;
                 }
             }
@@ -250,8 +253,8 @@ class BulkPayrollController extends Controller
                     'summary' => [
                         'total_employees' => $totalEmployees,
                         'total_payrolls' => $totalPayrolls,
-                        'total_gross_salary' => number_format($totalGrossSalary, 2),
-                        'total_net_salary' => number_format($totalNetSalary, 2),
+                        'total_gross_salary' => round($totalGrossSalary, 2),
+                        'total_net_salary' => round($totalNetSalary, 2),
                         'advances_needed' => $advancesNeeded,
                     ],
                     // Warnings
@@ -511,9 +514,10 @@ class BulkPayrollController extends Controller
 
         // Filter by grants (through funding allocations)
         if (! empty($filters['grants'])) {
-            $query->whereHas('employee.employeeFundingAllocations', function ($q) use ($filters, $payPeriodDate) {
-                $q->where(function ($dateQ) use ($payPeriodDate) {
-                    $dateQ->where('start_date', '<=', $payPeriodDate)
+            $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
+            $query->whereHas('employee.employeeFundingAllocations', function ($q) use ($filters, $payPeriodDate, $payPeriodEnd) {
+                $q->where(function ($dateQ) use ($payPeriodDate, $payPeriodEnd) {
+                    $dateQ->where('start_date', '<=', $payPeriodEnd)
                         ->where(function ($endQ) use ($payPeriodDate) {
                             $endQ->whereNull('end_date')
                                 ->orWhere('end_date', '>=', $payPeriodDate);

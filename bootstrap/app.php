@@ -65,12 +65,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->timezone('Asia/Bangkok')
             ->name('probation-transition-service');
 
-        // Purge expired recycle bin items daily at 02:00 (30-day retention)
-        $schedule->command('recycle-bin:purge --days=30')
+        // Permanently delete soft-deleted Employee/Grant/Department records after 90 days
+        $schedule->command('model:prune')
             ->daily()
             ->at('02:00')
             ->timezone('Asia/Bangkok')
-            ->name('recycle-bin-purge');
+            ->name('model-prune');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Using Laravel's default exception handling

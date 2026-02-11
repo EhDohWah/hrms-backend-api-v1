@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,9 +15,8 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('organization', 10)->index();
-            $table->string('staff_id', 50)->index();
-            $table->unique(['staff_id', 'organization']);
+            $table->string('organization', 10);
+            $table->string('staff_id', 50);
             $table->string('initial_en', 10)->nullable();
             $table->string('initial_th', 10)->nullable();
             $table->string('first_name_en', 255)->nullable();
@@ -54,10 +54,19 @@ return new class extends Migration
             $table->string('mother_phone_number', 20)->nullable();
             $table->string('driver_license_number', 100)->nullable();
             $table->string('remark', 255)->nullable();
+            $table->softDeletes();
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
         });
+
+        // Filtered unique index: only enforces uniqueness among non-deleted rows
+        // (standard UNIQUE would block re-creating a record with same staff_id after soft-delete)
+        DB::statement('
+            CREATE UNIQUE INDEX [employees_staff_id_organization_unique]
+            ON [employees] ([staff_id], [organization])
+            WHERE [deleted_at] IS NULL
+        ');
     }
 
     /**

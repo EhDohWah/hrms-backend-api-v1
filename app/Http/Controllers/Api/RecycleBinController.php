@@ -3,68 +3,73 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\BatchRestoreRequest;
 use App\Models\DeletedModel;
-use App\Models\DeletionManifest;
-use App\Services\SafeDeleteService;
+use App\Models\Department;
+use App\Models\Employee;
+use App\Models\Grant;
+use App\Models\Payroll;
 use App\Services\UniversalRestoreService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
-#[OA\Tag(name: 'Recycle Bin', description: 'Recycle bin for safe delete and restore with cascading relationship support')]
+#[OA\Tag(name: 'Recycle Bin', description: 'Recycle bin for soft-deleted records and legacy deleted models')]
 class RecycleBinController extends Controller
 {
+    /**
+     * Soft-deletable model type mapping.
+     */
+    private const SOFT_DELETE_MODELS = [
+        'employee' => Employee::class,
+        'grant' => Grant::class,
+        'department' => Department::class,
+        'payroll' => Payroll::class,
+    ];
+
     public function __construct(
         protected UniversalRestoreService $restoreService,
-        protected SafeDeleteService $safeDeleteService,
     ) {}
 
     /**
-     * List all deleted records (manifest-based + legacy).
+     * List all deleted records (soft-deleted + legacy).
      */
-    #[OA\Get(path: '/recycle-bin', summary: 'Get all deleted records from all models', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'All deleted records retrieved')])]
+    #[OA\Get(path: '/recycle-bin', summary: 'Get all deleted records', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'All deleted records retrieved')])]
     public function index(): JsonResponse
     {
         try {
-            // Get manifest-based deletions (Employee, Grant, Department)
-            $manifests = DeletionManifest::orderBy('created_at', 'desc')->get()
-                ->map(fn (DeletionManifest $m) => [
-                    'type' => 'manifest',
-                    'deletion_key' => $m->deletion_key,
-                    'model_class' => $m->root_model,
-                    'model_type' => $m->root_model_type,
-                    'original_id' => $m->root_id,
-                    'display_name' => $m->root_display_name,
-                    'deleted_at' => $m->created_at,
-                    'deleted_ago' => $m->deleted_time_ago,
-                    'deleted_by' => $m->deleted_by_name,
-                    'reason' => $m->reason,
-                    'child_records_count' => $m->snapshot_count - 1,
-                ]);
+            // Soft-deleted records from Employee, Grant, Department
+            $softDeleted = collect();
 
-            // Get legacy flat deletions (Interview, JobOffer -- not in any manifest)
-            $allManifestKeys = DeletionManifest::pluck('snapshot_keys')->flatten()->toArray();
-            $legacyRecords = DeletedModel::when(! empty($allManifestKeys), function ($query) use ($allManifestKeys) {
-                $query->whereNotIn('key', $allManifestKeys);
-            })
-                ->orderBy('created_at', 'desc')->get()
+            foreach (self::SOFT_DELETE_MODELS as $type => $modelClass) {
+                $records = $modelClass::onlyTrashed()->get();
+                foreach ($records as $record) {
+                    $softDeleted->push([
+                        'type' => 'soft_delete',
+                        'model_type' => class_basename($modelClass),
+                        'original_id' => $record->id,
+                        'display_name' => method_exists($record, 'getActivityLogName')
+                            ? $record->getActivityLogName()
+                            : ($record->name ?? "#{$record->id}"),
+                        'deleted_at' => $record->deleted_at,
+                        'deleted_ago' => $record->deleted_at->diffForHumans(),
+                    ]);
+                }
+            }
+
+            // Legacy flat deletions (Interview, JobOffer via KeepsDeletedModels)
+            $legacyRecords = DeletedModel::orderBy('created_at', 'desc')->get()
                 ->map(fn (DeletedModel $r) => [
                     'type' => 'legacy',
                     'deleted_record_id' => $r->id,
-                    'model_class' => $r->model,
                     'model_type' => $r->model_type,
                     'original_id' => $r->original_id,
                     'display_name' => $this->restoreService->extractPrimaryInfo($r->model, $r->values),
                     'deleted_at' => $r->created_at,
                     'deleted_ago' => $r->deleted_time_ago,
-                    'deleted_by' => null,
-                    'reason' => null,
-                    'child_records_count' => 0,
                 ]);
 
-            $all = $manifests->concat($legacyRecords)->sortByDesc('deleted_at')->values();
+            $all = $softDeleted->concat($legacyRecords)->sortByDesc('deleted_at')->values();
 
             return response()->json([
                 'success' => true,
@@ -80,23 +85,29 @@ class RecycleBinController extends Controller
     }
 
     /**
-     * Restore a manifest-based deletion by its deletion key.
+     * Restore a soft-deleted record by model type and ID.
      */
-    #[OA\Post(path: '/recycle-bin/restore/{deletionKey}', summary: 'Restore a cascaded deletion by its key', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'deletionKey', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Record and all children restored'), new OA\Response(response: 422, description: 'Restoration failed')])]
-    public function restoreByKey(string $deletionKey): JsonResponse
+    #[OA\Post(path: '/recycle-bin/restore/{modelType}/{id}', summary: 'Restore a soft-deleted record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'modelType', in: 'path', required: true, schema: new OA\Schema(type: 'string', enum: ['employee', 'grant', 'department', 'payroll'])), new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record restored'), new OA\Response(response: 404, description: 'Record not found'), new OA\Response(response: 422, description: 'Restoration failed')])]
+    public function restore(string $modelType, int $id): JsonResponse
     {
         try {
-            $restoredModel = $this->safeDeleteService->restore($deletionKey);
+            $modelClass = $this->resolveModelClass($modelType);
+            $record = $modelClass::onlyTrashed()->findOrFail($id);
+            $record->restore();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Record and all related records restored successfully',
+                'message' => class_basename($modelClass).' restored successfully',
                 'restored_record' => [
-                    'id' => $restoredModel->getKey(),
-                    'model_class' => get_class($restoredModel),
-                    'model_type' => class_basename(get_class($restoredModel)),
+                    'id' => $record->id,
+                    'model_type' => class_basename($modelClass),
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Deleted record not found',
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -106,49 +117,111 @@ class RecycleBinController extends Controller
     }
 
     /**
-     * Bulk restore manifest-based deletions by their deletion keys.
+     * Bulk restore soft-deleted records.
      */
-    #[OA\Post(path: '/recycle-bin/bulk-restore-keys', summary: 'Bulk restore cascaded deletions by keys', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Bulk restore completed')])]
-    public function bulkRestoreByKeys(BatchRestoreRequest $request): JsonResponse
+    #[OA\Post(path: '/recycle-bin/bulk-restore', summary: 'Bulk restore soft-deleted records', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], requestBody: new OA\RequestBody(content: new OA\JsonContent(required: ['items'], properties: [new OA\Property(property: 'items', type: 'array', items: new OA\Items(properties: [new OA\Property(property: 'model_type', type: 'string'), new OA\Property(property: 'id', type: 'integer')]))])), responses: [new OA\Response(response: 200, description: 'Bulk restore completed')])]
+    public function bulkRestore(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.model_type' => 'required|string',
+            'items.*.id' => 'required|integer',
+        ]);
+
+        $succeeded = [];
+        $failed = [];
+
+        foreach ($request->items as $item) {
+            try {
+                $modelClass = $this->resolveModelClass($item['model_type']);
+                $record = $modelClass::onlyTrashed()->findOrFail($item['id']);
+                $record->restore();
+
+                $succeeded[] = [
+                    'model_type' => class_basename($modelClass),
+                    'id' => $record->id,
+                ];
+            } catch (Exception $e) {
+                $failed[] = [
+                    'model_type' => $item['model_type'],
+                    'id' => $item['id'],
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        $successCount = count($succeeded);
+        $failureCount = count($failed);
+
+        return response()->json([
+            'success' => $failureCount === 0,
+            'message' => "Restored {$successCount} record(s)"
+                .($failureCount > 0 ? ", {$failureCount} failed" : ''),
+            'succeeded' => $succeeded,
+            'failed' => $failed,
+        ], $failureCount === 0 ? 200 : 207);
+    }
+
+    /**
+     * Permanently delete a soft-deleted record.
+     */
+    #[OA\Delete(path: '/recycle-bin/permanent/{modelType}/{id}', summary: 'Permanently delete a soft-deleted record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'modelType', in: 'path', required: true, schema: new OA\Schema(type: 'string', enum: ['employee', 'grant', 'department', 'payroll'])), new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Permanently deleted'), new OA\Response(response: 404, description: 'Record not found'), new OA\Response(response: 422, description: 'Failed')])]
+    public function permanentDelete(string $modelType, int $id): JsonResponse
     {
         try {
-            $results = $this->safeDeleteService->bulkRestore($request->validated()['deletion_keys']);
-
-            $successCount = count($results['succeeded']);
-            $failureCount = count($results['failed']);
+            $modelClass = $this->resolveModelClass($modelType);
+            $record = $modelClass::onlyTrashed()->findOrFail($id);
+            $record->forceDelete();
 
             return response()->json([
-                'success' => $failureCount === 0,
-                'message' => "Restored {$successCount} record(s) successfully"
-                    .($failureCount > 0 ? ", {$failureCount} failed" : ''),
-                'succeeded' => $results['succeeded'],
-                'failed' => $results['failed'],
-            ], $failureCount === 0 ? 200 : 207);
+                'success' => true,
+                'message' => class_basename($modelClass).' permanently deleted',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Deleted record not found',
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bulk restore failed: '.$e->getMessage(),
+                'message' => 'Failed to permanently delete: '.$e->getMessage(),
             ], 422);
         }
     }
 
     /**
-     * Permanently delete a manifest-based deletion by its key.
+     * Get recycle bin statistics.
      */
-    #[OA\Delete(path: '/recycle-bin/permanent/{deletionKey}', summary: 'Permanently delete a manifest and all snapshots', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'deletionKey', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Permanently deleted'), new OA\Response(response: 422, description: 'Failed')])]
-    public function permanentDeleteByKey(string $deletionKey): JsonResponse
+    #[OA\Get(path: '/recycle-bin/stats', summary: 'Get recycle bin statistics', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Statistics retrieved'), new OA\Response(response: 422, description: 'Failed')])]
+    public function stats(): JsonResponse
     {
         try {
-            $this->safeDeleteService->permanentlyDelete($deletionKey);
+            $byModel = [];
+            $totalSoftDeleted = 0;
+
+            foreach (self::SOFT_DELETE_MODELS as $type => $modelClass) {
+                $count = $modelClass::onlyTrashed()->count();
+                $byModel[class_basename($modelClass)] = $count;
+                $totalSoftDeleted += $count;
+            }
+
+            // Legacy stats from deleted_models
+            $legacyStats = $this->restoreService->getRecycleBinStats();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Record and all related snapshots permanently deleted',
+                'stats' => [
+                    'total_deleted' => $totalSoftDeleted + $legacyStats['total_deleted'],
+                    'by_model' => collect($byModel)->merge($legacyStats['by_model']),
+                    'soft_deleted_count' => $totalSoftDeleted,
+                    'legacy_count' => $legacyStats['total_deleted'],
+                ],
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to permanently delete: '.$e->getMessage(),
+                'message' => 'Failed to load statistics',
             ], 422);
         }
     }
@@ -158,8 +231,8 @@ class RecycleBinController extends Controller
     /**
      * Legacy: Restore a single flat record (Interview, JobOffer).
      */
-    #[OA\Post(path: '/recycle-bin/restore-legacy', summary: 'Legacy: restore a flat record by model class and ID', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Record restored successfully'), new OA\Response(response: 422, description: 'Restoration failed')])]
-    public function restore(Request $request): JsonResponse
+    #[OA\Post(path: '/recycle-bin/restore-legacy', summary: 'Legacy: restore a flat record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Record restored'), new OA\Response(response: 422, description: 'Failed')])]
+    public function restoreLegacy(Request $request): JsonResponse
     {
         $request->validate([
             'model_class' => 'required_without:deleted_record_id|string',
@@ -198,7 +271,7 @@ class RecycleBinController extends Controller
      * Legacy: Bulk restore flat records (Interview, JobOffer).
      */
     #[OA\Post(path: '/recycle-bin/bulk-restore-legacy', summary: 'Legacy: bulk restore flat records', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Bulk restore completed')])]
-    public function bulkRestore(Request $request): JsonResponse
+    public function bulkRestoreLegacy(Request $request): JsonResponse
     {
         $request->validate([
             'restore_requests' => 'required|array',
@@ -228,43 +301,10 @@ class RecycleBinController extends Controller
     }
 
     /**
-     * Get recycle bin statistics.
-     */
-    #[OA\Get(path: '/recycle-bin/stats', summary: 'Get recycle bin statistics', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], responses: [new OA\Response(response: 200, description: 'Recycle bin statistics retrieved successfully'), new OA\Response(response: 422, description: 'Failed to load statistics')])]
-    public function stats(): JsonResponse
-    {
-        try {
-            // Legacy stats from deleted_models
-            $legacyStats = $this->restoreService->getRecycleBinStats();
-
-            // Manifest stats (cascading deletes)
-            $manifestStats = DeletionManifest::selectRaw('root_model, COUNT(*) as count')
-                ->groupBy('root_model')
-                ->get()
-                ->mapWithKeys(fn ($stat) => [class_basename($stat->root_model) => $stat->count]);
-
-            return response()->json([
-                'success' => true,
-                'stats' => [
-                    'total_deleted' => $legacyStats['total_deleted'] + DeletionManifest::count(),
-                    'by_model' => $manifestStats->merge($legacyStats['by_model']),
-                    'manifests_count' => DeletionManifest::count(),
-                    'legacy_count' => $legacyStats['total_deleted'],
-                ],
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load statistics',
-            ], 422);
-        }
-    }
-
-    /**
      * Legacy: Permanently delete a flat record by deleted_models ID.
      */
-    #[OA\Delete(path: '/recycle-bin/{deletedRecordId}', summary: 'Legacy: permanently delete a flat record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'deletedRecordId', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record permanently deleted successfully'), new OA\Response(response: 422, description: 'Failed to permanently delete record')])]
-    public function permanentDelete($deletedRecordId): JsonResponse
+    #[OA\Delete(path: '/recycle-bin/legacy/{deletedRecordId}', summary: 'Legacy: permanently delete a flat record', tags: ['Recycle Bin'], security: [['bearerAuth' => []]], parameters: [new OA\Parameter(name: 'deletedRecordId', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Permanently deleted'), new OA\Response(response: 422, description: 'Failed')])]
+    public function permanentDeleteLegacy($deletedRecordId): JsonResponse
     {
         try {
             $this->restoreService->permanentlyDelete($deletedRecordId);
@@ -279,5 +319,20 @@ class RecycleBinController extends Controller
                 'message' => 'Failed to permanently delete record: '.$e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * Resolve model type string to class.
+     */
+    private function resolveModelClass(string $modelType): string
+    {
+        $type = strtolower($modelType);
+        if (! isset(self::SOFT_DELETE_MODELS[$type])) {
+            throw new \InvalidArgumentException(
+                "Unknown model type: {$modelType}. Supported: ".implode(', ', array_keys(self::SOFT_DELETE_MODELS))
+            );
+        }
+
+        return self::SOFT_DELETE_MODELS[$type];
     }
 }

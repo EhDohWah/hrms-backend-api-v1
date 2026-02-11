@@ -57,11 +57,6 @@ return new class extends Migration
                 $table->index('employment_id', 'idx_efa_employment_id');
             }
 
-            // Index for allocation type filtering
-            $table->index('allocation_type', 'idx_efa_allocation_type');
-
-            // Composite index for employment + type queries
-            $table->index(['employment_id', 'allocation_type'], 'idx_efa_employment_type');
         });
 
         // Add indexes to sites table if needed
@@ -114,12 +109,6 @@ return new class extends Migration
         Schema::table('employee_funding_allocations', function (Blueprint $table) {
             if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_id')) {
                 $table->dropIndex('idx_efa_employment_id');
-            }
-            if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_allocation_type')) {
-                $table->dropIndex('idx_efa_allocation_type');
-            }
-            if (Schema::hasIndex('employee_funding_allocations', 'idx_efa_employment_type')) {
-                $table->dropIndex('idx_efa_employment_type');
             }
         });
 

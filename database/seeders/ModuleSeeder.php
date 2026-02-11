@@ -180,8 +180,8 @@ class ModuleSeeder extends Seeder
             // ============================================================================
             [
                 'name' => 'leaves_admin',
-                'display_name' => 'Leaves (Admin)',
-                'description' => 'Admin leave management',
+                'display_name' => 'Leave Request List',
+                'description' => 'Leave request management',
                 'icon' => 'clipboard-check',
                 'category' => 'Leaves',
                 'route' => '/leave/admin/leaves-admin',
@@ -189,30 +189,6 @@ class ModuleSeeder extends Seeder
                 'read_permission' => 'leaves_admin.read',
                 'edit_permissions' => ['leaves_admin.edit'],
                 'order' => 50,
-            ],
-            [
-                'name' => 'leaves_employee',
-                'display_name' => 'Leave (Employee)',
-                'description' => 'Employee leave management',
-                'icon' => 'clipboard-check',
-                'category' => 'Leaves',
-                'route' => '/leave/employee/leaves-employee',
-                'active_link' => '/leave/employee/leaves-employee',
-                'read_permission' => 'leaves_employee.read',
-                'edit_permissions' => ['leaves_employee.edit'],
-                'order' => 51,
-            ],
-            [
-                'name' => 'leave_settings',
-                'display_name' => 'Leave Settings',
-                'description' => 'Configure leave settings',
-                'icon' => 'clipboard-check',
-                'category' => 'Leaves',
-                'route' => '/leave/admin/leave-settings',
-                'active_link' => '/leave/admin/leave-settings',
-                'read_permission' => 'leave_settings.read',
-                'edit_permissions' => ['leave_settings.edit'],
-                'order' => 52,
             ],
             [
                 'name' => 'leave_types',
@@ -245,8 +221,8 @@ class ModuleSeeder extends Seeder
             // ============================================================================
             [
                 'name' => 'travel_admin',
-                'display_name' => 'Travel (Admin)',
-                'description' => 'Admin travel management',
+                'display_name' => 'Travel Request List',
+                'description' => 'Travel request management',
                 'icon' => 'bus',
                 'category' => 'Travel',
                 'route' => '/requests/travel/admin',
@@ -255,18 +231,6 @@ class ModuleSeeder extends Seeder
                 'edit_permissions' => ['travel_admin.edit'],
                 'order' => 60,
             ],
-            [
-                'name' => 'travel_employee',
-                'display_name' => 'Travel (Employee)',
-                'description' => 'Employee travel requests',
-                'icon' => 'bus',
-                'category' => 'Travel',
-                'route' => '/requests/travel',
-                'active_link' => '/requests/travel',
-                'read_permission' => 'travel_employee.read',
-                'edit_permissions' => ['travel_employee.edit'],
-                'order' => 61,
-            ],
 
             // ============================================================================
             // HRM > ATTENDANCE SUBMENUS
@@ -274,27 +238,15 @@ class ModuleSeeder extends Seeder
             // ============================================================================
             [
                 'name' => 'attendance_admin',
-                'display_name' => 'Attendance (Admin)',
-                'description' => 'Admin attendance management',
+                'display_name' => 'Attendance List',
+                'description' => 'Training attendance management',
                 'icon' => 'file-time',
                 'category' => 'Attendance',
-                'route' => '/attendance/attendance-admin',
-                'active_link' => '/attendance/attendance-admin',
+                'route' => '/attendance/attendance-list',
+                'active_link' => '/attendance/attendance-list',
                 'read_permission' => 'attendance_admin.read',
                 'edit_permissions' => ['attendance_admin.edit'],
                 'order' => 70,
-            ],
-            [
-                'name' => 'attendance_employee',
-                'display_name' => 'Attendance (Employee)',
-                'description' => 'Employee attendance view',
-                'icon' => 'file-time',
-                'category' => 'Attendance',
-                'route' => '/attendance/attendance-employee',
-                'active_link' => '/attendance/attendance-employee',
-                'read_permission' => 'attendance_employee.read',
-                'edit_permissions' => ['attendance_employee.edit'],
-                'order' => 71,
             ],
             [
                 'name' => 'timesheets',
@@ -727,8 +679,25 @@ class ModuleSeeder extends Seeder
             ],
 
             // ============================================================================
+            // ADMINISTRATION > LETTER TEMPLATES (Standalone)
+            // From sidebar-data.json: menu[5].menuValue: "Letter Templates"
+            // ============================================================================
+            [
+                'name' => 'letter_templates',
+                'display_name' => 'Letter Templates',
+                'description' => 'Manage document letter templates with CKEditor and placeholder support',
+                'icon' => 'template',
+                'category' => 'Administration',
+                'route' => '/letter-templates',
+                'active_link' => '/letter-templates',
+                'read_permission' => 'letter_templates.read',
+                'edit_permissions' => ['letter_templates.edit'],
+                'order' => 165,
+            ],
+
+            // ============================================================================
             // ADMINISTRATION > RECYCLE BIN SUBMENUS
-            // From sidebar-data.json: menu[5].menuValue: "Recycle Bin"
+            // From sidebar-data.json: menu[6].menuValue: "Recycle Bin"
             // ============================================================================
             [
                 'name' => 'recycle_bin_list',

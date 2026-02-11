@@ -71,7 +71,6 @@ class FundingAllocationService
      */
     private function createAllocation(Employee $employee, Employment $employment, array $data, int $index): array
     {
-        $allocationType = 'grant'; // All allocations now use grant items (including hub/org funds)
         $currentUser = Auth::user()->name ?? 'system';
 
         return $this->createGrantAllocation($employee, $employment, $data, $index, $currentUser);
@@ -105,7 +104,6 @@ class FundingAllocationService
             'employment_id' => $employment->id,
             'grant_item_id' => $data['grant_item_id'],
             'fte' => $fteDecimal,
-            'allocation_type' => 'grant',
             'allocated_amount' => $salaryContext['allocated_amount'],
             'salary_type' => $salaryContext['salary_type'],
             'start_date' => $employment->start_date,
@@ -128,7 +126,6 @@ class FundingAllocationService
 
         $today = Carbon::today();
         $query = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-            ->where('allocation_type', 'grant')
             ->where('start_date', '<=', $today)
             ->where(function ($q) use ($today) {
                 $q->whereNull('end_date')
@@ -300,7 +297,7 @@ class FundingAllocationService
             'total_allocations' => $allocations->count(),
             'total_effort' => $allocations->sum('fte'),
             'funding_sources' => [],
-            'by_type' => $allocations->groupBy('allocation_type')->map->count()->toArray(),
+            'by_grant' => $allocations->count(),
         ];
 
         foreach ($allocations as $allocation) {

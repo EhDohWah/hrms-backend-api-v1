@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('employee_languages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees');
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->string('language');
             $table->string('proficiency_level')->nullable();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();
+
+            // Index for FK column (SQL Server does NOT auto-create these)
+            $table->index('employee_id', 'idx_emp_languages_employee');
         });
     }
 

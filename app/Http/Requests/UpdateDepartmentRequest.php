@@ -30,7 +30,7 @@ class UpdateDepartmentRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('departments', 'name')->ignore($departmentId),
+                Rule::unique('departments', 'name')->ignore($departmentId)->whereNull('deleted_at'),
             ],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'is_active' => ['sometimes', 'boolean'],

@@ -34,7 +34,8 @@ class StoreEmployeeRequest extends FormRequest
                 'max:50',
                 'regex:/^[A-Za-z0-9-]+$/',
                 Rule::unique('employees')
-                    ->where(fn ($query) => $query->where('organization', $this->input('organization'))),
+                    ->where(fn ($query) => $query->where('organization', $this->input('organization')))
+                    ->whereNull('deleted_at'),
             ],
 
             // Basic information

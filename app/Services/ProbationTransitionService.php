@@ -145,7 +145,6 @@ class ProbationTransitionService
                     'grant_item_id' => $allocation->grant_item_id,
                     'grant_id' => $allocation->grant_id,
                     'fte' => $allocation->fte,
-                    'allocation_type' => $allocation->allocation_type,
                     'status' => 'active',
                     'start_date' => $transitionDate,
                     'end_date' => null,

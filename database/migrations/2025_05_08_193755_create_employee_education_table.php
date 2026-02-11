@@ -18,8 +18,9 @@ return new class extends Migration
             $table->string('degree');
             $table->date('start_date');
             $table->date('end_date');
-            $table->string('created_by');
-            $table->string('updated_by');
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
+            $table->index('employee_id', 'idx_emp_education_employee');
             $table->timestamps();
         });
     }

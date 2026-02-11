@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('organization');
             $table->text('description')->nullable();
             $table->date('end_date')->nullable();
+            $table->softDeletes();
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();

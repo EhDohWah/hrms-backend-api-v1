@@ -79,6 +79,9 @@ return new class extends Migration
             // Indexes for common queries
             $table->index(['payroll_id', 'grant_item_id'], 'pga_payroll_grant_idx');
             $table->index('grant_item_id', 'pga_grant_item_idx');
+
+            // Index for FK column not covered by composites above
+            $table->index('employee_funding_allocation_id', 'idx_pga_efa_id');
         });
     }
 

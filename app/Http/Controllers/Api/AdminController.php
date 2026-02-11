@@ -196,11 +196,16 @@ class AdminController extends Controller
             $user->assignRole($validated['role']);
 
             // Handle permissions based on role and format provided
-            // Admin and HR Manager get full access to all modules
-            if (in_array($validated['role'], ['admin', 'hr-manager'])) {
+            if ($validated['role'] === 'admin') {
+                // Admin gets administration-only permissions
+                $adminPermissions = $this->getAdminModulePermissions();
+                $user->syncPermissions($adminPermissions);
+                Log::info("Auto-assigned admin permissions to user {$user->id}");
+            } elseif ($validated['role'] === 'hr-manager') {
+                // HR Manager gets full access to all modules
                 $allModulePermissions = $this->getAllModulePermissions();
                 $user->syncPermissions($allModulePermissions);
-                Log::info("Auto-assigned all module permissions to user {$user->id} with role {$validated['role']}");
+                Log::info("Auto-assigned all module permissions to user {$user->id} with role hr-manager");
             } else {
                 // For other roles, use the permissions from the request
                 $permissions = $this->extractPermissions($validated);
@@ -292,6 +297,14 @@ class AdminController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
+        // Guard: only admins can modify other admin users
+        if ($user->hasRole('admin') && ! auth()->user()->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to modify an administrator.',
+            ], 403);
+        }
+
         // Validation is handled by UpdateUserRequest
         $validated = $request->validated();
 
@@ -307,11 +320,16 @@ class AdminController extends Controller
                 $user->assignRole($validated['role']);
 
                 // Handle permissions based on role
-                // Admin and HR Manager get full access to all modules
-                if (in_array($validated['role'], ['admin', 'hr-manager'])) {
+                if ($validated['role'] === 'admin') {
+                    // Admin gets administration-only permissions
+                    $adminPermissions = $this->getAdminModulePermissions();
+                    $user->syncPermissions($adminPermissions);
+                    Log::info("Auto-assigned admin permissions to user {$user->id}");
+                } elseif ($validated['role'] === 'hr-manager') {
+                    // HR Manager gets full access to all modules
                     $allModulePermissions = $this->getAllModulePermissions();
                     $user->syncPermissions($allModulePermissions);
-                    Log::info("Auto-assigned all module permissions to user {$user->id} with updated role {$validated['role']}");
+                    Log::info("Auto-assigned all module permissions to user {$user->id} with role hr-manager");
                 } else {
                     // For other roles, use the permissions from the request
                     $permissions = $this->extractPermissions($validated);
@@ -385,6 +403,14 @@ class AdminController extends Controller
         $user = User::find($id);
         if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Guard: only admins can delete other admin users
+        if ($user->hasRole('admin') && ! auth()->user()->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to delete an administrator.',
+            ], 403);
         }
 
         // Start a database transaction
@@ -526,9 +552,45 @@ class AdminController extends Controller
     }
 
     /**
-     * Get all module permissions (read and edit) for privileged roles.
+     * Get admin-only module permissions (administration modules).
      *
-     * Used for Admin and HR Manager roles who get full access to all modules.
+     * Admin users only get access to: Dashboard, Lookups, Organization Structure,
+     * User Management, File Uploads, and Recycle Bin.
+     *
+     * @return array Array of admin permission strings
+     */
+    private function getAdminModulePermissions(): array
+    {
+        $adminModules = [
+            'dashboard',
+            'lookup_list',
+            'sites',
+            'departments',
+            'positions',
+            'section_departments',
+            'users',
+            'roles',
+            'file_uploads',
+            'recycle_bin_list',
+        ];
+
+        $desiredPermissions = [];
+        foreach ($adminModules as $module) {
+            $desiredPermissions[] = "{$module}.read";
+            $desiredPermissions[] = "{$module}.edit";
+        }
+
+        $existingPermissions = Permission::whereIn('name', $desiredPermissions)
+            ->pluck('name')
+            ->toArray();
+
+        return array_unique($existingPermissions);
+    }
+
+    /**
+     * Get all module permissions (read and edit) for HR Manager role.
+     *
+     * HR Manager gets full access to all modules.
      * Only returns permissions that actually exist in the database.
      *
      * @return array Array of all module permission strings

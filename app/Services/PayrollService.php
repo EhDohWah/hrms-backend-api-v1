@@ -9,6 +9,7 @@ use App\Models\Employment;
 use App\Models\InterOrganizationAdvance;
 use App\Models\Payroll;
 use App\Models\PayrollGrantAllocation;
+use App\Models\TaxSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,13 +33,15 @@ class PayrollService
             DB::beginTransaction();
 
             // Load employee with all necessary relationships
+            $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
             $employee->load([
                 'employment',
                 'employment.departmentPosition',
                 'employment.workLocation',
-                'employeeFundingAllocations' => function ($query) use ($payPeriodDate) {
-                    $query->where(function ($q) use ($payPeriodDate) {
-                        $q->where('start_date', '<=', $payPeriodDate)
+                'employeeFundingAllocations' => function ($query) use ($payPeriodDate, $payPeriodEnd) {
+                    $query->where(function ($q) use ($payPeriodDate, $payPeriodEnd) {
+                        // Allocation active during pay period month (started before month end, not ended before month start)
+                        $q->where('start_date', '<=', $payPeriodEnd)
                             ->where(function ($subQ) use ($payPeriodDate) {
                                 $subQ->whereNull('end_date')
                                     ->orWhere('end_date', '>=', $payPeriodDate);
@@ -119,11 +122,12 @@ class PayrollService
     public function previewInterOrganizationAdvances(Employee $employee, Carbon $payPeriodDate): array
     {
         // Load employee with all necessary relationships
+        $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
         $employee->load([
             'employment',
-            'employeeFundingAllocations' => function ($query) use ($payPeriodDate) {
-                $query->where(function ($q) use ($payPeriodDate) {
-                    $q->where('start_date', '<=', $payPeriodDate)
+            'employeeFundingAllocations' => function ($query) use ($payPeriodDate, $payPeriodEnd) {
+                $query->where(function ($q) use ($payPeriodDate, $payPeriodEnd) {
+                    $q->where('start_date', '<=', $payPeriodEnd)
                         ->where(function ($subQ) use ($payPeriodDate) {
                             $subQ->whereNull('end_date')
                                 ->orWhere('end_date', '>=', $payPeriodDate);
@@ -168,7 +172,6 @@ class PayrollService
 
                 $advancePreviews[] = [
                     'allocation_id' => $allocation->id,
-                    'allocation_type' => $allocation->allocation_type,
                     'fte' => $allocation->fte,
                     'project_grant' => [
                         'id' => $projectGrant->id,
@@ -446,7 +449,6 @@ class PayrollService
             'position' => $employment->position->title ?? 'N/A',
             'fte_percentage' => ($allocation->fte ?? 1.0) * 100, // Convert decimal to percentage
             'funding_source' => $this->getFundingSourceName($allocation),
-            'funding_type' => $allocation->allocation_type,
             'calculations' => [
                 // ===== PAYROLL FIELDS (matching database schema) =====
                 'gross_salary' => $grossSalary,
@@ -454,7 +456,8 @@ class PayrollService
                 'gross_salary_by_FTE' => $grossSalaryCurrentYearByFTE, // Legacy compatibility
                 'salary_increase_1_percent' => $annualIncrease,
                 'compensation_refund' => $compensationRefund,
-                'thirteenth_month_salary' => $thirteenthMonthSalary,
+                'thirteen_month_salary' => $thirteenthMonthSalary,
+                'thirteen_month_salary_accured' => $thirteenthMonthSalary, // Same value, matches DB column
                 'pvd_saving_fund_employee' => $pvdSavingEmployee,
                 'employer_social_security' => $employerSocialSecurity,
                 'employee_social_security' => $employeeSocialSecurity,
@@ -493,7 +496,7 @@ class PayrollService
             'compensation_refund' => $calculations['compensation_refund'],
             'thirteen_month_salary' => $calculations['thirteen_month_salary'],
             'thirteen_month_salary_accured' => $calculations['thirteen_month_salary'],
-            'pvd' => $calculations['pvd_employee'],
+            'pvd' => $calculations['pvd'],
             'saving_fund' => $calculations['saving_fund'],
             'employer_social_security' => $calculations['employer_social_security'],
             'employee_social_security' => $calculations['employee_social_security'],
@@ -502,7 +505,7 @@ class PayrollService
             'tax' => $calculations['tax'],
             'net_salary' => $calculations['net_salary'],
             'total_salary' => $calculations['gross_salary_by_FTE'],
-            'total_pvd' => $calculations['pvd_employee'],
+            'total_pvd' => $calculations['pvd'],
             'total_saving_fund' => $calculations['saving_fund'],
             'salary_bonus' => 0, // Can be added later
             'total_income' => $calculations['total_income'],
@@ -626,7 +629,7 @@ class PayrollService
      */
     private function calculateGrossSalary($employment): float
     {
-        return (float) $employment->pass_probation_salary;
+        return $employment->getCurrentSalary();
     }
 
     /**
@@ -682,9 +685,9 @@ class PayrollService
      */
     private function calculatePVDSavingFund(Employee $employee, float $monthlySalary, $employment): array
     {
-        // Get PVD/Saving Fund percentage from global settings (default to 7.5% if not set)
-        $pvdPercentage = BenefitSetting::getActiveSetting('pvd_percentage') ?? 7.5;
-        $savingFundPercentage = BenefitSetting::getActiveSetting('saving_fund_percentage') ?? 7.5;
+        // Get PVD/Saving Fund percentage from tax settings (single source of truth)
+        $pvdPercentage = TaxSetting::getValue('PVD_FUND_RATE') ?? 7.5;
+        $savingFundPercentage = TaxSetting::getValue('SAVING_FUND_RATE') ?? 7.5;
 
         // PVD for Local ID (employee only)
         // Saving Fund for Local non ID (employee only)
@@ -717,23 +720,25 @@ class PayrollService
     }
 
     /**
-     * 6. Calculate Employer Social Security (5%)
+     * 6. Calculate Employer Social Security
      */
     private function calculateEmployerSocialSecurity(float $monthlySalary): float
     {
-        // Employer social security 5% (doesn't exceed 750 Baht)
-        $employerContribution = min($monthlySalary * 0.05, 750.0);
+        $rate = TaxSetting::getValue('SSF_RATE') ?? 5.0;
+        $maxAmount = TaxSetting::getValue('SSF_MAX_MONTHLY') ?? 750.0;
+        $employerContribution = min($monthlySalary * ($rate / 100), $maxAmount);
 
         return round($employerContribution, 2);
     }
 
     /**
-     * 7. Calculate Employee Social Security (5%)
+     * 7. Calculate Employee Social Security
      */
     private function calculateEmployeeSocialSecurity(float $monthlySalary): float
     {
-        // Employee social security 5% (doesn't exceed 750 Baht)
-        $employeeContribution = min($monthlySalary * 0.05, 750.0);
+        $rate = TaxSetting::getValue('SSF_RATE') ?? 5.0;
+        $maxAmount = TaxSetting::getValue('SSF_MAX_MONTHLY') ?? 750.0;
+        $employeeContribution = min($monthlySalary * ($rate / 100), $maxAmount);
 
         return round($employeeContribution, 2);
     }
@@ -743,26 +748,16 @@ class PayrollService
      */
     private function calculateHealthWelfareEmployer(Employee $employee, float $monthlySalary): float
     {
-        $employerContribution = 0.0;
-
-        // Health Welfare Employer contribution
-        // SMRU organization pays for Non-Thai ID and some expat
-        // BHF organization doesn't have to pay for health welfare employer
+        // SMRU organization pays for Non-Thai ID and Expat employees
+        // BHF organization doesn't pay employer health welfare
         if ($employee->organization === 'SMRU' &&
             ($employee->status === 'Non-Thai ID' || $employee->status === 'Expat')) {
-            // Calculate employee contribution first
-            if ($monthlySalary > 15000) {
-                $employerContribution = 150;
-            } elseif ($monthlySalary > 5000) {
-                $employerContribution = 100;
-            } else {
-                $employerContribution = 60;
-            }
+            return $this->calculateHealthWelfareEmployee($monthlySalary);
         } elseif ($employee->organization === 'BHF') {
-            $employerContribution = 0.0; // BHF doesn't pay employer health welfare
+            return 0.0;
         }
 
-        return round($employerContribution, 2);
+        return 0.0;
     }
 
     /**
@@ -770,14 +765,20 @@ class PayrollService
      */
     private function calculateHealthWelfareEmployee(float $monthlySalary): float
     {
-        // Health Welfare Employee contribution based on salary
-        if ($monthlySalary > 15000) {
-            return 150.0;
-        } elseif ($monthlySalary > 5000) {
-            return 100.0;
-        } else {
-            return 60.0;
+        // Health Welfare Employee contribution based on salary tiers (from benefit settings)
+        $highThreshold = BenefitSetting::getActiveSetting('health_welfare_high_threshold') ?? 15000.0;
+        $mediumThreshold = BenefitSetting::getActiveSetting('health_welfare_medium_threshold') ?? 5000.0;
+        $highAmount = BenefitSetting::getActiveSetting('health_welfare_high_amount') ?? 150.0;
+        $mediumAmount = BenefitSetting::getActiveSetting('health_welfare_medium_amount') ?? 100.0;
+        $lowAmount = BenefitSetting::getActiveSetting('health_welfare_low_amount') ?? 60.0;
+
+        if ($monthlySalary > $highThreshold) {
+            return $highAmount;
+        } elseif ($monthlySalary > $mediumThreshold) {
+            return $mediumAmount;
         }
+
+        return $lowAmount;
     }
 
     /**
@@ -933,9 +934,9 @@ class PayrollService
 
     private function calculatePVDContributions(Employee $employee, float $monthlySalary, $employment): array
     {
-        // Get PVD/Saving Fund percentage from global settings (default to 7.5% if not set)
-        $pvdPercentage = BenefitSetting::getActiveSetting('pvd_percentage') ?? 7.5;
-        $savingFundPercentage = BenefitSetting::getActiveSetting('saving_fund_percentage') ?? 7.5;
+        // Get PVD/Saving Fund percentage from tax settings (single source of truth)
+        $pvdPercentage = TaxSetting::getValue('PVD_FUND_RATE') ?? 7.5;
+        $savingFundPercentage = TaxSetting::getValue('SAVING_FUND_RATE') ?? 7.5;
 
         // PVD for Local ID (employee only)
         // Saving Fund for Local non ID (employee only)
@@ -964,49 +965,6 @@ class PayrollService
         return [
             'pvd_employee' => 0.0,
             'saving_fund' => 0.0,
-        ];
-    }
-
-    private function calculateSocialSecurity(float $monthlySalary): array
-    {
-        // Employee social security 5% (doesn't exceed 750 Baht)
-        // Employer social security 5% (doesn't exceed 750 Baht)
-        $employeeContribution = min($monthlySalary * 0.05, 750.0);
-        $employerContribution = min($monthlySalary * 0.05, 750.0);
-
-        return [
-            'employee' => round($employeeContribution, 2),
-            'employer' => round($employerContribution, 2),
-        ];
-    }
-
-    private function calculateHealthWelfare(Employee $employee, $employment, float $monthlySalary): array
-    {
-        $employeeContribution = 0.0;
-        $employerContribution = 0.0;
-
-        // Health Welfare Employee contribution based on salary
-        if ($monthlySalary > 15000) {
-            $employeeContribution = 150;
-        } elseif ($monthlySalary > 5000) {
-            $employeeContribution = 100;
-        } else {
-            $employeeContribution = 60;
-        }
-
-        // Health Welfare Employer contribution
-        // SMRU organization pays for Non-Thai ID and some expat
-        // BHF organization doesn't have to pay for health welfare employer
-        if ($employee->organization === 'SMRU' &&
-            ($employee->status === 'Non-Thai ID' || $employee->status === 'Expat')) {
-            $employerContribution = $employeeContribution; // Same as employee contribution
-        } elseif ($employee->organization === 'BHF') {
-            $employerContribution = 0.0; // BHF doesn't pay employer health welfare
-        }
-
-        return [
-            'employee' => round($employeeContribution, 2),
-            'employer' => round($employerContribution, 2),
         ];
     }
 

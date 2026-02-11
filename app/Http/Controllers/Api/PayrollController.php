@@ -9,6 +9,7 @@ use App\Models\EmployeeFundingAllocation;
 use App\Models\Payroll;
 use App\Services\PayrollService;
 use App\Services\TaxCalculationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -462,7 +463,6 @@ class PayrollController extends Controller
      *                         type="object",
      *
      *                         @OA\Property(property="allocation_id", type="integer", example=1),
-     *                         @OA\Property(property="allocation_type", type="string", example="grant"),
      *                         @OA\Property(property="fte", type="number", example=0.5),
      *                         @OA\Property(
      *                             property="project_grant",
@@ -1192,7 +1192,6 @@ class PayrollController extends Controller
      *
      *                     @OA\Property(property="allocation_id", type="integer", example=1),
      *                     @OA\Property(property="employment_id", type="integer", example=1),
-     *                     @OA\Property(property="allocation_type", type="string", example="grant"),
      *                     @OA\Property(property="fte", type="number", example=0.2),
      *                     @OA\Property(property="funding_source", type="string", example="Maternal Mortality Reduction Grant"),
      *                     @OA\Property(property="salary_by_fte", type="number", example=5000),
@@ -1259,7 +1258,6 @@ class PayrollController extends Controller
                 'allocation_calculations' => 'required|array|min:1',
                 'allocation_calculations.*.allocation_id' => 'required|exists:employee_funding_allocations,id',
                 'allocation_calculations.*.employment_id' => 'required|exists:employments,id',
-                'allocation_calculations.*.allocation_type' => 'required|string|in:grant,organization',
                 'allocation_calculations.*.fte' => 'required|numeric|min:0|max:1',
                 'allocation_calculations.*.salary_by_fte' => 'required|numeric|min:0',
                 'allocation_calculations.*.compensation_refund' => 'required|numeric|min:0',
@@ -1478,6 +1476,75 @@ class PayrollController extends Controller
     }
 
     /**
+     * Generate a payslip PDF for a specific payroll record.
+     * Each payroll record is tied to one funding allocation, so each payslip
+     * shows the grant info and FTE percentage for that specific allocation.
+     */
+    public function generatePayslip(string $id)
+    {
+        try {
+            $payroll = Payroll::with([
+                'employment.employee',
+                'employment.department:id,name',
+                'employment.position:id,title',
+                'employment.site:id,name',
+                'employeeFundingAllocation.grantItem.grant',
+                'grantAllocations',
+            ])->findOrFail($id);
+
+            $employee = $payroll->employment?->employee;
+            $employment = $payroll->employment;
+
+            // Get grant info from the PayrollGrantAllocation snapshot (preferred)
+            // or fall back to the live funding allocation relationship
+            $grantAllocation = $payroll->grantAllocations->first();
+            $fundingAllocation = $payroll->employeeFundingAllocation;
+
+            $grantCode = $grantAllocation?->grant_code ?? $fundingAllocation?->grantItem?->grant?->code ?? 'N/A';
+            $grantName = $grantAllocation?->grant_name ?? $fundingAllocation?->grantItem?->grant?->name ?? 'N/A';
+            $budgetLineCode = $grantAllocation?->budget_line_code ?? $fundingAllocation?->grantItem?->budgetline_code ?? 'N/A';
+            $grantPosition = $grantAllocation?->grant_position ?? $fundingAllocation?->grantItem?->grant_position ?? 'N/A';
+            $fte = $grantAllocation?->fte ?? $fundingAllocation?->fte ?? 0;
+
+            $data = [
+                'payroll' => $payroll,
+                'employee' => $employee,
+                'employment' => $employment,
+                'department' => $employment?->department?->name ?? 'N/A',
+                'position' => $employment?->position?->title ?? 'N/A',
+                'site' => $employment?->site?->name ?? 'N/A',
+                'grantCode' => $grantCode,
+                'grantName' => $grantName,
+                'budgetLineCode' => $budgetLineCode,
+                'grantPosition' => $grantPosition,
+                'fte' => $fte,
+                'ftePercentage' => round((float) $fte * 100, 2),
+                'payPeriod' => Carbon::parse($payroll->pay_period_date)->format('F Y'),
+            ];
+
+            $pdf = Pdf::loadView('pdf.payslip', $data);
+            $pdf->setPaper('a4', 'portrait');
+
+            $staffId = $employee?->staff_id ?? 'unknown';
+            $period = Carbon::parse($payroll->pay_period_date)->format('Y-m');
+            $filename = "payslip-{$staffId}-{$grantCode}-{$period}.pdf";
+
+            return $pdf->stream($filename);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payroll not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate payslip',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * @OA\Put(
      *     path="/payrolls/{id}",
      *     summary="Update a payroll",
@@ -1690,7 +1757,7 @@ class PayrollController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Payroll deleted successfully',
+                'message' => 'Payroll moved to recycle bin',
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
@@ -2157,7 +2224,6 @@ class PayrollController extends Controller
             'pass_probation_salary' => $employment->pass_probation_salary,
             'probation_salary' => $employment->probation_salary,
             'funding_source' => $this->getFundingSourceName($allocation),
-            'funding_type' => $allocation->allocation_type,
             'salary_breakdown' => $salaryCalculation, // Show probation transition details
             'calculations' => [
                 // Using Payroll table field names

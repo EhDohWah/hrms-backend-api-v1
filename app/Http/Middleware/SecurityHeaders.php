@@ -23,10 +23,6 @@ class SecurityHeaders
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -64,18 +60,16 @@ class SecurityHeaders
 
     /**
      * Build Content Security Policy header value
-     *
-     * @return string
      */
     protected function buildContentSecurityPolicy(): string
     {
         $policies = [
             "default-src 'self'",
             "script-src 'self'",
-            "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for many CSS frameworks
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://stackpath.bootstrapcdn.com",
             "img-src 'self' data: https:",
-            "font-src 'self' data:",
-            "connect-src 'self'",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            "connect-src 'self' wss:",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",
@@ -84,10 +78,11 @@ class SecurityHeaders
 
         // Allow additional sources in development for debugging tools
         if (app()->environment('local', 'development')) {
-            // Allow eval for Vue devtools and hot reload
-            $policies[1] = "script-src 'self' 'unsafe-eval'";
-            // Allow WebSocket connections for Vite HMR and Laravel Reverb
-            $policies[5] = "connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*";
+            // [1] Allow eval and inline scripts for Vue devtools and hot reload
+            $policies[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
+            // [5] Allow WebSocket and localhost for hot reload
+            // [5] Also allow unencrypted ws: and localhost for hot reload
+            $policies[5] = "connect-src 'self' wss: ws: http://localhost:* http://127.0.0.1:* https://stackpath.bootstrapcdn.com";
         }
 
         return implode('; ', $policies);

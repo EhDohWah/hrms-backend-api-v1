@@ -19,6 +19,9 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
+
+            // Index for FK column (SQL Server does NOT auto-create these)
+            $table->index('hub_grant_id', 'idx_ohf_hub_grant_id');
         });
     }
 

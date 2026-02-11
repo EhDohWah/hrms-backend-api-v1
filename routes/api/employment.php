@@ -323,14 +323,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [RecycleBinController::class, 'index']);
         Route::get('/stats', [RecycleBinController::class, 'stats']);
 
-        // Manifest-based operations (cascading delete/restore for Employee, Grant, Department)
-        Route::post('/restore/{deletionKey}', [RecycleBinController::class, 'restoreByKey'])->middleware('permission:recycle_bin_list.edit');
-        Route::post('/bulk-restore-keys', [RecycleBinController::class, 'bulkRestoreByKeys'])->middleware('permission:recycle_bin_list.edit');
-        Route::delete('/permanent/{deletionKey}', [RecycleBinController::class, 'permanentDeleteByKey'])->middleware('permission:recycle_bin_list.edit');
+        // Soft-delete operations (Employee, Grant, Department)
+        Route::post('/restore/{modelType}/{id}', [RecycleBinController::class, 'restore'])->middleware('permission:recycle_bin_list.edit');
+        Route::post('/bulk-restore', [RecycleBinController::class, 'bulkRestore'])->middleware('permission:recycle_bin_list.edit');
+        Route::delete('/permanent/{modelType}/{id}', [RecycleBinController::class, 'permanentDelete'])->middleware('permission:recycle_bin_list.edit');
 
-        // Legacy operations (flat restore for Interview, JobOffer)
-        Route::post('/restore-legacy', [RecycleBinController::class, 'restore'])->middleware('permission:recycle_bin_list.edit');
-        Route::post('/bulk-restore-legacy', [RecycleBinController::class, 'bulkRestore'])->middleware('permission:recycle_bin_list.edit');
-        Route::delete('/{deletedRecordId}', [RecycleBinController::class, 'permanentDelete'])->middleware('permission:recycle_bin_list.edit');
+        // Legacy operations (flat restore for Interview, JobOffer via KeepsDeletedModels)
+        Route::post('/restore-legacy', [RecycleBinController::class, 'restoreLegacy'])->middleware('permission:recycle_bin_list.edit');
+        Route::post('/bulk-restore-legacy', [RecycleBinController::class, 'bulkRestoreLegacy'])->middleware('permission:recycle_bin_list.edit');
+        Route::delete('/legacy/{deletedRecordId}', [RecycleBinController::class, 'permanentDeleteLegacy'])->middleware('permission:recycle_bin_list.edit');
     });
 });

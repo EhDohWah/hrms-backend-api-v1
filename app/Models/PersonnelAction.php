@@ -103,7 +103,7 @@ class PersonnelAction extends Model
     // Current State Relationships
     public function currentDepartment(): BelongsTo
     {
-        return $this->belongsTo(Department::class, 'current_department_id');
+        return $this->belongsTo(Department::class, 'current_department_id')->withTrashed();
     }
 
     public function currentPosition(): BelongsTo
@@ -124,7 +124,7 @@ class PersonnelAction extends Model
     // New State Relationships
     public function newDepartment(): BelongsTo
     {
-        return $this->belongsTo(Department::class, 'new_department_id');
+        return $this->belongsTo(Department::class, 'new_department_id')->withTrashed();
     }
 
     public function newPosition(): BelongsTo

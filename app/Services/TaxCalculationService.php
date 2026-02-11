@@ -431,7 +431,8 @@ class TaxCalculationService
         }
 
         $rate = $this->getSelectedSettingValue('SSF_RATE', 5);
-        $monthlyContribution = min($monthlySalary * ($rate / 100), 750); // Max 750 per month
+        $maxMonthly = $this->getSelectedSettingValue('SSF_MAX_MONTHLY', 750);
+        $monthlyContribution = min($monthlySalary * ($rate / 100), $maxMonthly);
 
         return [
             'monthly' => $monthlyContribution,

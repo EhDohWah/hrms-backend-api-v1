@@ -61,7 +61,7 @@ class GrantItem extends Model
 
     public function grant()
     {
-        return $this->belongsTo(Grant::class, 'grant_id');
+        return $this->belongsTo(Grant::class, 'grant_id')->withTrashed();
     }
 
     public function employeeFundingAllocations()

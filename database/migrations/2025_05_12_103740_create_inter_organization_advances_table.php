@@ -25,6 +25,10 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
+
+            // Indexes for FK columns (SQL Server does NOT auto-create these)
+            $table->index('payroll_id', 'idx_ioa_payroll_id');
+            $table->index('via_grant_id', 'idx_ioa_via_grant_id');
         });
     }
 

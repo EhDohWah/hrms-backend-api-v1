@@ -75,8 +75,9 @@ class ProcessBulkPayroll implements ShouldQueue
             $payrollBuffer = []; // For batch inserts
             $itemsSinceLastBroadcast = 0;
 
-            // Parse pay period to get first day of month
+            // Parse pay period to get date range for the month
             $payPeriodDate = Carbon::createFromFormat('Y-m', $this->payPeriod)->startOfMonth();
+            $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
 
             // Load all employments with relationships
             $employments = Employment::with([
@@ -90,8 +91,8 @@ class ProcessBulkPayroll implements ShouldQueue
 
             if ($employeeIds->isNotEmpty()) {
                 $allocations = EmployeeFundingAllocation::whereIn('employee_id', $employeeIds)
-                    ->where(function ($q) use ($payPeriodDate) {
-                        $q->where('start_date', '<=', $payPeriodDate)
+                    ->where(function ($q) use ($payPeriodDate, $payPeriodEnd) {
+                        $q->where('start_date', '<=', $payPeriodEnd)
                             ->where(function ($subQ) use ($payPeriodDate) {
                                 $subQ->whereNull('end_date')
                                     ->orWhere('end_date', '>=', $payPeriodDate);
@@ -299,8 +300,8 @@ class ProcessBulkPayroll implements ShouldQueue
             'gross_salary' => $calculations['gross_salary'],
             'gross_salary_by_FTE' => $calculations['gross_salary_by_fte'], // Maps to uppercase column
             'compensation_refund' => $calculations['compensation_refund'],
-            'thirteen_month_salary' => $calculations['thirteenth_month_salary'], // Using underscored key
-            'thirteen_month_salary_accured' => $calculations['thirteenth_month_salary'], // Same value
+            'thirteen_month_salary' => $calculations['thirteen_month_salary'],
+            'thirteen_month_salary_accured' => $calculations['thirteen_month_salary'],
             'pvd' => $calculations['pvd'],
             'saving_fund' => $calculations['saving_fund'],
             'employer_social_security' => $calculations['employer_social_security'],
@@ -313,7 +314,7 @@ class ProcessBulkPayroll implements ShouldQueue
             'total_pvd' => $calculations['pvd'], // Total PVD (employee portion)
             'total_saving_fund' => $calculations['saving_fund'], // Total saving fund
             'salary_bonus' => 0, // Default to 0
-            'total_income' => $calculations['total_income'] ?? ($calculations['gross_salary'] + $calculations['compensation_refund'] + $calculations['thirteenth_month_salary']),
+            'total_income' => $calculations['total_income'] ?? ($calculations['gross_salary'] + $calculations['compensation_refund'] + $calculations['thirteen_month_salary']),
             'employer_contribution' => $calculations['employer_contribution'] ?? ($calculations['employer_social_security'] + $calculations['employer_health_welfare']),
             'total_deduction' => $calculations['total_deduction'] ?? ($calculations['pvd'] + $calculations['saving_fund'] + $calculations['employee_social_security'] + $calculations['employee_health_welfare'] + $calculations['income_tax']),
             'notes' => null,

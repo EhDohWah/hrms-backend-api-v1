@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Grant;
+use App\Models\GrantItem;
 use Illuminate\Database\Seeder;
 
 class GrantSeeder extends Seeder
@@ -12,8 +13,7 @@ class GrantSeeder extends Seeder
      */
     public function run(): void
     {
-        // Note: The migration already creates 2 default hub grants (S0031 and S22001)
-        // We'll create additional diverse grants for testing
+        $faker = \Faker\Factory::create();
 
         // Create Active Research Grants for SMRU (8 grants)
         Grant::factory()
@@ -103,6 +103,19 @@ class GrantSeeder extends Seeder
             ->endingSoon()
             ->create();
 
+        // Create grant items (positions) for each grant
+        $totalItems = 0;
+        Grant::all()->each(function (Grant $grant) use ($faker, &$totalItems) {
+            $itemCount = $faker->numberBetween(2, 6);
+
+            GrantItem::factory()
+                ->count($itemCount)
+                ->forGrant($grant)
+                ->create();
+
+            $totalItems += $itemCount;
+        });
+
         // Display summary
         $this->command->info('Grant seeding completed!');
         $this->command->info('Summary:');
@@ -110,6 +123,7 @@ class GrantSeeder extends Seeder
         $this->command->info('- Total Expired Grants: '.Grant::expired()->count());
         $this->command->info('- Total Ending Soon: '.Grant::endingSoon()->count());
         $this->command->info('- Total Grants: '.Grant::count());
+        $this->command->info("- Total Grant Items (positions): {$totalItems}");
 
         // Show grants by organization
         $this->command->info('');

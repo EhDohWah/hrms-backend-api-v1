@@ -381,7 +381,7 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
     {
         return [
             '*.org' => 'nullable|string|max:10',
-            '*.staff_id' => 'required|string|unique:employees,staff_id',
+            '*.staff_id' => ['required', 'string', Rule::unique('employees', 'staff_id')->whereNull('deleted_at')],
             '*.initial' => 'nullable|string|max:10',
             '*.first_name' => 'required|string|max:255',
             '*.last_name' => 'nullable|string|max:255',

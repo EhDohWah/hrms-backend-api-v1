@@ -60,13 +60,10 @@ class PermissionRoleSeeder extends Seeder
                 'termination',
                 // Leaves submenus (5)
                 'leaves_admin',
-                'leaves_employee',
-                'leave_settings',
                 'leave_types',
                 'leave_balances',
-                // Travel submenus (2)
+                // Travel submenus (1)
                 'travel_admin',
-                'travel_employee',
                 // Attendance submenus (5)
                 'attendance_admin',
                 'attendance_employee',
@@ -105,8 +102,9 @@ class PermissionRoleSeeder extends Seeder
                 'attendance_report',
                 'leave_report',
                 'daily_report',
-                // Administration standalone (1)
+                // Administration standalone (2)
                 'file_uploads',
+                'letter_templates',
                 // Recycle Bin submenus (1)
                 'recycle_bin_list',
             ];

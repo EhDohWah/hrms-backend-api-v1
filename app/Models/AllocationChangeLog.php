@@ -104,7 +104,7 @@ class AllocationChangeLog extends Model
     // Relationships
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     public function employment(): BelongsTo
@@ -249,9 +249,8 @@ class AllocationChangeLog extends Model
     private static function generateCreatedDescription(EmployeeFundingAllocation $allocation): string
     {
         $effort = round($allocation->fte * 100, 1);
-        $type = ucfirst($allocation->allocation_type);
 
-        return "New {$type} allocation created with {$effort}% level of effort";
+        return "New grant allocation created with {$effort}% level of effort";
     }
 
     private static function generateUpdatedDescription(array $changes): string
@@ -270,20 +269,14 @@ class AllocationChangeLog extends Model
             $descriptions[] = "Allocated amount changed from ฿{$oldAmount} to ฿{$newAmount}";
         }
 
-        if (isset($changes['allocation_type'])) {
-            $descriptions[] = "Allocation type changed from {$changes['allocation_type']} to ".
-                            ($changes['allocation_type'] ?? 'unknown');
-        }
-
         return implode(', ', $descriptions) ?: 'Allocation updated';
     }
 
     private static function generateDeletedDescription(EmployeeFundingAllocation $allocation): string
     {
         $effort = round($allocation->fte * 100, 1);
-        $type = ucfirst($allocation->allocation_type);
 
-        return "{$type} allocation with {$effort}% level of effort removed";
+        return "Grant allocation with {$effort}% level of effort removed";
     }
 
     private static function calculateFinancialImpact(array $oldValues, array $newValues): array
@@ -314,7 +307,6 @@ class AllocationChangeLog extends Model
             'total_allocations' => $allocations->count(),
             'total_effort' => $allocations->sum('fte'),
             'total_amount' => $allocations->sum('allocated_amount'),
-            'by_type' => $allocations->groupBy('allocation_type')->map->count()->toArray(),
             'snapshot_date' => now()->toISOString(),
         ];
     }

@@ -110,7 +110,7 @@ class EmploymentController extends Controller
             // Conditionally load allocations if requested
             if ($validated['include_allocations'] ?? false) {
                 $query->with([
-                    'employeeFundingAllocations:id,employment_id,allocation_type,fte,allocated_amount,grant_item_id',
+                    'employeeFundingAllocations:id,employment_id,fte,allocated_amount,grant_item_id',
                     'employeeFundingAllocations.grantItem:id,grant_id,grant_position',
                     'employeeFundingAllocations.grantItem.grant:id,name',
                 ]);
@@ -200,11 +200,11 @@ class EmploymentController extends Controller
                 $appliedFilters['department'] = explode(',', $validated['filter_department']);
             }
 
-            // Fetch global benefit percentages from benefit_settings table
+            // Fetch global benefit percentages from settings (TaxSetting is single source of truth)
             $globalBenefits = [
                 'health_welfare_percentage' => \App\Models\BenefitSetting::getActiveSetting('health_welfare_percentage'),
-                'pvd_percentage' => \App\Models\BenefitSetting::getActiveSetting('pvd_percentage'),
-                'saving_fund_percentage' => \App\Models\BenefitSetting::getActiveSetting('saving_fund_percentage'),
+                'pvd_percentage' => \App\Models\TaxSetting::getValue('PVD_FUND_RATE'),
+                'saving_fund_percentage' => \App\Models\TaxSetting::getValue('SAVING_FUND_RATE'),
             ];
 
             // Add global benefit percentages to each employment item
@@ -492,7 +492,6 @@ class EmploymentController extends Controller
                             // Check grant capacity constraints using date-based logic
                             if ($grantItem->grant_position_number > 0) {
                                 $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-                                    ->where('allocation_type', 'grant')
                                     ->where('start_date', '<=', $today)
                                     ->where(function ($query) use ($today) {
                                         $query->whereNull('end_probation_date')
@@ -521,7 +520,6 @@ class EmploymentController extends Controller
                                 'grant_item_id' => $allocationData['grant_item_id'],
                                 'grant_id' => null,
                                 'fte' => $fteDecimal,
-                                'allocation_type' => 'grant',
                                 'status' => 'active',
                                 'start_date' => $validated['start_date'],
                                 'end_date' => $allocationData['end_date'] ?? $validated['end_probation_date'] ?? null,
@@ -743,12 +741,12 @@ class EmploymentController extends Controller
     public function show($id)
     {
         try {
-            $employment = Employment::findOrFail($id);
+            $employment = Employment::with(['employee', 'department', 'position', 'site'])->findOrFail($id);
 
-            // Add global benefit percentages from benefit_settings table
+            // Add global benefit percentages (TaxSetting is single source of truth for PVD/Saving Fund)
             $employment->health_welfare_percentage = \App\Models\BenefitSetting::getActiveSetting('health_welfare_percentage');
-            $employment->pvd_percentage = \App\Models\BenefitSetting::getActiveSetting('pvd_percentage');
-            $employment->saving_fund_percentage = \App\Models\BenefitSetting::getActiveSetting('saving_fund_percentage');
+            $employment->pvd_percentage = \App\Models\TaxSetting::getValue('PVD_FUND_RATE');
+            $employment->saving_fund_percentage = \App\Models\TaxSetting::getValue('SAVING_FUND_RATE');
 
             return response()->json([
                 'success' => true,
@@ -1131,9 +1129,9 @@ class EmploymentController extends Controller
                 'employee:id,staff_id,first_name_en,last_name_en,organization',
             ])->findOrFail($id);
 
-            // Get funding allocations with related data
-            // Only return active allocations to match batchUpdate behavior
-            // Historical/terminated allocations are excluded to prevent edit conflicts
+            // Get all funding allocations (active + inactive) with related data
+            // Both active and inactive are shown so users can view history and re-activate
+            // Closed allocations (permanently ended via trash) are excluded
             $fundingAllocations = EmployeeFundingAllocation::with([
                 'grantItem:id,grant_id,grant_position,grant_salary,budgetline_code',
                 'grantItem.grant:id,name,code',
@@ -1142,13 +1140,15 @@ class EmploymentController extends Controller
                 'employment.position:id,title,department_id',
             ])
                 ->where('employment_id', $id)
-                ->where('status', 'active')
+                ->whereIn('status', ['active', 'inactive'])
+                ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Calculate summary statistics
+            // Calculate summary statistics (only count active allocations for FTE)
+            $activeAllocations = $fundingAllocations->where('status', 'active');
             $totalAllocations = $fundingAllocations->count();
-            $totalFte = $fundingAllocations->sum('fte');
+            $totalFte = $activeAllocations->sum('fte');
 
             // Format the response data using Resource
             $formattedAllocations = EmployeeFundingAllocationResource::collection($fundingAllocations);
@@ -1169,7 +1169,7 @@ class EmploymentController extends Controller
                         'total_allocations' => $totalAllocations,
                         'total_fte' => $totalFte,
                         'total_fte_percentage' => ($totalFte * 100).'%',
-                        'allocation_types' => $fundingAllocations->groupBy('allocation_type')->map->count(),
+                        'total_grants' => $fundingAllocations->count(),
                     ],
                 ],
             ], 200);
@@ -1248,7 +1248,6 @@ class EmploymentController extends Controller
 
                 // Allocation fields - optional for updates
                 'allocations' => 'nullable|array|min:1',
-                'allocations.*.allocation_type' => 'sometimes|string|in:grant',
                 'allocations.*.grant_item_id' => 'required_with:allocations|nullable|exists:grant_items,id',
                 'allocations.*.fte' => 'required_with:allocations|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
@@ -1418,7 +1417,6 @@ class EmploymentController extends Controller
                             // Check grant capacity constraints using date-based logic
                             if ($grantItem && $grantItem->grant_position_number > 0) {
                                 $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-                                    ->where('allocation_type', 'grant')
                                     ->where('employment_id', '!=', $employment->id) // Exclude current employment
                                     ->where('start_date', '<=', $today)
                                     ->where(function ($query) use ($today) {
@@ -1448,7 +1446,6 @@ class EmploymentController extends Controller
                                 'grant_item_id' => $allocationData['grant_item_id'],
                                 'grant_id' => null,
                                 'fte' => $fteDecimal,
-                                'allocation_type' => 'grant',
                                 'allocated_amount' => $salaryContext['allocated_amount'],
                                 'salary_type' => $salaryContext['salary_type'],
                                 'start_date' => $allocationStartDate,

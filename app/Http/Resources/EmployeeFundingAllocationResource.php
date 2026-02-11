@@ -25,7 +25,6 @@ class EmployeeFundingAllocationResource extends JsonResource
                 ? $this->grantItem->grant_id
                 : null,
             'fte' => $this->fte * 100, // Convert decimal to percentage for UI
-            'allocation_type' => 'grant',
             'status' => $this->status, // Include status so frontend can filter if needed
             'allocated_amount' => $this->allocated_amount,
             'start_date' => $this->start_date,

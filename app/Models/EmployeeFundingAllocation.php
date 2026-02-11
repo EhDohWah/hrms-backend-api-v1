@@ -16,7 +16,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'employment_id', type: 'integer', format: 'int64', example: 1),
         new OA\Property(property: 'grant_item_id', type: 'integer', format: 'int64', nullable: true, example: 1, description: 'Direct link to grant_items for grant allocations'),
         new OA\Property(property: 'fte', type: 'number', format: 'float', example: 0.5, description: 'Full-Time Equivalent - actual funding allocation percentage'),
-        new OA\Property(property: 'allocation_type', type: 'string', example: 'grant', enum: ['grant']),
         new OA\Property(property: 'allocated_amount', type: 'number', format: 'float', nullable: true, example: 10000),
         new OA\Property(property: 'start_date', type: 'string', format: 'date', nullable: true, example: '2023-01-01'),
         new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true, example: '2023-12-31'),
@@ -35,7 +34,6 @@ class EmployeeFundingAllocation extends Model
         'employment_id',
         'grant_item_id',
         'fte',
-        'allocation_type',
         'allocated_amount',
         'salary_type',
         'status',
@@ -55,7 +53,7 @@ class EmployeeFundingAllocation extends Model
     // Relationships
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     public function employment()
@@ -105,14 +103,14 @@ class EmployeeFundingAllocation extends Model
         return $query->where('status', 'active');
     }
 
-    public function scopeHistorical($query)
+    public function scopeInactive($query)
     {
-        return $query->where('status', 'historical');
+        return $query->where('status', 'inactive');
     }
 
-    public function scopeTerminated($query)
+    public function scopeClosed($query)
     {
-        return $query->where('status', 'terminated');
+        return $query->where('status', 'closed');
     }
 
     public function scopeForDate($query, $date)
@@ -122,21 +120,6 @@ class EmployeeFundingAllocation extends Model
                 $q->whereNull('end_date')
                     ->orWhere('end_date', '>=', $date);
             });
-    }
-
-    public function scopeByAllocationType($query, $type)
-    {
-        return $query->where('allocation_type', $type);
-    }
-
-    public function scopeGrant($query)
-    {
-        return $query->where('allocation_type', 'grant');
-    }
-
-    public function scopeOrgFunded($query)
-    {
-        return $query->where('allocation_type', 'org_funded');
     }
 
     public function scopeByEffortRange($query, $minEffort, $maxEffort = null)
@@ -166,7 +149,7 @@ class EmployeeFundingAllocation extends Model
     {
         return $query->active()
             ->select([
-                'id', 'employee_id', 'employment_id', 'allocation_type',
+                'id', 'employee_id', 'employment_id',
                 'fte', 'allocated_amount', 'grant_item_id',
             ])
             ->with([
@@ -181,23 +164,23 @@ class EmployeeFundingAllocation extends Model
         return $this->status === 'active';
     }
 
-    public function isHistorical(): bool
+    public function isInactive(): bool
     {
-        return $this->status === 'historical';
+        return $this->status === 'inactive';
     }
 
-    public function isTerminated(): bool
+    public function isClosed(): bool
     {
-        return $this->status === 'terminated';
+        return $this->status === 'closed';
     }
 
     // Accessors
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'active' => 'Currently Active',
-            'historical' => 'Historical (Probation Period)',
-            'terminated' => 'Terminated',
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+            'closed' => 'Closed',
             default => 'Unknown'
         };
     }

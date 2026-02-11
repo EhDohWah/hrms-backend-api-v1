@@ -19,7 +19,8 @@ class UserSeeder extends Seeder
         $this->command->info('🔧 Creating core system users...');
         $this->command->info('========================================');
 
-        // 1. ADMIN USER - Auto-permissions
+        // 1. ADMIN USER — Administration modules only
+        //    Dashboard, Lookups, Organization Structure, User Management, File Uploads, Recycle Bin
         $admin = User::firstOrCreate(
             ['email' => 'admin@hrms.com'],
             [
@@ -32,12 +33,32 @@ class UserSeeder extends Seeder
             ]
         );
         $admin->assignRole('admin');
-        $admin->syncPermissions(Permission::all());
+
+        $adminModules = [
+            'dashboard',           // Dashboard
+            'lookup_list',         // Lookups
+            'sites',               // Organization Structure
+            'departments',         // Organization Structure
+            'positions',           // Organization Structure
+            'section_departments', // Organization Structure
+            'users',               // User Management
+            'roles',               // User Management
+            'file_uploads',        // Administration
+            'recycle_bin_list',    // Recycle Bin
+        ];
+
+        $adminPermissions = [];
+        foreach ($adminModules as $module) {
+            $adminPermissions[] = "{$module}.read";
+            $adminPermissions[] = "{$module}.edit";
+        }
+        $admin->syncPermissions($adminPermissions);
+
         $this->command->info('✓ Admin user created (admin@hrms.com)');
         $this->command->info('  - Role: System Administrator');
-        $this->command->info('  - Permissions: ALL ('.Permission::count().' permissions)');
+        $this->command->info('  - Permissions: Administration only ('.count($adminPermissions).' permissions)');
 
-        // 2. HR MANAGER - Auto-permissions
+        // 2. HR MANAGER — full access to all modules (manages employee/HR data)
         $hrManager = User::firstOrCreate(
             ['email' => 'hrmanager@hrms.com'],
             [
@@ -65,7 +86,8 @@ class UserSeeder extends Seeder
         $this->command->info('  - hrmanager@hrms.com (password: password)');
         $this->command->info('');
         $this->command->info('NOTES:');
-        $this->command->info('- Admin and HR Manager have ALL permissions automatically');
+        $this->command->info('- Admin has Administration-only permissions (org structure, users, lookups, etc.)');
+        $this->command->info('- HR Manager has ALL permissions (full access to HR/employee data)');
         $this->command->info('- Additional users should be created via User Management UI');
         $this->command->info('- Other roles can be created via Role Management UI');
         $this->command->info('- Permissions for other users assigned via UI by Admin/HR Manager');

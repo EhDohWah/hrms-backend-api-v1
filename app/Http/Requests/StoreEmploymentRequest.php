@@ -44,7 +44,6 @@ class StoreEmploymentRequest extends FormRequest
             // Allocation fields (optional - can be created separately via EmployeeFundingAllocationController)
             // Note: Allocations are now decoupled from employment creation for better flexibility
             'allocations' => ['sometimes', 'array'],
-            'allocations.*.allocation_type' => ['sometimes', 'string', Rule::in(['grant'])],
             'allocations.*.fte' => ['required_with:allocations', 'numeric', 'min:0.01', 'max:100'],
             'allocations.*.grant_item_id' => ['required_with:allocations', 'integer', 'exists:grant_items,id'],
             'allocations.*.allocated_amount' => ['nullable', 'numeric', 'min:0'],
@@ -80,8 +79,6 @@ class StoreEmploymentRequest extends FormRequest
             'status.boolean' => 'Status must be true (Active) or false (Inactive).',
             // Note: Allocations are now optional - can be created separately after employment
             'allocations.array' => 'Allocations must be an array if provided.',
-            'allocations.*.allocation_type.required' => 'Funding allocation type is required.',
-            'allocations.*.allocation_type.in' => 'Invalid allocation type. Must be grant.',
             'allocations.*.fte.required' => 'FTE (Full-Time Equivalent) is required for each allocation.',
             'allocations.*.fte.min' => 'FTE must be at least 0.01%.',
             'allocations.*.fte.max' => 'FTE cannot exceed 100%.',

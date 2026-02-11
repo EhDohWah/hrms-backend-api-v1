@@ -47,17 +47,7 @@ class InterOrganizationAdvance extends Model
 
     public function viaGrant()
     {
-        return $this->belongsTo(Grant::class, 'via_grant_id');
-    }
-
-    public function fromOrganization()
-    {
-        return $this->belongsTo(Organization::class, 'from_organization', 'code');
-    }
-
-    public function toOrganization()
-    {
-        return $this->belongsTo(Organization::class, 'to_organization', 'code');
+        return $this->belongsTo(Grant::class, 'via_grant_id')->withTrashed();
     }
 
     // Query scopes for better performance
@@ -109,8 +99,6 @@ class InterOrganizationAdvance extends Model
     {
         return $query->with([
             'viaGrant:id,name,code',
-            'fromOrganization:code,name',
-            'toOrganization:code,name',
         ]);
     }
 

@@ -6,7 +6,10 @@ use App\Traits\LogsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -30,7 +33,7 @@ use OpenApi\Attributes as OA;
 )]
 class Grant extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, Prunable, SoftDeletes;
 
     protected $fillable = [
         'code', 'name', 'organization', 'description', 'end_date', 'created_by', 'updated_by',
@@ -41,6 +44,47 @@ class Grant extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Prunable query: permanently delete soft-deleted records after 90 days.
+     */
+    public function prunable()
+    {
+        return static::onlyTrashed()->where('deleted_at', '<=', now()->subDays(90));
+    }
+
+    /**
+     * Pre-deletion cleanup for children with NO_ACTION FK constraints.
+     *
+     * grant_items has children with mixed FK actions:
+     * - efah.grant_item_id → SET NULL (DB-level, automatic)
+     * - payroll_grant_allocations.grant_item_id → SET NULL (DB-level, automatic)
+     * - employee_funding_allocations.grant_item_id → NO ACTION (must SET NULL manually)
+     *
+     * Direct grant children:
+     * - inter_organization_advances.via_grant_id → NO ACTION, NOT NULL (must DELETE)
+     * - organization_hub_funds.hub_grant_id → NO ACTION (must DELETE)
+     * - grant_items.grant_id → NO ACTION (must DELETE)
+     */
+    protected function pruning(): void
+    {
+        $grantItemIds = DB::table('grant_items')->where('grant_id', $this->id)->pluck('id');
+
+        if ($grantItemIds->isNotEmpty()) {
+            // Nullify references before deleting grant_items
+            DB::table('employee_funding_allocations')
+                ->whereIn('grant_item_id', $grantItemIds)
+                ->update(['grant_item_id' => null]);
+
+            DB::table('grant_items')->whereIn('id', $grantItemIds)->delete();
+        }
+
+        // Direct children of the grant
+        DB::table('inter_organization_advances')->where('via_grant_id', $this->id)->delete();
+        DB::table('organization_hub_funds')->where('hub_grant_id', $this->id)->delete();
+
+        Log::info("Pruning grant #{$this->id} ({$this->code}) and all related records");
+    }
 
     // Relationships
     public function grantItems()
@@ -299,6 +343,28 @@ class Grant extends Model
         $hubCodes = array_values(self::getHubGrantCodes());
 
         return self::whereIn('code', $hubCodes)->get();
+    }
+
+    /**
+     * Check for conditions that prevent deletion.
+     * Returns array of blocker messages. Empty = safe to delete.
+     */
+    public function getDeletionBlockers(): array
+    {
+        $blockers = [];
+        $grantItemIds = DB::table('grant_items')->where('grant_id', $this->id)->pluck('id');
+
+        if ($grantItemIds->isNotEmpty()) {
+            $allocationCount = DB::table('employee_funding_allocations')
+                ->whereIn('grant_item_id', $grantItemIds)
+                ->count();
+
+            if ($allocationCount > 0) {
+                $blockers[] = "Cannot delete: {$allocationCount} employee funding allocation(s) reference this grant's items. Please remove or reassign allocations first.";
+            }
+        }
+
+        return $blockers;
     }
 
     // Model events to set created_by/updated_by

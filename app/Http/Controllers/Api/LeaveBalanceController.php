@@ -60,6 +60,8 @@ class LeaveBalanceController extends Controller
                 'leave_type_id' => 'integer|exists:leave_types,id',
                 'year' => 'integer|min:2020|max:2030',
                 'search' => 'string|nullable|max:255',
+                'sort_by' => 'string|nullable|in:employee_name,staff_id,leave_type,total_days,used_days,remaining_days,year,created_at',
+                'sort_order' => 'string|nullable|in:asc,desc',
             ]);
 
             $perPage = $validated['per_page'] ?? 10;
@@ -68,19 +70,19 @@ class LeaveBalanceController extends Controller
                 'leaveType:id,name',
             ]);
 
-            // Apply filters
+            // Apply filters (qualify column names to avoid ambiguity when joins are used)
             if (! empty($validated['employee_id'])) {
-                $query->where('employee_id', $validated['employee_id']);
+                $query->where('leave_balances.employee_id', $validated['employee_id']);
             }
 
             if (! empty($validated['leave_type_id'])) {
-                $query->where('leave_type_id', $validated['leave_type_id']);
+                $query->where('leave_balances.leave_type_id', $validated['leave_type_id']);
             }
 
             if (! empty($validated['year'])) {
-                $query->where('year', $validated['year']);
+                $query->where('leave_balances.year', $validated['year']);
             } else {
-                $query->where('year', Carbon::now()->year);
+                $query->where('leave_balances.year', Carbon::now()->year);
             }
 
             // Apply search filter
@@ -93,7 +95,29 @@ class LeaveBalanceController extends Controller
                 });
             }
 
-            $leaveBalances = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            // Apply sorting
+            $sortBy = $validated['sort_by'] ?? 'created_at';
+            $sortOrder = $validated['sort_order'] ?? 'desc';
+
+            if ($sortBy === 'employee_name') {
+                $query->join('employees', 'leave_balances.employee_id', '=', 'employees.id')
+                    ->orderBy('employees.first_name_en', $sortOrder)
+                    ->select('leave_balances.*');
+            } elseif ($sortBy === 'staff_id') {
+                $query->join('employees', 'leave_balances.employee_id', '=', 'employees.id')
+                    ->orderBy('employees.staff_id', $sortOrder)
+                    ->select('leave_balances.*');
+            } elseif ($sortBy === 'leave_type') {
+                $query->join('leave_types', 'leave_balances.leave_type_id', '=', 'leave_types.id')
+                    ->orderBy('leave_types.name', $sortOrder)
+                    ->select('leave_balances.*');
+            } elseif (in_array($sortBy, ['total_days', 'used_days', 'remaining_days', 'year'])) {
+                $query->orderBy("leave_balances.{$sortBy}", $sortOrder);
+            } else {
+                $query->orderBy('leave_balances.created_at', 'desc');
+            }
+
+            $leaveBalances = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -104,6 +128,9 @@ class LeaveBalanceController extends Controller
                     'per_page' => $leaveBalances->perPage(),
                     'total' => $leaveBalances->total(),
                     'last_page' => $leaveBalances->lastPage(),
+                    'from' => $leaveBalances->firstItem(),
+                    'to' => $leaveBalances->lastItem(),
+                    'has_more_pages' => $leaveBalances->hasMorePages(),
                 ],
             ], 200);
 

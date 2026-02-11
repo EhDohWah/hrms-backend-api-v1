@@ -4,6 +4,10 @@ namespace App\Models;
 
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -41,7 +45,7 @@ use OpenApi\Attributes as OA;
 )]
 class Payroll extends Model
 {
-    use LogsActivity;
+    use LogsActivity, SoftDeletes, Prunable;
 
     protected $table = 'payrolls';
 
@@ -98,6 +102,31 @@ class Payroll extends Model
         'total_deduction' => 'encrypted',
         'pay_period_date' => 'date',
     ];
+
+    /**
+     * Prunable: auto-delete soft-deleted payrolls after 90 days.
+     * Runs via `php artisan model:prune` (scheduled daily at 02:00).
+     */
+    public function prunable()
+    {
+        return static::onlyTrashed()->where('deleted_at', '<=', now()->subDays(90));
+    }
+
+    /**
+     * Clean up child records before permanent deletion (forceDelete).
+     *
+     * payroll_grant_allocations: CASCADE FK — handled automatically by DB.
+     * inter_organization_advances: NO ACTION FK — must delete manually.
+     */
+    protected function pruning(): void
+    {
+        // inter_organization_advances has NO ACTION FK on payroll_id
+        DB::table('inter_organization_advances')
+            ->where('payroll_id', $this->id)
+            ->delete();
+
+        Log::info("Pruning payroll #{$this->id} (pay period: {$this->pay_period_date})");
+    }
 
     // Define relationships
     public function employment()
@@ -162,7 +191,7 @@ class Payroll extends Model
             'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
-            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',
+            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,fte,allocated_amount,status',
             'employeeFundingAllocation.grantItem:id,grant_id,grant_position,budgetline_code',
             'employeeFundingAllocation.grantItem.grant:id,name,code',
         ]);
@@ -231,18 +260,21 @@ class Payroll extends Model
             case 'organization':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
                     ->join('employees', 'employments.employee_id', '=', 'employees.id')
+                    ->whereNull('employees.deleted_at')
                     ->orderBy('employees.organization', $sortOrder)
                     ->select('payrolls.*');
 
             case 'department':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
                     ->join('departments', 'employments.department_id', '=', 'departments.id')
+                    ->whereNull('departments.deleted_at')
                     ->orderBy('departments.name', $sortOrder)
                     ->select('payrolls.*');
 
             case 'staff_id':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
                     ->join('employees', 'employments.employee_id', '=', 'employees.id')
+                    ->whereNull('employees.deleted_at')
                     ->orderBy('employees.staff_id', $sortOrder)
                     ->select('payrolls.*');
 
@@ -252,6 +284,7 @@ class Payroll extends Model
             case 'employee_name':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
                     ->join('employees', 'employments.employee_id', '=', 'employees.id')
+                    ->whereNull('employees.deleted_at')
                     ->orderBy('employees.first_name_en', $sortOrder)
                     ->orderBy('employees.last_name_en', $sortOrder)
                     ->select('payrolls.*');
@@ -302,7 +335,7 @@ class Payroll extends Model
             'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
-            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,allocation_type,fte,allocated_amount,status',
+            'employeeFundingAllocation:id,employee_id,employment_id,grant_item_id,fte,allocated_amount,status',
             'employeeFundingAllocation.grantItem:id,grant_id,grant_position,budgetline_code',
             'employeeFundingAllocation.grantItem.grant:id,name,code',
         ]);

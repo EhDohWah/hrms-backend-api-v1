@@ -5,8 +5,11 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -63,7 +66,7 @@ use OpenApi\Attributes as OA;
 )]
 class Employee extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, Prunable, SoftDeletes;
 
     protected $fillable = [
         'organization',
@@ -120,6 +123,53 @@ class Employee extends Model
         'identification_expiry_date' => 'date',
         'military_status' => 'boolean',
     ];
+
+    /**
+     * Prunable query: permanently delete soft-deleted records after 90 days.
+     */
+    public function prunable()
+    {
+        return static::onlyTrashed()->where('deleted_at', '<=', now()->subDays(90));
+    }
+
+    /**
+     * Pre-deletion cleanup for multi-path FK children.
+     *
+     * SQL Server disallows CASCADE on tables with dual FK paths (e.g. employment_histories
+     * has both employee_id → employees AND employment_id → employments). These children
+     * must be deleted manually before forceDelete() runs.
+     *
+     * Leaf children (beneficiaries, children, education, etc.) are handled by DB-level CASCADE.
+     */
+    protected function pruning(): void
+    {
+        $employmentIds = DB::table('employments')->where('employee_id', $this->id)->pluck('id');
+
+        if ($employmentIds->isNotEmpty()) {
+            // Deepest children first to avoid FK violations
+            DB::table('allocation_change_logs')->whereIn('employment_id', $employmentIds)->delete();
+            DB::table('employee_funding_allocation_history')->whereIn('employment_id', $employmentIds)->delete();
+            DB::table('employee_funding_allocations')->whereIn('employment_id', $employmentIds)->delete();
+            DB::table('employment_histories')->whereIn('employment_id', $employmentIds)->delete();
+            DB::table('probation_records')->whereIn('employment_id', $employmentIds)->delete();
+            DB::table('personnel_actions')->whereIn('employment_id', $employmentIds)->delete();
+
+            // Payroll children (blocker should have prevented these, but handle gracefully)
+            $payrollIds = DB::table('payrolls')->whereIn('employment_id', $employmentIds)->pluck('id');
+            if ($payrollIds->isNotEmpty()) {
+                DB::table('payroll_grant_allocations')->whereIn('payroll_id', $payrollIds)->delete();
+                DB::table('inter_organization_advances')->whereIn('payroll_id', $payrollIds)->delete();
+                DB::table('payrolls')->whereIn('id', $payrollIds)->delete();
+            }
+
+            DB::table('employments')->whereIn('id', $employmentIds)->delete();
+        }
+
+        // Direct children with no FK constraint (would create orphans)
+        DB::table('tax_calculation_logs')->where('employee_id', $this->id)->delete();
+
+        Log::info("Pruning employee #{$this->id} ({$this->staff_id}) and all related records");
+    }
 
     /**
      * Get the employment record associated with the employee
@@ -341,6 +391,7 @@ class Employee extends Model
                 'totalEmployees' => Employee::count(),
                 'activeCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->whereNull('employees.deleted_at')
                     ->where(function ($q) use ($now) {
                         $q->whereNull('employments.end_probation_date')
                             ->orWhere('employments.end_probation_date', '>', $now);
@@ -348,11 +399,13 @@ class Employee extends Model
                     ->count(),
                 'inactiveCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->whereNull('employees.deleted_at')
                     ->whereNotNull('employments.end_probation_date')
                     ->where('employments.end_probation_date', '<=', $now)
                     ->count(),
                 'newJoinerCount' => DB::table('employments')
                     ->join('employees', 'employees.id', '=', 'employments.employee_id')
+                    ->whereNull('employees.deleted_at')
                     ->whereBetween('employments.start_date', [$threeMonthsAgo, $now])
                     ->count(),
                 'organizationCount' => [
@@ -361,6 +414,25 @@ class Employee extends Model
                 ],
             ];
         });
+    }
+
+    /**
+     * Check for conditions that prevent deletion.
+     * Returns array of blocker messages. Empty = safe to delete.
+     */
+    public function getDeletionBlockers(): array
+    {
+        $blockers = [];
+        $employmentIds = $this->employments()->pluck('id');
+
+        if ($employmentIds->isNotEmpty()) {
+            $payrollCount = DB::table('payrolls')->whereIn('employment_id', $employmentIds)->whereNull('deleted_at')->count();
+            if ($payrollCount > 0) {
+                $blockers[] = "Cannot delete: {$payrollCount} payroll record(s) exist for this employee. Please delete or archive payrolls first.";
+            }
+        }
+
+        return $blockers;
     }
 
     /**

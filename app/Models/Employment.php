@@ -377,7 +377,7 @@ class Employment extends Model
     // — Relationships —
     public function employee()
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     public function employeeFundingAllocations()
@@ -430,7 +430,7 @@ class Employment extends Model
 
     public function department()
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class)->withTrashed();
     }
 
     public function sectionDepartment()
@@ -521,8 +521,7 @@ class Employment extends Model
     {
         return $query->with([
             'employeeFundingAllocations' => function ($q) {
-                $q->orderBy('allocation_type')
-                    ->orderBy('fte', 'desc');
+                $q->orderBy('fte', 'desc');
             },
             'employeeFundingAllocations.grantItem.grant',
         ]);
@@ -536,7 +535,7 @@ class Employment extends Model
             'position:id,title,department_id',
             'employeeFundingAllocations' => function ($q) {
                 $q->active()
-                    ->select(['id', 'employment_id', 'allocation_type', 'fte', 'allocated_amount']);
+                    ->select(['id', 'employment_id', 'fte', 'allocated_amount']);
             },
             'employeeFundingAllocations.grantItem.grant:id,name,code',
         ]);

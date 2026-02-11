@@ -86,10 +86,6 @@ class EmployeeFundingAllocationController extends Controller
                 $query->where('employee_id', $request->employee_id);
             }
 
-            if ($request->has('allocation_type')) {
-                $query->where('allocation_type', $request->allocation_type);
-            }
-
             if ($request->has('active')) {
                 $today = Carbon::today();
                 if ($request->boolean('active')) {
@@ -168,7 +164,6 @@ class EmployeeFundingAllocationController extends Controller
                 'grantItem.grant:id,name,code',
             ])
                 ->where('grant_item_id', $grantItemId)
-                ->where('allocation_type', 'grant')
                 ->orderByDesc('id')
                 ->get();
 
@@ -224,11 +219,9 @@ class EmployeeFundingAllocationController extends Controller
      *
      *                 @OA\Items(
      *                     type="object",
-     *                     required={"allocation_type", "fte"},
+     *                     required={"fte"},
      *
-     *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (required for grant allocations)", nullable=true),
-     *                     @OA\Property(property="org_funded_id", type="integer", description="Org funded allocation ID (required for org_funded allocations)", nullable=true),
+     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID", nullable=true),
      *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true)
      *                 )
@@ -319,7 +312,6 @@ class EmployeeFundingAllocationController extends Controller
                 'start_date' => 'required|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
-                'allocations.*.allocation_type' => 'sometimes|string|in:grant',
                 'allocations.*.grant_item_id' => 'required|exists:grant_items,id',
                 'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
@@ -427,12 +419,12 @@ class EmployeeFundingAllocationController extends Controller
 
             DB::beginTransaction();
 
-            // Step 7: Mark replaced allocations as 'historical'
+            // Step 7: Mark replaced allocations as 'closed'
             if (! empty($replaceIds)) {
                 $endDate = Carbon::parse($validated['start_date'])->subDay();
                 EmployeeFundingAllocation::whereIn('id', $replaceIds)
                     ->update([
-                        'status' => 'historical',
+                        'status' => 'closed',
                         'end_date' => $endDate,
                         'updated_by' => $currentUser,
                     ]);
@@ -462,7 +454,6 @@ class EmployeeFundingAllocationController extends Controller
                     if ($grantItem->grant_position_number > 0) {
                         // Check current active allocations (based on dates)
                         $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-                            ->where('allocation_type', 'grant')
                             ->where('start_date', '<=', $today)
                             ->where(function ($query) use ($today) {
                                 $query->whereNull('end_date')
@@ -481,7 +472,6 @@ class EmployeeFundingAllocationController extends Controller
                     $existingAllocation = EmployeeFundingAllocation::where([
                         'employee_id' => $validated['employee_id'],
                         'employment_id' => $validated['employment_id'],
-                        'allocation_type' => $allocationType,
                     ])
                         ->where('start_date', '<=', $today)
                         ->where(function ($query) use ($today) {
@@ -492,7 +482,7 @@ class EmployeeFundingAllocationController extends Controller
                     $existingAllocation->where('grant_item_id', $allocationData['grant_item_id']);
 
                     if ($existingAllocation->exists()) {
-                        $errors[] = "Allocation #{$index}: Already exists for this employee, employment, and {$allocationType} allocation";
+                        $errors[] = "Allocation #{$index}: Already exists for this employee and employment";
 
                         continue;
                     }
@@ -512,7 +502,6 @@ class EmployeeFundingAllocationController extends Controller
                         'employment_id' => $validated['employment_id'],
                         'grant_item_id' => $allocationData['grant_item_id'],
                         'fte' => $fteDecimal,
-                        'allocation_type' => 'grant',
                         'status' => 'active',
                         'start_date' => $validated['start_date'],
                         'end_date' => $validated['end_date'] ?? null,
@@ -794,9 +783,7 @@ class EmployeeFundingAllocationController extends Controller
      *
      *             @OA\Property(property="employee_id", type="integer", description="ID of the employee"),
      *             @OA\Property(property="employment_id", type="integer", description="ID of the employment"),
-     *             @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *             @OA\Property(property="position_slot_id", type="integer", description="ID of the position slot (required for grant allocations)", nullable=true),
-     *             @OA\Property(property="org_funded_id", type="integer", description="ID of the org funded allocation (required for org_funded allocations)", nullable=true),
+     *             @OA\Property(property="position_slot_id", type="integer", description="ID of the position slot", nullable=true),
      *             @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *             @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true),
      *             @OA\Property(property="start_date", type="string", format="date", description="Start date"),
@@ -879,7 +866,6 @@ class EmployeeFundingAllocationController extends Controller
             $validator = Validator::make($request->all(), [
                 'employee_id' => 'sometimes|exists:employees,id',
                 'employment_id' => 'sometimes|exists:employments,id',
-                'allocation_type' => 'sometimes|string|in:grant',
                 'grant_item_id' => 'required|exists:grant_items,id',
                 'grant_id' => 'nullable',
                 'fte' => 'sometimes|numeric|min:0|max:100',
@@ -900,8 +886,6 @@ class EmployeeFundingAllocationController extends Controller
             $currentUser = Auth::user()->name ?? 'system';
 
             DB::beginTransaction();
-
-            $validated['allocation_type'] = 'grant';
 
             if (empty($validated['grant_item_id'])) {
                 DB::rollBack();
@@ -925,7 +909,6 @@ class EmployeeFundingAllocationController extends Controller
             if ($grantItem->grant_position_number > 0) {
                 $today = Carbon::today();
                 $currentAllocations = EmployeeFundingAllocation::where('grant_item_id', $grantItem->id)
-                    ->where('allocation_type', 'grant')
                     ->where('id', '!=', $id) // Exclude current allocation
                     ->where('start_date', '<=', $today)
                     ->where(function ($query) use ($today) {
@@ -1119,6 +1102,7 @@ class EmployeeFundingAllocationController extends Controller
             'updates.*.id' => 'required|integer|exists:employee_funding_allocations,id',
             'updates.*.grant_item_id' => 'required|integer|exists:grant_items,id',
             'updates.*.fte' => 'required|numeric|min:1|max:100',
+            'updates.*.status' => 'nullable|string|in:active,inactive',
             'creates' => 'nullable|array',
             'creates.*.grant_item_id' => 'required|integer|exists:grant_items,id',
             'creates.*.fte' => 'required|numeric|min:1|max:100',
@@ -1141,56 +1125,63 @@ class EmployeeFundingAllocationController extends Controller
         $deletes = $request->input('deletes', []);
 
         // Step 2: Calculate projected total FTE after all operations
-        // Formula: untouched_allocations + updates + creates = 100%
+        // Formula: untouched_active_allocations + active_updates + creates = 100%
+        // Include both active and inactive so inactive records can be re-activated
         $currentAllocations = EmployeeFundingAllocation::where('employee_id', $employeeId)
             ->where('employment_id', $employmentId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'inactive'])
             ->get()
             ->keyBy('id');
 
         $updateIds = collect($updates)->pluck('id')->toArray();
         $currentAllocationIds = $currentAllocations->keys()->toArray();
 
-        // Validate that all update IDs belong to active allocations for this employee/employment
+        // Validate that all update IDs belong to this employee/employment
         $invalidUpdateIds = array_diff($updateIds, $currentAllocationIds);
         if (! empty($invalidUpdateIds)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Some allocation IDs to update are not active or do not belong to this employee/employment',
+                'message' => 'Some allocation IDs to update do not belong to this employee/employment',
                 'invalid_ids' => array_values($invalidUpdateIds),
             ], 422);
         }
 
-        // Validate that all delete IDs belong to active allocations for this employee/employment
+        // Validate that all delete IDs belong to this employee/employment
         $invalidDeleteIds = array_diff($deletes, $currentAllocationIds);
         if (! empty($invalidDeleteIds)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Some allocation IDs to delete are not active or do not belong to this employee/employment',
+                'message' => 'Some allocation IDs to delete do not belong to this employee/employment',
                 'invalid_ids' => array_values($invalidDeleteIds),
             ], 422);
         }
 
-        // FTE from allocations that won't be modified or deleted
+        // FTE from active allocations that won't be modified or deleted
         $untouchedFte = 0;
         foreach ($currentAllocations as $allocation) {
             $isBeingUpdated = in_array($allocation->id, $updateIds);
             $isBeingDeleted = in_array($allocation->id, $deletes);
 
-            if (! $isBeingUpdated && ! $isBeingDeleted) {
+            // Only count untouched ACTIVE allocations toward FTE total
+            if (! $isBeingUpdated && ! $isBeingDeleted && $allocation->status === 'active') {
                 $untouchedFte += (float) $allocation->fte * 100;
             }
         }
 
-        // FTE from updates and creates (already in percentage)
-        $updatesFte = collect($updates)->sum('fte');
+        // FTE from updates (only count active ones) and creates (already in percentage)
+        $updatesFte = collect($updates)
+            ->filter(fn ($u) => ($u['status'] ?? 'active') === 'active')
+            ->sum('fte');
         $createsFte = collect($creates)->sum('fte');
 
         $projectedTotal = $untouchedFte + $updatesFte + $createsFte;
 
         // Step 3: Validate total = 100% with tolerance for floating-point
+        // Allow 0% if all active allocations are being terminated/deleted (no active allocations remaining)
         $tolerance = 0.01;
-        if (abs($projectedTotal - 100) > $tolerance) {
+        $hasActiveAllocations = $projectedTotal > $tolerance;
+
+        if ($hasActiveAllocations && abs($projectedTotal - 100) > $tolerance) {
             return response()->json([
                 'success' => false,
                 'message' => 'Total FTE must equal 100%',
@@ -1233,12 +1224,12 @@ class EmployeeFundingAllocationController extends Controller
             $updatedCount = 0;
             $createdCount = 0;
 
-            // Process deletes - mark as historical for audit trail
+            // Process deletes - mark as closed (permanently ended) for audit trail
             foreach ($deletes as $deleteId) {
                 $allocation = $currentAllocations->get($deleteId);
                 if ($allocation) {
                     $allocation->update([
-                        'status' => 'historical',
+                        'status' => 'closed',
                         'end_date' => $today->toDateString(),
                         'updated_by' => $userName,
                     ]);
@@ -1252,14 +1243,28 @@ class EmployeeFundingAllocationController extends Controller
                 if ($allocation) {
                     $fteDecimal = (float) $updateData['fte'] / 100;
                     $allocatedAmount = $baseSalary * $fteDecimal;
+                    $newStatus = $updateData['status'] ?? 'active';
 
-                    $allocation->update([
+                    $updateFields = [
                         'grant_item_id' => $updateData['grant_item_id'],
                         'fte' => $fteDecimal,
                         'allocated_amount' => $allocatedAmount,
                         'salary_type' => $salaryType,
+                        'status' => $newStatus,
                         'updated_by' => $userName,
-                    ]);
+                    ];
+
+                    // Set end_date when deactivating an allocation
+                    if ($newStatus === 'inactive' && $allocation->status === 'active') {
+                        $updateFields['end_date'] = $today->toDateString();
+                    }
+
+                    // Clear end_date when re-activating an inactive allocation
+                    if ($newStatus === 'active' && $allocation->status === 'inactive') {
+                        $updateFields['end_date'] = null;
+                    }
+
+                    $allocation->update($updateFields);
                     $updatedCount++;
                 }
             }
@@ -1274,7 +1279,6 @@ class EmployeeFundingAllocationController extends Controller
                     'employment_id' => $employmentId,
                     'grant_item_id' => $createData['grant_item_id'],
                     'fte' => $fteDecimal,
-                    'allocation_type' => 'grant',
                     'allocated_amount' => $allocatedAmount,
                     'salary_type' => $salaryType,
                     'status' => 'active',
@@ -1646,11 +1650,9 @@ class EmployeeFundingAllocationController extends Controller
      *
      *                 @OA\Items(
      *                     type="object",
-     *                     required={"allocation_type", "fte"},
+     *                     required={"fte"},
      *
-     *                     @OA\Property(property="allocation_type", type="string", enum={"grant", "org_funded"}, description="Type of allocation"),
-     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID (required for grant allocations)", nullable=true),
-     *                     @OA\Property(property="org_funded_id", type="integer", description="Org funded allocation ID (required for org_funded allocations)", nullable=true),
+     *                     @OA\Property(property="position_slot_id", type="integer", description="Position slot ID", nullable=true),
      *                     @OA\Property(property="fte", type="number", format="float", minimum=0, maximum=100, description="FTE as percentage (0-100)"),
      *                     @OA\Property(property="allocated_amount", type="number", format="float", minimum=0, description="Allocated amount", nullable=true)
      *                 )
@@ -1712,9 +1714,7 @@ class EmployeeFundingAllocationController extends Controller
                 'start_date' => 'required|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'allocations' => 'required|array|min:1',
-                'allocations.*.allocation_type' => 'required|string|in:grant,org_funded',
-                'allocations.*.grant_item_id' => 'required_if:allocations.*.allocation_type,grant|nullable|exists:grant_items,id',
-                'allocations.*.grant_id' => 'required_if:allocations.*.allocation_type,org_funded|nullable|exists:grants,id',
+                'allocations.*.grant_item_id' => 'required|exists:grant_items,id',
                 'allocations.*.fte' => 'required|numeric|min:0|max:100',
                 'allocations.*.allocated_amount' => 'nullable|numeric|min:0',
             ]);
@@ -1770,7 +1770,6 @@ class EmployeeFundingAllocationController extends Controller
                     'grant_item_id' => $allocationData['grant_item_id'],
                     'grant_id' => null,
                     'fte' => $allocationData['fte'] / 100, // Convert percentage to decimal
-                    'allocation_type' => 'grant',
                     'allocated_amount' => $allocationData['allocated_amount'] ?? null,
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'] ?? null,

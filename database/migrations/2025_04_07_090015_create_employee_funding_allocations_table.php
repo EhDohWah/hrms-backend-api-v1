@@ -24,7 +24,6 @@ return new class extends Migration
                 ->comment('Direct link to grant_items for all allocations (project + hub)');
 
             $table->decimal('fte', 4, 2)->comment('Full-Time Equivalent - represents the actual funding allocation percentage for this employee');
-            $table->string('allocation_type', 20); // e.g., 'grant', 'org_funded'
             $table->decimal('allocated_amount', 15, 2)->nullable();
             $table->string('salary_type', 50)
                 ->nullable()

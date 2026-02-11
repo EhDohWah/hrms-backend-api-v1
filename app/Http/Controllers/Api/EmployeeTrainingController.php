@@ -103,6 +103,7 @@ class EmployeeTrainingController extends Controller
                     break;
                 case 'employee_name':
                     $query->join('employees', 'employee_trainings.employee_id', '=', 'employees.id')
+                        ->whereNull('employees.deleted_at')
                         ->orderBy('employees.first_name_en', $sortOrder)
                         ->select('employee_trainings.*');
                     break;

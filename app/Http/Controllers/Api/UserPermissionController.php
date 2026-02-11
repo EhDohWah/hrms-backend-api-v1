@@ -105,6 +105,14 @@ class UserPermissionController extends Controller
         // Find user
         $user = User::findOrFail($userId);
 
+        // Guard: only admins can modify other admin users' permissions
+        if ($user->hasRole('admin') && ! auth()->user()->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to modify an administrator\'s permissions.',
+            ], 403);
+        }
+
         // Get all modules indexed by name
         $modules = Module::active()->get()->keyBy('name');
 

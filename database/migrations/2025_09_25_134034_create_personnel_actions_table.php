@@ -71,7 +71,15 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users');
             $table->foreign('updated_by')->references('id')->on('users');
 
-            // Indexes removed due to identifier length issues
+            // Indexes for FK columns (short names to stay within identifier limits)
+            $table->index('employment_id', 'idx_pa_employment');
+            $table->index('current_department_id', 'idx_pa_curr_dept');
+            $table->index('current_position_id', 'idx_pa_curr_pos');
+            $table->index('current_site_id', 'idx_pa_curr_site');
+            $table->index('new_department_id', 'idx_pa_new_dept');
+            $table->index('new_position_id', 'idx_pa_new_pos');
+            $table->index('new_site_id', 'idx_pa_new_site');
+            $table->index('created_by', 'idx_pa_created_by');
         });
     }
 

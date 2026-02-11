@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('travel_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('no action'); // Department reference
+            $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('set null'); // Department reference
             $table->foreignId('position_id')->nullable()->constrained('positions')->onDelete('no action'); // Position reference
             $table->string('destination', 200)->nullable();
             $table->date('start_date')->nullable();
@@ -34,6 +34,11 @@ return new class extends Migration
             $table->timestamps();
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
+
+            // Indexes for FK columns (SQL Server does NOT auto-create these)
+            $table->index('employee_id', 'idx_travel_req_employee');
+            $table->index('department_id', 'idx_travel_req_department');
+            $table->index('position_id', 'idx_travel_req_position');
         });
     }
 

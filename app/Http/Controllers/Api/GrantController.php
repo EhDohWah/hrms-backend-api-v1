@@ -2,26 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\SafeDeleteBlockedException;
 use App\Exports\GrantTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BatchSafeDeleteRequest;
-use App\Http\Requests\SafeDeleteRequest;
 use App\Http\Resources\GrantResource;
 use App\Models\Grant;
-use App\Models\GrantItem;
 use App\Models\Position;
 use App\Models\User;
 use App\Notifications\GrantActionNotification;
 use App\Notifications\ImportedCompletedNotification;
 use App\Services\NotificationService;
-use App\Services\SafeDeleteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * @OA\Tag(
@@ -835,7 +831,7 @@ class GrantController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'code' => 'required|string|unique:grants,code',
+                'code' => ['required', 'string', Rule::unique('grants', 'code')->whereNull('deleted_at')],
                 'name' => 'required|string|max:255',
                 'organization' => 'required|string|max:255',
                 'description' => 'nullable|string|max:255',
@@ -937,11 +933,20 @@ class GrantController extends Controller
      *     )
      * )
      */
-    public function destroy($id, SafeDeleteRequest $request)
+    public function destroy($id)
     {
         try {
             $grant = Grant::findOrFail($id);
-            $service = app(SafeDeleteService::class);
+
+            // Check for deletion blockers
+            $blockers = $grant->getDeletionBlockers();
+            if (! empty($blockers)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete grant',
+                    'blockers' => $blockers,
+                ], 422);
+            }
 
             // Store grant data before deletion for notification
             $grantForNotification = (object) [
@@ -950,7 +955,7 @@ class GrantController extends Controller
                 'code' => $grant->code ?? 'N/A',
             ];
 
-            $manifest = $service->delete($grant, $request->input('reason'));
+            $grant->delete();
 
             // Send notification using NotificationService
             $performedBy = auth()->user();
@@ -965,16 +970,8 @@ class GrantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Grant moved to recycle bin',
-                'deletion_key' => $manifest->deletion_key,
-                'deleted_records_count' => $manifest->snapshot_count,
             ], 200);
 
-        } catch (SafeDeleteBlockedException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete grant',
-                'blockers' => $e->blockers,
-            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
@@ -1192,26 +1189,65 @@ class GrantController extends Controller
     public function positions(Request $request)
     {
         try {
-            // Eager-load grantItems with allocation counts
-            $grants = \App\Models\Grant::with([
+            // Validate optional query parameters for search and pagination
+            $validated = $request->validate([
+                'search' => 'string|nullable|max:255',
+                'page' => 'integer|min:1',
+                'per_page' => 'integer|min:1|max:100',
+            ]);
+
+            $search = $validated['search'] ?? null;
+            $perPage = $validated['per_page'] ?? 10;
+            $page = $validated['page'] ?? 1;
+
+            // Build query with eager-loaded grantItems and allocation counts
+            $query = \App\Models\Grant::with([
                 'grantItems' => function ($q) {
                     $q->withCount(['employeeFundingAllocations as active_allocations_count' => function ($query) {
                         $query->where('status', 'active');
                     }]);
                 },
-            ])->orderBy('created_at', 'desc')->get();
+            ]);
 
-            if ($grants->isEmpty()) {
+            // Apply search filter: partial match on grant code or position name
+            if ($search) {
+                // Escape LIKE wildcards (%, _) in user input to prevent unintended matching
+                $escapedSearch = str_replace(['%', '_'], ['\\%', '\\_'], $search);
+                $searchPattern = "%{$escapedSearch}%";
+
+                $query->where(function ($q) use ($searchPattern) {
+                    $q->where('code', 'LIKE', $searchPattern)
+                        ->orWhereHas('grantItems', function ($itemQuery) use ($searchPattern) {
+                            $itemQuery->where('grant_position', 'LIKE', $searchPattern);
+                        });
+                });
+            }
+
+            $query->orderBy('created_at', 'desc');
+
+            // Paginate the grants query
+            $grantsPaginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+            if ($grantsPaginated->isEmpty()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'No grants found',
+                    'message' => $search ? 'No grant positions found matching your search' : 'No grants found',
                     'data' => [],
+                    'pagination' => [
+                        'current_page' => $grantsPaginated->currentPage(),
+                        'per_page' => $grantsPaginated->perPage(),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                        'has_more_pages' => false,
+                    ],
                 ], 200);
             }
 
             $grantStats = [];
 
-            foreach ($grants as $grant) {
+            foreach ($grantsPaginated as $grant) {
                 $totalPositions = 0;
                 $recruitedPositions = 0;
                 $openPositions = 0;
@@ -1265,8 +1301,23 @@ class GrantController extends Controller
                 'success' => true,
                 'message' => 'Grant statistics retrieved successfully',
                 'data' => $grantStats,
+                'pagination' => [
+                    'current_page' => $grantsPaginated->currentPage(),
+                    'per_page' => $grantsPaginated->perPage(),
+                    'total' => $grantsPaginated->total(),
+                    'last_page' => $grantsPaginated->lastPage(),
+                    'from' => $grantsPaginated->firstItem(),
+                    'to' => $grantsPaginated->lastItem(),
+                    'has_more_pages' => $grantsPaginated->hasMorePages(),
+                ],
             ], 200);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1349,16 +1400,39 @@ class GrantController extends Controller
     public function destroyBatch(BatchSafeDeleteRequest $request)
     {
         try {
-            $service = app(SafeDeleteService::class);
-            $results = $service->bulkDelete(Grant::class, $request->validated()['ids'], $request->input('reason'));
+            $succeeded = [];
+            $failed = [];
 
-            $successCount = count($results['succeeded']);
-            $failureCount = count($results['failed']);
+            foreach ($request->validated()['ids'] as $id) {
+                $grant = Grant::find($id);
+                if (! $grant) {
+                    $failed[] = ['id' => $id, 'blockers' => ['Grant not found']];
+
+                    continue;
+                }
+
+                $blockers = $grant->getDeletionBlockers();
+                if (! empty($blockers)) {
+                    $failed[] = ['id' => $id, 'blockers' => $blockers];
+
+                    continue;
+                }
+
+                $displayName = $grant->name ?? $grant->code ?? "Grant #{$id}";
+                $grant->delete();
+                $succeeded[] = [
+                    'id' => $id,
+                    'display_name' => $displayName,
+                ];
+            }
+
+            $successCount = count($succeeded);
+            $failureCount = count($failed);
 
             // Send notification using NotificationService about the bulk delete
             $performedBy = auth()->user();
             if ($performedBy && $successCount > 0) {
-                $names = collect($results['succeeded'])->pluck('display_name')->take(3)->implode(', ');
+                $names = collect($succeeded)->pluck('display_name')->take(3)->implode(', ');
                 $message = $successCount > 3
                     ? "{$names} and ".($successCount - 3).' more'
                     : $names;
@@ -1380,8 +1454,8 @@ class GrantController extends Controller
                 'success' => $failureCount === 0,
                 'message' => "{$successCount} grant(s) moved to recycle bin"
                     .($failureCount > 0 ? ", {$failureCount} failed" : ''),
-                'succeeded' => $results['succeeded'],
-                'failed' => $results['failed'],
+                'succeeded' => $succeeded,
+                'failed' => $failed,
             ], $failureCount === 0 ? 200 : 207);
         } catch (\Exception $e) {
             Log::error('Failed to delete grants: '.$e->getMessage());
