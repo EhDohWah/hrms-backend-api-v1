@@ -196,21 +196,7 @@ class AuthController extends Controller
 
         // Set HttpOnly cookie with the token for enhanced security
         // This prevents XSS attacks from stealing the token via JavaScript
-        $secure = app()->environment('production');
-        $sameSite = $secure ? 'strict' : 'lax';
-        $expiresInMinutes = (int) ceil($expiresIn / 60);
-
-        return $response->cookie(
-            'auth_token',           // name
-            $token,                 // value
-            $expiresInMinutes,      // minutes
-            '/',                    // path
-            null,                   // domain (null = current domain)
-            $secure,                // secure (HTTPS only in production)
-            true,                   // httpOnly
-            false,                  // raw
-            $sameSite               // sameSite
-        );
+        return $response->cookie(...$this->authCookieParams($token, (int) ceil($expiresIn / 60)));
     }
 
     /**
@@ -254,11 +240,11 @@ class AuthController extends Controller
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
-        // Clear the auth_token cookie
+        // Clear the auth_token cookie (must match the same path/domain/sameSite/secure params)
         return response()->json([
             'success' => true,
             'message' => 'Logged out successfully',
-        ])->withoutCookie('auth_token');
+        ])->cookie(...$this->authCookieParams('', -1));
     }
 
     /**
@@ -311,21 +297,41 @@ class AuthController extends Controller
         ]);
 
         // Update HttpOnly cookie with new token
-        $secure = app()->environment('production');
-        $sameSite = $secure ? 'strict' : 'lax';
-        $expiresInMinutes = (int) ceil($expiresIn / 60);
+        return $response->cookie(...$this->authCookieParams($token, (int) ceil($expiresIn / 60)));
+    }
 
-        return $response->cookie(
-            'auth_token',
-            $token,
-            $expiresInMinutes,
-            '/',
-            null,
-            $secure,
-            true,
-            false,
-            $sameSite
-        );
+    /**
+     * Build the auth_token cookie parameters.
+     *
+     * When the frontend and backend are on different domains (cross-site),
+     * the cookie MUST use SameSite=none + Secure=true, otherwise the browser
+     * will refuse to send it on cross-origin fetch requests.
+     *
+     * @param  string  $token   The plain-text Sanctum token (or '' to clear)
+     * @param  int     $minutes Lifetime in minutes (negative to expire/clear)
+     * @return array   Positional args for response()->cookie(...)
+     */
+    protected function authCookieParams(string $token, int $minutes): array
+    {
+        // In production (HTTPS), use SameSite=none so the cookie is sent
+        // cross-site (e.g. Netlify frontend → separate API domain).
+        // In local dev (HTTP), use SameSite=lax (none requires Secure which
+        // requires HTTPS, so lax is the only option for plain HTTP).
+        $isProduction = app()->environment('production');
+        $secure = $isProduction;
+        $sameSite = $isProduction ? 'none' : 'lax';
+
+        return [
+            'auth_token',   // name
+            $token,         // value
+            $minutes,       // minutes
+            '/',            // path
+            null,           // domain (current domain)
+            $secure,        // secure (HTTPS only in production)
+            true,           // httpOnly
+            false,          // raw
+            $sameSite,      // sameSite
+        ];
     }
 
     // Rate limiting helper methods...
