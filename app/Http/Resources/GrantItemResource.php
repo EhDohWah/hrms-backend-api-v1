@@ -17,8 +17,8 @@ class GrantItemResource extends JsonResource
         return [
             'id' => $this->id,
             'grant_id' => $this->grant_id,
-            'grant_code' => $this->grant?->code,
-            'grant_name' => $this->grant?->name,
+            'grant_code' => $this->whenLoaded('grant', fn () => $this->grant->code),
+            'grant_name' => $this->whenLoaded('grant', fn () => $this->grant->name),
             'grant_position' => $this->grant_position,
             'grant_salary' => $this->grant_salary,
             'grant_benefit' => $this->grant_benefit,

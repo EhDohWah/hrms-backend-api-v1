@@ -37,19 +37,4 @@ class TaxBracketResource extends JsonResource
             'can_delete' => $this->when($request->user()?->can('tax.delete'), true),
         ];
     }
-
-    /**
-     * Get additional data that should be returned with the resource array.
-     *
-     * @return array<string, mixed>
-     */
-    public function with(Request $request): array
-    {
-        return [
-            'meta' => [
-                'tax_calculation_url' => route('api.tax-brackets.calculate', ['income' => ':income']),
-                'documentation' => 'Use the tax_rate as percentage (e.g., 5 for 5%)',
-            ],
-        ];
-    }
 }

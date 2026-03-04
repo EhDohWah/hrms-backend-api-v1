@@ -4,8 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Department;
 use App\Models\Employee;
-use App\Models\Grant;
-use App\Models\GrantItem;
 use App\Models\Position;
 use App\Models\ProbationRecord;
 use App\Models\Site;
@@ -19,11 +17,11 @@ class EmploymentProbationAllocationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_employment_store_creates_probation_record_and_probation_aware_allocations(): void
+    public function test_employment_store_creates_probation_record(): void
     {
         $user = User::factory()->create();
-        Permission::findOrCreate('employment.create', 'web');
-        $user->givePermissionTo('employment.create');
+        Permission::findOrCreate('employment_records.edit', 'web');
+        $user->givePermissionTo('employment_records.edit');
 
         Sanctum::actingAs($user);
 
@@ -45,22 +43,6 @@ class EmploymentProbationAllocationTest extends TestCase
             'organization' => 'SMRU',
         ]);
 
-        $grant = Grant::create([
-            'code' => 'UNIT-GRANT-001',
-            'name' => 'Unit Test Grant',
-            'organization' => 'SMRU',
-        ]);
-
-        $grantItem = GrantItem::create([
-            'grant_id' => $grant->id,
-            'grant_position' => 'Medic',
-            'grant_salary' => 50000,
-            'grant_benefit' => 5000,
-            'grant_level_of_effort' => 40,
-            'grant_position_number' => 1,
-            'budgetline_code' => 'UNIT-40',
-        ]);
-
         $employee = Employee::create([
             'organization' => 'SMRU',
             'staff_id' => 'EMP-UNIT-001',
@@ -68,7 +50,7 @@ class EmploymentProbationAllocationTest extends TestCase
             'last_name_en' => 'Tester',
             'gender' => 'Female',
             'date_of_birth' => '1990-01-01',
-            'status' => 'Local ID',
+            'status' => 'Local ID Staff',
         ]);
 
         $response = $this->postJson('/api/v1/employments', [
@@ -84,23 +66,11 @@ class EmploymentProbationAllocationTest extends TestCase
             'health_welfare' => false,
             'pvd' => false,
             'saving_fund' => false,
-            'allocations' => [
-                [
-                    'allocation_type' => 'org_funded',
-                    'grant_id' => $grant->id,
-                    'fte' => 60,
-                ],
-                [
-                    'allocation_type' => 'grant',
-                    'grant_item_id' => $grantItem->id,
-                    'fte' => 40,
-                ],
-            ],
         ]);
 
         $response->assertCreated();
 
-        $employmentId = data_get($response->json(), 'data.employment.id');
+        $employmentId = data_get($response->json(), 'data.id');
 
         $this->assertNotNull($employmentId);
 
@@ -108,20 +78,6 @@ class EmploymentProbationAllocationTest extends TestCase
             'employment_id' => $employmentId,
             'event_type' => ProbationRecord::EVENT_INITIAL,
             'is_active' => true,
-        ]);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'employment_id' => $employmentId,
-            'allocation_type' => 'org_funded',
-            'salary_type' => 'probation_salary',
-            'allocated_amount' => 20000 * 0.60,
-        ]);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'employment_id' => $employmentId,
-            'allocation_type' => 'grant',
-            'salary_type' => 'probation_salary',
-            'allocated_amount' => 20000 * 0.40,
         ]);
     }
 }

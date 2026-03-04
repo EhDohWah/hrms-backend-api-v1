@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\EmployeeFundingAllocationHistory;
 
@@ -11,7 +12,7 @@ use App\Models\EmployeeFundingAllocationHistory;
  * This captures all allocation lifecycle events:
  * - Created: New allocation added
  * - Updated: Allocation modified (FTE, grant item, etc.)
- * - Historical/Terminated: Status changed (tracked via updated event)
+ * - Closed/Inactive: Status changed (tracked via updated event)
  */
 class EmployeeFundingAllocationObserver
 {
@@ -34,9 +35,9 @@ class EmployeeFundingAllocationObserver
         // Check what changed
         $changes = $allocation->getChanges();
 
-        // If status changed to historical or terminated, record appropriately
+        // If status changed to closed or inactive, record appropriately
         if (isset($changes['status'])) {
-            if ($changes['status'] === 'historical') {
+            if ($changes['status'] === FundingAllocationStatus::Closed) {
                 EmployeeFundingAllocationHistory::recordEnded(
                     $allocation,
                     'Allocation replaced with new allocation'
@@ -45,7 +46,7 @@ class EmployeeFundingAllocationObserver
                 return;
             }
 
-            if ($changes['status'] === 'terminated') {
+            if ($changes['status'] === FundingAllocationStatus::Inactive) {
                 EmployeeFundingAllocationHistory::recordTermination(
                     $allocation,
                     'Allocation terminated'
@@ -57,7 +58,7 @@ class EmployeeFundingAllocationObserver
 
         // For regular updates (FTE change, grant item change, etc.)
         $oldValues = [];
-        $trackableFields = ['fte', 'allocated_amount', 'grant_item_id', 'salary_type', 'start_date', 'end_date'];
+        $trackableFields = ['fte', 'allocated_amount', 'grant_item_id', 'salary_type'];
 
         foreach ($trackableFields as $field) {
             if ($allocation->wasChanged($field)) {

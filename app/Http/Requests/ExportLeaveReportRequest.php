@@ -25,10 +25,10 @@ class ExportLeaveReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'start_date' => 'required|date_format:Y-m-d',
-            'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
-            'work_location' => 'required|string|max:255|exists:sites,name',
-            'department' => 'required|string|max:255|exists:departments,name',
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'work_location' => ['required', 'string', 'max:255', 'exists:sites,name'],
+            'department' => ['required', 'string', 'max:255', 'exists:departments,name'],
         ];
     }
 

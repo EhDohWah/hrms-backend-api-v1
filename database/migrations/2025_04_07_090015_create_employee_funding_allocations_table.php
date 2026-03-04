@@ -30,16 +30,14 @@ return new class extends Migration
                 ->comment('Which salary type was used for calculation: probation_salary, pass_probation_salary');
             $table->string('status', 20)
                 ->default('active')
-                ->comment('Lifecycle status of the allocation: active, historical, terminated');
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
+                ->comment('Lifecycle status of the allocation: active, inactive');
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
             $table->timestamps();
 
             $table->index(['employee_id', 'employment_id']);
             $table->index(['employment_id', 'status'], 'idx_employment_status');
-            $table->index(['status', 'end_date'], 'idx_status_end_date');
+            $table->index(['status'], 'idx_status');
             $table->index(['grant_item_id', 'status'], 'idx_grant_item_status');
         });
     }

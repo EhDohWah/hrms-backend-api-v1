@@ -27,23 +27,23 @@ class StorePersonnelActionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employment_id' => 'required|exists:employments,id',
-            'effective_date' => 'required|date|after_or_equal:today',
-            'action_type' => 'required|in:'.implode(',', array_keys(PersonnelAction::ACTION_TYPES)),
-            'action_subtype' => 'nullable|in:'.implode(',', array_keys(PersonnelAction::ACTION_SUBTYPES)),
-            'is_transfer' => 'boolean',
-            'transfer_type' => 'nullable|required_if:is_transfer,true|in:'.implode(',', array_keys(PersonnelAction::TRANSFER_TYPES)),
+            'employment_id' => ['required', 'exists:employments,id'],
+            'effective_date' => ['required', 'date', 'after_or_equal:today'],
+            'action_type' => ['required', 'in:'.implode(',', array_keys(PersonnelAction::ACTION_TYPES))],
+            'action_subtype' => ['nullable', 'in:'.implode(',', array_keys(PersonnelAction::ACTION_SUBTYPES))],
+            'is_transfer' => ['boolean'],
+            'transfer_type' => ['nullable', 'required_if:is_transfer,true', 'in:'.implode(',', array_keys(PersonnelAction::TRANSFER_TYPES))],
 
             // Current information fields (optional, auto-populated if not provided)
-            'current_employee_no' => 'nullable|string|max:255',
-            'current_department_id' => 'nullable|exists:departments,id',
-            'current_position_id' => 'nullable|exists:positions,id',
-            'current_work_location_id' => 'nullable|exists:sites,id',
-            'current_salary' => 'nullable|numeric|min:0',
-            'current_employment_date' => 'nullable|date',
+            'current_employee_no' => ['nullable', 'string', 'max:255'],
+            'current_department_id' => ['nullable', 'exists:departments,id'],
+            'current_position_id' => ['nullable', 'exists:positions,id'],
+            'current_work_location_id' => ['nullable', 'exists:sites,id'],
+            'current_salary' => ['nullable', 'numeric', 'min:0'],
+            'current_employment_date' => ['nullable', 'date'],
 
             // New information fields with foreign key validation
-            'new_department_id' => 'nullable|exists:departments,id',
+            'new_department_id' => ['nullable', 'exists:departments,id'],
             'new_position_id' => [
                 'nullable',
                 'integer',
@@ -57,22 +57,22 @@ class StorePersonnelActionRequest extends FormRequest
                     }
                 },
             ],
-            'new_work_location_id' => 'nullable|exists:sites,id',
-            'new_salary' => 'nullable|numeric|min:0',
-            'new_work_schedule' => 'nullable|string|max:255',
-            'new_report_to' => 'nullable|string|max:255',
-            'new_pay_plan' => 'nullable|string|max:255',
-            'new_phone_ext' => 'nullable|string|max:20',
-            'new_email' => 'nullable|email|max:255',
+            'new_work_location_id' => ['nullable', 'exists:sites,id'],
+            'new_salary' => ['nullable', 'numeric', 'min:0'],
+            'new_work_schedule' => ['nullable', 'string', 'max:255'],
+            'new_report_to' => ['nullable', 'string', 'max:255'],
+            'new_pay_plan' => ['nullable', 'string', 'max:255'],
+            'new_phone_ext' => ['nullable', 'string', 'max:20'],
+            'new_email' => ['nullable', 'email', 'max:255'],
 
-            'comments' => 'nullable|string',
-            'change_details' => 'nullable|string',
+            'comments' => ['nullable', 'string'],
+            'change_details' => ['nullable', 'string'],
 
             // Approval fields for data entry from paper forms
-            'dept_head_approved' => 'boolean',
-            'coo_approved' => 'boolean',
-            'hr_approved' => 'boolean',
-            'accountant_approved' => 'boolean',
+            'dept_head_approved' => ['boolean'],
+            'coo_approved' => ['boolean'],
+            'hr_approved' => ['boolean'],
+            'accountant_approved' => ['boolean'],
         ];
     }
 

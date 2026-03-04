@@ -68,7 +68,7 @@ class JobOfferFactory extends Factory
             'candidate_name' => $this->faker->name(),
             'position_name' => $this->faker->randomElement($positions),
             'probation_salary' => $probationSalary,
-            'post_probation_salary' => $postProbationSalary,
+            'pass_probation_salary' => $postProbationSalary,
             'acceptance_deadline' => $acceptanceDeadline,
             'acceptance_status' => $this->faker->randomElement($statuses),
             'note' => $this->faker->optional(0.7)->sentence(10) ?? 'Standard job offer with competitive benefits package.',
@@ -141,7 +141,7 @@ class JobOfferFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'position_name' => $this->faker->randomElement($seniorPositions),
             'probation_salary' => $probationSalary,
-            'post_probation_salary' => $probationSalary + $this->faker->numberBetween(5000, 20000),
+            'pass_probation_salary' => $probationSalary + $this->faker->numberBetween(5000, 20000),
         ]);
     }
 }

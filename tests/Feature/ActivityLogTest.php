@@ -67,6 +67,9 @@ describe('ActivityLog Model', function () {
 
 describe('ActivityLog Scopes', function () {
     beforeEach(function () {
+        // Clear any logs created by User factory (User uses LogsActivity trait)
+        ActivityLog::truncate();
+
         // Create test logs
         ActivityLog::create([
             'user_id' => $this->user->id,
@@ -151,9 +154,23 @@ describe('ActivityLog API Endpoints', function () {
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data',
-                'pagination',
-            ]);
+                'data' => [
+                    '*' => [
+                        'id',
+                        'action',
+                        'subject_type',
+                        'subject_id',
+                        'created_at',
+                    ],
+                ],
+                'meta' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                    'last_page',
+                ],
+            ])
+            ->assertJson(['success' => true]);
     });
 
     it('can get activity logs for a subject', function () {
@@ -164,6 +181,7 @@ describe('ActivityLog API Endpoints', function () {
                 'success',
                 'message',
                 'data',
+                'meta',
             ]);
 
         expect($response->json('data'))->toHaveCount(2);
@@ -177,7 +195,6 @@ describe('ActivityLog API Endpoints', function () {
                 'success',
                 'message',
                 'data',
-                'count',
             ]);
     });
 
@@ -205,7 +222,7 @@ describe('LogsActivity Trait', function () {
             ->first();
 
         expect($log)->not->toBeNull()
-            ->and($log->subject_name)->toBe('TEST-001');
+            ->and($log->subject_name)->toBe('Test Grant');
     });
 
     it('automatically logs when a model is updated', function () {

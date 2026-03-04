@@ -2,18 +2,24 @@
 
 use App\Models\Module;
 use App\Models\User;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
-    // Seed modules for testing
-    $this->artisan('db:seed', ['--class' => 'ModuleSeeder']);
+    // Seed modules and permissions for testing
+    $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\ModuleSeeder']);
+    $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\PermissionRoleSeeder']);
+
+    // Reset cached permissions so Spatie picks up newly seeded permissions
+    app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
     // Create a test user with admin permissions
     $this->user = User::factory()->create();
-    $this->user->givePermissionTo('admin.read');
+    $this->user->givePermissionTo('users.read');
 });
 
 it('returns all active modules', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules');
+    $totalActive = Module::active()->count();
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules?per_page='.$totalActive);
 
     $response->assertSuccessful()
         ->assertJsonStructure([
@@ -33,16 +39,17 @@ it('returns all active modules', function () {
                     'is_active',
                 ],
             ],
+            'meta',
         ])
         ->assertJson([
             'success' => true,
         ]);
 
-    expect($response->json('data'))->toHaveCount(Module::active()->count());
+    expect($response->json('data'))->toHaveCount($totalActive);
 });
 
 it('returns modules in hierarchical tree structure', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules/hierarchical');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules/hierarchical');
 
     $response->assertSuccessful()
         ->assertJson([
@@ -51,7 +58,7 @@ it('returns modules in hierarchical tree structure', function () {
 });
 
 it('returns modules grouped by category', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules/by-category');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules/by-category');
 
     $response->assertSuccessful()
         ->assertJson([
@@ -60,13 +67,13 @@ it('returns modules grouped by category', function () {
 
     $categories = $response->json('data');
     expect($categories)->toBeArray();
-    expect($categories)->toHaveKeys(['Administration', 'Grants', 'Recruitment', 'Employee Management']);
+    expect($categories)->toHaveKeys(['Grants', 'Recruitment', 'Employee', 'User Management']);
 });
 
 it('returns a single module by ID', function () {
     $module = Module::first();
 
-    $response = $this->actingAs($this->user)->getJson("/api/v1/modules/{$module->id}");
+    $response = $this->actingAs($this->user)->getJson("/api/v1/admin/modules/{$module->id}");
 
     $response->assertSuccessful()
         ->assertJson([
@@ -80,13 +87,13 @@ it('returns a single module by ID', function () {
 });
 
 it('returns 404 when module not found', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules/99999');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules/99999');
 
     $response->assertNotFound();
 });
 
 it('returns all unique permissions from modules', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules/permissions');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules/permissions');
 
     $response->assertSuccessful()
         ->assertJsonStructure([
@@ -100,17 +107,17 @@ it('returns all unique permissions from modules', function () {
     $permissions = $response->json('data');
     expect($permissions)->toBeArray();
     expect($permissions)->not->toBeEmpty();
-    expect($permissions)->toContain('user.read', 'user.create', 'user.update', 'user.delete');
+    expect($permissions)->toContain('users.read', 'users.edit', 'employees.read', 'employees.edit');
 });
 
 it('requires authentication to access modules', function () {
-    $response = $this->getJson('/api/v1/modules');
+    $response = $this->getJson('/api/v1/admin/modules');
 
     $response->assertUnauthorized();
 });
 
 it('returns modules ordered correctly', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules?per_page=100');
 
     $response->assertSuccessful();
 
@@ -134,7 +141,7 @@ it('only returns active modules', function () {
         'edit_permissions' => ['test.create', 'test.update'],
     ]);
 
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules?per_page=100');
 
     $response->assertSuccessful();
 
@@ -143,7 +150,7 @@ it('only returns active modules', function () {
 });
 
 it('includes edit permissions as array', function () {
-    $response = $this->actingAs($this->user)->getJson('/api/v1/modules');
+    $response = $this->actingAs($this->user)->getJson('/api/v1/admin/modules?per_page=100');
 
     $response->assertSuccessful();
 

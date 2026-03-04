@@ -173,8 +173,8 @@ class EmployeeFundingAllocationHistory extends Model
             'allocated_amount' => $allocation->allocated_amount,
             'salary_type' => $allocation->salary_type,
             'allocation_status' => $allocation->status,
-            'effective_date' => $allocation->start_date,
-            'end_date' => $allocation->end_date,
+            'effective_date' => now(),
+            'end_date' => null,
             'change_type' => $changeType,
             'change_reason' => $reason,
             'change_details' => $details,
@@ -223,7 +223,7 @@ class EmployeeFundingAllocationHistory extends Model
         return self::recordChange(
             $allocation,
             self::CHANGE_PROBATION_COMPLETED,
-            'Probation completed - transitioned to post-probation salary'
+            'Probation completed - transitioned to pass-probation salary'
         );
     }
 

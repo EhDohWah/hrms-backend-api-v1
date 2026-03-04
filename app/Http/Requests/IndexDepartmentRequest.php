@@ -45,4 +45,17 @@ class IndexDepartmentRequest extends FormRequest
             'per_page.max' => 'Items per page cannot exceed 100.',
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('is_active')) {
+            $this->merge(['is_active' => filter_var($this->input('is_active'), FILTER_VALIDATE_BOOLEAN)]);
+        }
+
+        $this->mergeIfMissing([
+            'sort_by' => 'name',
+            'sort_direction' => 'asc',
+            'per_page' => 20,
+        ]);
+    }
 }

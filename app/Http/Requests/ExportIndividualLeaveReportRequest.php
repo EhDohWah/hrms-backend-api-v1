@@ -25,9 +25,9 @@ class ExportIndividualLeaveReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'start_date' => 'required|date_format:Y-m-d',
-            'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
-            'staff_id' => 'required|string|max:50|exists:employees,staff_id',
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'staff_id' => ['required', 'string', 'max:50', 'exists:employees,staff_id'],
         ];
     }
 

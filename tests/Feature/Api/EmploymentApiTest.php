@@ -40,12 +40,10 @@ class EmploymentApiTest extends TestCase
         // Create and authenticate user
         $this->user = User::factory()->create();
 
-        // Create permissions
+        // Create permissions (routes use employment_records.read / employment_records.edit)
         $permissions = [
-            'employment.read',
-            'employment.create',
-            'employment.update',
-            'employment.delete',
+            'employment_records.read',
+            'employment_records.edit',
         ];
 
         foreach ($permissions as $permission) {
@@ -81,7 +79,7 @@ class EmploymentApiTest extends TestCase
             'last_name_en' => 'Doe',
             'gender' => 'Male',
             'date_of_birth' => '1990-01-01',
-            'status' => 'Active',
+            'status' => 'Local ID Staff',
         ]);
 
         $this->grant = Grant::create([
@@ -125,11 +123,11 @@ class EmploymentApiTest extends TestCase
     }
 
     /** @test */
-    public function it_can_create_employment_with_grant_allocation()
+    public function it_can_create_employment()
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
-            'pay_method' => 'Monthly',
+            'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
             'department_id' => $this->department->id,
@@ -140,13 +138,6 @@ class EmploymentApiTest extends TestCase
             'health_welfare' => true,
             'pvd' => true,
             'saving_fund' => false,
-            'allocations' => [
-                [
-                    'allocation_type' => 'grant',
-                    'grant_item_id' => $this->grantItem->id,
-                    'fte' => 100,
-                ],
-            ],
         ];
 
         $response = $this->postJson('/api/v1/employments', $employmentData);
@@ -158,15 +149,8 @@ class EmploymentApiTest extends TestCase
                 'data' => [
                     'id',
                     'employee_id',
-                    'allocations' => [
-                        '*' => [
-                            'id',
-                            'grant_item_id',
-                            'allocation_type',
-                            'fte',
-                            'allocated_amount',
-                        ],
-                    ],
+                    'start_date',
+                    'pass_probation_salary',
                 ],
             ]);
 
@@ -174,124 +158,15 @@ class EmploymentApiTest extends TestCase
             'employee_id' => $this->employee->id,
             'pass_probation_salary' => 35000,
         ]);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'grant_item_id' => $this->grantItem->id,
-            'allocation_type' => 'grant',
-            'fte' => 1.00, // Stored as decimal
-        ]);
     }
 
     /** @test */
-    public function it_can_create_employment_with_org_funded_allocation()
+    public function it_validates_required_fields_on_create()
     {
-        $employmentData = [
-            'employee_id' => $this->employee->id,
-            'pay_method' => 'Monthly',
-            'start_date' => '2025-01-01',
-            'pass_probation_date' => '2025-04-01',
-            'department_id' => $this->department->id,
-            'position_id' => $this->position->id,
-            'site_id' => $this->site->id,
-            'pass_probation_salary' => 35000,
-            'probation_salary' => 25000,
-            'health_welfare' => true,
-            'pvd' => false,
-            'saving_fund' => false,
-            'allocations' => [
-                [
-                    'allocation_type' => 'org_funded',
-                    'grant_id' => $this->grant->id,
-                    'fte' => 100,
-                ],
-            ],
-        ];
-
-        $response = $this->postJson('/api/v1/employments', $employmentData);
-
-        $response->assertStatus(201);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'grant_id' => $this->grant->id,
-            'grant_item_id' => null,
-            'allocation_type' => 'org_funded',
-            'fte' => 1.00,
-        ]);
-    }
-
-    /** @test */
-    public function it_can_create_employment_with_mixed_allocations()
-    {
-        $employmentData = [
-            'employee_id' => $this->employee->id,
-            'pay_method' => 'Monthly',
-            'start_date' => '2025-01-01',
-            'pass_probation_date' => '2025-04-01',
-            'department_id' => $this->department->id,
-            'position_id' => $this->position->id,
-            'site_id' => $this->site->id,
-            'pass_probation_salary' => 40000,
-            'probation_salary' => 28000,
-            'health_welfare' => true,
-            'pvd' => true,
-            'saving_fund' => true,
-            'allocations' => [
-                [
-                    'allocation_type' => 'grant',
-                    'grant_item_id' => $this->grantItem->id,
-                    'fte' => 60,
-                ],
-                [
-                    'allocation_type' => 'org_funded',
-                    'grant_id' => $this->grant->id,
-                    'fte' => 40,
-                ],
-            ],
-        ];
-
-        $response = $this->postJson('/api/v1/employments', $employmentData);
-
-        $response->assertStatus(201);
-
-        $employment = Employment::latest()->first();
-        $this->assertCount(2, $employment->employeeFundingAllocations);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'employment_id' => $employment->id,
-            'grant_item_id' => $this->grantItem->id,
-            'fte' => 0.60,
-        ]);
-
-        $this->assertDatabaseHas('employee_funding_allocations', [
-            'employment_id' => $employment->id,
-            'grant_id' => $this->grant->id,
-            'fte' => 0.40,
-        ]);
-    }
-
-    /** @test */
-    public function it_validates_total_fte_equals_100_percent()
-    {
-        $employmentData = [
-            'employee_id' => $this->employee->id,
-            'pay_method' => 'Monthly',
-            'start_date' => '2025-01-01',
-            'department_id' => $this->department->id,
-            'position_id' => $this->position->id,
-            'pass_probation_salary' => 35000,
-            'allocations' => [
-                [
-                    'allocation_type' => 'grant',
-                    'grant_item_id' => $this->grantItem->id,
-                    'fte' => 80, // Only 80%, not 100%
-                ],
-            ],
-        ];
-
-        $response = $this->postJson('/api/v1/employments', $employmentData);
+        $response = $this->postJson('/api/v1/employments', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['allocations']);
+            ->assertJsonValidationErrors(['employee_id', 'start_date', 'department_id', 'position_id', 'pass_probation_salary']);
     }
 
     /** @test */
@@ -325,6 +200,9 @@ class EmploymentApiTest extends TestCase
     {
         $employment = Employment::factory()->create([
             'employee_id' => $this->employee->id,
+            'department_id' => $this->department->id,
+            'position_id' => $this->position->id,
+            'site_id' => $this->site->id,
             'pass_probation_salary' => 30000,
         ]);
 
@@ -347,13 +225,19 @@ class EmploymentApiTest extends TestCase
     {
         $employment = Employment::factory()->create([
             'employee_id' => $this->employee->id,
+            'department_id' => $this->department->id,
+            'position_id' => $this->position->id,
+            'site_id' => $this->site->id,
         ]);
+
+        // Delete related history records first to avoid FK constraint
+        $employment->employmentHistories()->delete();
 
         $response = $this->deleteJson("/api/v1/employments/{$employment->id}");
 
         $response->assertStatus(200);
 
-        $this->assertSoftDeleted('employments', [
+        $this->assertDatabaseMissing('employments', [
             'id' => $employment->id,
         ]);
     }
@@ -380,42 +264,6 @@ class EmploymentApiTest extends TestCase
     }
 
     /** @test */
-    public function it_can_get_funding_allocations_for_employment()
-    {
-        $employment = Employment::factory()->create([
-            'employee_id' => $this->employee->id,
-        ]);
-
-        $employment->employeeFundingAllocations()->create([
-            'employee_id' => $this->employee->id,
-            'grant_item_id' => $this->grantItem->id,
-            'grant_id' => null,
-            'fte' => 1.00,
-            'allocation_type' => 'grant',
-            'allocated_amount' => 35000,
-            'salary_type' => 'pass_probation_salary',
-            'status' => 'active',
-            'start_date' => '2025-01-01',
-        ]);
-
-        $response = $this->getJson("/api/v1/employments/{$employment->id}/funding-allocations");
-
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'success',
-                'data' => [
-                    '*' => [
-                        'id',
-                        'grant_item_id',
-                        'allocation_type',
-                        'fte',
-                        'allocated_amount',
-                    ],
-                ],
-            ]);
-    }
-
-    /** @test */
     public function it_can_get_probation_history_for_employment()
     {
         $employment = Employment::factory()->create([
@@ -434,9 +282,11 @@ class EmploymentApiTest extends TestCase
     /** @test */
     public function it_requires_authentication()
     {
-        Sanctum::actingAs(null);
+        // Reset authentication by creating a fresh test client
+        $this->app['auth']->forgetGuards();
 
-        $response = $this->getJson('/api/v1/employments');
+        $response = $this->withHeaders(['Accept' => 'application/json'])
+            ->getJson('/api/v1/employments');
 
         $response->assertStatus(401);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
@@ -213,7 +214,7 @@ class FundingAllocationService
 
         // Get all currently active allocations for this employment
         $existingAllocations = EmployeeFundingAllocation::where('employment_id', $employmentId)
-            ->where('status', 'active')
+            ->where('status', FundingAllocationStatus::Active)
             ->where('start_date', '<=', $today)
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')

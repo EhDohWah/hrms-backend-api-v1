@@ -22,7 +22,7 @@ class UpdateSiteRequest extends FormRequest
      */
     public function rules(): array
     {
-        $siteId = $this->route('id');
+        $siteId = $this->route('site');
 
         return [
             'name' => ['sometimes', 'string', 'max:100', Rule::unique('sites', 'name')->ignore($siteId)],

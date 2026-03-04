@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\ResignationAcknowledgementStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,6 +66,7 @@ class Resignation extends Model
         'resignation_date' => 'date',
         'last_working_date' => 'date',
         'acknowledged_at' => 'datetime',
+        'acknowledgement_status' => \App\Enums\ResignationAcknowledgementStatus::class,
     ];
 
     protected $dates = [
@@ -116,21 +119,50 @@ class Resignation extends Model
     }
 
     /**
+     * Scope: eager-load standard relationships for list views.
+     */
+    public function scopeWithRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'department:id,name',
+            'position:id,title',
+            'acknowledgedBy:id,name',
+        ]);
+    }
+
+    /**
+     * Scope: eager-load detailed relationships for show views.
+     */
+    public function scopeWithDetailedRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee.employment:id,employee_id,department_id,position_id',
+            'employee.employment.department:id,name',
+            'employee.employment.position:id,title',
+            'department:id,name',
+            'position:id,title',
+            'acknowledgedBy:id,name',
+        ]);
+    }
+
+    /**
      * Scopes
      */
     public function scopePending($query)
     {
-        return $query->where('acknowledgement_status', 'Pending');
+        return $query->where('acknowledgement_status', ResignationAcknowledgementStatus::Pending);
     }
 
     public function scopeAcknowledged($query)
     {
-        return $query->where('acknowledgement_status', 'Acknowledged');
+        return $query->where('acknowledgement_status', ResignationAcknowledgementStatus::Acknowledged);
     }
 
     public function scopeRejected($query)
     {
-        return $query->where('acknowledgement_status', 'Rejected');
+        return $query->where('acknowledgement_status', ResignationAcknowledgementStatus::Rejected);
     }
 
     public function scopeCurrentMonth($query)
@@ -179,7 +211,7 @@ class Resignation extends Model
     {
         return $this->last_working_date &&
                Carbon::parse($this->last_working_date)->isPast() &&
-               $this->acknowledgement_status === 'Pending';
+               $this->acknowledgement_status === ResignationAcknowledgementStatus::Pending;
     }
 
     public function getNoticePeriodDaysAttribute(): int
@@ -198,7 +230,7 @@ class Resignation extends Model
     public function acknowledge(User $user): bool
     {
         $this->update([
-            'acknowledgement_status' => 'Acknowledged',
+            'acknowledgement_status' => ResignationAcknowledgementStatus::Acknowledged,
             'acknowledged_by' => $user->id,
             'acknowledged_at' => now(),
         ]);
@@ -209,7 +241,7 @@ class Resignation extends Model
     public function reject(User $user): bool
     {
         $this->update([
-            'acknowledgement_status' => 'Rejected',
+            'acknowledgement_status' => ResignationAcknowledgementStatus::Rejected,
             'acknowledged_by' => $user->id,
             'acknowledged_at' => now(),
         ]);

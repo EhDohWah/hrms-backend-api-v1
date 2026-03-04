@@ -136,7 +136,7 @@
                         <td>{{ \Carbon\Carbon::parse($jobOffer->date)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->position_name ?? 'N/A' }}</td>
                         <td>{{ $jobOffer->probation_salary ? 'THB ' . number_format($jobOffer->probation_salary, 2) : 'N/A' }}</td>
-                        <td>{{ $jobOffer->post_probation_salary ? 'THB ' . number_format($jobOffer->post_probation_salary, 2) : 'N/A' }}</td>
+                        <td>{{ $jobOffer->pass_probation_salary ? 'THB ' . number_format($jobOffer->pass_probation_salary, 2) : 'N/A' }}</td>
                         <td>{{ \Carbon\Carbon::parse($jobOffer->acceptance_deadline)->format('d-m-Y') }}</td>
                         <td>{{ $jobOffer->acceptance_status ?? 'N/A' }}</td>
                     </tr>

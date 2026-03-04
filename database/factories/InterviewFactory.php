@@ -21,7 +21,7 @@ class InterviewFactory extends Factory
 
         return [
             'candidate_name' => fake()->name(),
-            'phone' => fake()->optional(0.8)->phoneNumber(),
+            'phone' => fake()->optional(0.8)->numerify('##########'),
             'job_position' => fake()->randomElement([
                 'Software Engineer', 'Project Manager', 'Data Scientist', 'HR Specialist',
                 'Marketing Manager', 'Sales Representative', 'Accountant', 'UI/UX Designer',

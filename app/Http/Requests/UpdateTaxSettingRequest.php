@@ -8,23 +8,13 @@ use Illuminate\Validation\Rule;
 
 class UpdateTaxSettingRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return $this->user()->can('tax.update');
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
-        $taxSettingId = $this->route('id');
-
         return [
             'setting_key' => [
                 'sometimes',
@@ -32,7 +22,7 @@ class UpdateTaxSettingRequest extends FormRequest
                 'string',
                 'max:50',
                 Rule::in(TaxSetting::getAllowedKeys()),
-                Rule::unique('tax_settings')->ignore($taxSettingId)->where(function ($query) {
+                Rule::unique('tax_settings')->ignore($this->route('taxSetting'))->where(function ($query) {
                     if ($this->has('effective_year')) {
                         return $query->where('effective_year', $this->effective_year);
                     }
@@ -40,23 +30,20 @@ class UpdateTaxSettingRequest extends FormRequest
                     return $query;
                 }),
             ],
-            'setting_value' => 'sometimes|required|numeric|min:0',
+            'setting_value' => ['sometimes', 'required', 'numeric', 'min:0'],
             'setting_type' => [
                 'sometimes',
                 'required',
                 'string',
                 Rule::in([TaxSetting::TYPE_DEDUCTION, TaxSetting::TYPE_RATE, TaxSetting::TYPE_LIMIT, TaxSetting::TYPE_ALLOWANCE]),
             ],
-            'description' => 'nullable|string|max:255',
-            'effective_year' => 'sometimes|required|integer|min:2000|max:2100',
-            'is_selected' => 'boolean',
-            'updated_by' => 'nullable|string|max:100',
+            'description' => ['nullable', 'string', 'max:255'],
+            'effective_year' => ['sometimes', 'required', 'integer', 'min:2000', 'max:2100'],
+            'is_selected' => ['boolean'],
+            'updated_by' => ['nullable', 'string', 'max:100'],
         ];
     }
 
-    /**
-     * Get custom error messages for validation rules.
-     */
     public function messages(): array
     {
         return [
@@ -69,9 +56,6 @@ class UpdateTaxSettingRequest extends FormRequest
         ];
     }
 
-    /**
-     * Get custom attributes for validator errors.
-     */
     public function attributes(): array
     {
         return [

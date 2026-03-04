@@ -72,6 +72,7 @@ class ProbationRecord extends Model
         'previous_end_date' => 'date:Y-m-d',
         'extension_number' => 'integer',
         'is_active' => 'boolean',
+        'event_type' => \App\Enums\ProbationEventType::class,
     ];
 
     /**

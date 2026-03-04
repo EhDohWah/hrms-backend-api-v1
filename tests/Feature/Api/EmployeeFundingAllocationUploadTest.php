@@ -10,6 +10,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class EmployeeFundingAllocationUploadTest extends TestCase
@@ -31,6 +33,18 @@ class EmployeeFundingAllocationUploadTest extends TestCase
         // Create a test user
         $this->user = User::factory()->create();
 
+        // Create permissions for upload/download routes
+        $permissions = [
+            'employee_funding_allocations.read',
+            'employee_funding_allocations.edit',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission]);
+        }
+
+        $this->user->givePermissionTo($permissions);
+
         // Create test employee
         $this->employee = Employee::factory()->create([
             'staff_id' => 'TEST001',
@@ -42,7 +56,6 @@ class EmployeeFundingAllocationUploadTest extends TestCase
         $this->employment = Employment::factory()->create([
             'employee_id' => $this->employee->id,
             'pass_probation_salary' => 50000,
-            'status' => true,
         ]);
 
         // Create test grant and grant item
@@ -65,7 +78,7 @@ class EmployeeFundingAllocationUploadTest extends TestCase
     public function it_can_download_funding_allocation_template()
     {
         $response = $this->actingAs($this->user, 'sanctum')
-            ->get('/api/downloads/employee-funding-allocation-template');
+            ->get('/api/v1/downloads/employee-funding-allocation-template');
 
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -75,7 +88,7 @@ class EmployeeFundingAllocationUploadTest extends TestCase
     public function it_can_download_grant_items_reference()
     {
         $response = $this->actingAs($this->user, 'sanctum')
-            ->get('/api/downloads/grant-items-reference');
+            ->get('/api/v1/downloads/grant-items-reference');
 
         $response->assertStatus(200);
         $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -85,7 +98,7 @@ class EmployeeFundingAllocationUploadTest extends TestCase
     public function it_validates_file_upload_request()
     {
         $response = $this->actingAs($this->user, 'sanctum')
-            ->post('/api/uploads/employee-funding-allocation', []);
+            ->post('/api/v1/uploads/employee-funding-allocation', []);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['file']);
@@ -95,11 +108,13 @@ class EmployeeFundingAllocationUploadTest extends TestCase
     public function it_accepts_valid_excel_file()
     {
         Storage::fake('local');
+        // Fake Excel to prevent the queued import from processing the fake file
+        Excel::fake();
 
         $file = UploadedFile::fake()->create('funding-allocation.xlsx', 100);
 
         $response = $this->actingAs($this->user, 'sanctum')
-            ->post('/api/uploads/employee-funding-allocation', [
+            ->post('/api/v1/uploads/employee-funding-allocation', [
                 'file' => $file,
             ]);
 
@@ -122,7 +137,7 @@ class EmployeeFundingAllocationUploadTest extends TestCase
         $file = UploadedFile::fake()->create('document.pdf', 100);
 
         $response = $this->actingAs($this->user, 'sanctum')
-            ->post('/api/uploads/employee-funding-allocation', [
+            ->post('/api/v1/uploads/employee-funding-allocation', [
                 'file' => $file,
             ]);
 
@@ -139,7 +154,7 @@ class EmployeeFundingAllocationUploadTest extends TestCase
         $file = UploadedFile::fake()->create('large-file.xlsx', 11000);
 
         $response = $this->actingAs($this->user, 'sanctum')
-            ->post('/api/uploads/employee-funding-allocation', [
+            ->post('/api/v1/uploads/employee-funding-allocation', [
                 'file' => $file,
             ]);
 

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/Turtle/Desktop/HR Management System/3. Implementation/HRMS-V1/hrms-frontend-dev/src/components/modal/**)"
+      "Read(//c/Users/Turtle/Desktop/HR Management System/3. Implementation/HRMS-V1/hrms-frontend-dev/src/components/modal/**)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": [],
@@ -13,13 +14,12 @@
   "enabledMcpjsonServers": [
     "laravel-boost"
   ],
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "padding": 0
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
-  }, 
-    "statusLine": {
-      "type": "command",
-      "command": "~/.claude/statusline.sh",
-      "padding": 0 
-    }
-  
+  }
 }

@@ -26,6 +26,7 @@ class Attendance extends Model
     protected $casts = [
         'date' => 'date',
         'total_hours' => 'decimal:2',
+        'status' => \App\Enums\AttendanceStatus::class,
     ];
 
     protected static function booted(): void

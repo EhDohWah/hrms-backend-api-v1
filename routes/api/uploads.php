@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\Api\EmployeeController;
-use App\Http\Controllers\Api\EmployeeFundingAllocationController;
-use App\Http\Controllers\Api\EmploymentController;
-use App\Http\Controllers\Api\GrantController;
-use App\Http\Controllers\Api\PayrollController;
+use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\EmployeeFundingAllocationController;
+use App\Http\Controllers\Api\V1\EmploymentController;
+use App\Http\Controllers\Api\V1\GrantController;
+use App\Http\Controllers\Api\V1\PayrollController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -22,8 +22,10 @@ return new class extends Migration
             $table->string('pay_method')->comment('Transferred to bank, Cash cheque')->nullable(); // Optional - pay method
 
             $table->date('start_date'); // Required - when employment started
+            $table->date('end_date')->nullable()->comment('Employment end date, set when resignation is acknowledged');
             $table->date('pass_probation_date')->nullable()->comment('First day employee receives pass_probation_salary - typically 3 months after start_date'); // Optional - when probation ends
-            $table->date('end_probation_date')->nullable(); // Optional - when employment ends (for contracts)
+            $table->date('end_probation_date')->nullable()->comment('Last day of probation period');
+            $table->boolean('probation_required')->default(true)->comment('If false, employee skips probation and gets full benefits from day 1');
 
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
             $table->decimal('pass_probation_salary', 10, 2); // Required - regular salary
@@ -32,17 +34,14 @@ return new class extends Migration
             $table->boolean('pvd')->default(false)->comment('Provident fund flag (opt-in/out)'); // Required - provident fund flag
             $table->boolean('saving_fund')->default(false)->comment('Saving fund flag (opt-in/out)'); // Required - saving fund flag
             // NOTE: Benefit percentages are now managed globally in benefit_settings table
-            $table->boolean('status')->default(true)->comment('Employment status: true=Active, false=Inactive'); // Required - employment status
             // NOTE: Probation status is now tracked in probation_records table via event_type field
             $table->timestamps();
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
 
-            $table->index(['pass_probation_date', 'end_probation_date', 'status'], 'idx_transition_check');
-            $table->index(['employee_id', 'status']);
-            $table->index(['department_id', 'status']);
-            $table->index(['section_department_id', 'status']);
-            $table->index(['site_id', 'status']);
+            $table->index(['pass_probation_date', 'end_probation_date', 'end_date'], 'idx_transition_check');
+            $table->index(['employee_id', 'end_date']);
+            $table->index(['department_id', 'end_date']);
         });
     }
 

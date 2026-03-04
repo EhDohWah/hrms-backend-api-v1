@@ -88,8 +88,12 @@ class ProductionSeeder extends Seeder
             DashboardWidgetSeeder::class,
 
             // 12. Benefit settings — no dependencies
-            //     Creates 5 payroll benefit settings (SSF %, PVD %, health welfare %, etc.)
+            //     Creates ~19 contribution/benefit settings (SSF, PVD, Saving Fund, Health Welfare)
             BenefitSettingSeeder::class,
+
+            // 13. Payroll policy settings — no dependencies
+            //     Creates default payroll policies (13th month salary, salary increase)
+            PayrollPolicySettingSeeder::class,
         ]);
 
         $this->command->info('');

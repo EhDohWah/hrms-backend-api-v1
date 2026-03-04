@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\Api\DepartmentController;
-use App\Http\Controllers\Api\PositionController;
-use App\Http\Controllers\Api\SectionDepartmentController;
-use App\Http\Controllers\Api\SiteController;
+use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\PositionController;
+use App\Http\Controllers\Api\V1\SectionDepartmentController;
+use App\Http\Controllers\Api\V1\SiteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,33 +28,36 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sites')->middleware('module.permission:sites')->group(function () {
         Route::get('/options', [SiteController::class, 'options']);
         Route::get('/', [SiteController::class, 'index']);
-        Route::get('/{id}', [SiteController::class, 'show']);
+        Route::get('/{site}', [SiteController::class, 'show']);
         Route::post('/', [SiteController::class, 'store']);
-        Route::put('/{id}', [SiteController::class, 'update']);
-        Route::delete('/{id}', [SiteController::class, 'destroy']);
+        Route::put('/{site}', [SiteController::class, 'update']);
+        Route::delete('/batch', [SiteController::class, 'destroyBatch']);
+        Route::delete('/{site}', [SiteController::class, 'destroy']);
     });
 
     // Departments routes (uses 'departments' module permission)
     Route::prefix('departments')->middleware('module.permission:departments')->group(function () {
         Route::get('/options', [DepartmentController::class, 'options']);
         Route::get('/', [DepartmentController::class, 'index']);
-        Route::get('/{id}', [DepartmentController::class, 'show']);
-        Route::get('/{id}/positions', [DepartmentController::class, 'positions']);
-        Route::get('/{id}/managers', [DepartmentController::class, 'managers']);
+        Route::get('/{department}', [DepartmentController::class, 'show']);
+        Route::get('/{department}/positions', [DepartmentController::class, 'positions']);
+        Route::get('/{department}/managers', [DepartmentController::class, 'managers']);
         Route::post('/', [DepartmentController::class, 'store']);
-        Route::put('/{id}', [DepartmentController::class, 'update']);
-        Route::delete('/{id}', [DepartmentController::class, 'destroy']);
+        Route::put('/{department}', [DepartmentController::class, 'update']);
+        Route::delete('/batch', [DepartmentController::class, 'destroyBatch']);
+        Route::delete('/{department}', [DepartmentController::class, 'destroy']);
     });
 
     // Positions routes (uses 'positions' module permission)
     Route::prefix('positions')->middleware('module.permission:positions')->group(function () {
         Route::get('/options', [PositionController::class, 'options']);
         Route::get('/', [PositionController::class, 'index']);
-        Route::get('/{id}', [PositionController::class, 'show']);
-        Route::get('/{id}/direct-reports', [PositionController::class, 'directReports']);
+        Route::get('/{position}', [PositionController::class, 'show']);
+        Route::get('/{position}/direct-reports', [PositionController::class, 'directReports']);
         Route::post('/', [PositionController::class, 'store']);
-        Route::put('/{id}', [PositionController::class, 'update']);
-        Route::delete('/{id}', [PositionController::class, 'destroy']);
+        Route::put('/{position}', [PositionController::class, 'update']);
+        Route::delete('/batch', [PositionController::class, 'destroyBatch']);
+        Route::delete('/{position}', [PositionController::class, 'destroy']);
     });
 
     // Section Departments routes (uses 'section_departments' module permission)
@@ -62,9 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/options', [SectionDepartmentController::class, 'options']);
         Route::get('/', [SectionDepartmentController::class, 'index']);
         Route::get('/by-department/{departmentId}', [SectionDepartmentController::class, 'byDepartment']);
-        Route::get('/{id}', [SectionDepartmentController::class, 'show']);
+        Route::get('/{sectionDepartment}', [SectionDepartmentController::class, 'show']);
         Route::post('/', [SectionDepartmentController::class, 'store']);
-        Route::put('/{id}', [SectionDepartmentController::class, 'update']);
-        Route::delete('/{id}', [SectionDepartmentController::class, 'destroy']);
+        Route::put('/{sectionDepartment}', [SectionDepartmentController::class, 'update']);
+        Route::delete('/{sectionDepartment}', [SectionDepartmentController::class, 'destroy']);
     });
 });

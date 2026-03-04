@@ -26,7 +26,6 @@ return [
         'reports' => 'reports',
         'departments' => 'dept',
         'positions' => 'pos',
-        'work_locations' => 'work_loc',
     ],
 
     'auto_invalidation' => [

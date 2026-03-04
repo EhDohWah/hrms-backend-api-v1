@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FundingAllocationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OpenApi\Attributes as OA;
@@ -17,8 +18,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'grant_item_id', type: 'integer', format: 'int64', nullable: true, example: 1, description: 'Direct link to grant_items for grant allocations'),
         new OA\Property(property: 'fte', type: 'number', format: 'float', example: 0.5, description: 'Full-Time Equivalent - actual funding allocation percentage'),
         new OA\Property(property: 'allocated_amount', type: 'number', format: 'float', nullable: true, example: 10000),
-        new OA\Property(property: 'start_date', type: 'string', format: 'date', nullable: true, example: '2023-01-01'),
-        new OA\Property(property: 'end_date', type: 'string', format: 'date', nullable: true, example: '2023-12-31'),
+        new OA\Property(property: 'status', type: 'string', example: 'active', description: 'Allocation status: active, inactive, closed'),
         new OA\Property(property: 'created_by', type: 'string', nullable: true, example: 'admin'),
         new OA\Property(property: 'updated_by', type: 'string', nullable: true, example: 'admin'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time', example: '2023-01-01T00:00:00.000000Z'),
@@ -37,8 +37,6 @@ class EmployeeFundingAllocation extends Model
         'allocated_amount',
         'salary_type',
         'status',
-        'start_date',
-        'end_date',
         'created_by',
         'updated_by',
     ];
@@ -46,8 +44,7 @@ class EmployeeFundingAllocation extends Model
     protected $casts = [
         'fte' => 'decimal:4',
         'allocated_amount' => 'decimal:2',
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'status' => \App\Enums\FundingAllocationStatus::class,
     ];
 
     // Relationships
@@ -100,26 +97,17 @@ class EmployeeFundingAllocation extends Model
     // Query scopes for better performance
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', FundingAllocationStatus::Active);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('status', 'inactive');
+        return $query->where('status', FundingAllocationStatus::Inactive);
     }
 
     public function scopeClosed($query)
     {
-        return $query->where('status', 'closed');
-    }
-
-    public function scopeForDate($query, $date)
-    {
-        return $query->where('start_date', '<=', $date)
-            ->where(function ($q) use ($date) {
-                $q->whereNull('end_date')
-                    ->orWhere('end_date', '>=', $date);
-            });
+        return $query->where('status', FundingAllocationStatus::Closed);
     }
 
     public function scopeByEffortRange($query, $minEffort, $maxEffort = null)
@@ -161,28 +149,23 @@ class EmployeeFundingAllocation extends Model
     // Helper methods
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return $this->status === FundingAllocationStatus::Active;
     }
 
     public function isInactive(): bool
     {
-        return $this->status === 'inactive';
+        return $this->status === FundingAllocationStatus::Inactive;
     }
 
     public function isClosed(): bool
     {
-        return $this->status === 'closed';
+        return $this->status === FundingAllocationStatus::Closed;
     }
 
     // Accessors
     public function getStatusLabelAttribute(): string
     {
-        return match ($this->status) {
-            'active' => 'Active',
-            'inactive' => 'Inactive',
-            'closed' => 'Closed',
-            default => 'Unknown'
-        };
+        return $this->status?->label() ?? 'Unknown';
     }
 
     public function getSalaryTypeLabelAttribute(): string

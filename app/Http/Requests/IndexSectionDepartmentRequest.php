@@ -41,5 +41,11 @@ class IndexSectionDepartmentRequest extends FormRequest
                 'is_active' => filter_var($this->input('is_active'), FILTER_VALIDATE_BOOLEAN),
             ]);
         }
+
+        $this->mergeIfMissing([
+            'sort_by' => 'name',
+            'sort_direction' => 'asc',
+            'per_page' => 20,
+        ]);
     }
 }

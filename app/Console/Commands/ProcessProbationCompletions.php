@@ -39,7 +39,8 @@ class ProcessProbationCompletions extends Command
         }
 
         try {
-            $query = Employment::whereNotNull('pass_probation_date')
+            $query = Employment::where('probation_required', true)
+                ->whereNotNull('pass_probation_date')
                 ->whereDate('pass_probation_date', today())
                 ->whereNull('end_probation_date')
                 ->where(function ($q) {
@@ -108,7 +109,7 @@ class ProcessProbationCompletions extends Command
                                 $employment->id,
                                 $employeeName,
                                 $employment->probation_status ?? 'ongoing',
-                                $result['historical_count'],
+                                $result['closed_count'],
                                 'Success',
                             ];
                             $processed++;

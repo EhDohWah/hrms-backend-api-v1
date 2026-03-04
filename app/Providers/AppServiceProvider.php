@@ -10,6 +10,7 @@ use App\Observers\EmployeeFundingAllocationObserver;
 use App\Observers\EmployeeObserver;
 use App\Observers\EmploymentObserver;
 use App\Observers\JobOfferObserver;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Prevent lazy loading in non-production environments to catch N+1 queries
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         // Force HTTPS in production environment
         if ($this->app->environment('production')) {
             URL::forceScheme('https');

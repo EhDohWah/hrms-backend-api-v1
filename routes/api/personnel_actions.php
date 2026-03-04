@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\PersonnelActionController;
+use App\Http\Controllers\Api\V1\PersonnelActionController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // Personnel actions are related to employee management - uses employees permission

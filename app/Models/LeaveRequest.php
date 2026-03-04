@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -73,7 +74,33 @@ class LeaveRequest extends Model
         'supervisor_approved_date' => 'date',
         'hr_site_admin_approved' => 'boolean',
         'hr_site_admin_approved_date' => 'date',
+        'status' => \App\Enums\LeaveRequestStatus::class,
     ];
+
+    /**
+     * Scope: eager-load standard relationships for list views.
+     */
+    public function scopeWithRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'items.leaveType:id,name,requires_attachment',
+        ]);
+    }
+
+    /**
+     * Scope: eager-load detailed relationships for show views.
+     */
+    public function scopeWithDetailedRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee.employment:id,employee_id,department_id,position_id',
+            'employee.employment.department:id,name',
+            'employee.employment.position:id,title',
+            'items.leaveType:id,name,default_duration,description,requires_attachment',
+        ]);
+    }
 
     /**
      * Get the employee that owns the leave request.

@@ -22,7 +22,8 @@ class UpdatePositionRequest extends FormRequest
      */
     public function rules(): array
     {
-        $positionId = $this->route('id');
+        $position = $this->route('position');
+        $positionId = $position instanceof Position ? $position->id : $position;
 
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
@@ -32,7 +33,7 @@ class UpdatePositionRequest extends FormRequest
                 'nullable',
                 'integer',
                 'exists:positions,id',
-                function ($attribute, $value, $fail) use ($positionId) {
+                function ($attribute, $value, $fail) use ($position, $positionId) {
                     if ($value) {
                         // Cannot report to self
                         if ($value == $positionId) {
@@ -48,8 +49,8 @@ class UpdatePositionRequest extends FormRequest
                         $departmentId = $this->input('department_id');
                         if (! $departmentId) {
                             // Get current department if not being updated
-                            $currentPosition = Position::find($positionId);
-                            $departmentId = $currentPosition ? $currentPosition->department_id : null;
+                            $currentPosition = $position instanceof Position ? $position : Position::find($positionId);
+                            $departmentId = $currentPosition?->department_id;
                         }
 
                         if ($supervisor && $supervisor->department_id != $departmentId) {
@@ -93,8 +94,12 @@ class UpdatePositionRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $positionId = $this->route('id');
-            $position = Position::find($positionId);
+            $position = $this->route('position');
+
+            // Route model binding provides the model; fallback for raw ID
+            if (! $position instanceof Position) {
+                $position = Position::find($position);
+            }
 
             if (! $position) {
                 return;

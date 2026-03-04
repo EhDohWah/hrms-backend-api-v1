@@ -86,23 +86,33 @@ class TaxSetting extends Model
 
     const KEY_PARENT_ALLOWANCE = 'PARENT_ALLOWANCE';                   // ฿30,000 per eligible parent
 
-    // Social Security Fund (SSF) - Fixed rates per Thai law
-    const KEY_SSF_RATE = 'SSF_RATE';                                   // 5% (mandatory)
+    /**
+     * @deprecated Use BenefitSetting::KEY_SSF_EMPLOYEE_RATE instead. SSF settings moved to benefit_settings table.
+     */
+    const KEY_SSF_RATE = 'SSF_RATE';
 
-    const KEY_SSF_MIN_SALARY = 'SSF_MIN_SALARY';                       // ฿1,650 monthly
+    /** @deprecated Use BenefitSetting::KEY_SSF_MIN_SALARY instead */
+    const KEY_SSF_MIN_SALARY = 'SSF_MIN_SALARY';
 
-    const KEY_SSF_MAX_SALARY = 'SSF_MAX_SALARY';                       // ฿15,000 monthly
+    /** @deprecated Use BenefitSetting::KEY_SSF_MAX_SALARY instead */
+    const KEY_SSF_MAX_SALARY = 'SSF_MAX_SALARY';
 
-    const KEY_SSF_MAX_MONTHLY = 'SSF_MAX_MONTHLY';                     // ฿750 monthly
+    /** @deprecated Use BenefitSetting::KEY_SSF_MAX_MONTHLY instead */
+    const KEY_SSF_MAX_MONTHLY = 'SSF_MAX_MONTHLY';
 
-    const KEY_SSF_MAX_YEARLY = 'SSF_MAX_YEARLY';                       // ฿9,000 annually
+    /** @deprecated Use BenefitSetting::KEY_SSF_MAX_YEARLY instead */
+    const KEY_SSF_MAX_YEARLY = 'SSF_MAX_YEARLY';
 
-    // Provident Fund (PF) - Negotiable rates
-    const KEY_PF_MIN_RATE = 'PF_MIN_RATE';                            // 2% minimum
+    /**
+     * @deprecated Use BenefitSetting::KEY_PVD_EMPLOYEE_RATE instead. PVD settings moved to benefit_settings table.
+     */
+    const KEY_PF_MIN_RATE = 'PF_MIN_RATE';
 
-    const KEY_PF_MAX_RATE = 'PF_MAX_RATE';                            // 15% maximum
+    /** @deprecated Use BenefitSetting::KEY_PVD_EMPLOYEE_RATE instead */
+    const KEY_PF_MAX_RATE = 'PF_MAX_RATE';
 
-    const KEY_PF_MAX_ANNUAL = 'PF_MAX_ANNUAL';                        // ฿500,000 maximum annual
+    /** @deprecated Use BenefitSetting::KEY_PVD_MAX_ANNUAL instead */
+    const KEY_PF_MAX_ANNUAL = 'PF_MAX_ANNUAL';
 
     // Additional Deduction Categories
     const KEY_HEALTH_INSURANCE_MAX = 'HEALTH_INSURANCE_MAX';           // ฿25,000
@@ -144,11 +154,22 @@ class TaxSetting extends Model
 
     const THAI_2025_SSF_MIN_SALARY = 1650;                            // ฿1,650 monthly minimum
 
-    const THAI_2025_SSF_MAX_SALARY = 15000;                           // ฿15,000 monthly maximum
+    const THAI_2025_SSF_MAX_SALARY = 15000;                           // ฿15,000 monthly maximum (2025)
 
-    const THAI_2025_SSF_MAX_MONTHLY = 750;                            // ฿750 monthly maximum contribution
+    const THAI_2025_SSF_MAX_MONTHLY = 750;                            // ฿750 monthly maximum contribution (2025)
 
-    const THAI_2025_SSF_MAX_YEARLY = 9000;                            // ฿9,000 annual maximum contribution
+    const THAI_2025_SSF_MAX_YEARLY = 9000;                            // ฿9,000 annual maximum contribution (2025)
+
+    // Thai 2026 SSF Values (max salary increased from ฿15,000 to ฿17,500)
+    const THAI_2026_SSF_RATE = 5.0;                                   // 5% mandatory rate (unchanged)
+
+    const THAI_2026_SSF_MIN_SALARY = 1650;                            // ฿1,650 monthly minimum (unchanged)
+
+    const THAI_2026_SSF_MAX_SALARY = 17500;                           // ฿17,500 monthly maximum
+
+    const THAI_2026_SSF_MAX_MONTHLY = 875;                            // ฿875 monthly maximum contribution
+
+    const THAI_2026_SSF_MAX_YEARLY = 10500;                           // ฿10,500 annual maximum contribution
 
     // Boot method for cache clearing
     protected static function booted(): void
@@ -321,11 +342,7 @@ class TaxSetting extends Model
             $errors[] = 'Personal allowance is required for Thai compliance';
         }
 
-        // Check Social Security Fund settings
-        $ssfRate = static::getValue(self::KEY_SSF_RATE, $year);
-        if (! $ssfRate || $ssfRate != 5.0) {
-            $errors[] = 'SSF rate must be exactly 5% for Thai compliance';
-        }
+        // SSF validation moved to BenefitSetting — no longer checked in tax_settings
 
         // Check if using deprecated keys
         if (static::getValue(self::KEY_PERSONAL_EXPENSE_RATE, $year)) {
@@ -396,46 +413,14 @@ class TaxSetting extends Model
                 'thai_law_reference' => 'Revenue Code Section 42(5)',
             ],
 
-            // Social Security Fund
-            self::KEY_SSF_RATE => [
-                'value' => self::THAI_2025_SSF_RATE,
-                'type' => self::TYPE_RATE,
-                'category' => self::CATEGORY_SOCIAL_SECURITY,
-                'description' => 'Social Security Fund contribution rate - 5% (mandatory)',
-                'thai_law_reference' => 'Social Security Act',
-            ],
-            self::KEY_SSF_MIN_SALARY => [
-                'value' => self::THAI_2025_SSF_MIN_SALARY,
-                'type' => self::TYPE_LIMIT,
-                'category' => self::CATEGORY_SOCIAL_SECURITY,
-                'description' => 'Minimum monthly salary for SSF calculation - ฿1,650',
-                'thai_law_reference' => 'Social Security Act',
-            ],
-            self::KEY_SSF_MAX_SALARY => [
-                'value' => self::THAI_2025_SSF_MAX_SALARY,
-                'type' => self::TYPE_LIMIT,
-                'category' => self::CATEGORY_SOCIAL_SECURITY,
-                'description' => 'Maximum monthly salary for SSF calculation - ฿15,000',
-                'thai_law_reference' => 'Social Security Act',
-            ],
-            self::KEY_SSF_MAX_MONTHLY => [
-                'value' => self::THAI_2025_SSF_MAX_MONTHLY,
-                'type' => self::TYPE_LIMIT,
-                'category' => self::CATEGORY_SOCIAL_SECURITY,
-                'description' => 'Maximum monthly SSF contribution - ฿750',
-                'thai_law_reference' => 'Social Security Act',
-            ],
-            self::KEY_SSF_MAX_YEARLY => [
-                'value' => self::THAI_2025_SSF_MAX_YEARLY,
-                'type' => self::TYPE_LIMIT,
-                'category' => self::CATEGORY_SOCIAL_SECURITY,
-                'description' => 'Maximum annual SSF contribution - ฿9,000',
-                'thai_law_reference' => 'Social Security Act',
-            ],
+            // SSF settings moved to BenefitSetting model (benefit_settings table)
         ];
     }
 
-    // Get all allowed setting keys
+    /**
+     * Get all allowed setting keys (tax law settings only).
+     * SSF/PVD/Saving Fund settings have been moved to benefit_settings table.
+     */
     public static function getAllowedKeys(): array
     {
         return [
@@ -449,18 +434,6 @@ class TaxSetting extends Model
             self::KEY_CHILD_ALLOWANCE,
             self::KEY_CHILD_ALLOWANCE_SUBSEQUENT,
             self::KEY_PARENT_ALLOWANCE,
-
-            // Social Security Fund
-            self::KEY_SSF_RATE,
-            self::KEY_SSF_MIN_SALARY,
-            self::KEY_SSF_MAX_SALARY,
-            self::KEY_SSF_MAX_MONTHLY,
-            self::KEY_SSF_MAX_YEARLY,
-
-            // Provident Fund
-            self::KEY_PF_MIN_RATE,
-            self::KEY_PF_MAX_RATE,
-            self::KEY_PF_MAX_ANNUAL,
 
             // Additional deductions
             self::KEY_HEALTH_INSURANCE_MAX,
@@ -482,7 +455,10 @@ class TaxSetting extends Model
         ];
     }
 
-    // Get setting keys organized by category
+    /**
+     * Get setting keys organized by category (tax law settings only).
+     * SSF/PVD/Saving Fund settings have been moved to BenefitSetting model.
+     */
     public static function getKeysByCategory(): array
     {
         return [
@@ -496,18 +472,6 @@ class TaxSetting extends Model
                 self::KEY_CHILD_ALLOWANCE,
                 self::KEY_CHILD_ALLOWANCE_SUBSEQUENT,
                 self::KEY_PARENT_ALLOWANCE,
-            ],
-            'social_security' => [
-                self::KEY_SSF_RATE,
-                self::KEY_SSF_MIN_SALARY,
-                self::KEY_SSF_MAX_SALARY,
-                self::KEY_SSF_MAX_MONTHLY,
-                self::KEY_SSF_MAX_YEARLY,
-            ],
-            'provident_fund' => [
-                self::KEY_PF_MIN_RATE,
-                self::KEY_PF_MAX_RATE,
-                self::KEY_PF_MAX_ANNUAL,
             ],
             'additional_deductions' => [
                 self::KEY_HEALTH_INSURANCE_MAX,

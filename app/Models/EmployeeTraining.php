@@ -32,6 +32,10 @@ class EmployeeTraining extends Model
         'updated_by',
     ];
 
+    protected $casts = [
+        'status' => \App\Enums\EmployeeTrainingStatus::class,
+    ];
+
     // Relationship: Each employee training belongs to a training
     public function training()
     {

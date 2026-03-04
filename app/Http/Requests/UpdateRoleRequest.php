@@ -12,9 +12,7 @@ class UpdateRoleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Only authenticated users can update roles
-        // Additional permission checks are handled by middleware
-        return auth()->check();
+        return true;
     }
 
     /**
@@ -29,7 +27,7 @@ class UpdateRoleRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('roles', 'name')->ignore($this->route('id')),
+                Rule::unique('roles', 'name')->ignore($this->route('role')),
                 'regex:/^[a-z0-9-]+$/',
                 'not_in:admin,hr-manager', // Prevent renaming to protected names
             ],

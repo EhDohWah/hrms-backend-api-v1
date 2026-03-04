@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\HiredStatus;
+use App\Enums\InterviewStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
- * Form Request for storing and updating Interviews.
- *
- * This request handles validation for both POST (store) and PUT (update) operations.
+ * Form Request for storing Interviews.
  */
 class StoreInterviewRequest extends FormRequest
 {
@@ -35,13 +36,32 @@ class StoreInterviewRequest extends FormRequest
             'start_time' => 'nullable|date_format:H:i:s',
             'end_time' => 'nullable|date_format:H:i:s|after:start_time',
             'interview_mode' => 'nullable|string',
-            'interview_status' => 'nullable|string',
-            'hired_status' => 'nullable|string',
+            'interview_status' => [
+                'nullable',
+                'string',
+                Rule::enum(InterviewStatus::class),
+            ],
+            'hired_status' => [
+                'nullable',
+                'string',
+                Rule::enum(HiredStatus::class),
+            ],
             'score' => 'nullable|numeric|between:0,100',
             'feedback' => 'nullable|string',
             'reference_info' => 'nullable|string',
-            'created_by' => 'nullable|string',
-            'updated_by' => 'nullable|string',
+        ];
+    }
+
+    /**
+     * Get custom error messages for validation rules.
+     */
+    public function messages(): array
+    {
+        return [
+            'candidate_name.required' => 'The candidate name is required.',
+            'job_position.required' => 'The job position is required.',
+            'end_time.after' => 'The end time must be after the start time.',
+            'score.between' => 'The score must be between 0 and 100.',
         ];
     }
 }

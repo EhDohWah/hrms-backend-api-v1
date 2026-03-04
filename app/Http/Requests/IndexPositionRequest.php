@@ -50,4 +50,19 @@ class IndexPositionRequest extends FormRequest
             'per_page.max' => 'Items per page cannot exceed 100.',
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['is_active', 'is_manager'] as $field) {
+            if ($this->has($field)) {
+                $this->merge([$field => filter_var($this->input($field), FILTER_VALIDATE_BOOLEAN)]);
+            }
+        }
+
+        $this->mergeIfMissing([
+            'sort_by' => 'title',
+            'sort_direction' => 'asc',
+            'per_page' => 20,
+        ]);
+    }
 }

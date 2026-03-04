@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
@@ -32,7 +33,6 @@ use Maatwebsite\Excel\Validators\Failure;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class EmployeeFundingAllocationsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmptyRows, SkipsOnFailure, ToCollection, WithChunkReading, WithCustomValueBinder, WithEvents, WithHeadingRow, WithStartRow
 {
@@ -58,11 +58,7 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
 
         // Prefetch active employments (staff_id -> employment_id)
         $this->existingEmployments = Employment::join('employees', 'employments.employee_id', '=', 'employees.id')
-            ->where('employments.status', true)
-            ->where(function ($query) {
-                $query->whereNull('employments.end_probation_date')
-                    ->orWhere('employments.end_probation_date', '>=', now());
-            })
+            ->whereNull('employments.end_date')
             ->pluck('employments.id', 'employees.staff_id')
             ->toArray();
 
@@ -131,23 +127,7 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
         ]);
 
         // Normalize data
-        $normalized = $rows->map(function ($r) {
-            // Normalize date fields
-            foreach (['start_date', 'end_date'] as $dateField) {
-                if (! empty($r[$dateField]) && is_numeric($r[$dateField])) {
-                    try {
-                        $r[$dateField] = ExcelDate::excelToDateTimeObject($r[$dateField])->format('Y-m-d');
-                    } catch (\Exception $e) {
-                        Log::warning("Failed to parse {$dateField}", [
-                            'value' => $r[$dateField],
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-            }
-
-            return $r;
-        });
+        $normalized = $rows;
 
         Log::debug('Rows after normalization', [
             'normalized_count' => $normalized->count(),
@@ -260,16 +240,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                     }
                     $fteDecimal = $fte / 100;
 
-                    // Parse dates
-                    $startDate = $this->parseDate($row['start_date'] ?? null);
-                    $endDate = $this->parseDate($row['end_date'] ?? null);
-
-                    if (! $startDate) {
-                        $errors[] = "Row {$index}: Missing or invalid start_date";
-
-                        continue;
-                    }
-
                     // Get employment to calculate allocated_amount (if not provided)
                     $employment = Employment::find($employmentId);
                     if (! $employment) {
@@ -309,8 +279,8 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
 
                     // Get status from row or default to 'active'
                     $status = strtolower(trim($row['status'] ?? 'active'));
-                    if (! in_array($status, ['active', 'historical', 'terminated'])) {
-                        $errors[] = "Row {$index}: Invalid status '{$status}' (must be: active, historical, terminated)";
+                    if (! in_array($status, FundingAllocationStatus::values())) {
+                        $errors[] = "Row {$index}: Invalid status '{$status}' (must be: ".implode(', ', FundingAllocationStatus::values()).')';
 
                         continue;
                     }
@@ -324,8 +294,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                         'allocated_amount' => $allocatedAmount,
                         'salary_type' => $salaryType,
                         'status' => $status,
-                        'start_date' => $startDate,
-                        'end_date' => $endDate,
                         'created_by' => auth()->user()->name ?? 'system',
                         'updated_by' => auth()->user()->name ?? 'system',
                         'created_at' => now(),
@@ -409,9 +377,7 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
             '*.fte' => 'required|numeric|min:0|max:100',
             '*.allocated_amount' => 'nullable|numeric|min:0',
             '*.salary_type' => 'nullable|string|in:probation_salary,pass_probation_salary',
-            '*.status' => 'nullable|string|in:active,historical,terminated',
-            '*.start_date' => 'required|date',
-            '*.end_date' => 'nullable|date',
+            '*.status' => 'nullable|string|in:'.implode(',', FundingAllocationStatus::values()),
         ];
     }
 
@@ -500,24 +466,6 @@ class EmployeeFundingAllocationsImport extends DefaultValueBinder implements Sho
                 $user,
                 new ImportFailedNotification($errorMessage, $errorDetails, $this->importId, 'import')
             );
-        }
-    }
-
-    /**
-     * Parse date field
-     */
-    private function parseDate($value): ?string
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        try {
-            return \Carbon\Carbon::parse($value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            Log::warning('Failed to parse date', ['value' => $value, 'error' => $e->getMessage()]);
-
-            return null;
         }
     }
 

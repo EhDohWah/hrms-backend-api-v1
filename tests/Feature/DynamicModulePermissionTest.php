@@ -3,6 +3,7 @@
 use App\Models\Module;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     // Create test module using new simplified Read/Edit permission model
@@ -31,11 +32,29 @@ beforeEach(function () {
         'is_active' => true,
     ]);
 
+    // Create 'users' module — required by admin routes that use module.permission:users middleware
+    Module::create([
+        'name' => 'users',
+        'display_name' => 'Users',
+        'category' => 'User Management',
+        'icon' => 'users',
+        'route' => '/user-management/users',
+        'read_permission' => 'users.read',
+        'edit_permissions' => ['users.edit'],
+        'order' => 130,
+        'is_active' => true,
+    ]);
+
     // Create permissions (simplified Read/Edit model)
     Permission::create(['name' => 'test_module.read']);
     Permission::create(['name' => 'test_module.edit']);
     Permission::create(['name' => 'user_management.read']);
     Permission::create(['name' => 'user_management.edit']);
+    Permission::create(['name' => 'users.read']);
+    Permission::create(['name' => 'users.edit']);
+
+    // Reset cached permissions so Spatie picks up newly created permissions
+    app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
     // Create test user
     $this->user = User::factory()->create();
@@ -284,8 +303,8 @@ describe('UserPermissionController', function () {
     test('getUserPermissions returns correct permission structure', function () {
         $this->user->givePermissionTo(['test_module.read', 'test_module.edit']);
         $admin = User::factory()->create();
-        // Need both read (for GET) and edit permissions
-        $admin->givePermissionTo(['user_management.read', 'user_management.edit']);
+        // Need both read (for GET) and edit permissions — route uses module.permission:users
+        $admin->givePermissionTo(['users.read', 'users.edit']);
 
         $response = $this->actingAs($admin)->getJson("/api/v1/admin/user-permissions/{$this->user->id}");
 
@@ -303,7 +322,7 @@ describe('UserPermissionController', function () {
 
     test('updateUserPermissions correctly assigns permissions based on checkboxes', function () {
         $admin = User::factory()->create();
-        $admin->givePermissionTo(['user_management.read', 'user_management.edit']);
+        $admin->givePermissionTo(['users.read', 'users.edit']);
 
         $response = $this->actingAs($admin)->putJson("/api/v1/admin/user-permissions/{$this->user->id}", [
             'modules' => [
@@ -323,7 +342,7 @@ describe('UserPermissionController', function () {
 
     test('updateUserPermissions grants full permissions when both checkboxes checked', function () {
         $admin = User::factory()->create();
-        $admin->givePermissionTo(['user_management.read', 'user_management.edit']);
+        $admin->givePermissionTo(['users.read', 'users.edit']);
 
         $response = $this->actingAs($admin)->putJson("/api/v1/admin/user-permissions/{$this->user->id}", [
             'modules' => [
@@ -344,8 +363,8 @@ describe('UserPermissionController', function () {
     test('summary endpoint returns correct statistics', function () {
         $this->user->givePermissionTo('test_module.read');
         $admin = User::factory()->create();
-        // Need read permission for GET request
-        $admin->givePermissionTo(['user_management.read', 'user_management.edit']);
+        // Need read permission for GET request — route uses module.permission:users
+        $admin->givePermissionTo(['users.read', 'users.edit']);
 
         $response = $this->actingAs($admin)->getJson("/api/v1/admin/user-permissions/{$this->user->id}/summary");
 

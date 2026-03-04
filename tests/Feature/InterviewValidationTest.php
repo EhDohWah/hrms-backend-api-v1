@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Requests\InterviewRequest;
+use App\Http\Requests\StoreInterviewRequest;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
@@ -12,9 +13,23 @@ describe('Interview Request Validation', function () {
     beforeEach(function () {
         $this->user = User::factory()->create();
 
+        // Create Module record for dynamic module permission middleware
+        Module::create([
+            'name' => 'interviews',
+            'display_name' => 'Interviews',
+            'category' => 'Recruitment',
+            'icon' => 'calendar',
+            'route' => '/recruitment/interviews-list',
+            'read_permission' => 'interviews.read',
+            'edit_permissions' => ['interviews.edit'],
+            'order' => 20,
+            'is_active' => true,
+        ]);
+
         // Create permissions and assign to user
-        Permission::firstOrCreate(['name' => 'interview.create']);
-        $this->user->givePermissionTo('interview.create');
+        Permission::firstOrCreate(['name' => 'interviews.read']);
+        Permission::firstOrCreate(['name' => 'interviews.edit']);
+        $this->user->givePermissionTo(['interviews.read', 'interviews.edit']);
 
         $this->actingAs($this->user);
     });
@@ -333,7 +348,7 @@ describe('Interview Request Validation', function () {
 
     describe('Request Class Validation', function () {
         it('has correct validation rules', function () {
-            $request = new InterviewRequest;
+            $request = new StoreInterviewRequest;
             $rules = $request->rules();
 
             expect($rules)->toHaveKey('candidate_name')
@@ -355,7 +370,7 @@ describe('Interview Request Validation', function () {
         });
 
         it('authorizes all requests', function () {
-            $request = new InterviewRequest;
+            $request = new StoreInterviewRequest;
 
             expect($request->authorize())->toBeTrue();
         });
@@ -381,7 +396,7 @@ describe('Interview Request Validation', function () {
                 'updated_by' => 'Senior HR',
             ];
 
-            $request = new InterviewRequest;
+            $request = new StoreInterviewRequest;
             $validator = Validator::make($data, $request->rules());
 
             expect($validator->passes())->toBeTrue();
@@ -398,7 +413,7 @@ describe('Interview Request Validation', function () {
                 'score' => 150, // Out of range
             ];
 
-            $request = new InterviewRequest;
+            $request = new StoreInterviewRequest;
             $validator = Validator::make($data, $request->rules());
 
             expect($validator->fails())->toBeTrue()

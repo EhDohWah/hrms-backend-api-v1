@@ -29,9 +29,6 @@ return new class extends Migration
             $table->string('created_by', 255)->nullable();
             $table->string('updated_by', 255)->nullable();
 
-            // Index for FK column (SQL Server does NOT auto-create these)
-            $table->index('grant_id', 'idx_grant_items_grant_id');
-
             // Note: No unique constraint on budgetline_code + position
             // General Fund items have NULL budget line codes, so duplicates would occur
             // Uniqueness is enforced at application level for items WITH budget line codes

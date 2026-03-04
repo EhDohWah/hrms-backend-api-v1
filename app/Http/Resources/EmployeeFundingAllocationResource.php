@@ -27,8 +27,6 @@ class EmployeeFundingAllocationResource extends JsonResource
             'fte' => $this->fte * 100, // Convert decimal to percentage for UI
             'status' => $this->status, // Include status so frontend can filter if needed
             'allocated_amount' => $this->allocated_amount,
-            'start_date' => $this->start_date,
-            'end_date' => $this->end_date,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at,
@@ -116,7 +114,7 @@ class EmployeeFundingAllocationResource extends JsonResource
             ),
 
             // Computed fields
-            'is_active' => $this->start_date <= now() && (! $this->end_date || $this->end_date >= now()),
+            'is_active' => $this->status === \App\Enums\FundingAllocationStatus::Active,
         ];
     }
 }

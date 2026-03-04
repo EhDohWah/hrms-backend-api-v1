@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
@@ -84,7 +85,6 @@ class ProbationAllocationSeeder extends Seeder
             'health_welfare' => true,
             'pvd' => false,
             'saving_fund' => false,
-            'status' => true,
         ]);
 
         app(ProbationRecordService::class)->createInitialRecord($employment);
@@ -95,7 +95,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_id' => $orgGrant->id,
             'fte' => 1.0,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $employment->start_date,
         ]);
 
@@ -177,7 +177,6 @@ class ProbationAllocationSeeder extends Seeder
             'health_welfare' => true,
             'pvd' => true,
             'saving_fund' => false,
-            'status' => true,
         ]);
 
         $initialRecord = app(ProbationRecordService::class)->createInitialRecord($employment);
@@ -235,7 +234,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_id' => $orgGrant->id,
             'fte' => 0.70,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $startDate->toDateString(),
         ]);
 
@@ -245,7 +244,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_item_id' => $grantItem->id,
             'fte' => 0.30,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $startDate->toDateString(),
         ]);
 
@@ -343,7 +342,6 @@ class ProbationAllocationSeeder extends Seeder
             'health_welfare' => true,
             'pvd' => true,
             'saving_fund' => true,
-            'status' => true,
         ]);
 
         $initialRecord = app(ProbationRecordService::class)->createInitialRecord($employment);
@@ -374,7 +372,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_id' => $orgGrant->id,
             'fte' => 0.30,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $postProbationStart->toDateString(),
         ]);
 
@@ -384,7 +382,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_item_id' => $grantItemA->id,
             'fte' => 0.30,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $postProbationStart->toDateString(),
         ]);
 
@@ -394,7 +392,7 @@ class ProbationAllocationSeeder extends Seeder
             'employment_id' => $employment->id,
             'grant_item_id' => $grantItemB->id,
             'fte' => 0.30,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
             'start_date' => $postProbationStart->toDateString(),
         ]);
 
@@ -415,7 +413,7 @@ class ProbationAllocationSeeder extends Seeder
                 'pay_period_date' => $payPeriod->toDateString(),
                 'gross_salary' => $employment->pass_probation_salary,
                 'gross_salary_by_FTE' => $allocation->allocated_amount,
-                'compensation_refund' => 0,
+                'retroactive_adjustment' => 0,
                 'thirteen_month_salary' => 0,
                 'thirteen_month_salary_accured' => 0,
                 'pvd' => 0,

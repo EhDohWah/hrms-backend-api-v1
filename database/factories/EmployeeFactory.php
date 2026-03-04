@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\EmployeeStatus;
 use App\Models\Employee;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -28,7 +29,7 @@ class EmployeeFactory extends Factory
             'last_name_th' => null,
             'gender' => $this->faker->randomElement(['Male', 'Female']),
             'date_of_birth' => $this->faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
-            'status' => $this->faker->randomElement(['Expats', 'Local ID', 'Local non ID']),
+            'status' => $this->faker->randomElement(EmployeeStatus::values()),
             'nationality' => $this->faker->country(),
             'religion' => $this->faker->randomElement(['Buddhism', 'Christianity', 'Islam', 'Hinduism', 'Other']),
             'mobile_phone' => $this->faker->phoneNumber(),

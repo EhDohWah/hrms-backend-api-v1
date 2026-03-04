@@ -9,6 +9,7 @@ use App\Models\TaxSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class TaxApiTest extends TestCase
@@ -23,7 +24,14 @@ class TaxApiTest extends TestCase
     {
         parent::setUp();
 
+        // Create permissions before assigning them
+        $permissions = ['tax_settings.read', 'tax_settings.edit'];
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission]);
+        }
+
         $this->user = User::factory()->create();
+        $this->user->givePermissionTo($permissions);
         Sanctum::actingAs($this->user);
 
         $this->createTestTaxData();
@@ -32,7 +40,7 @@ class TaxApiTest extends TestCase
     /** @test */
     public function it_can_retrieve_tax_brackets()
     {
-        $response = $this->getJson('/api/tax-brackets');
+        $response = $this->getJson('/api/v1/tax-brackets');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -68,7 +76,7 @@ class TaxApiTest extends TestCase
             'is_active' => true,
         ];
 
-        $response = $this->postJson('/api/tax-brackets', $bracketData);
+        $response = $this->postJson('/api/v1/tax-brackets', $bracketData);
 
         $response->assertStatus(201)
             ->assertJson([
@@ -89,11 +97,10 @@ class TaxApiTest extends TestCase
         $invalidData = [
             'min_income' => -1000, // Invalid: negative
             'tax_rate' => 150,     // Invalid: over 100%
-            'bracket_order' => 1,  // Invalid: duplicate order
             'effective_year' => $this->testYear,
         ];
 
-        $response = $this->postJson('/api/tax-brackets', $invalidData);
+        $response = $this->postJson('/api/v1/tax-brackets', $invalidData);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['min_income', 'tax_rate', 'bracket_order']);
@@ -104,7 +111,7 @@ class TaxApiTest extends TestCase
     {
         $income = 600000;
 
-        $response = $this->getJson("/api/tax-brackets/calculate/{$income}?year={$this->testYear}");
+        $response = $this->getJson("/api/v1/tax-brackets/calculate/{$income}?year={$this->testYear}");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -129,7 +136,7 @@ class TaxApiTest extends TestCase
     /** @test */
     public function it_can_retrieve_tax_settings()
     {
-        $response = $this->getJson('/api/tax-settings');
+        $response = $this->getJson('/api/v1/tax-settings');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -143,7 +150,7 @@ class TaxApiTest extends TestCase
                         'setting_type',
                         'description',
                         'effective_year',
-                        'is_active',
+                        'is_selected',
                     ],
                 ],
             ]);
@@ -152,7 +159,7 @@ class TaxApiTest extends TestCase
     /** @test */
     public function it_can_get_tax_settings_by_year()
     {
-        $response = $this->getJson("/api/tax-settings/by-year/{$this->testYear}");
+        $response = $this->getJson("/api/v1/tax-settings/by-year/{$this->testYear}");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -170,7 +177,7 @@ class TaxApiTest extends TestCase
     /** @test */
     public function it_can_get_specific_tax_setting_value()
     {
-        $response = $this->getJson("/api/tax-settings/value/PERSONAL_ALLOWANCE?year={$this->testYear}");
+        $response = $this->getJson("/api/v1/tax-settings/value/PERSONAL_ALLOWANCE?year={$this->testYear}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -192,12 +199,10 @@ class TaxApiTest extends TestCase
         $payrollData = [
             'employee_id' => $employee->id,
             'gross_salary' => 50000,
-            'pay_period_date' => '2025-01-31',
             'tax_year' => $this->testYear,
-            'save_payroll' => false,
         ];
 
-        $response = $this->postJson('/api/tax-calculations/payroll', $payrollData);
+        $response = $this->postJson('/api/v1/tax-calculations/payroll', $payrollData);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -205,15 +210,13 @@ class TaxApiTest extends TestCase
                 'message',
                 'data' => [
                     'gross_salary',
-                    'total_income',
+                    'annual_gross_salary',
                     'net_salary',
                     'taxable_income',
-                    'income_tax',
-                    'deductions',
-                    'social_security',
-                    'tax_breakdown',
-                    'formatted',
-                    'ratios',
+                    'monthly_tax_amount',
+                    'total_deductions',
+                    'social_security_monthly',
+                    'tax_calculation_breakdown',
                 ],
             ]);
     }
@@ -226,7 +229,7 @@ class TaxApiTest extends TestCase
             'tax_year' => $this->testYear,
         ];
 
-        $response = $this->postJson('/api/tax-calculations/income-tax', $taxData);
+        $response = $this->postJson('/api/v1/tax-calculations/income-tax', $taxData);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -248,13 +251,12 @@ class TaxApiTest extends TestCase
         $invalidData = [
             'employee_id' => 999999, // Non-existent employee
             'gross_salary' => -5000,  // Negative salary
-            'pay_period_date' => '2030-01-01', // Future date
         ];
 
-        $response = $this->postJson('/api/tax-calculations/payroll', $invalidData);
+        $response = $this->postJson('/api/v1/tax-calculations/payroll', $invalidData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['employee_id', 'gross_salary', 'pay_period_date']);
+            ->assertJsonValidationErrors(['employee_id', 'gross_salary']);
     }
 
     /** @test */
@@ -278,7 +280,7 @@ class TaxApiTest extends TestCase
             ],
         ];
 
-        $response = $this->postJson('/api/tax-settings/bulk-update', $bulkData);
+        $response = $this->postJson('/api/v1/tax-settings/bulk-update', $bulkData);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -296,10 +298,11 @@ class TaxApiTest extends TestCase
     /** @test */
     public function it_handles_unauthorized_access()
     {
-        // Logout the user
-        auth()->logout();
+        // Clear all authentication guards so the request is unauthenticated
+        $this->app['auth']->forgetGuards();
 
-        $response = $this->getJson('/api/tax-brackets');
+        $response = $this->withHeaders(['Accept' => 'application/json'])
+            ->getJson('/api/v1/tax-brackets');
 
         $response->assertStatus(401);
     }

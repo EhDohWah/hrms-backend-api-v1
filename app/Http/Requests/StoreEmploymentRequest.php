@@ -38,17 +38,9 @@ class StoreEmploymentRequest extends FormRequest
             'health_welfare' => ['boolean'],
             'pvd' => ['boolean'],
             'saving_fund' => ['boolean'],
+            'probation_required' => ['nullable', 'boolean'],
             // NOTE: Benefit percentages are managed globally in benefit_settings table
-            'status' => ['nullable', 'boolean'],
-
-            // Allocation fields (optional - can be created separately via EmployeeFundingAllocationController)
-            // Note: Allocations are now decoupled from employment creation for better flexibility
-            'allocations' => ['sometimes', 'array'],
-            'allocations.*.fte' => ['required_with:allocations', 'numeric', 'min:0.01', 'max:100'],
-            'allocations.*.grant_item_id' => ['required_with:allocations', 'integer', 'exists:grant_items,id'],
-            'allocations.*.allocated_amount' => ['nullable', 'numeric', 'min:0'],
-            'allocations.*.start_date' => ['nullable', 'date'],
-            'allocations.*.end_date' => ['nullable', 'date', 'after:allocations.*.start_date'],
+            'end_date' => ['nullable', 'date'],
         ];
     }
 
@@ -76,16 +68,7 @@ class StoreEmploymentRequest extends FormRequest
             'health_welfare.boolean' => 'Health welfare must be true or false.',
             'pvd.boolean' => 'PVD must be true or false.',
             'saving_fund.boolean' => 'Saving fund must be true or false.',
-            'status.boolean' => 'Status must be true (Active) or false (Inactive).',
-            // Note: Allocations are now optional - can be created separately after employment
-            'allocations.array' => 'Allocations must be an array if provided.',
-            'allocations.*.fte.required' => 'FTE (Full-Time Equivalent) is required for each allocation.',
-            'allocations.*.fte.min' => 'FTE must be at least 0.01%.',
-            'allocations.*.fte.max' => 'FTE cannot exceed 100%.',
-            'allocations.*.grant_item_id.exists' => 'Selected grant item does not exist.',
-            'allocations.*.grant_item_id.required' => 'Grant item is required for allocations.',
-            'allocations.*.allocated_amount.min' => 'Allocated amount cannot be negative.',
-            'allocations.*.end_date.after' => 'Allocation end date must be after start date.',
+            'end_date.date' => 'End date must be a valid date.',
         ];
     }
 
@@ -95,18 +78,6 @@ class StoreEmploymentRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // Validate total FTE equals 100% only if allocations are provided
-            // Note: Allocations are now optional - employment can be created without allocations
-            // and allocations can be added later via EmployeeFundingAllocationController
-            if ($this->has('allocations') && is_array($this->allocations) && count($this->allocations) > 0) {
-                $totalFte = array_sum(array_column($this->allocations, 'fte'));
-                if (abs($totalFte - 100) > 0.01) { // Allow small floating point differences
-                    $validator->errors()->add('allocations',
-                        'Total FTE must equal 100%. Current total: '.number_format($totalFte, 2).'%'
-                    );
-                }
-            }
-
             // Validate pass probation date relationship with start_date
             if ($this->filled('pass_probation_date') && $this->filled('start_date')) {
                 $startDate = \Carbon\Carbon::parse($this->start_date);

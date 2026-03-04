@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\TravelRequest;
+use App\Enums\AccommodationType;
+use App\Enums\TransportationType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -50,7 +51,7 @@ class UpdateTravelRequestRequest extends FormRequest
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::in(TravelRequest::getTransportationOptions()),
+                Rule::enum(TransportationType::class),
             ],
             'transportation_other_text' => [
                 'sometimes',
@@ -64,7 +65,7 @@ class UpdateTravelRequestRequest extends FormRequest
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::in(TravelRequest::getAccommodationOptions()),
+                Rule::enum(AccommodationType::class),
             ],
             'accommodation_other_text' => [
                 'sometimes',
@@ -97,10 +98,8 @@ class UpdateTravelRequestRequest extends FormRequest
             'position_id.exists' => 'Selected position does not exist or does not belong to the selected department.',
             'start_date.after_or_equal' => 'Start date cannot be in the past.',
             'to_date.after' => 'End date must be after the start date.',
-            'transportation.in' => 'Invalid transportation option. Please select from: SMRU vehicle, Public transportation, Air, or Other.',
             'transportation_other_text.required' => 'Please specify the transportation method when selecting "Other".',
             'transportation_other_text.max' => 'Transportation specification cannot exceed 200 characters.',
-            'accommodation.in' => 'Invalid accommodation option. Please select from: SMRU arrangement, Self arrangement, or Other.',
             'accommodation_other_text.required' => 'Please specify the accommodation type when selecting "Other".',
             'accommodation_other_text.max' => 'Accommodation specification cannot exceed 200 characters.',
         ];

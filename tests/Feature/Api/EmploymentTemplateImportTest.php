@@ -91,7 +91,7 @@ class EmploymentTemplateImportTest extends TestCase
             'last_name_en' => 'Doe',
             'gender' => 'Male',
             'date_of_birth' => '1990-01-01',
-            'status' => 'Active',
+            'status' => 'Local ID Staff',
         ]);
     }
 

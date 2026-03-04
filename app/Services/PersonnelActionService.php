@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Employment;
 use App\Models\PersonnelAction;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -11,10 +12,88 @@ use Illuminate\Support\Facades\Log;
 
 class PersonnelActionService
 {
+    private const EAGER_LOAD = [
+        'employment.employee',
+        'creator',
+        'currentDepartment',
+        'currentPosition',
+        'currentWorkLocation',
+        'newDepartment',
+        'newPosition',
+        'newWorkLocation',
+    ];
+
     public function __construct(
         private ?CacheManagerService $cacheManager = null
     ) {
         $this->cacheManager = $cacheManager ?? app(CacheManagerService::class);
+    }
+
+    /**
+     * List personnel actions with filtering and pagination.
+     */
+    public function list(array $filters): LengthAwarePaginator
+    {
+        return PersonnelAction::with(self::EAGER_LOAD)
+            ->when(isset($filters['dept_head_approved']), fn ($q) => $q->where('dept_head_approved', (bool) $filters['dept_head_approved']))
+            ->when(isset($filters['coo_approved']), fn ($q) => $q->where('coo_approved', (bool) $filters['coo_approved']))
+            ->when(isset($filters['hr_approved']), fn ($q) => $q->where('hr_approved', (bool) $filters['hr_approved']))
+            ->when(isset($filters['accountant_approved']), fn ($q) => $q->where('accountant_approved', (bool) $filters['accountant_approved']))
+            ->when($filters['action_type'] ?? null, fn ($q, $v) => $q->where('action_type', $v))
+            ->when($filters['employment_id'] ?? null, fn ($q, $v) => $q->where('employment_id', $v))
+            ->orderBy('created_at', 'desc')
+            ->paginate($filters['per_page'] ?? 15);
+    }
+
+    /**
+     * Get personnel action constants for dropdowns.
+     */
+    public function constants(): array
+    {
+        return [
+            'action_types' => PersonnelAction::ACTION_TYPES,
+            'action_subtypes' => PersonnelAction::ACTION_SUBTYPES,
+            'transfer_types' => PersonnelAction::TRANSFER_TYPES,
+            'statuses' => PersonnelAction::STATUSES,
+        ];
+    }
+
+    /**
+     * Show a single personnel action with eager-loaded relationships.
+     */
+    public function show(PersonnelAction $personnelAction): PersonnelAction
+    {
+        return $personnelAction->load(self::EAGER_LOAD);
+    }
+
+    /**
+     * Store a new personnel action.
+     */
+    public function store(array $data): PersonnelAction
+    {
+        $personnelAction = $this->createPersonnelAction($data);
+
+        return $personnelAction->load(self::EAGER_LOAD);
+    }
+
+    /**
+     * Update a personnel action.
+     */
+    public function update(PersonnelAction $personnelAction, array $data): PersonnelAction
+    {
+        $personnelAction->update($data);
+
+        return $personnelAction->fresh()->load(self::EAGER_LOAD);
+    }
+
+    /**
+     * Update approval status and return refreshed action.
+     */
+    public function approve(PersonnelAction $personnelAction, string $approvalType, bool $approved): PersonnelAction
+    {
+        $this->updateApproval($personnelAction, $approvalType, $approved);
+
+        return $personnelAction->fresh()->load(self::EAGER_LOAD);
     }
 
     public function createPersonnelAction(array $data): PersonnelAction

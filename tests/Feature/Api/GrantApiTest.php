@@ -34,16 +34,15 @@ describe('Grant Bulk Delete', function () {
         $grantIds = $grants->pluck('id')->toArray();
 
         // Delete the grants
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', [
+        $response = $this->deleteJson('/api/v1/grants/batch', [
             'ids' => $grantIds,
         ]);
 
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'count' => 3,
             ])
-            ->assertJsonFragment(['message' => '3 grant(s) deleted successfully']);
+            ->assertJsonStructure(['succeeded', 'failed']);
 
         // Verify grants are deleted
         foreach ($grantIds as $id) {
@@ -51,7 +50,7 @@ describe('Grant Bulk Delete', function () {
         }
     });
 
-    it('deletes related grant items when deleting grants', function () {
+    it('soft deletes grants and preserves grant items when deleting grants in batch', function () {
         // Create test grant with items
         $grant = Grant::factory()->create();
         $grantItems = GrantItem::factory()
@@ -61,28 +60,31 @@ describe('Grant Bulk Delete', function () {
 
         $grantItemIds = $grantItems->pluck('id')->toArray();
 
-        // Delete the grant
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', [
+        // Delete the grant (soft delete)
+        $response = $this->deleteJson('/api/v1/grants/batch', [
             'ids' => [$grant->id],
         ]);
 
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'count' => 1,
-            ]);
+            ])
+            ->assertJsonStructure(['succeeded', 'failed']);
 
-        // Verify grant is deleted
+        // Verify grant is soft-deleted (not visible via normal find)
         expect(Grant::find($grant->id))->toBeNull();
 
-        // Verify grant items are deleted
+        // Verify grant still exists in database (soft-deleted)
+        expect(Grant::withTrashed()->find($grant->id))->not->toBeNull();
+
+        // Grant items are preserved after soft delete (they remain for data integrity)
         foreach ($grantItemIds as $id) {
-            expect(GrantItem::find($id))->toBeNull();
+            expect(GrantItem::find($id))->not->toBeNull();
         }
     });
 
     it('returns validation error when ids array is empty', function () {
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', [
+        $response = $this->deleteJson('/api/v1/grants/batch', [
             'ids' => [],
         ]);
 
@@ -90,17 +92,20 @@ describe('Grant Bulk Delete', function () {
     });
 
     it('returns validation error when ids are not provided', function () {
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', []);
+        $response = $this->deleteJson('/api/v1/grants/batch', []);
 
         $response->assertStatus(422);
     });
 
-    it('returns validation error when non-existent ids are provided', function () {
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', [
+    it('returns partial failure when non-existent ids are provided', function () {
+        $response = $this->deleteJson('/api/v1/grants/batch', [
             'ids' => [99999, 99998],
         ]);
 
-        $response->assertStatus(422);
+        $response->assertStatus(207)
+            ->assertJson([
+                'success' => false,
+            ]);
     });
 
     it('requires grants_list.edit permission', function () {
@@ -112,7 +117,7 @@ describe('Grant Bulk Delete', function () {
 
         $grant = Grant::factory()->create();
 
-        $response = $this->deleteJson('/api/v1/grants/delete-selected', [
+        $response = $this->deleteJson('/api/v1/grants/batch', [
             'ids' => [$grant->id],
         ]);
 

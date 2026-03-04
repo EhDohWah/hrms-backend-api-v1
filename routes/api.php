@@ -9,6 +9,8 @@ Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Versioned groups (non-breaking): keep all existing routes under v1
 Route::prefix('v1')->group(function () {
+    require __DIR__.'/api/auth.php';
+    require __DIR__.'/api/user.php';
     require __DIR__.'/api/admin.php';
     require __DIR__.'/api/administration.php';
     require __DIR__.'/api/employees.php';

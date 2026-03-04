@@ -37,8 +37,9 @@ class UpdateEmploymentRequest extends FormRequest
             'health_welfare' => ['sometimes', 'boolean'],
             'pvd' => ['sometimes', 'boolean'],
             'saving_fund' => ['sometimes', 'boolean'],
+            'probation_required' => ['nullable', 'boolean'],
             // NOTE: Benefit percentages are managed globally in benefit_settings table
-            'status' => ['sometimes', 'boolean'],
+            'end_date' => ['sometimes', 'nullable', 'date'],
         ];
     }
 
@@ -60,7 +61,7 @@ class UpdateEmploymentRequest extends FormRequest
             'health_welfare.boolean' => 'Health welfare must be true or false.',
             'pvd.boolean' => 'PVD must be true or false.',
             'saving_fund.boolean' => 'Saving fund must be true or false.',
-            'status.boolean' => 'Status must be true (Active) or false (Inactive).',
+            'end_date.date' => 'End date must be a valid date.',
         ];
     }
 
@@ -70,6 +71,16 @@ class UpdateEmploymentRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // Validate position belongs to the selected department
+            if ($this->filled(['department_id', 'position_id'])) {
+                $position = \App\Models\Position::find($this->position_id);
+                if ($position && $position->department_id != $this->department_id) {
+                    $validator->errors()->add('position_id',
+                        'The selected position must belong to the selected department.'
+                    );
+                }
+            }
+
             // Validate pass probation date relationship with start_date
             if ($this->filled('pass_probation_date') && $this->filled('start_date')) {
                 $startDate = \Carbon\Carbon::parse($this->start_date);
@@ -81,9 +92,6 @@ class UpdateEmploymentRequest extends FormRequest
                         'Pass probation date must be after employment start date.'
                     );
                 }
-
-                // Note: Frontend should auto-calculate 3 months from start_date
-                // This validation allows flexibility for exceptional cases
             }
         });
     }

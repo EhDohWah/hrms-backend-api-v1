@@ -97,8 +97,6 @@ class EmployeeFundingAllocationTemplateExport
             'grant_item_id',
             'fte',
             'allocated_amount',
-            'start_date',
-            'end_date',
             'notes',
         ];
     }
@@ -113,8 +111,6 @@ class EmployeeFundingAllocationTemplateExport
             'Integer - NOT NULL - Grant item ID (use Grant Items Reference file)',
             'Decimal (0-100) - NOT NULL - FTE percentage (e.g., 50 for 50%, 100 for 100%)',
             'Decimal(15,2) - NULLABLE - Pre-calculated allocated amount (auto-calculated if empty)',
-            'Date (YYYY-MM-DD) - NOT NULL - Allocation start date',
-            'Date (YYYY-MM-DD) - NULLABLE - Allocation end date (leave empty for ongoing)',
             'Text - NULLABLE - Additional notes or comments',
         ];
     }
@@ -129,9 +125,7 @@ class EmployeeFundingAllocationTemplateExport
             'B' => 18,  // grant_item_id
             'C' => 12,  // fte
             'D' => 18,  // allocated_amount
-            'E' => 15,  // start_date
-            'F' => 15,  // end_date
-            'G' => 35,  // notes
+            'E' => 35,  // notes
         ];
     }
 
@@ -141,9 +135,9 @@ class EmployeeFundingAllocationTemplateExport
     private function addSampleData($sheet): void
     {
         $sampleData = [
-            ['EMP001', '1', '100', '', '2025-01-01', '', 'Full-time allocation to Grant Item 1'],
-            ['EMP002', '2', '60', '30000.00', '2025-01-15', '2025-12-31', 'Part-time 60% allocation'],
-            ['EMP002', '3', '40', '20000.00', '2025-01-15', '2025-12-31', 'Split funding - remaining 40%'],
+            ['EMP001', '1', '100', '', 'Full-time allocation to Grant Item 1'],
+            ['EMP002', '2', '60', '30000.00', 'Part-time 60% allocation'],
+            ['EMP002', '3', '40', '20000.00', 'Split funding - remaining 40%'],
         ];
 
         $row = 3;
@@ -236,11 +230,9 @@ class EmployeeFundingAllocationTemplateExport
             '- staff_id: Employee staff ID (must exist in system)',
             '- grant_item_id: Grant item ID from Grant Items Reference file',
             '- fte: FTE percentage (0-100, e.g., 50 for 50%, 100 for 100%)',
-            '- start_date: Allocation start date (YYYY-MM-DD format)',
             '',
             'OPTIONAL FIELDS:',
             '- allocated_amount: Leave empty for auto-calculation based on salary',
-            '- end_date: Leave empty for ongoing allocation',
             '- notes: Any additional comments or information',
             '',
             'HOW IT WORKS:',
@@ -248,9 +240,6 @@ class EmployeeFundingAllocationTemplateExport
             '2. System automatically finds the active employment for that employee',
             '3. System creates funding allocation linking employee to grant item',
             '4. If allocated_amount is empty, system calculates it based on FTE and salary',
-            '',
-            'DATE FORMAT:',
-            'All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)',
             '',
             'FTE (Full-Time Equivalent):',
             '- Enter as percentage without % symbol',
@@ -268,30 +257,27 @@ class EmployeeFundingAllocationTemplateExport
             '- staff_id must exist in the system',
             '- grant_item_id must be valid (check Grant Items Reference)',
             '- FTE must be between 0 and 100',
-            '- start_date is required',
-            '- end_date is optional (leave empty for ongoing)',
             '- Employee must have an active employment record',
             '- Total FTE per employee should equal 100%',
             '',
             'EXAMPLE SCENARIOS:',
             '',
             'Single Funding (100%):',
-            '  EMP001 | 5 | 100 | | 2025-01-01 | | Full-time on one grant',
+            '  EMP001 | 5 | 100 | | Full-time on one grant',
             '',
             'Split Funding (60/40):',
-            '  EMP002 | 10 | 60 | | 2025-01-01 | | 60% on Grant Item 10',
-            '  EMP002 | 15 | 40 | | 2025-01-01 | | 40% on Grant Item 15',
+            '  EMP002 | 10 | 60 | | 60% on Grant Item 10',
+            '  EMP002 | 15 | 40 | | 40% on Grant Item 15',
             '',
             'Split Funding (50/30/20):',
-            '  EMP003 | 20 | 50 | | 2025-01-01 | | Half-time on Grant Item 20',
-            '  EMP003 | 25 | 30 | | 2025-01-01 | | 30% on Grant Item 25',
-            '  EMP003 | 30 | 20 | | 2025-01-01 | | 20% on Grant Item 30',
+            '  EMP003 | 20 | 50 | | Half-time on Grant Item 20',
+            '  EMP003 | 25 | 30 | | 30% on Grant Item 25',
+            '  EMP003 | 30 | 20 | | 20% on Grant Item 30',
             '',
             'BEST PRACTICES:',
             '- Always download the latest Grant Items Reference before importing',
             '- Verify staff_id exists in the system',
             '- Keep total FTE per employee = 100%',
-            '- Use consistent date formats (YYYY-MM-DD)',
             '- Test with a small batch first (2-3 employees)',
             '- Review the Grant Items Reference to understand grant structure',
             '',

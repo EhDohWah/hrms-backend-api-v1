@@ -68,6 +68,13 @@ class Employee extends Model
 {
     use HasFactory, LogsActivity, Prunable, SoftDeletes;
 
+    // Employee status constants (must match DB enum values)
+    const STATUS_LOCAL_ID = 'Local ID Staff';           // Thai citizens
+
+    const STATUS_LOCAL_NON_ID = 'Local non ID Staff';   // Non-Thai with work permit
+
+    const STATUS_EXPATS = 'Expats (Local)';             // Expatriates
+
     protected $fillable = [
         'organization',
         'staff_id',
@@ -110,6 +117,7 @@ class Employee extends Model
         'mother_phone_number',
         'driver_license_number',
         'remark',
+        'eligible_parents_count',
         'created_by',
         'updated_by',
     ];
@@ -122,6 +130,8 @@ class Employee extends Model
         'identification_issue_date' => 'date',
         'identification_expiry_date' => 'date',
         'military_status' => 'boolean',
+        'eligible_parents_count' => 'integer',
+        'status' => \App\Enums\EmployeeStatus::class,
     ];
 
     /**
@@ -210,29 +220,10 @@ class Employee extends Model
         return $this->hasMany(EmployeeChild::class);
     }
 
-    // Parent information is stored directly in employees table
-    // Helper methods for tax calculation
-
-    /**
-     * Get count of eligible parents for tax allowance
-     * In Thai tax law, parents are eligible if they are over 60 and have income < 30,000 per year
-     */
-    public function getEligibleParentsCountAttribute(): int
-    {
-        $count = 0;
-
-        // For now, assume parents are eligible if their names are provided
-        // In a real system, you'd want separate parent records with age and income
-        if (! empty($this->father_name)) {
-            $count++;
-        }
-
-        if (! empty($this->mother_name)) {
-            $count++;
-        }
-
-        return $count;
-    }
+    // Parent information is stored directly in employees table.
+    // eligible_parents_count is stored as an explicit DB column (see migration
+    // 2026_02_20_000001). An admin must set the correct value per Thai RD rules:
+    // each eligible parent must be age 60+ with annual income < ฿30,000.
 
     /**
      * Check if employee has spouse based on marital status and spouse name

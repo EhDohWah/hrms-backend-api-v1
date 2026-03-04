@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
@@ -9,10 +10,14 @@ use App\Models\Payroll;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    // Create permission before assigning it
+    Permission::firstOrCreate(['name' => 'employee_salary.read']);
+
     // Create a user with employee_salary.read permission
     $this->user = User::factory()->create();
     $this->user->givePermissionTo('employee_salary.read');
@@ -79,9 +84,8 @@ it('returns budget history data grouped by employee and grant allocation', funct
         'employee_id' => $employee->id,
         'employment_id' => $employment->id,
         'grant_item_id' => $grantItem->id,
-        'allocation_type' => 'grant',
         'fte' => 0.5,
-        'status' => 'active',
+        'status' => FundingAllocationStatus::Active,
     ]);
 
     // Create payrolls for 3 months
@@ -141,7 +145,7 @@ it('returns budget history data grouped by employee and grant allocation', funct
     expect($data[0]['staff_id'])->toBe('TEST001');
     expect($data[0]['organization'])->toBe('SMRU');
     expect($data[0]['grant_name'])->toBe('Test Grant');
-    expect($data[0]['fte'])->toBe(0.5);
+    expect((float) $data[0]['fte'])->toBe(0.5);
     expect($data[0]['monthly_data'])->toHaveKey('2024-01');
     expect($data[0]['monthly_data'])->toHaveKey('2024-02');
     expect($data[0]['monthly_data'])->toHaveKey('2024-03');
@@ -174,14 +178,14 @@ it('filters budget history by organization', function () {
         'employee_id' => $employeeSMRU->id,
         'employment_id' => $employmentSMRU->id,
         'grant_item_id' => $grantItem->id,
-        'status' => 'active',
+        'status' => FundingAllocationStatus::Active,
     ]);
 
     $allocationBHF = EmployeeFundingAllocation::factory()->create([
         'employee_id' => $employeeBHF->id,
         'employment_id' => $employmentBHF->id,
         'grant_item_id' => $grantItem->id,
-        'status' => 'active',
+        'status' => FundingAllocationStatus::Active,
     ]);
 
     Payroll::factory()->create([
@@ -226,7 +230,7 @@ it('paginates budget history results', function () {
             'employee_id' => $employee->id,
             'employment_id' => $employment->id,
             'grant_item_id' => $grantItem->id,
-            'status' => 'active',
+            'status' => FundingAllocationStatus::Active,
         ]);
 
         Payroll::factory()->create([

@@ -11,9 +11,7 @@ class StoreRoleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Only authenticated users can create roles
-        // Additional permission checks are handled by middleware
-        return auth()->check();
+        return true;
     }
 
     /**

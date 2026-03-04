@@ -42,5 +42,9 @@ class OptionsSectionDepartmentRequest extends FormRequest
                 'is_active' => filter_var($this->input('is_active'), FILTER_VALIDATE_BOOLEAN),
             ]);
         }
+
+        $this->mergeIfMissing([
+            'limit' => 200,
+        ]);
     }
 }

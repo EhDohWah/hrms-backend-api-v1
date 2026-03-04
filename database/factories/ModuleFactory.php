@@ -33,7 +33,7 @@ class ModuleFactory extends Factory
             ],
             'order' => fake()->numberBetween(1, 100),
             'is_active' => true,
-            'parent_id' => null,
+            'parent_module' => null,
         ];
     }
 
@@ -50,10 +50,10 @@ class ModuleFactory extends Factory
     /**
      * Indicate that the module is a child module.
      */
-    public function childOf(int $parentId): static
+    public function childOf(string $parentModule): static
     {
         return $this->state(fn (array $attributes) => [
-            'parent_id' => $parentId,
+            'parent_module' => $parentModule,
         ]);
     }
 }

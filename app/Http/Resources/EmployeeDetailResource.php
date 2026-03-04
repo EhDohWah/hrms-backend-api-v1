@@ -71,6 +71,7 @@ class EmployeeDetailResource extends JsonResource
                     'end_probation_date' => $this->employment->end_probation_date,
                     'pass_probation_salary' => $this->employment->pass_probation_salary,
                     'probation_salary' => $this->employment->probation_salary,
+                    'probation_required' => $this->employment->probation_required,
                     'active' => $this->employment->active,
                     'health_welfare' => $this->employment->health_welfare,
                     'pvd' => $this->employment->pvd,
@@ -106,9 +107,7 @@ class EmployeeDetailResource extends JsonResource
                     return [
                         'id' => $allocation->id,
                         'fte' => $allocation->fte,
-                        'start_date' => $allocation->start_date,
-                        'end_date' => $allocation->end_date,
-                        'active' => $allocation->active,
+                        'status' => $allocation->status,
                         'grant_item' => $this->whenLoaded('employeeGrantAllocations.grantItemAllocation', function () use ($allocation) {
                             return [
                                 'id' => $allocation->grantItemAllocation->id,

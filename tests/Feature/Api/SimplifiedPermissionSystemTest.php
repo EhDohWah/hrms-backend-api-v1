@@ -13,6 +13,29 @@ beforeEach(function () {
     $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\ModuleSeeder']);
     $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\PermissionRoleSeeder']);
 
+    // Reset cached permissions so Spatie picks up newly seeded permissions
+    app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+    // Assign all permissions to admin role (mirrors what UserSeeder does for admin users)
+    $adminRole = Role::where('name', 'admin')->first();
+    if ($adminRole) {
+        $adminRole->syncPermissions(Permission::all());
+    }
+
+    // Create employee role with limited permissions (basic self-service access)
+    $employeeRole = Role::firstOrCreate(['name' => 'employee']);
+    $employeeRole->syncPermissions([
+        'dashboard.read',
+        'users.read',
+        'users.edit',
+        'attendance_admin.read',
+        'attendance_admin.edit',
+        'travel_admin.read',
+        'travel_admin.edit',
+        'leaves_admin.read',
+        'leaves_admin.edit',
+    ]);
+
     // Create test user
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
@@ -60,14 +83,14 @@ describe('Permission System Structure', function () {
         // Employee should have specific read/edit permissions
         $expectedPermissions = [
             'dashboard.read',
-            'user.read',
-            'user.edit',
-            'attendance.read',
-            'attendance.edit',
-            'travel_request.read',
-            'travel_request.edit',
-            'leave_request.read',
-            'leave_request.edit',
+            'users.read',
+            'users.edit',
+            'attendance_admin.read',
+            'attendance_admin.edit',
+            'travel_admin.read',
+            'travel_admin.edit',
+            'leaves_admin.read',
+            'leaves_admin.edit',
         ];
 
         foreach ($expectedPermissions as $permission) {
@@ -310,17 +333,11 @@ describe('Module Edit Permissions Field', function () {
         $modules = Module::all();
 
         foreach ($modules as $module) {
-            // Dashboard is read-only exception
-            if ($module->name === 'dashboard') {
-                expect($module->edit_permissions)->toBeArray()
-                    ->and($module->edit_permissions)->toBeEmpty();
-            } else {
-                $permissionPrefix = str_replace('.read', '', $module->read_permission);
+            $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
-                expect($module->edit_permissions)->toBeArray()
-                    ->and($module->edit_permissions)->toHaveCount(1)
-                    ->and($module->edit_permissions[0])->toBe("{$permissionPrefix}.edit");
-            }
+            expect($module->edit_permissions)->toBeArray()
+                ->and($module->edit_permissions)->toHaveCount(1)
+                ->and($module->edit_permissions[0])->toBe("{$permissionPrefix}.edit");
         }
     });
 });

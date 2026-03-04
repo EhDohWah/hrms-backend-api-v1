@@ -57,7 +57,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
 
         // Prefetch active employments (staff_id -> employment_id)
         $this->existingEmployments = Employment::join('employees', 'employments.employee_id', '=', 'employees.id')
-            ->where('employments.status', true)
+            ->whereNull('employments.end_date')
             ->pluck('employments.id', 'employees.staff_id')
             ->toArray();
 
@@ -144,7 +144,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                 'employee_funding_allocation_id',
                 'gross_salary',
                 'gross_salary_by_fte',
-                'compensation_refund',
+                'retroactive_adjustment',
                 'thirteen_month_salary',
                 'thirteen_month_salary_accured',
                 'pvd',
@@ -281,7 +281,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                         'pay_period_date' => $payPeriodDate,
                         'gross_salary' => $this->parseNumeric($row['gross_salary'] ?? 0),
                         'gross_salary_by_FTE' => $this->parseNumeric($row['gross_salary_by_fte'] ?? 0),
-                        'compensation_refund' => $this->parseNumeric($row['compensation_refund'] ?? 0),
+                        'retroactive_adjustment' => $this->parseNumeric($row['retroactive_adjustment'] ?? 0),
                         'thirteen_month_salary' => $this->parseNumeric($row['thirteen_month_salary'] ?? 0),
                         'thirteen_month_salary_accured' => $this->parseNumeric($row['thirteen_month_salary_accured'] ?? 0),
                         'pvd' => $this->parseNumeric($row['pvd'] ?? null),
@@ -351,7 +351,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
             '*.pay_period_date' => 'required|date',
             '*.gross_salary' => 'required|numeric|min:0',
             '*.gross_salary_by_fte' => 'required|numeric|min:0',
-            '*.compensation_refund' => 'nullable|numeric|min:0',
+            '*.retroactive_adjustment' => 'nullable|numeric',
             '*.thirteen_month_salary' => 'nullable|numeric|min:0',
             '*.thirteen_month_salary_accured' => 'nullable|numeric|min:0',
             '*.pvd' => 'nullable|numeric',

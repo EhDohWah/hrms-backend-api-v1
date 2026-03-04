@@ -3,23 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use OpenApi\Annotations as OA;
 
-/**
- * @OA\Schema(
- *     schema="StorePayrollGrantAllocationRequest",
- *     title="Store Payroll Grant Allocation Request",
- *     description="Request for creating a new payroll grant allocation",
- *     required={"payroll_id", "employee_grant_allocation_id", "loe_snapshot", "amount", "is_advance"},
- *
- *     @OA\Property(property="payroll_id", type="integer", example=1),
- *     @OA\Property(property="employee_grant_allocation_id", type="integer", example=1),
- *     @OA\Property(property="loe_snapshot", type="number", format="float", example=50.00),
- *     @OA\Property(property="amount", type="number", format="float", example=5000.00),
- *     @OA\Property(property="is_advance", type="boolean", example=false),
- *     @OA\Property(property="description", type="string", nullable=true, maxLength=255, example="Salary allocation for research project")
- * )
- */
 class StorePayrollGrantAllocationRequest extends FormRequest
 {
     /**
@@ -39,11 +23,15 @@ class StorePayrollGrantAllocationRequest extends FormRequest
     {
         return [
             'payroll_id' => 'required|exists:payrolls,id',
-            'employee_grant_allocation_id' => 'required|exists:employee_grant_allocations,id',
-            'loe_snapshot' => 'required|numeric|min:0|max:100',
-            'amount' => 'required|numeric|min:0',
-            'is_advance' => 'required|boolean',
-            'description' => 'nullable|string|max:255',
+            'employee_funding_allocation_id' => 'required|exists:employee_funding_allocations,id',
+            'grant_item_id' => 'required|exists:grant_items,id',
+            'grant_code' => 'nullable|string|max:255',
+            'grant_name' => 'nullable|string|max:255',
+            'budget_line_code' => 'nullable|string|max:255',
+            'grant_position' => 'nullable|string|max:255',
+            'fte' => 'required|numeric|min:0|max:1',
+            'allocated_amount' => 'required|numeric|min:0',
+            'salary_type' => 'nullable|string|max:255',
         ];
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\V1\AttendanceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,9 +22,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('attendances')->middleware('module.permission:attendance_admin')->group(function () {
         Route::get('/options', [AttendanceController::class, 'options']);
         Route::get('/', [AttendanceController::class, 'index']);
-        Route::get('/{id}', [AttendanceController::class, 'show']);
+        Route::get('/{attendance}', [AttendanceController::class, 'show']);
         Route::post('/', [AttendanceController::class, 'store']);
-        Route::put('/{id}', [AttendanceController::class, 'update']);
-        Route::delete('/{id}', [AttendanceController::class, 'destroy']);
+        Route::put('/{attendance}', [AttendanceController::class, 'update']);
+        Route::delete('/batch', [AttendanceController::class, 'destroyBatch']);
+        Route::delete('/{attendance}', [AttendanceController::class, 'destroy']);
     });
 });

@@ -20,7 +20,7 @@ class InterviewResource extends JsonResource
             'phone' => $this->phone,
             'job_position' => $this->job_position,
             'interviewer_name' => $this->interviewer_name,
-            'interview_date' => $this->interview_date,
+            'interview_date' => $this->interview_date?->format('Y-m-d'),
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'interview_mode' => $this->interview_mode,
@@ -31,8 +31,8 @@ class InterviewResource extends JsonResource
             'reference_info' => $this->reference_info,
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

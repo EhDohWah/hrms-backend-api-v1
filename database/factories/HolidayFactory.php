@@ -17,23 +17,19 @@ class HolidayFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    private static int $dateOffset = 0;
+
     public function definition(): array
     {
-        $date = $this->faker->dateTimeBetween('now', '+1 year');
+        // Use a sequential offset to guarantee unique dates (faker unique() can still collide on date truncation)
+        $offset = self::$dateOffset++;
+        $date = now()->addDays($offset + 1)->format('Y-m-d');
 
         return [
-            'name' => $this->faker->randomElement([
-                'New Year\'s Day',
-                'Labor Day',
-                'Independence Day',
-                'Christmas Day',
-                'Thanksgiving',
-                'Memorial Day',
-                'Veterans Day',
-            ]).' '.$this->faker->year(),
+            'name' => 'Holiday '.$this->faker->unique()->numerify('###-##'),
             'name_th' => null,
             'date' => $date,
-            'year' => (int) $date->format('Y'),
+            'year' => (int) date('Y', strtotime($date)),
             'description' => $this->faker->optional()->sentence(),
             'is_active' => true,
             'created_by' => 'Factory',
@@ -66,12 +62,16 @@ class HolidayFactory extends Factory
      */
     public function forYear(int $year): static
     {
-        $date = $this->faker->dateTimeBetween("$year-01-01", "$year-12-31");
+        return $this->state(function (array $attributes) use ($year) {
+            $offset = self::$dateOffset++;
+            $day = ($offset % 365) + 1;
+            $date = date('Y-m-d', mktime(0, 0, 0, 1, $day, $year));
 
-        return $this->state(fn (array $attributes) => [
-            'date' => $date,
-            'year' => $year,
-        ]);
+            return [
+                'date' => $date,
+                'year' => $year,
+            ];
+        });
     }
 
     /**

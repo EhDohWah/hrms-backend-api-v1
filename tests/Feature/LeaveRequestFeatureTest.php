@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\LeaveRequestStatus;
 use App\Models\Employee;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
@@ -42,7 +43,7 @@ class LeaveRequestFeatureTest extends TestCase
             'organization' => 'SMRU',
             'gender' => 'Male',
             'date_of_birth' => '1990-01-01',
-            'status' => 'Local ID',
+            'status' => 'Local ID Staff',
         ]);
 
         // Create test leave type
@@ -186,7 +187,7 @@ class LeaveRequestFeatureTest extends TestCase
             'employee_id' => $this->employee->id,
         ]);
 
-        $this->assertEquals('pending', $pendingRequest->status);
+        $this->assertEquals(LeaveRequestStatus::Pending, $pendingRequest->status);
         $this->assertFalse($pendingRequest->supervisor_approved);
         $this->assertFalse($pendingRequest->hr_site_admin_approved);
 
@@ -194,7 +195,7 @@ class LeaveRequestFeatureTest extends TestCase
             'employee_id' => $this->employee->id,
         ]);
 
-        $this->assertEquals('approved', $approvedRequest->status);
+        $this->assertEquals(LeaveRequestStatus::Approved, $approvedRequest->status);
         $this->assertTrue($approvedRequest->supervisor_approved);
         $this->assertTrue($approvedRequest->hr_site_admin_approved);
         $this->assertNotNull($approvedRequest->supervisor_approved_date);
@@ -220,7 +221,7 @@ class LeaveRequestFeatureTest extends TestCase
 
         $this->assertInstanceOf(LeaveRequest::class, $leaveRequest);
         $this->assertEquals($this->employee->id, $leaveRequest->employee_id);
-        $this->assertEquals('pending', $leaveRequest->status);
+        $this->assertEquals(LeaveRequestStatus::Pending, $leaveRequest->status);
         $this->assertFalse($leaveRequest->supervisor_approved);
         $this->assertFalse($leaveRequest->hr_site_admin_approved);
 
@@ -250,7 +251,7 @@ class LeaveRequestFeatureTest extends TestCase
 
         $leaveRequest->refresh();
 
-        $this->assertEquals('approved', $leaveRequest->status);
+        $this->assertEquals(LeaveRequestStatus::Approved, $leaveRequest->status);
         $this->assertTrue($leaveRequest->supervisor_approved);
         $this->assertTrue($leaveRequest->hr_site_admin_approved);
         $this->assertNotNull($leaveRequest->supervisor_approved_date);
@@ -361,11 +362,11 @@ class LeaveRequestFeatureTest extends TestCase
         $this->assertCount(3, $approvedRequests);
 
         foreach ($pendingRequests as $request) {
-            $this->assertEquals('pending', $request->status);
+            $this->assertEquals(LeaveRequestStatus::Pending, $request->status);
         }
 
         foreach ($approvedRequests as $request) {
-            $this->assertEquals('approved', $request->status);
+            $this->assertEquals(LeaveRequestStatus::Approved, $request->status);
         }
     }
 

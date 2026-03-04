@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
 
@@ -55,56 +54,44 @@ class Interview extends Model
         'updated_by',
     ];
 
-    // // Below code is for SQL Server only, to allow explicit ID insertion.
-    // /**
-    //  * Hook called before restoring a deleted model.
-    //  * Enables IDENTITY_INSERT for SQL Server to allow explicit ID insertion.
-    //  */
-    // public static function beforeRestoringModel($deletedModel): void
-    // {
-    //     if (DB::getDriverName() === 'sqlsrv') {
-    //         DB::unprepared('SET IDENTITY_INSERT interviews ON');
-    //     }
-    // }
+    protected $casts = [
+        'interview_date' => 'date',
+        'score' => 'decimal:2',
+        'interview_status' => \App\Enums\InterviewStatus::class,
+        'hired_status' => \App\Enums\HiredStatus::class,
+    ];
 
-    // /**
-    //  * Hook called after restoring a deleted model.
-    //  * Disables IDENTITY_INSERT for SQL Server to return to normal operation.
-    //  */
-    // public static function afterRestoringModel(Model $restoredModel, $deletedModel): void
-    // {
-    //     if (DB::getDriverName() === 'sqlsrv') {
-    //         DB::unprepared('SET IDENTITY_INSERT interviews OFF');
-    //     }
-    // }
+    /**
+     * Scope: search by candidate name, interviewer name, or job position.
+     */
+    public function scopeSearch(Builder $query, string $search): Builder
+    {
+        $term = trim($search);
 
-    // // Mutator for interview_date (accepts ISO, SQL, etc.)
-    // public function setInterviewDateAttribute($value)
-    // {
-    //     if (empty($value)) {
-    //         $this->attributes['interview_date'] = null;
-    //     } else {
-    //         $this->attributes['interview_date'] = Carbon::parse($value)->format('Y-m-d');
-    //     }
-    // }
+        return $query->where(function ($q) use ($term) {
+            $q->where('candidate_name', 'LIKE', "%{$term}%")
+                ->orWhere('interviewer_name', 'LIKE', "%{$term}%")
+                ->orWhere('job_position', 'LIKE', "%{$term}%");
+        });
+    }
 
-    // // Mutator for start_time
-    // public function setStartTimeAttribute($value)
-    // {
-    //     if (empty($value)) {
-    //         $this->attributes['start_time'] = null;
-    //     } else {
-    //         $this->attributes['start_time'] = Carbon::parse($value)->format('H:i:s');
-    //     }
-    // }
+    /**
+     * Scope: filter by job positions (comma-separated string or array).
+     */
+    public function scopeFilterByJobPosition(Builder $query, string|array $jobPositions): Builder
+    {
+        $positions = is_array($jobPositions) ? $jobPositions : explode(',', $jobPositions);
 
-    // // Mutator for end_time
-    // public function setEndTimeAttribute($value)
-    // {
-    //     if (empty($value)) {
-    //         $this->attributes['end_time'] = null;
-    //     } else {
-    //         $this->attributes['end_time'] = Carbon::parse($value)->format('H:i:s');
-    //     }
-    // }
+        return $query->whereIn('job_position', $positions);
+    }
+
+    /**
+     * Scope: filter by hired statuses (comma-separated string or array).
+     */
+    public function scopeFilterByHiredStatus(Builder $query, string|array $hiredStatuses): Builder
+    {
+        $statuses = is_array($hiredStatuses) ? $hiredStatuses : explode(',', $hiredStatuses);
+
+        return $query->whereIn('hired_status', $statuses);
+    }
 }

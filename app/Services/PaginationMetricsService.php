@@ -113,7 +113,7 @@ class PaginationMetricsService
     /**
      * Clear metrics for a specific date
      */
-    public function clearMetrics(string $date): bool
+    public function clearMetrics(string $date): void
     {
         $dailyKey = "pagination_metrics:daily:{$date}";
 
@@ -123,7 +123,7 @@ class PaginationMetricsService
             Cache::forget($hourlyKey);
         }
 
-        return Cache::forget($dailyKey);
+        Cache::forget($dailyKey);
     }
 
     /**

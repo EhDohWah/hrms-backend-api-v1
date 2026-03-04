@@ -23,12 +23,7 @@ class EmployeeApiTest extends TestCase
         $this->user = User::factory()->create();
 
         // Create permissions
-        $permissions = [
-            'employee.read',
-            'employee.create',
-            'employee.update',
-            'employee.delete',
-        ];
+        $permissions = ['employees.read', 'employees.edit'];
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
@@ -71,11 +66,15 @@ class EmployeeApiTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
+                'success',
+                'message',
                 'data',
-                'current_page',
-                'last_page',
-                'per_page',
-                'total',
+                'pagination' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                    'last_page',
+                ],
             ]);
 
         $this->assertLessThanOrEqual(10, count($response->json('data')));
@@ -89,11 +88,9 @@ class EmployeeApiTest extends TestCase
             'staff_id' => 'EMP999',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1995-05-15',
-            'status' => 'Active',
-            'email' => 'jane.smith@example.com',
-            'phone_number' => '1234567890',
+            'status' => 'Local ID Staff',
         ];
 
         $response = $this->postJson('/api/v1/employees', $employeeData);
@@ -121,12 +118,12 @@ class EmployeeApiTest extends TestCase
     public function it_validates_required_fields_on_create()
     {
         $response = $this->postJson('/api/v1/employees', [
-            // Missing required fields
-            'first_name_en' => 'John',
+            // Missing required fields: organization, staff_id, first_name_en, gender, date_of_birth, status
+            'last_name_en' => 'Smith',
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['staff_id', 'last_name_en', 'gender', 'date_of_birth']);
+            ->assertJsonValidationErrors(['organization', 'staff_id', 'first_name_en', 'gender', 'date_of_birth', 'status']);
     }
 
     /** @test */
@@ -168,10 +165,12 @@ class EmployeeApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'data' => [
-                    'staff_id' => '1234',
-                ],
             ]);
+
+        // The response wraps data as an array of employees via EmployeeCollection
+        $data = $response->json('data');
+        $this->assertNotEmpty($data);
+        $this->assertEquals('1234', $data[0]['staff_id']);
     }
 
     /** @test */
@@ -183,10 +182,13 @@ class EmployeeApiTest extends TestCase
         ]);
 
         $updateData = [
+            'staff_id' => $employee->staff_id,
+            'organization' => $employee->organization,
             'first_name_en' => 'Updated',
             'last_name_en' => 'Name',
-            'gender' => $employee->gender,
-            'date_of_birth' => $employee->date_of_birth,
+            'gender' => $employee->gender === 'Male' ? 'M' : ($employee->gender === 'Female' ? 'F' : $employee->gender),
+            'date_of_birth' => $employee->date_of_birth->format('Y-m-d'),
+            'status' => $employee->status instanceof \App\Enums\EmployeeStatus ? $employee->status->value : $employee->status,
         ];
 
         $response = $this->putJson("/api/v1/employees/{$employee->id}", $updateData);
@@ -205,14 +207,15 @@ class EmployeeApiTest extends TestCase
         $employee = Employee::factory()->create();
 
         $updateData = [
+            'organization' => $employee->organization,
+            'staff_id' => $employee->staff_id,
             'first_name_en' => 'Updated First',
             'last_name_en' => 'Updated Last',
-            'first_name_th' => 'ชื่อแรก',
-            'last_name_th' => 'นามสกุล',
-            'nickname_en' => 'Nick',
-            'nickname_th' => 'นิค',
-            'gender' => 'Male',
+            'first_name_th' => null,
+            'last_name_th' => null,
+            'gender' => 'M',
             'date_of_birth' => '1990-01-15',
+            'status' => $employee->status instanceof \App\Enums\EmployeeStatus ? $employee->status->value : $employee->status,
         ];
 
         $response = $this->putJson("/api/v1/employees/{$employee->id}/basic-information", $updateData);
@@ -222,7 +225,6 @@ class EmployeeApiTest extends TestCase
         $this->assertDatabaseHas('employees', [
             'id' => $employee->id,
             'first_name_en' => 'Updated First',
-            'nickname_en' => 'Nick',
         ]);
     }
 
@@ -232,10 +234,13 @@ class EmployeeApiTest extends TestCase
         $employee = Employee::factory()->create();
 
         $updateData = [
-            'email' => 'newemail@example.com',
-            'phone_number' => '9876543210',
-            'address' => '123 New Street',
+            'id' => $employee->id,
+            'mobile_phone' => '9876543210',
             'nationality' => 'Thai',
+            'religion' => 'Buddhism',
+            'marital_status' => 'Single',
+            'current_address' => '123 New Street',
+            'permanent_address' => '456 Old Street',
         ];
 
         $response = $this->putJson("/api/v1/employees/{$employee->id}/personal-information", $updateData);
@@ -244,7 +249,7 @@ class EmployeeApiTest extends TestCase
 
         $this->assertDatabaseHas('employees', [
             'id' => $employee->id,
-            'email' => 'newemail@example.com',
+            'nationality' => 'Thai',
         ]);
     }
 
@@ -254,9 +259,15 @@ class EmployeeApiTest extends TestCase
         $employee = Employee::factory()->create();
 
         $updateData = [
-            'marital_status' => 'Married',
-            'spouse_name' => 'Jane Doe',
-            'number_of_children' => 2,
+            'father_name' => 'John Doe Sr',
+            'father_occupation' => 'Engineer',
+            'father_phone' => '1234567890',
+            'mother_name' => 'Jane Doe',
+            'mother_occupation' => 'Teacher',
+            'mother_phone' => '0987654321',
+            'emergency_contact_name' => 'Sibling Doe',
+            'emergency_contact_relationship' => 'Sibling',
+            'emergency_contact_phone' => '5555555555',
         ];
 
         $response = $this->putJson("/api/v1/employees/{$employee->id}/family-information", $updateData);
@@ -265,7 +276,7 @@ class EmployeeApiTest extends TestCase
 
         $this->assertDatabaseHas('employees', [
             'id' => $employee->id,
-            'marital_status' => 'Married',
+            'father_name' => 'John Doe Sr',
         ]);
     }
 
@@ -301,7 +312,7 @@ class EmployeeApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => 'Employee deleted successfully',
+                'message' => 'Employee moved to recycle bin',
             ]);
 
         $this->assertSoftDeleted('employees', [
@@ -312,17 +323,17 @@ class EmployeeApiTest extends TestCase
     /** @test */
     public function it_can_filter_employees_by_status()
     {
-        Employee::factory()->create(['status' => 'Active']);
-        Employee::factory()->create(['status' => 'Inactive']);
+        Employee::factory()->create(['status' => 'Local ID Staff']);
+        Employee::factory()->create(['status' => 'Expats (Local)']);
 
-        $response = $this->getJson('/api/v1/employees?status=Active');
+        $response = $this->getJson('/api/v1/employees?filter_status=Local ID Staff');
 
         $response->assertStatus(200);
         $data = $response->json('data');
 
         $this->assertNotEmpty($data);
         foreach ($data as $employee) {
-            $this->assertEquals('Active', $employee['status']);
+            $this->assertEquals('Local ID Staff', $employee['status']);
         }
     }
 
@@ -330,9 +341,9 @@ class EmployeeApiTest extends TestCase
     public function it_can_filter_employees_by_organization()
     {
         Employee::factory()->create(['organization' => 'SMRU']);
-        Employee::factory()->create(['organization' => 'MORU']);
+        Employee::factory()->create(['organization' => 'BHF']);
 
-        $response = $this->getJson('/api/v1/employees?organization=SMRU');
+        $response = $this->getJson('/api/v1/employees?filter_organization=SMRU');
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -368,9 +379,10 @@ class EmployeeApiTest extends TestCase
     /** @test */
     public function it_requires_authentication()
     {
-        Sanctum::actingAs(null);
+        $this->app['auth']->forgetGuards();
 
-        $response = $this->getJson('/api/v1/employees');
+        $response = $this->withHeaders(['Accept' => 'application/json'])
+            ->getJson('/api/v1/employees');
 
         $response->assertStatus(401);
     }
@@ -378,6 +390,7 @@ class EmployeeApiTest extends TestCase
     /** @test */
     public function it_checks_permissions_for_create()
     {
+        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
@@ -386,9 +399,9 @@ class EmployeeApiTest extends TestCase
             'staff_id' => 'EMP999',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1995-05-15',
-            'status' => 'Active',
+            'status' => 'Local ID Staff',
         ];
 
         $response = $this->postJson('/api/v1/employees', $employeeData);
@@ -401,6 +414,7 @@ class EmployeeApiTest extends TestCase
     {
         $employee = Employee::factory()->create();
 
+        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
@@ -416,6 +430,7 @@ class EmployeeApiTest extends TestCase
     {
         $employee = Employee::factory()->create();
 
+        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
@@ -437,16 +452,17 @@ class EmployeeApiTest extends TestCase
     {
         Employee::factory()->create([
             'staff_id' => 'DUP001',
+            'organization' => 'SMRU',
         ]);
 
         $employeeData = [
             'organization' => 'SMRU',
-            'staff_id' => 'DUP001', // Duplicate
+            'staff_id' => 'DUP001', // Duplicate within same organization
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1995-05-15',
-            'status' => 'Active',
+            'status' => 'Local ID Staff',
         ];
 
         $response = $this->postJson('/api/v1/employees', $employeeData);
@@ -465,12 +481,13 @@ class EmployeeApiTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
+                'message',
                 'data' => [
                     '*' => [
-                        'id',
-                        'staff_id',
-                        'first_name_en',
-                        'last_name_en',
+                        'key',
+                        'title',
+                        'value',
+                        'children',
                     ],
                 ],
             ]);
@@ -484,9 +501,9 @@ class EmployeeApiTest extends TestCase
             'staff_id' => 'EMP998',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => 'invalid-date',
-            'status' => 'Active',
+            'status' => 'Local ID Staff',
         ];
 
         $response = $this->postJson('/api/v1/employees', $employeeData);
@@ -496,17 +513,21 @@ class EmployeeApiTest extends TestCase
     }
 
     /** @test */
-    public function it_validates_email_format()
+    public function it_validates_gender_values()
     {
-        $employee = Employee::factory()->create();
-
-        $updateData = [
-            'email' => 'invalid-email',
+        $employeeData = [
+            'organization' => 'SMRU',
+            'staff_id' => 'EMP997',
+            'first_name_en' => 'Jane',
+            'last_name_en' => 'Smith',
+            'gender' => 'InvalidGender',
+            'date_of_birth' => '1995-05-15',
+            'status' => 'Local ID Staff',
         ];
 
-        $response = $this->putJson("/api/v1/employees/{$employee->id}/personal-information", $updateData);
+        $response = $this->postJson('/api/v1/employees', $employeeData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors(['gender']);
     }
 }

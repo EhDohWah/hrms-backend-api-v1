@@ -102,6 +102,8 @@ class TravelRequest extends Model
         'to_date' => 'date',
         'request_by_date' => 'date',
         'supervisor_approved_date' => 'date',
+        'transportation' => \App\Enums\TransportationType::class,
+        'accommodation' => \App\Enums\AccommodationType::class,
         'hr_acknowledgement_date' => 'date',
     ];
 
@@ -129,25 +131,5 @@ class TravelRequest extends Model
             'department:id,name',
             'position:id,title,department_id',
         ]);
-    }
-
-    // Helper methods to get valid options
-    public static function getTransportationOptions()
-    {
-        return [
-            'smru_vehicle',
-            'public_transportation',
-            'air',
-            'other',
-        ];
-    }
-
-    public static function getAccommodationOptions()
-    {
-        return [
-            'smru_arrangement',
-            'self_arrangement',
-            'other',
-        ];
     }
 }

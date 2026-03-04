@@ -2,13 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\JobOfferAcceptanceStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-/**
- * Form Request for storing and updating Job Offers.
- *
- * This request handles validation for both POST (store) and PUT (update) operations.
- */
 class StoreJobOfferRequest extends FormRequest
 {
     /**
@@ -31,9 +28,13 @@ class StoreJobOfferRequest extends FormRequest
             'candidate_name' => 'required|string',
             'position_name' => 'required|string',
             'probation_salary' => 'required|numeric|min:0',
-            'post_probation_salary' => 'required|numeric|min:0',
+            'pass_probation_salary' => 'required|numeric|min:0',
             'acceptance_deadline' => 'required|date',
-            'acceptance_status' => 'required|string',
+            'acceptance_status' => [
+                'required',
+                'string',
+                Rule::enum(JobOfferAcceptanceStatus::class),
+            ],
             'note' => 'required|string',
         ];
     }
@@ -49,9 +50,10 @@ class StoreJobOfferRequest extends FormRequest
             'probation_salary.required' => 'The probation salary is required.',
             'probation_salary.numeric' => 'The probation salary must be a valid number.',
             'probation_salary.min' => 'The probation salary must be at least 0.',
-            'post_probation_salary.required' => 'The post-probation salary is required.',
-            'post_probation_salary.numeric' => 'The post-probation salary must be a valid number.',
-            'post_probation_salary.min' => 'The post-probation salary must be at least 0.',
+            'pass_probation_salary.required' => 'The pass-probation salary is required.',
+            'pass_probation_salary.numeric' => 'The pass-probation salary must be a valid number.',
+            'pass_probation_salary.min' => 'The pass-probation salary must be at least 0.',
+            'acceptance_status.Illuminate\Validation\Rules\Enum' => 'The selected acceptance status is invalid.',
         ];
     }
 }

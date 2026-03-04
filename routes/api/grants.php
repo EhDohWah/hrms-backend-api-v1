@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\GrantController;
-use App\Http\Controllers\Api\GrantItemController;
+use App\Http\Controllers\Api\V1\GrantController;
+use App\Http\Controllers\Api\V1\GrantItemController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -13,7 +13,7 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grant-items.index')
             ->middleware('permission:grants_list.read');
 
-        Route::get('/{id}', [GrantItemController::class, 'show'])
+        Route::get('/{grantItem}', [GrantItemController::class, 'show'])
             ->name('grant-items.show')
             ->middleware('permission:grants_list.read');
 
@@ -21,11 +21,11 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grant-items.store')
             ->middleware('permission:grants_list.edit');
 
-        Route::put('/{id}', [GrantItemController::class, 'update'])
+        Route::put('/{grantItem}', [GrantItemController::class, 'update'])
             ->name('grant-items.update')
             ->middleware('permission:grants_list.edit');
 
-        Route::delete('/{id}', [GrantItemController::class, 'destroy'])
+        Route::delete('/{grantItem}', [GrantItemController::class, 'destroy'])
             ->name('grant-items.destroy')
             ->middleware('permission:grants_list.edit');
     });
@@ -43,7 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grants.grant-positions')
             ->middleware('permission:grant_position.read');
 
-        Route::get('/by-id/{id}', [GrantController::class, 'show'])
+        Route::get('/by-id/{grant}', [GrantController::class, 'show'])
             ->name('grants.show')
             ->middleware('permission:grants_list.read');
 
@@ -60,11 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grants.destroy.selected')
             ->middleware('permission:grants_list.edit');
 
-        Route::put('/{id}', [GrantController::class, 'update'])
+        Route::put('/{grant}', [GrantController::class, 'update'])
             ->name('grants.update')
             ->middleware('permission:grants_list.edit');
 
-        Route::delete('/{id}', [GrantController::class, 'destroy'])
+        Route::delete('/{grant}', [GrantController::class, 'destroy'])
             ->name('grants.destroy')
             ->middleware('permission:grants_list.edit');
 
@@ -77,7 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grants.items.index')
             ->middleware('permission:grants_list.read');
 
-        Route::get('/items/{id}', [GrantItemController::class, 'show'])
+        Route::get('/items/{grantItem}', [GrantItemController::class, 'show'])
             ->name('grants.items.show')
             ->middleware('permission:grants_list.read');
 
@@ -85,11 +85,11 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grants.items.store')
             ->middleware('permission:grants_list.edit');
 
-        Route::put('/items/{id}', [GrantItemController::class, 'update'])
+        Route::put('/items/{grantItem}', [GrantItemController::class, 'update'])
             ->name('grants.items.update')
             ->middleware('permission:grants_list.edit');
 
-        Route::delete('/items/{id}', [GrantItemController::class, 'destroy'])
+        Route::delete('/items/{grantItem}', [GrantItemController::class, 'destroy'])
             ->name('grants.items.destroy')
             ->middleware('permission:grants_list.edit');
     });

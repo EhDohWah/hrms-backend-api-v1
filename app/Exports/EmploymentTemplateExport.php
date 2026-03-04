@@ -103,7 +103,7 @@ class EmploymentTemplateExport
             'pass_probation_salary',
             'pass_probation_date',
             'probation_salary',
-            'end_probation_date',
+            'end_date',
             'pay_method',
             'site_code',
             'department',
@@ -112,7 +112,6 @@ class EmploymentTemplateExport
             'health_welfare',
             'pvd',
             'saving_fund',
-            'status',
         ];
     }
 
@@ -127,7 +126,7 @@ class EmploymentTemplateExport
             'Decimal(10,2) - NOT NULL - Regular salary after probation',
             'Date (YYYY-MM-DD) - NULLABLE - Probation end date (default: 3 months after start)',
             'Decimal(10,2) - NULLABLE - Salary during probation period',
-            'Date (YYYY-MM-DD) - NULLABLE - End date for employment termination',
+            'Date (YYYY-MM-DD) - NULLABLE - Employment end date (set when resigned)',
             'String - NULLABLE - Values: Transferred to bank, Cash cheque',
             'String - NULLABLE - Site code (must exist in sites table, e.g., MRM, BHF)',
             'String - NULLABLE - Department name (must exist in departments table)',
@@ -136,7 +135,6 @@ class EmploymentTemplateExport
             'Boolean (1/0) - NULLABLE - Health welfare benefit enabled (default: 0) - Percentages managed globally',
             'Boolean (1/0) - NULLABLE - Provident fund enabled (default: 0) - Percentages managed globally',
             'Boolean (1/0) - NULLABLE - Saving fund enabled (default: 0) - Percentages managed globally',
-            'Boolean (1/0) - NULLABLE - Employment status: 1=Active, 0=Inactive (default: 1)',
         ];
     }
 
@@ -151,7 +149,7 @@ class EmploymentTemplateExport
             'C' => 20,  // pass_probation_salary
             'D' => 20,  // pass_probation_date
             'E' => 18,  // probation_salary
-            'F' => 18,  // end_probation_date
+            'F' => 18,  // end_date
             'G' => 20,  // pay_method
             'H' => 15,  // site_code
             'I' => 20,  // department
@@ -160,7 +158,6 @@ class EmploymentTemplateExport
             'L' => 18,  // health_welfare
             'M' => 12,  // pvd
             'N' => 15,  // saving_fund
-            'O' => 12,  // status
         ];
     }
 
@@ -172,15 +169,15 @@ class EmploymentTemplateExport
         $sampleData = [
             [
                 'EMP001', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
-                'Monthly', 'MRM', 'Human Resources', '', 'HR Manager', '1', '1', '0', '1',
+                'Monthly', 'MRM', 'Human Resources', '', 'HR Manager', '1', '1', '0',
             ],
             [
                 'EMP002', '2025-02-01', '30000.00', '2025-05-01', '', '',
-                'Hourly', 'BHF', 'Finance', 'Accounting', 'Accountant', '0', '1', '1', '1',
+                'Hourly', 'BHF', 'Finance', 'Accounting', 'Accountant', '0', '1', '1',
             ],
             [
                 'EMP003', '2025-03-01', '60000.00', '', '', '2025-12-31',
-                'Bank Transfer', 'SMRU', 'IT', '', 'Software Developer', '1', '0', '0', '1',
+                'Bank Transfer', 'SMRU', 'IT', '', 'Software Developer', '1', '0', '0',
             ],
         ];
 
@@ -217,7 +214,7 @@ class EmploymentTemplateExport
         }
 
         // Boolean fields (1/0) validation
-        $booleanColumns = ['L', 'M', 'N', 'O']; // health_welfare, pvd, saving_fund, status
+        $booleanColumns = ['L', 'M', 'N']; // health_welfare, pvd, saving_fund
         foreach ($booleanColumns as $column) {
             $booleanValidation = $sheet->getCell("{$column}6")->getDataValidation();
             $booleanValidation->setType(DataValidation::TYPE_LIST);
@@ -314,7 +311,7 @@ class EmploymentTemplateExport
             '2. Date Format: All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)',
             '',
             '3. Boolean Fields: Use 1 for Yes/True, 0 for No/False',
-            '   - health_welfare, pvd, saving_fund, status',
+            '   - health_welfare, pvd, saving_fund',
             '   - Note: Benefit percentages are managed globally in system settings',
             '',
             '4. Foreign Keys (Must exist in database):',
@@ -333,7 +330,7 @@ class EmploymentTemplateExport
             '   - probation_salary is optional; if empty, pass_probation_salary is used',
             '',
             '7. Employment Termination:',
-            '   - end_probation_date: Set this to terminate employment on a specific date',
+            '   - end_date: Set this to mark employment as ended on a specific date',
             '   - Leave empty for ongoing employment',
             '',
             'SAMPLE DATA (Rows 3-5):',

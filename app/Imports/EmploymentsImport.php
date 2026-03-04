@@ -66,7 +66,7 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
 
         // Prefetch existing employments (staff_id -> employment_id)
         $this->existingEmployments = Employment::join('employees', 'employments.employee_id', '=', 'employees.id')
-            ->where('employments.status', true)
+            ->whereNull('employments.end_date')
             ->pluck('employments.id', 'employees.staff_id')
             ->toArray();
 
@@ -274,14 +274,11 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                     $isPVD = $this->parseBoolean($row['pvd'] ?? '0');
                     $isSavingFund = $this->parseBoolean($row['saving_fund'] ?? '0');
 
-                    // Parse status
-                    $status = $this->parseBoolean($row['status'] ?? '1');
-
                     // Prepare employment data
                     $employmentData = [
                         'employee_id' => $employeeId,
                         'start_date' => $startDate,
-                        'end_probation_date' => $endDate,
+                        'end_date' => $endDate,
                         'pass_probation_date' => $passProbDate,
                         'pay_method' => $payMethod,
                         'site_id' => $siteId,
@@ -293,7 +290,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                         'health_welfare' => $healthWelfare,
                         'pvd' => $isPVD,
                         'saving_fund' => $isSavingFund,
-                        'status' => $status,
                         'created_by' => auth()->user()->name ?? 'system',
                         'updated_by' => auth()->user()->name ?? 'system',
                         'created_at' => now(),
@@ -378,7 +374,6 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
             '*.health_welfare' => 'nullable|in:0,1',
             '*.pvd' => 'nullable|in:0,1',
             '*.saving_fund' => 'nullable|in:0,1',
-            '*.status' => 'nullable|in:0,1',
         ];
     }
 

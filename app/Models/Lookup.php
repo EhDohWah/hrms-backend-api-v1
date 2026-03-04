@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OpenApi\Attributes as OA;
 
@@ -21,6 +22,8 @@ use OpenApi\Attributes as OA;
 )]
 class Lookup extends Model
 {
+    use HasFactory;
+
     /**
      * The attributes that are mass assignable.
      *

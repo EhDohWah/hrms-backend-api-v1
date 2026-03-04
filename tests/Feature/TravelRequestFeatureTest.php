@@ -58,7 +58,7 @@ class TravelRequestFeatureTest extends TestCase
             'organization' => 'SMRU',
             'gender' => 'Male',
             'date_of_birth' => '1990-01-01',
-            'status' => 'Local ID',
+            'status' => 'Local ID Staff',
         ]);
     }
 
@@ -337,7 +337,7 @@ class TravelRequestFeatureTest extends TestCase
 
     public function test_travel_request_transportation_options(): void
     {
-        $options = TravelRequest::getTransportationOptions();
+        $options = \App\Enums\TransportationType::values();
         $expectedOptions = ['smru_vehicle', 'public_transportation', 'air', 'other'];
 
         $this->assertEquals($expectedOptions, $options);
@@ -345,7 +345,7 @@ class TravelRequestFeatureTest extends TestCase
 
     public function test_travel_request_accommodation_options(): void
     {
-        $options = TravelRequest::getAccommodationOptions();
+        $options = \App\Enums\AccommodationType::values();
         $expectedOptions = ['smru_arrangement', 'self_arrangement', 'other'];
 
         $this->assertEquals($expectedOptions, $options);
@@ -359,7 +359,7 @@ class TravelRequestFeatureTest extends TestCase
             'position_id' => $this->position->id,
         ]);
 
-        $this->assertEquals('other', $travelRequest->transportation);
+        $this->assertEquals(\App\Enums\TransportationType::Other, $travelRequest->transportation);
         $this->assertEquals('Private car rental', $travelRequest->transportation_other_text);
     }
 
@@ -371,7 +371,7 @@ class TravelRequestFeatureTest extends TestCase
             'position_id' => $this->position->id,
         ]);
 
-        $this->assertEquals('other', $travelRequest->accommodation);
+        $this->assertEquals(\App\Enums\AccommodationType::Other, $travelRequest->accommodation);
         $this->assertEquals('Family guest house', $travelRequest->accommodation_other_text);
     }
 
@@ -633,8 +633,8 @@ class TravelRequestFeatureTest extends TestCase
             'position_id' => $this->position->id,
         ]);
 
-        $validOptions = ['smru_vehicle', 'public_transportation', 'air', 'other'];
-        $this->assertContains($travelRequest->transportation, $validOptions);
+        $this->assertInstanceOf(\App\Enums\TransportationType::class, $travelRequest->transportation);
+        $this->assertContains($travelRequest->transportation->value, ['smru_vehicle', 'public_transportation', 'air', 'other']);
     }
 
     public function test_travel_request_factory_creates_valid_accommodation_options(): void
@@ -645,7 +645,7 @@ class TravelRequestFeatureTest extends TestCase
             'position_id' => $this->position->id,
         ]);
 
-        $validOptions = ['smru_arrangement', 'self_arrangement', 'other'];
-        $this->assertContains($travelRequest->accommodation, $validOptions);
+        $this->assertInstanceOf(\App\Enums\AccommodationType::class, $travelRequest->accommodation);
+        $this->assertContains($travelRequest->accommodation->value, ['smru_arrangement', 'self_arrangement', 'other']);
     }
 }

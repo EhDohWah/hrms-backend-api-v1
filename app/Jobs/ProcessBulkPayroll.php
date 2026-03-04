@@ -39,17 +39,19 @@ class ProcessBulkPayroll implements ShouldQueue
 
     protected int $batchId;
 
-    protected string $payPeriod;
+    protected string $payPeriodDate;
 
     protected array $employmentIds;
 
     /**
      * Create a new job instance.
+     *
+     * @param  string  $payPeriodDate  Full date in Y-m-d format (e.g. 2025-10-25)
      */
-    public function __construct(int $batchId, string $payPeriod, array $employmentIds)
+    public function __construct(int $batchId, string $payPeriodDate, array $employmentIds)
     {
         $this->batchId = $batchId;
-        $this->payPeriod = $payPeriod;
+        $this->payPeriodDate = $payPeriodDate;
         $this->employmentIds = $employmentIds;
     }
 
@@ -75,13 +77,14 @@ class ProcessBulkPayroll implements ShouldQueue
             $payrollBuffer = []; // For batch inserts
             $itemsSinceLastBroadcast = 0;
 
-            // Parse pay period to get date range for the month
-            $payPeriodDate = Carbon::createFromFormat('Y-m', $this->payPeriod)->startOfMonth();
-            $payPeriodEnd = $payPeriodDate->copy()->endOfMonth();
+            // Parse pay period date (full date, e.g. 2025-10-25)
+            $payPeriodDate = Carbon::parse($this->payPeriodDate);
+            $payPeriodStart = $payPeriodDate->copy()->startOfMonth();
 
             // Load all employments with relationships
             $employments = Employment::with([
                 'employee',
+                'employee.employeeChildren',  // For tax allowances (child deduction)
                 'department',
                 'position',
             ])->whereIn('id', $this->employmentIds)->get();
@@ -91,13 +94,7 @@ class ProcessBulkPayroll implements ShouldQueue
 
             if ($employeeIds->isNotEmpty()) {
                 $allocations = EmployeeFundingAllocation::whereIn('employee_id', $employeeIds)
-                    ->where(function ($q) use ($payPeriodDate, $payPeriodEnd) {
-                        $q->where('start_date', '<=', $payPeriodEnd)
-                            ->where(function ($subQ) use ($payPeriodDate) {
-                                $subQ->whereNull('end_date')
-                                    ->orWhere('end_date', '>=', $payPeriodDate);
-                            });
-                    })
+                    ->where('status', \App\Enums\FundingAllocationStatus::Active)
                     ->with(['grantItem.grant'])
                     ->get()
                     ->groupBy('employee_id');
@@ -112,10 +109,39 @@ class ProcessBulkPayroll implements ShouldQueue
                 }
             }
 
+            // December: load historical (inactive/closed) allocations that have YTD payroll records
+            // These need 13th-month-only payroll records even though they're no longer active
+            $historicalAllocations = collect([]);
+            $isDecember = $payPeriodDate->month === 12;
+
+            if ($isDecember && $employeeIds->isNotEmpty()) {
+                $historicalAllocationIds = DB::table('payrolls')
+                    ->join('employee_funding_allocations', 'payrolls.employee_funding_allocation_id', '=', 'employee_funding_allocations.id')
+                    ->whereIn('employee_funding_allocations.employee_id', $employeeIds->toArray())
+                    ->whereIn('employee_funding_allocations.status', ['inactive', 'closed'])
+                    ->whereYear('payrolls.pay_period_date', $payPeriodDate->year)
+                    ->distinct()
+                    ->pluck('payrolls.employee_funding_allocation_id');
+
+                if ($historicalAllocationIds->isNotEmpty()) {
+                    $historicalAllocations = EmployeeFundingAllocation::whereIn('id', $historicalAllocationIds)
+                        ->with(['grantItem.grant'])
+                        ->get()
+                        ->groupBy('employee_id');
+                }
+            }
+
             // Calculate total payrolls (sum of all allocations across all employments)
             $totalPayrolls = 0;
             foreach ($employments as $employment) {
                 $totalPayrolls += $employment->employee->employeeFundingAllocations->count();
+            }
+
+            // Include historical allocations in total count for December
+            if ($isDecember) {
+                foreach ($historicalAllocations as $employeeId => $allocs) {
+                    $totalPayrolls += $allocs->count();
+                }
             }
 
             // Update batch with totals
@@ -125,7 +151,7 @@ class ProcessBulkPayroll implements ShouldQueue
             ]);
 
             // Initialize PayrollService
-            $payrollService = new PayrollService(Carbon::parse($payPeriodDate)->year);
+            $payrollService = new PayrollService($payPeriodDate->year);
 
             // Process each employment
             foreach ($employments as $employment) {
@@ -143,6 +169,10 @@ class ProcessBulkPayroll implements ShouldQueue
                     continue;
                 }
 
+                // Set inverse relationship to prevent lazy loading violation
+                // (calculateAllocationPayroll accesses $employee->employment)
+                $employee->setRelation('employment', $employment);
+
                 $allocations = $employee->employeeFundingAllocations;
 
                 if ($allocations->isEmpty()) {
@@ -157,16 +187,38 @@ class ProcessBulkPayroll implements ShouldQueue
                     continue;
                 }
 
+                // Determine which allocation bears the tax (highest FTE)
+                $taxAllocationId = $payrollService->determineTaxAllocationId($allocations);
+
                 // Process each funding allocation for this employee
                 foreach ($allocations as $allocation) {
                     $allocationLabel = $this->getAllocationLabel($allocation);
 
                     try {
+                        // Skip if payroll already exists for this allocation and period
+                        $existingPayroll = Payroll::where('employment_id', $employment->id)
+                            ->where('employee_funding_allocation_id', $allocation->id)
+                            ->whereYear('pay_period_date', $payPeriodDate->year)
+                            ->whereMonth('pay_period_date', $payPeriodDate->month)
+                            ->exists();
+
+                        if ($existingPayroll) {
+                            Log::info("ProcessBulkPayroll: Skipping duplicate for employment {$employment->id}, allocation {$allocation->id}, period {$payPeriodDate->format('Y-m')}");
+                            $processedCount++;
+                            $itemsSinceLastBroadcast++;
+
+                            continue;
+                        }
+
+                        // Tax goes to one allocation only (highest FTE)
+                        $isTaxAllocation = ($allocation->id === $taxAllocationId);
+
                         // Calculate payroll for this specific allocation
                         $payrollData = $payrollService->calculateAllocationPayrollForController(
                             $employee,
                             $allocation,
-                            $payPeriodDate
+                            $payPeriodDate,
+                            $isTaxAllocation
                         );
 
                         // Prepare payroll record data
@@ -218,6 +270,88 @@ class ProcessBulkPayroll implements ShouldQueue
                         );
 
                         $itemsSinceLastBroadcast = 0;
+                    }
+                }
+
+                // December: create 13th-month-only records for historical allocations
+                if ($isDecember && isset($historicalAllocations[$employee->id])) {
+                    foreach ($historicalAllocations[$employee->id] as $histAllocation) {
+                        $histAllocationLabel = $this->getAllocationLabel($histAllocation).' (historical)';
+
+                        try {
+                            // Skip if payroll already exists for this historical allocation
+                            $existingHistPayroll = Payroll::where('employment_id', $employment->id)
+                                ->where('employee_funding_allocation_id', $histAllocation->id)
+                                ->whereYear('pay_period_date', $payPeriodDate->year)
+                                ->whereMonth('pay_period_date', $payPeriodDate->month)
+                                ->exists();
+
+                            if ($existingHistPayroll) {
+                                $processedCount++;
+                                $itemsSinceLastBroadcast++;
+
+                                continue;
+                            }
+
+                            $histPayrollData = $payrollService->calculateHistoricalAllocation13thMonth(
+                                $employee,
+                                $histAllocation,
+                                $payPeriodDate
+                            );
+
+                            // Skip if no 13th month owed (already paid, no YTD, etc.)
+                            if ($histPayrollData === null) {
+                                $processedCount++;
+                                $itemsSinceLastBroadcast++;
+
+                                continue;
+                            }
+
+                            $payrollRecord = $this->preparePayrollRecord(
+                                $employment,
+                                $histAllocation,
+                                $histPayrollData,
+                                $payPeriodDate
+                            );
+                            $payrollRecord['notes'] = '13th month salary - historical allocation';
+
+                            $payrollBuffer[] = $payrollRecord;
+                            $successfulCount++;
+
+                            if (count($payrollBuffer) >= self::BATCH_SIZE) {
+                                $insertedPayrolls = $this->insertPayrollBatch($payrollBuffer);
+                                $payrollBuffer = [];
+                                $advancesCreated += $this->createAdvancesForPayrolls($insertedPayrolls, $payrollService, $payPeriodDate);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("ProcessBulkPayroll: Error processing historical allocation for employee {$employee->id}: ".$e->getMessage());
+
+                            $errors[] = [
+                                'employment_id' => $employment->id,
+                                'employee' => $employee->full_name_en ?? 'Unknown',
+                                'allocation' => $histAllocationLabel,
+                                'error' => $e->getMessage(),
+                            ];
+                            $failedCount++;
+                        }
+
+                        $processedCount++;
+                        $itemsSinceLastBroadcast++;
+
+                        if ($itemsSinceLastBroadcast >= self::BROADCAST_EVERY_N_PAYROLLS && $processedCount !== $totalPayrolls) {
+                            $this->broadcastProgress(
+                                $batch,
+                                $processedCount,
+                                $totalPayrolls,
+                                $successfulCount,
+                                $failedCount,
+                                $advancesCreated,
+                                $employee->full_name_en ?? 'Unknown',
+                                $histAllocationLabel
+                            );
+
+                            $itemsSinceLastBroadcast = 0;
+                        }
                     }
                 }
             }
@@ -296,12 +430,12 @@ class ProcessBulkPayroll implements ShouldQueue
         return [
             'employment_id' => $employment->id,
             'employee_funding_allocation_id' => $allocation->id,
-            'pay_period_date' => $payPeriodDate->startOfMonth(),
+            'pay_period_date' => $payPeriodDate->format('Y-m-d'),
             'gross_salary' => $calculations['gross_salary'],
             'gross_salary_by_FTE' => $calculations['gross_salary_by_fte'], // Maps to uppercase column
-            'compensation_refund' => $calculations['compensation_refund'],
+            'retroactive_adjustment' => $calculations['retroactive_adjustment'] ?? 0,
             'thirteen_month_salary' => $calculations['thirteen_month_salary'],
-            'thirteen_month_salary_accured' => $calculations['thirteen_month_salary'],
+            'thirteen_month_salary_accured' => $calculations['thirteen_month_salary_accured'],
             'pvd' => $calculations['pvd'],
             'saving_fund' => $calculations['saving_fund'],
             'employer_social_security' => $calculations['employer_social_security'],
@@ -311,12 +445,12 @@ class ProcessBulkPayroll implements ShouldQueue
             'tax' => $calculations['income_tax'], // Maps income_tax to tax column
             'net_salary' => $calculations['net_salary'],
             'total_salary' => $calculations['total_salary'],
-            'total_pvd' => $calculations['pvd'], // Total PVD (employee portion)
-            'total_saving_fund' => $calculations['saving_fund'], // Total saving fund
-            'salary_bonus' => 0, // Default to 0
-            'total_income' => $calculations['total_income'] ?? ($calculations['gross_salary'] + $calculations['compensation_refund'] + $calculations['thirteen_month_salary']),
-            'employer_contribution' => $calculations['employer_contribution'] ?? ($calculations['employer_social_security'] + $calculations['employer_health_welfare']),
-            'total_deduction' => $calculations['total_deduction'] ?? ($calculations['pvd'] + $calculations['saving_fund'] + $calculations['employee_social_security'] + $calculations['employee_health_welfare'] + $calculations['income_tax']),
+            'total_pvd' => $calculations['total_pvd'],
+            'total_saving_fund' => $calculations['total_saving_fund'],
+            'salary_bonus' => $calculations['salary_bonus'],
+            'total_income' => $calculations['total_income'],
+            'employer_contribution' => $calculations['employer_contribution'],
+            'total_deduction' => $calculations['total_deduction'],
             'notes' => null,
         ];
     }

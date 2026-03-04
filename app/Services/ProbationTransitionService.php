@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\EmployeeFundingAllocation;
 use App\Models\Employment;
 use Carbon\Carbon;
@@ -125,9 +126,9 @@ class ProbationTransitionService
             $newAllocations = [];
 
             foreach ($activeAllocations as $allocation) {
-                // Mark existing allocation as historical
+                // Close existing allocation (replaced by new post-probation allocation)
                 $allocation->update([
-                    'status' => 'historical',
+                    'status' => FundingAllocationStatus::Closed,
                     'end_date' => $yesterday,
                     'updated_by' => $changedBy,
                 ]);
@@ -145,7 +146,7 @@ class ProbationTransitionService
                     'grant_item_id' => $allocation->grant_item_id,
                     'grant_id' => $allocation->grant_id,
                     'fte' => $allocation->fte,
-                    'status' => 'active',
+                    'status' => FundingAllocationStatus::Active,
                     'start_date' => $transitionDate,
                     'end_date' => null,
                     'created_by' => $changedBy,
@@ -159,7 +160,7 @@ class ProbationTransitionService
             app(ProbationRecordService::class)->markAsPassed(
                 $employment,
                 sprintf(
-                    'Transition date: %s. %d allocations marked historical, %d new active allocations created.',
+                    'Transition date: %s. %d allocations closed, %d new active allocations created.',
                     $transitionDate->format('Y-m-d'),
                     $activeAllocations->count(),
                     count($newAllocations)
@@ -172,7 +173,7 @@ class ProbationTransitionService
             $employment->addHistoryEntry(
                 reason: 'Probation period completed - transitioned to pass_probation_salary',
                 notes: sprintf(
-                    'Transition date: %s. %d allocations marked historical, %d new active allocations created.',
+                    'Transition date: %s. %d allocations closed, %d new active allocations created.',
                     $transitionDate->format('Y-m-d'),
                     $activeAllocations->count(),
                     count($newAllocations)
@@ -185,7 +186,7 @@ class ProbationTransitionService
             Log::info('Probation transition completed', [
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
-                'historical_allocations' => $activeAllocations->pluck('id')->toArray(),
+                'closed_allocations' => $activeAllocations->pluck('id')->toArray(),
                 'new_allocations' => $newAllocations,
                 'changed_by' => $changedBy,
                 'transition_date' => $transitionDate->format('Y-m-d'),
@@ -195,7 +196,7 @@ class ProbationTransitionService
                 'success' => true,
                 'employment_id' => $employment->id,
                 'message' => 'Probation transition completed successfully',
-                'historical_count' => $activeAllocations->count(),
+                'closed_count' => $activeAllocations->count(),
                 'new_count' => count($newAllocations),
                 'employment' => $employment->fresh(),
             ];
@@ -238,10 +239,10 @@ class ProbationTransitionService
                 ];
             }
 
-            // Mark all active allocations as terminated
+            // Mark all active allocations as inactive
             foreach ($activeAllocations as $allocation) {
                 $allocation->update([
-                    'status' => 'terminated',
+                    'status' => FundingAllocationStatus::Inactive,
                     'end_date' => $employment->end_probation_date,
                     'updated_by' => $changedBy,
                 ]);
@@ -252,7 +253,7 @@ class ProbationTransitionService
                 $employment,
                 'Employment terminated during probation period',
                 sprintf(
-                    'Termination date: %s. %d allocations marked as terminated. Probation was not completed.',
+                    'Termination date: %s. %d allocations marked as inactive. Probation was not completed.',
                     $employment->end_probation_date->format('Y-m-d'),
                     $activeAllocations->count()
                 )
@@ -264,7 +265,7 @@ class ProbationTransitionService
             $employment->addHistoryEntry(
                 reason: 'Employment terminated during probation period',
                 notes: sprintf(
-                    'Termination date: %s. %d allocations marked as terminated. Probation was not completed.',
+                    'Termination date: %s. %d allocations marked as inactive. Probation was not completed.',
                     $employment->end_probation_date->format('Y-m-d'),
                     $activeAllocations->count()
                 ),
@@ -277,7 +278,7 @@ class ProbationTransitionService
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
                 'end_date' => $employment->end_probation_date->format('Y-m-d'),
-                'terminated_allocations' => $activeAllocations->pluck('id')->toArray(),
+                'inactive_allocations' => $activeAllocations->pluck('id')->toArray(),
                 'changed_by' => $changedBy,
             ]);
 
@@ -285,7 +286,7 @@ class ProbationTransitionService
                 'success' => true,
                 'employment_id' => $employment->id,
                 'message' => 'Early termination processed successfully',
-                'terminated_count' => $activeAllocations->count(),
+                'inactive_count' => $activeAllocations->count(),
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -336,7 +337,7 @@ class ProbationTransitionService
 
             foreach ($activeAllocations as $allocation) {
                 $allocation->update([
-                    'status' => 'terminated',
+                    'status' => FundingAllocationStatus::Inactive,
                     'end_date' => $decisionDate,
                     'updated_by' => $changedBy,
                 ]);
@@ -344,7 +345,7 @@ class ProbationTransitionService
 
             $defaultReason = $reason ?? 'Probation marked as failed by HR';
             $defaultNotes = $notes ?? sprintf(
-                'Decision date: %s. %d allocations marked as terminated.',
+                'Decision date: %s. %d allocations marked as inactive.',
                 $decisionDate->format('Y-m-d'),
                 $activeAllocations->count()
             );
@@ -367,7 +368,7 @@ class ProbationTransitionService
                 'employment_id' => $employment->id,
                 'employee_id' => $employment->employee_id,
                 'decision_date' => $decisionDate->format('Y-m-d'),
-                'terminated_allocations' => $activeAllocations->pluck('id')->toArray(),
+                'inactive_allocations' => $activeAllocations->pluck('id')->toArray(),
                 'changed_by' => $changedBy,
             ]);
 
@@ -481,7 +482,7 @@ class ProbationTransitionService
             return 30;
         }
 
-        return 31 - $startDate->day;
+        return 30 - $startDate->day + 1;
     }
 
     /**
@@ -490,7 +491,7 @@ class ProbationTransitionService
     public function calculateProRatedSalary(Employment $employment, Carbon $payrollMonth): float
     {
         if (! $employment->pass_probation_date) {
-            return $employment->getCurrentSalary();
+            return $employment->getSalaryAmountForDate($payrollMonth);
         }
 
         $passProbationDate = Carbon::parse($employment->pass_probation_date);
@@ -508,16 +509,16 @@ class ProbationTransitionService
             return (float) $employment->pass_probation_salary;
         }
 
-        $dailyProbationRate = $employment->probation_salary / 30;
-        $dailyRegularRate = $employment->pass_probation_salary / 30;
+        $dailyProbationRate = round($employment->probation_salary / 30);
+        $dailyRegularRate = round($employment->pass_probation_salary / 30);
 
         $probationDays = $passProbationDate->day - 1;
         $regularDays = 30 - $probationDays;
 
-        $probationAmount = $probationDays * $dailyProbationRate;
-        $regularAmount = $regularDays * $dailyRegularRate;
+        $probationAmount = $dailyProbationRate * $probationDays;
+        $regularAmount = $dailyRegularRate * $regularDays;
 
-        return round($probationAmount + $regularAmount, 2);
+        return $probationAmount + $regularAmount;
     }
 
     /**
@@ -528,9 +529,9 @@ class ProbationTransitionService
         $startDate = Carbon::parse($employment->start_date);
         $workingDays = $this->calculateWorkingDays($startDate);
         $applicableSalary = $employment->probation_salary ?? $employment->pass_probation_salary;
-        $dailyRate = $applicableSalary / 30;
+        $dailyRate = round($applicableSalary / 30);
 
-        return round($dailyRate * $workingDays, 2);
+        return round($dailyRate * $workingDays);
     }
 
     /**

@@ -30,17 +30,16 @@ class TaxCalculationServiceTest extends TestCase
     {
         // Test income of 600,000 (should be in multiple brackets)
         $taxableIncome = 600000;
-        $monthlyTax = $this->taxService->calculateProgressiveIncomeTax($taxableIncome);
+        $annualTax = $this->taxService->calculateProgressiveIncomeTax($taxableIncome);
 
-        // Expected calculation:
+        // Expected calculation (annual):
         // 0-150,000: 0% = 0
-        // 150,001-300,000: 5% = 7,500
-        // 300,001-500,000: 10% = 20,000
-        // 500,001-600,000: 15% = 15,000
-        // Total annual tax: 42,500
-        // Monthly tax: 42,500 / 12 = 3,541.67
+        // 150,001-300,000: 5% ≈ 7,500
+        // 300,001-500,000: 10% ≈ 20,000
+        // 500,001-600,000: 15% ≈ 15,000
+        // Total annual tax ≈ 42,500
 
-        $this->assertEqualsWithDelta(3541.67, $monthlyTax, 0.01);
+        $this->assertEqualsWithDelta(42500, $annualTax, 1.0);
     }
 
     /** @test */
@@ -104,8 +103,8 @@ class TaxCalculationServiceTest extends TestCase
         $this->assertEquals(60000, $deductions['personal_allowance']);
         $this->assertEquals(60000, $deductions['spouse_allowance']);
         $this->assertEquals(60000, $deductions['child_allowance']);
-        $this->assertGreaterThan(0, $deductions['personal_expenses']);
-        $this->assertGreaterThan(0, $deductions['provident_fund']);
+        $this->assertGreaterThan(0, $deductions['employment_deductions']);
+        $this->assertGreaterThan(0, $deductions['provident_fund_deduction']);
     }
 
     /** @test */

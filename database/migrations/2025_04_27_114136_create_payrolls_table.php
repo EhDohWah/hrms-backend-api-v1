@@ -28,7 +28,7 @@ return new class extends Migration
             // Encrypted payroll fields (cast in model; use decimal as recommended for salary, stored as string for encryption compatibility)
             $table->text('gross_salary')->comment('Required Encryption. TYPE - decimal()');
             $table->text('gross_salary_by_FTE')->comment('Required Encryption. TYPE - decimal()');
-            $table->text('compensation_refund')->comment('Required Encryption. TYPE - decimal()');
+            $table->text('retroactive_adjustment')->nullable()->comment('Required Encryption. TYPE - decimal(). Deferred salary + past-period correction: +ve=under-paid, -ve=over-paid');
             $table->text('thirteen_month_salary')->comment('Required Encryption. TYPE - decimal()');
             $table->text('thirteen_month_salary_accured')->comment('Required Encryption');
             $table->text('pvd')->comment('Required Encryption. TYPE - decimal()')->nullable();

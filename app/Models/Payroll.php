@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -20,7 +21,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'pay_period_date', type: 'string', format: 'date'),
         new OA\Property(property: 'gross_salary', type: 'number', format: 'float'),
         new OA\Property(property: 'gross_salary_by_FTE', type: 'number', format: 'float'),
-        new OA\Property(property: 'compensation_refund', type: 'number', format: 'float'),
+        new OA\Property(property: 'retroactive_adjustment', type: 'number', format: 'float', description: 'Retroactive adjustment: +ve=under-paid, -ve=over-paid'),
         new OA\Property(property: 'thirteen_month_salary', type: 'number', format: 'float'),
         new OA\Property(property: 'thirteen_month_salary_accured', type: 'number', format: 'float'),
         new OA\Property(property: 'pvd', type: 'number', format: 'float'),
@@ -45,7 +46,7 @@ use OpenApi\Attributes as OA;
 )]
 class Payroll extends Model
 {
-    use LogsActivity, SoftDeletes, Prunable;
+    use HasFactory, LogsActivity, Prunable, SoftDeletes;
 
     protected $table = 'payrolls';
 
@@ -54,7 +55,7 @@ class Payroll extends Model
         'employee_funding_allocation_id',
         'gross_salary',
         'gross_salary_by_FTE',
-        'compensation_refund',
+        'retroactive_adjustment',
         'thirteen_month_salary',
         'thirteen_month_salary_accured',
         'pvd',
@@ -82,7 +83,7 @@ class Payroll extends Model
     protected $casts = [
         'gross_salary' => 'encrypted',
         'gross_salary_by_FTE' => 'encrypted',
-        'compensation_refund' => 'encrypted',
+        'retroactive_adjustment' => 'encrypted',
         'thirteen_month_salary' => 'encrypted',
         'thirteen_month_salary_accured' => 'encrypted',
         'pvd' => 'encrypted',
@@ -159,7 +160,7 @@ class Payroll extends Model
             'employee_funding_allocation_id',
             'gross_salary',
             'gross_salary_by_FTE',
-            'compensation_refund',
+            'retroactive_adjustment',
             'thirteen_month_salary',
             'thirteen_month_salary_accured',
             'pvd',

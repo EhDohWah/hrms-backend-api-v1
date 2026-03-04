@@ -166,7 +166,6 @@ try {
         'work_location_id' => $workLocation->id,
         'probation_salary' => 20000,
         'pass_probation_salary' => 25000,
-        'status' => true,
         // NOTE: probation_status removed - tracked in probation_records table
         'health_welfare' => true,
         'pvd' => true,
@@ -224,7 +223,6 @@ try {
         'work_location_id' => $workLocation->id,
         'probation_salary' => 18000,
         'pass_probation_salary' => 22000,
-        'status' => true,
         // NOTE: probation_status removed - tracked in probation_records table
         'health_welfare' => true,
         'pvd' => true,
@@ -281,7 +279,6 @@ try {
         'work_location_id' => $workLocation->id,
         'probation_salary' => 30000,
         'pass_probation_salary' => 35000,
-        'status' => true,
         // NOTE: probation_status removed - tracked in probation_records table
         'health_welfare' => true,
         'pvd' => true,

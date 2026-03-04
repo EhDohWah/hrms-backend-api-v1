@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\LetterTemplateController;
+use App\Http\Controllers\Api\V1\LetterTemplateController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,15 +28,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [LetterTemplateController::class, 'store']);
 
         // Show a single template (includes full content)
-        Route::get('/{id}', [LetterTemplateController::class, 'show']);
+        Route::get('/{letterTemplate}', [LetterTemplateController::class, 'show']);
 
         // Update an existing template
-        Route::put('/{id}', [LetterTemplateController::class, 'update']);
+        Route::put('/{letterTemplate}', [LetterTemplateController::class, 'update']);
 
         // Delete a template
-        Route::delete('/{id}', [LetterTemplateController::class, 'destroy']);
+        Route::delete('/{letterTemplate}', [LetterTemplateController::class, 'destroy']);
 
         // Generate PDF with placeholder replacement
-        Route::post('/{id}/generate-pdf', [LetterTemplateController::class, 'generatePdf']);
+        Route::post('/{letterTemplate}/generate-pdf', [LetterTemplateController::class, 'generatePdf']);
     });
 });

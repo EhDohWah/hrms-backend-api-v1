@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ use Spatie\DeletedModels\Models\Concerns\KeepsDeletedModels;
         new OA\Property(property: 'candidate_name', type: 'string', description: 'Name of the candidate'),
         new OA\Property(property: 'position_name', type: 'string', description: 'Name of the position'),
         new OA\Property(property: 'probation_salary', type: 'number', format: 'float', description: 'Probation period salary'),
-        new OA\Property(property: 'post_probation_salary', type: 'number', format: 'float', description: 'Post-probation salary'),
+        new OA\Property(property: 'pass_probation_salary', type: 'number', format: 'float', description: 'Pass-probation salary'),
         new OA\Property(property: 'acceptance_deadline', type: 'string', format: 'date', description: 'Deadline for acceptance'),
         new OA\Property(property: 'acceptance_status', type: 'string', description: 'Status of acceptance'),
         new OA\Property(property: 'note', type: 'string', description: 'Additional notes'),
@@ -43,7 +44,7 @@ class JobOffer extends Model
         'candidate_name',
         'position_name',
         'probation_salary',
-        'post_probation_salary',
+        'pass_probation_salary',
         'acceptance_deadline',
         'acceptance_status',
         'note',
@@ -60,8 +61,38 @@ class JobOffer extends Model
         'date' => 'date',
         'acceptance_deadline' => 'date',
         'probation_salary' => 'decimal:2',
-        'post_probation_salary' => 'decimal:2',
+        'pass_probation_salary' => 'decimal:2',
+        'acceptance_status' => \App\Enums\JobOfferAcceptanceStatus::class,
     ];
+
+    /**
+     * Scope: search by candidate name or position name.
+     */
+    public function scopeSearch(Builder $query, string $search): Builder
+    {
+        $term = trim($search);
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('candidate_name', 'LIKE', "%{$term}%")
+                ->orWhere('position_name', 'LIKE', "%{$term}%");
+        });
+    }
+
+    /**
+     * Scope: filter by position name (comma-separated).
+     */
+    public function scopeFilterByPosition(Builder $query, string $positions): Builder
+    {
+        return $query->whereIn('position_name', array_map('trim', explode(',', $positions)));
+    }
+
+    /**
+     * Scope: filter by acceptance status (comma-separated).
+     */
+    public function scopeFilterByStatus(Builder $query, string $statuses): Builder
+    {
+        return $query->whereIn('acceptance_status', array_map('trim', explode(',', $statuses)));
+    }
 
     /**
      * Override the restore method to handle SQL Server IDENTITY columns

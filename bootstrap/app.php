@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // This allows authentication via HttpOnly cookie for XSS protection
         // Needed on web group for /broadcasting/auth route
         $middleware->api(prepend: [
+            \App\Http\Middleware\ForceJsonResponse::class,
             \App\Http\Middleware\AuthenticateFromCookie::class,
         ]);
         $middleware->web(prepend: [
@@ -73,5 +74,83 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('model-prune');
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Using Laravel's default exception handling
+        // Validation errors — return field-level errors
+        $exceptions->renderable(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+        });
+
+        // Authentication errors
+        $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated',
+                ], 401);
+            }
+        });
+
+        // Authorization errors
+        $exceptions->renderable(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized',
+                ], 403);
+            }
+        });
+
+        // Model not found
+        $exceptions->renderable(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Resource not found',
+                ], 404);
+            }
+        });
+
+        // Route not found
+        $exceptions->renderable(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Resource not found',
+                ], 404);
+            }
+        });
+
+        // Rate limiting
+        $exceptions->renderable(function (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many requests. Please try again later.',
+                ], 429);
+            }
+        });
+
+        // Generic catch-all for API errors
+        $exceptions->render(function (\Throwable $e, $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            // Self-rendering exceptions (have their own render() method)
+            if (method_exists($e, 'render')) {
+                return null;
+            }
+
+            $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+
+            return response()->json([
+                'success' => false,
+                'message' => app()->isProduction() ? 'An unexpected error occurred' : $e->getMessage(),
+            ], $status);
+        });
     })->create();

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Interview;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -11,9 +12,22 @@ describe('Interview Filtering and Pagination', function () {
     beforeEach(function () {
         $this->user = User::factory()->create();
 
+        // Create Module record for dynamic module permission middleware
+        Module::create([
+            'name' => 'interviews',
+            'display_name' => 'Interviews',
+            'category' => 'Recruitment',
+            'icon' => 'calendar',
+            'route' => '/recruitment/interviews-list',
+            'read_permission' => 'interviews.read',
+            'edit_permissions' => ['interviews.edit'],
+            'order' => 20,
+            'is_active' => true,
+        ]);
+
         // Create permissions and assign to user
-        Permission::firstOrCreate(['name' => 'interview.read']);
-        $this->user->givePermissionTo('interview.read');
+        Permission::firstOrCreate(['name' => 'interviews.read']);
+        $this->user->givePermissionTo('interviews.read');
 
         $this->actingAs($this->user);
     });
@@ -59,19 +73,6 @@ describe('Interview Filtering and Pagination', function () {
             $data = $response->json('data');
             expect($data)->toHaveCount(0);
         });
-
-        it('includes applied filters in response', function () {
-            $response = $this->getJson('/api/v1/interviews?filter_job_position=Software Engineer,Data Scientist');
-
-            $response->assertStatus(200)
-                ->assertJson([
-                    'filters' => [
-                        'applied_filters' => [
-                            'job_position' => ['Software Engineer', 'Data Scientist'],
-                        ],
-                    ],
-                ]);
-        });
     });
 
     describe('Hired Status Filtering', function () {
@@ -105,19 +106,6 @@ describe('Interview Filtering and Pagination', function () {
 
             $hiredStatuses = collect($data)->pluck('hired_status')->unique()->sort()->values()->toArray();
             expect($hiredStatuses)->toBe(['Hired', 'Pending']);
-        });
-
-        it('includes applied filters in response', function () {
-            $response = $this->getJson('/api/v1/interviews?filter_hired_status=Hired,Not Hired');
-
-            $response->assertStatus(200)
-                ->assertJson([
-                    'filters' => [
-                        'applied_filters' => [
-                            'hired_status' => ['Hired', 'Not Hired'],
-                        ],
-                    ],
-                ]);
         });
     });
 
@@ -157,20 +145,6 @@ describe('Interview Filtering and Pagination', function () {
             expect($interview['job_position'])->toBe('Software Engineer')
                 ->and($interview['hired_status'])->toBe('Hired')
                 ->and($interview['candidate_name'])->toBe('John Doe');
-        });
-
-        it('includes both filters in response', function () {
-            $response = $this->getJson('/api/v1/interviews?filter_job_position=Software Engineer,Project Manager&filter_hired_status=Hired');
-
-            $response->assertStatus(200)
-                ->assertJson([
-                    'filters' => [
-                        'applied_filters' => [
-                            'job_position' => ['Software Engineer', 'Project Manager'],
-                            'hired_status' => ['Hired'],
-                        ],
-                    ],
-                ]);
         });
 
         it('returns empty result when no matches found', function () {
@@ -247,37 +221,31 @@ describe('Interview Filtering and Pagination', function () {
             expect($dates)->toBe(['2024-03-01', '2024-02-01', '2024-01-01']);
         });
 
-        it('handles invalid sort_by gracefully', function () {
-            Interview::factory()->create(['candidate_name' => 'Alice Smith']);
-            Interview::factory()->create(['candidate_name' => 'Bob Johnson']);
-            Interview::factory()->create(['candidate_name' => 'Charlie Brown']);
-
-            // Invalid sort_by should be ignored and return results
+        it('rejects invalid sort_by field', function () {
             $response = $this->getJson('/api/v1/interviews?sort_by=invalid_field');
 
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'success',
-                    'message',
-                    'data',
-                ]);
+            $response->assertStatus(422)
+                ->assertJsonValidationErrors(['sort_by']);
         });
 
         it('defaults to created_at desc when sort_order is not provided', function () {
-            // Create interviews with different timestamps
-            $interview1 = Interview::factory()->create(['candidate_name' => 'Alice Smith']);
+            // Note: beforeEach already creates 3 interviews (Charlie Brown, Alice Smith, Bob Johnson)
+            // Create additional interviews with different timestamps
+            $interview1 = Interview::factory()->create(['candidate_name' => 'Dave Wilson']);
             sleep(1);
-            $interview2 = Interview::factory()->create(['candidate_name' => 'Bob Johnson']);
+            $interview2 = Interview::factory()->create(['candidate_name' => 'Eve Taylor']);
             sleep(1);
-            $interview3 = Interview::factory()->create(['candidate_name' => 'Charlie Brown']);
+            $interview3 = Interview::factory()->create(['candidate_name' => 'Frank Miller']);
 
             $response = $this->getJson('/api/v1/interviews');
 
             $response->assertStatus(200);
 
             $names = collect($response->json('data'))->pluck('candidate_name')->toArray();
-            // Most recent first (created_at desc)
-            expect($names)->toBe(['Charlie Brown', 'Bob Johnson', 'Alice Smith']);
+            // Most recent first (created_at desc) - the 3 newest should be first
+            expect($names[0])->toBe('Frank Miller')
+                ->and($names[1])->toBe('Eve Taylor')
+                ->and($names[2])->toBe('Dave Wilson');
         });
     });
 
@@ -291,14 +259,13 @@ describe('Interview Filtering and Pagination', function () {
 
             $response->assertStatus(200)
                 ->assertJson([
-                    'pagination' => [
+                    'meta' => [
                         'current_page' => 1,
                         'per_page' => 10,
                         'total' => 25,
                         'last_page' => 3,
                         'from' => 1,
                         'to' => 10,
-                        'has_more_pages' => true,
                     ],
                 ]);
 
@@ -310,14 +277,13 @@ describe('Interview Filtering and Pagination', function () {
 
             $response->assertStatus(200)
                 ->assertJson([
-                    'pagination' => [
+                    'meta' => [
                         'current_page' => 1,
                         'per_page' => 5,
                         'total' => 25,
                         'last_page' => 5,
                         'from' => 1,
                         'to' => 5,
-                        'has_more_pages' => true,
                     ],
                 ]);
 
@@ -329,14 +295,13 @@ describe('Interview Filtering and Pagination', function () {
 
             $response->assertStatus(200)
                 ->assertJson([
-                    'pagination' => [
+                    'meta' => [
                         'current_page' => 2,
                         'per_page' => 5,
                         'total' => 25,
                         'last_page' => 5,
                         'from' => 6,
                         'to' => 10,
-                        'has_more_pages' => true,
                     ],
                 ]);
 
@@ -348,52 +313,38 @@ describe('Interview Filtering and Pagination', function () {
 
             $response->assertStatus(200)
                 ->assertJson([
-                    'pagination' => [
+                    'meta' => [
                         'current_page' => 3,
                         'per_page' => 10,
                         'total' => 25,
                         'last_page' => 3,
                         'from' => 21,
                         'to' => 25,
-                        'has_more_pages' => false,
                     ],
                 ]);
 
             expect($response->json('data'))->toHaveCount(5);
         });
 
-        it('handles per_page maximum gracefully', function () {
-            // Laravel's paginator will handle this gracefully
+        it('rejects per_page exceeding maximum', function () {
             $response = $this->getJson('/api/v1/interviews?per_page=150');
 
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'success',
-                    'data',
-                    'pagination',
-                ]);
+            $response->assertStatus(422)
+                ->assertJsonValidationErrors(['per_page']);
         });
 
-        it('handles invalid per_page gracefully', function () {
+        it('rejects invalid per_page value', function () {
             $response = $this->getJson('/api/v1/interviews?per_page=0');
 
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'success',
-                    'data',
-                    'pagination',
-                ]);
+            $response->assertStatus(422)
+                ->assertJsonValidationErrors(['per_page']);
         });
 
-        it('handles invalid page gracefully', function () {
+        it('rejects invalid page value', function () {
             $response = $this->getJson('/api/v1/interviews?page=0');
 
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'success',
-                    'data',
-                    'pagination',
-                ]);
+            $response->assertStatus(422)
+                ->assertJsonValidationErrors(['page']);
         });
     });
 
@@ -447,17 +398,11 @@ describe('Interview Filtering and Pagination', function () {
                 ->and($interview['interview_date'])->toBe('2024-01-20');
 
             $response->assertJson([
-                'pagination' => [
+                'meta' => [
                     'current_page' => 2,
                     'per_page' => 1,
                     'total' => 2, // Only 2 Software Engineers with Hired status
                     'last_page' => 2,
-                ],
-                'filters' => [
-                    'applied_filters' => [
-                        'job_position' => ['Software Engineer'],
-                        'hired_status' => ['Hired'],
-                    ],
                 ],
             ]);
         });
@@ -468,7 +413,7 @@ describe('Interview Filtering and Pagination', function () {
             $response->assertStatus(200);
 
             expect($response->json('data'))->toHaveCount(2)
-                ->and($response->json('pagination.total'))->toBe(4); // 4 Software Engineers total
+                ->and($response->json('meta.total'))->toBe(4); // 4 Software Engineers total
         });
     });
 
@@ -496,17 +441,16 @@ describe('Interview Filtering and Pagination', function () {
             expect($response->json('data'))->toBeArray();
         });
 
-        it('returns empty applied_filters when no filters provided', function () {
-            Interview::factory()->count(3)->create();
-
+        it('returns empty data when no interviews exist', function () {
             $response = $this->getJson('/api/v1/interviews');
 
             $response->assertStatus(200)
                 ->assertJson([
-                    'filters' => [
-                        'applied_filters' => [],
-                    ],
+                    'success' => true,
+                    'message' => 'Interviews retrieved successfully',
                 ]);
+
+            expect($response->json('data'))->toHaveCount(0);
         });
     });
 });

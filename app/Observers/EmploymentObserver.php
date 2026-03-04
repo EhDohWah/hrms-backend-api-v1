@@ -165,6 +165,10 @@ class EmploymentObserver
      */
     private function validateProbationDates(Employment $employment): void
     {
+        if ($employment->probation_required === false) {
+            return; // Probation not required — no dates to validate
+        }
+
         if (! $employment->pass_probation_date) {
             return; // No probation date to validate
         }
@@ -186,12 +190,13 @@ class EmploymentObserver
             );
         }
 
-        // If employment has end date, probation should be before end date
+        // If end_probation_date is set, pass_probation_date should be after it
+        // (end_probation_date = last day of probation, pass_probation_date = first day of new salary)
         if ($employment->end_probation_date) {
-            $endDate = Carbon::parse($employment->end_probation_date);
-            if ($probationDate->gte($endDate)) {
+            $endProbDate = Carbon::parse($employment->end_probation_date);
+            if ($probationDate->lte($endProbDate)) {
                 throw new \InvalidArgumentException(
-                    'Pass probation date must be before employment end date'
+                    'Pass probation date must be after end probation date'
                 );
             }
         }
