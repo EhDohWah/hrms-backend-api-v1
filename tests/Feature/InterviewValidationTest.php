@@ -28,8 +28,10 @@ describe('Interview Request Validation', function () {
 
         // Create permissions and assign to user
         Permission::firstOrCreate(['name' => 'interviews.read']);
-        Permission::firstOrCreate(['name' => 'interviews.edit']);
-        $this->user->givePermissionTo(['interviews.read', 'interviews.edit']);
+        Permission::firstOrCreate(['name' => 'interviews.create']);
+        Permission::firstOrCreate(['name' => 'interviews.update']);
+        Permission::firstOrCreate(['name' => 'interviews.delete']);
+        $this->user->givePermissionTo(['interviews.read', 'interviews.create', 'interviews.update', 'interviews.delete']);
 
         $this->actingAs($this->user);
     });

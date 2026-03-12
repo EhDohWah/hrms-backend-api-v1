@@ -88,8 +88,8 @@ class EmployeeTemplateExport
     private function getColumnDefinitions(): array
     {
         return [
-            'A' => ['header' => 'Org', 'width' => 12, 'validation' => 'REQUIRED - Must be SMRU or BHF - Case insensitive'],
-            'B' => ['header' => 'Staff ID', 'width' => 18, 'validation' => 'REQUIRED - Min 3 chars - Max 50 chars - Alphanumeric and dash only - Must be unique per organization'],
+            'A' => ['header' => 'Org', 'width' => 12, 'validation' => 'IGNORED - Organization is now set via Employment records, not employees'],
+            'B' => ['header' => 'Staff ID', 'width' => 18, 'validation' => 'REQUIRED - Min 3 chars - Max 50 chars - Alphanumeric and dash only - Must be globally unique'],
             'C' => ['header' => 'Initial', 'width' => 10, 'validation' => 'OPTIONAL - Max 10 chars'],
             'D' => ['header' => 'First Name', 'width' => 20, 'validation' => 'REQUIRED - Min 2 chars - Max 255 chars'],
             'E' => ['header' => 'Last Name', 'width' => 20, 'validation' => 'OPTIONAL - Max 255 chars'],
@@ -307,8 +307,7 @@ class EmployeeTemplateExport
             '- Row 3+: Your employee data (delete sample rows and add your data)',
             '',
             'REQUIRED FIELDS:',
-            '- Org: Organization (SMRU or BHF)',
-            '- Staff ID: Unique identifier per organization',
+            '- Staff ID: Globally unique identifier',
             '- First Name: Employee first name',
             '- Gender: M (Male) or F (Female)',
             '- Date of Birth: Format YYYY-MM-DD, age must be 18-84',
@@ -321,7 +320,7 @@ class EmployeeTemplateExport
             '- ID Expiry Date: Optional, format YYYY-MM-DD (must be after issue date)',
             '',
             'DROPDOWN FIELDS:',
-            '- Organization (Column A): SMRU or BHF',
+            '- Organization (Column A): IGNORED - Organization is now set via Employment records',
             '- Gender (Column I): M or F',
             '- Status (Column L): Expats (Local), Local ID Staff, Local non ID Staff',
             '- ID Type (Column O): Select from list',
@@ -339,7 +338,7 @@ class EmployeeTemplateExport
             '',
             'TIPS:',
             '- Use dropdowns where available to avoid errors',
-            '- Staff ID must be unique within the same organization',
+            '- Staff ID must be globally unique',
             '- Test with a small batch first (2-3 employees)',
             '- Age formula in Column K is auto-calculated',
             '',

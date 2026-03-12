@@ -16,6 +16,7 @@ class ApprovePersonnelActionRequest extends FormRequest
         return [
             'approval_type' => ['required', 'string', 'in:dept_head,coo,hr,accountant'],
             'approved' => ['required', 'boolean'],
+            'approval_date' => ['nullable', 'date'],
         ];
     }
 }

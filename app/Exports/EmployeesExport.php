@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Enums\IdentificationType;
 use App\Models\Employee;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
@@ -21,19 +22,6 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
 {
     use RegistersEventListeners;
 
-    /**
-     * Reverse mapping from database values to display values for identification type
-     */
-    const IDENTIFICATION_TYPE_REVERSE_MAPPING = [
-        '10YearsID' => '10 years ID',
-        'BurmeseID' => 'Burmese ID',
-        'ThaiID' => 'Thai ID',
-        'CI' => 'CI',
-        'Borderpass' => 'Borderpass',
-        'Passport' => 'Passport',
-        'Other' => 'Other',
-    ];
-
     protected $organization;
 
     protected $status;
@@ -49,14 +37,14 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
         $query = Employee::query();
 
         if ($this->organization) {
-            $query->where('organization', $this->organization);
+            $query->whereHas('employment', fn ($q) => $q->where('organization', $this->organization));
         }
 
         if ($this->status) {
             $query->where('status', $this->status);
         }
 
-        return $query->with('employeeBeneficiaries');
+        return $query->with(['employeeBeneficiaries', 'employment:id,employee_id,organization', 'primaryIdentification']);
     }
 
     public function headings(): array
@@ -119,10 +107,11 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
         $kin1 = $employee->employeeBeneficiaries->get(0);
         $kin2 = $employee->employeeBeneficiaries->get(1);
 
-        // Reverse map identification type from database value to display value
+        $primary = $employee->primaryIdentification;
         $identificationTypeDisplay = null;
-        if ($employee->identification_type) {
-            $identificationTypeDisplay = self::IDENTIFICATION_TYPE_REVERSE_MAPPING[$employee->identification_type] ?? $employee->identification_type;
+        if ($primary?->identification_type) {
+            $type = IdentificationType::tryFrom($primary->identification_type);
+            $identificationTypeDisplay = $type ? $type->label() : $primary->identification_type;
         }
 
         // Convert military_status Boolean to Yes/No for export
@@ -148,10 +137,10 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
             $employee->status,
             $employee->nationality,
             $employee->religion,
-            $identificationTypeDisplay, // Reverse mapped display value
-            $employee->identification_number, // Direct column now
-            $employee->identification_issue_date,
-            $employee->identification_expiry_date,
+            $identificationTypeDisplay,
+            $primary?->identification_number,
+            $primary?->identification_issue_date,
+            $primary?->identification_expiry_date,
             $employee->social_security_number,
             $employee->tax_number,
             $employee->driver_license_number,
@@ -239,8 +228,8 @@ class EmployeesExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
     protected function addValidationRulesRow($sheet)
     {
         $validationRules = [
-            'REQUIRED - Must be SMRU or BHF',
-            'REQUIRED - Min 3 chars - Max 50 chars - Unique per org',
+            'FROM EMPLOYMENT - Organization derived from employment record',
+            'REQUIRED - Min 3 chars - Max 50 chars - Globally unique',
             'OPTIONAL - Max 10 chars',
             'REQUIRED - Min 2 chars - Max 255 chars',
             'OPTIONAL - Max 255 chars',

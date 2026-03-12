@@ -18,7 +18,8 @@ class LeaveBalanceService
         $perPage = $params['per_page'] ?? 10;
 
         $query = LeaveBalance::with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
             'leaveType:id,name',
         ]);
 
@@ -103,7 +104,7 @@ class LeaveBalanceService
             'employee_id' => $employee->id,
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
             'staff_id' => $employee->staff_id,
-            'organization' => $employee->organization,
+            'organization' => $employee->employment?->organization,
             'leave_type_id' => $leaveType->id,
             'leave_type_name' => $leaveType->name,
             'total_days' => (float) $leaveBalance->total_days,
@@ -144,7 +145,11 @@ class LeaveBalanceService
             'created_by' => Auth::user()->name ?? 'System',
         ]);
 
-        $leaveBalance->load(['employee:id,staff_id,first_name_en,last_name_en', 'leaveType:id,name']);
+        $leaveBalance->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+            'leaveType:id,name',
+        ]);
 
         return [
             'success' => true,
@@ -170,7 +175,11 @@ class LeaveBalanceService
         $leaveBalance->updated_by = Auth::user()->name ?? 'System';
         $leaveBalance->save();
 
-        $leaveBalance->load(['employee:id,staff_id,first_name_en,last_name_en', 'leaveType:id,name']);
+        $leaveBalance->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+            'leaveType:id,name',
+        ]);
 
         return $leaveBalance;
     }

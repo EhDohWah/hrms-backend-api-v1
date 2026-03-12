@@ -27,12 +27,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{employment}/funding-allocations', [EmploymentController::class, 'fundingAllocations'])->middleware('permission:employment_records.read');
         Route::get('/{employment}', [EmploymentController::class, 'show'])->middleware('permission:employment_records.read');
 
-        // Edit routes
-        Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment_records.edit');
-        Route::post('/{employment}/complete-probation', [EmploymentController::class, 'completeProbation'])->middleware('permission:employment_records.edit');
-        Route::post('/{employment}/probation-status', [EmploymentController::class, 'updateProbationStatus'])->middleware('permission:employment_records.edit');
-        Route::put('/{employment}', [EmploymentController::class, 'update'])->middleware('permission:employment_records.edit');
-        Route::delete('/{employment}', [EmploymentController::class, 'destroy'])->middleware('permission:employment_records.edit');
+        // Create routes
+        Route::post('/', [EmploymentController::class, 'store'])->middleware('permission:employment_records.create');
+
+        // Update routes
+        Route::post('/{employment}/complete-probation', [EmploymentController::class, 'completeProbation'])->middleware('permission:employment_records.update');
+        Route::post('/{employment}/probation-status', [EmploymentController::class, 'updateProbationStatus'])->middleware('permission:employment_records.update');
+        Route::put('/{employment}', [EmploymentController::class, 'update'])->middleware('permission:employment_records.update');
+
+        // Delete routes
+        Route::delete('/{employment}', [EmploymentController::class, 'destroy'])->middleware('permission:employment_records.delete');
     });
 
     // Department routes - Uses departments permission
@@ -42,9 +46,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{department}', [DepartmentController::class, 'show'])->middleware('permission:departments.read');
         Route::get('/{department}/positions', [DepartmentController::class, 'positions'])->middleware('permission:departments.read');
         Route::get('/{department}/managers', [DepartmentController::class, 'managers'])->middleware('permission:departments.read');
-        Route::post('/', [DepartmentController::class, 'store'])->middleware('permission:departments.edit');
-        Route::put('/{department}', [DepartmentController::class, 'update'])->middleware('permission:departments.edit');
-        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->middleware('permission:departments.edit');
+        Route::post('/', [DepartmentController::class, 'store'])->middleware('permission:departments.create');
+        Route::put('/{department}', [DepartmentController::class, 'update'])->middleware('permission:departments.update');
+        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->middleware('permission:departments.delete');
     });
 
     // Position routes - Uses positions permission
@@ -53,9 +57,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [PositionController::class, 'index'])->middleware('permission:positions.read');
         Route::get('/{position}', [PositionController::class, 'show'])->middleware('permission:positions.read');
         Route::get('/{position}/direct-reports', [PositionController::class, 'directReports'])->middleware('permission:positions.read');
-        Route::post('/', [PositionController::class, 'store'])->middleware('permission:positions.edit');
-        Route::put('/{position}', [PositionController::class, 'update'])->middleware('permission:positions.edit');
-        Route::delete('/{position}', [PositionController::class, 'destroy'])->middleware('permission:positions.edit');
+        Route::post('/', [PositionController::class, 'store'])->middleware('permission:positions.create');
+        Route::put('/{position}', [PositionController::class, 'update'])->middleware('permission:positions.update');
+        Route::delete('/{position}', [PositionController::class, 'destroy'])->middleware('permission:positions.delete');
     });
 
     // Interview routes - Uses dynamic module permission
@@ -95,19 +99,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/', [LeaveTypeController::class, 'store'])
             ->name('leave-types.store')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.create');
 
         Route::put('/{leaveType}', [LeaveTypeController::class, 'update'])
             ->name('leave-types.update')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.update');
 
         Route::delete('/batch', [LeaveTypeController::class, 'destroyBatch'])
             ->name('leave-types.destroy-batch')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.delete');
 
         Route::delete('/{leaveType}', [LeaveTypeController::class, 'destroy'])
             ->name('leave-types.destroy')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.delete');
     });
 
     // =========================================================================
@@ -134,19 +138,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/', [LeaveRequestController::class, 'store'])
             ->name('leave-requests.store')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.create');
 
         Route::put('/{leaveRequest}', [LeaveRequestController::class, 'update'])
             ->name('leave-requests.update')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.update');
 
         Route::delete('/batch', [LeaveRequestController::class, 'destroyBatch'])
             ->name('leave-requests.destroy-batch')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.delete');
 
         Route::delete('/{leaveRequest}', [LeaveRequestController::class, 'destroy'])
             ->name('leave-requests.destroy')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.delete');
     });
 
     // =========================================================================
@@ -163,11 +167,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/', [LeaveBalanceController::class, 'store'])
             ->name('leave-balances.store')
-            ->middleware('permission:leave_balances.edit');
+            ->middleware('permission:leave_balances.create');
 
         Route::put('/{id}', [LeaveBalanceController::class, 'update'])
             ->name('leave-balances.update')
-            ->middleware('permission:leave_balances.edit');
+            ->middleware('permission:leave_balances.update');
     });
 
     // =========================================================================
@@ -186,7 +190,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/bulk', [HolidayController::class, 'storeBatch'])
             ->name('holidays.store-batch')
-            ->middleware('permission:holidays.edit');
+            ->middleware('permission:holidays.create');
 
         // Standard RESTful routes
         Route::get('/', [HolidayController::class, 'index'])
@@ -199,19 +203,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/', [HolidayController::class, 'store'])
             ->name('holidays.store')
-            ->middleware('permission:holidays.edit');
+            ->middleware('permission:holidays.create');
 
         Route::put('/{holiday}', [HolidayController::class, 'update'])
             ->name('holidays.update')
-            ->middleware('permission:holidays.edit');
+            ->middleware('permission:holidays.update');
 
         Route::delete('/batch', [HolidayController::class, 'destroyBatch'])
             ->name('holidays.destroy-batch')
-            ->middleware('permission:holidays.edit');
+            ->middleware('permission:holidays.delete');
 
         Route::delete('/{holiday}', [HolidayController::class, 'destroy'])
             ->name('holidays.destroy')
-            ->middleware('permission:holidays.edit');
+            ->middleware('permission:holidays.delete');
     });
 
     // =========================================================================
@@ -252,15 +256,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/types', [LeaveTypeController::class, 'store'])
             ->name('leaves.types.store')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.create');
 
         Route::put('/types/{leaveType}', [LeaveTypeController::class, 'update'])
             ->name('leaves.types.update')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.update');
 
         Route::delete('/types/{leaveType}', [LeaveTypeController::class, 'destroy'])
             ->name('leaves.types.destroy')
-            ->middleware('permission:leave_types.edit');
+            ->middleware('permission:leave_types.delete');
 
         // Leave Requests (legacy)
         Route::get('/requests', [LeaveRequestController::class, 'index'])
@@ -273,15 +277,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/requests', [LeaveRequestController::class, 'store'])
             ->name('leaves.requests.store')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.create');
 
         Route::put('/requests/{leaveRequest}', [LeaveRequestController::class, 'update'])
             ->name('leaves.requests.update')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.update');
 
         Route::delete('/requests/{leaveRequest}', [LeaveRequestController::class, 'destroy'])
             ->name('leaves.requests.destroy')
-            ->middleware('permission:leaves_admin.edit');
+            ->middleware('permission:leaves_admin.delete');
 
         // Leave Balances (legacy)
         Route::get('/balances', [LeaveBalanceController::class, 'index'])
@@ -294,11 +298,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/balances', [LeaveBalanceController::class, 'store'])
             ->name('leaves.balances.store')
-            ->middleware('permission:leave_balances.edit');
+            ->middleware('permission:leave_balances.create');
 
         Route::put('/balances/{id}', [LeaveBalanceController::class, 'update'])
             ->name('leaves.balances.update')
-            ->middleware('permission:leave_balances.edit');
+            ->middleware('permission:leave_balances.update');
     });
 
     // Travel request routes - Uses travel_admin permission
@@ -307,9 +311,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/search/employee/{staffId}', [TravelRequestController::class, 'searchByStaffId'])->middleware('permission:travel_admin.read');
         Route::get('/', [TravelRequestController::class, 'index'])->middleware('permission:travel_admin.read');
         Route::get('/{travelRequest}', [TravelRequestController::class, 'show'])->middleware('permission:travel_admin.read');
-        Route::post('/', [TravelRequestController::class, 'store'])->middleware('permission:travel_admin.edit');
-        Route::put('/{travelRequest}', [TravelRequestController::class, 'update'])->middleware('permission:travel_admin.edit');
-        Route::delete('/{travelRequest}', [TravelRequestController::class, 'destroy'])->middleware('permission:travel_admin.edit');
+        Route::post('/', [TravelRequestController::class, 'store'])->middleware('permission:travel_admin.create');
+        Route::put('/{travelRequest}', [TravelRequestController::class, 'update'])->middleware('permission:travel_admin.update');
+        Route::delete('/{travelRequest}', [TravelRequestController::class, 'destroy'])->middleware('permission:travel_admin.delete');
     });
 
     // Report routes (exports are read operations) - Uses report_list permission
@@ -327,13 +331,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stats', [RecycleBinController::class, 'stats']);
 
         // Soft-delete operations (Employee, Grant, Department)
-        Route::post('/restore/{modelType}/{id}', [RecycleBinController::class, 'restore'])->middleware('permission:recycle_bin_list.edit');
-        Route::post('/bulk-restore', [RecycleBinController::class, 'bulkRestore'])->middleware('permission:recycle_bin_list.edit');
-        Route::delete('/permanent/{modelType}/{id}', [RecycleBinController::class, 'permanentDelete'])->middleware('permission:recycle_bin_list.edit');
+        Route::post('/restore/{modelType}/{id}', [RecycleBinController::class, 'restore'])->middleware('permission:recycle_bin_list.update');
+        Route::post('/bulk-restore', [RecycleBinController::class, 'bulkRestore'])->middleware('permission:recycle_bin_list.update');
+        Route::delete('/permanent/{modelType}/{id}', [RecycleBinController::class, 'permanentDelete'])->middleware('permission:recycle_bin_list.delete');
 
         // Legacy operations (flat restore for Interview, JobOffer via KeepsDeletedModels)
-        Route::post('/restore-legacy', [RecycleBinController::class, 'restoreLegacy'])->middleware('permission:recycle_bin_list.edit');
-        Route::post('/bulk-restore-legacy', [RecycleBinController::class, 'bulkRestoreLegacy'])->middleware('permission:recycle_bin_list.edit');
-        Route::delete('/legacy/{deletedRecordId}', [RecycleBinController::class, 'permanentDeleteLegacy'])->middleware('permission:recycle_bin_list.edit');
+        Route::post('/restore-legacy', [RecycleBinController::class, 'restoreLegacy'])->middleware('permission:recycle_bin_list.update');
+        Route::post('/bulk-restore-legacy', [RecycleBinController::class, 'bulkRestoreLegacy'])->middleware('permission:recycle_bin_list.update');
+        Route::delete('/legacy/{deletedRecordId}', [RecycleBinController::class, 'permanentDeleteLegacy'])->middleware('permission:recycle_bin_list.delete');
     });
 });

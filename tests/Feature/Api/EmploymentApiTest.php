@@ -40,10 +40,12 @@ class EmploymentApiTest extends TestCase
         // Create and authenticate user
         $this->user = User::factory()->create();
 
-        // Create permissions (routes use employment_records.read / employment_records.edit)
+        // Create permissions matching route middleware
         $permissions = [
             'employment_records.read',
-            'employment_records.edit',
+            'employment_records.create',
+            'employment_records.update',
+            'employment_records.delete',
         ];
 
         foreach ($permissions as $permission) {
@@ -73,11 +75,10 @@ class EmploymentApiTest extends TestCase
         ]);
 
         $this->employee = Employee::create([
-            'organization' => 'SMRU',
             'staff_id' => 'EMP001',
             'first_name_en' => 'John',
             'last_name_en' => 'Doe',
-            'gender' => 'Male',
+            'gender' => 'M',
             'date_of_birth' => '1990-01-01',
             'status' => 'Local ID Staff',
         ]);
@@ -127,6 +128,7 @@ class EmploymentApiTest extends TestCase
     {
         $employmentData = [
             'employee_id' => $this->employee->id,
+            'organization' => 'SMRU',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -166,7 +168,7 @@ class EmploymentApiTest extends TestCase
         $response = $this->postJson('/api/v1/employments', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['employee_id', 'start_date', 'department_id', 'position_id', 'pass_probation_salary']);
+            ->assertJsonValidationErrors(['employee_id', 'organization', 'start_date', 'department_id', 'position_id', 'pass_probation_salary']);
     }
 
     /** @test */

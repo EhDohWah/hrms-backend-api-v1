@@ -12,9 +12,11 @@ describe('Training API', function () {
         $this->user = User::factory()->create();
 
         Permission::firstOrCreate(['name' => 'training_list.read']);
-        Permission::firstOrCreate(['name' => 'training_list.edit']);
+        Permission::firstOrCreate(['name' => 'training_list.create']);
+        Permission::firstOrCreate(['name' => 'training_list.update']);
+        Permission::firstOrCreate(['name' => 'training_list.delete']);
 
-        $this->user->givePermissionTo(['training_list.read', 'training_list.edit']);
+        $this->user->givePermissionTo(['training_list.read', 'training_list.create', 'training_list.update', 'training_list.delete']);
 
         $this->actingAs($this->user);
     });

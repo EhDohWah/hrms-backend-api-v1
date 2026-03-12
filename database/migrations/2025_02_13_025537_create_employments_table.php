@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('employments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->string('organization', 10);
             $table->foreignId('position_id')->nullable()->constrained('positions')->onDelete('no action'); // Position reference
             $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('no action'); // Department reference
             $table->foreignId('section_department_id')->nullable()->constrained('section_departments')->nullOnDelete()->comment('Sub-department within department'); // Section department reference
@@ -29,10 +30,13 @@ return new class extends Migration
 
             $table->decimal('probation_salary', 10, 2)->nullable(); // Optional - salary during probation
             $table->decimal('pass_probation_salary', 10, 2); // Required - regular salary
+            $table->decimal('previous_year_salary', 10, 2)->nullable(); // System-managed: snapshot of salary before annual increase
 
             $table->boolean('health_welfare')->default(false)->comment('Health benefits flag (opt-in/out)'); // Required - health benefits flag
             $table->boolean('pvd')->default(false)->comment('Provident fund flag (opt-in/out)'); // Required - provident fund flag
             $table->boolean('saving_fund')->default(false)->comment('Saving fund flag (opt-in/out)'); // Required - saving fund flag
+            $table->decimal('study_loan', 10, 2)->nullable()->default(0)->comment('Monthly study loan deduction');
+            $table->decimal('retroactive_salary', 10, 2)->nullable()->default(0)->comment('Manual HR payroll correction: +ve=under-paid, -ve=over-paid');
             // NOTE: Benefit percentages are now managed globally in benefit_settings table
             // NOTE: Probation status is now tracked in probation_records table via event_type field
             $table->timestamps();
@@ -42,6 +46,7 @@ return new class extends Migration
             $table->index(['pass_probation_date', 'end_probation_date', 'end_date'], 'idx_transition_check');
             $table->index(['employee_id', 'end_date']);
             $table->index(['department_id', 'end_date']);
+            $table->index('organization', 'idx_employments_organization');
         });
     }
 

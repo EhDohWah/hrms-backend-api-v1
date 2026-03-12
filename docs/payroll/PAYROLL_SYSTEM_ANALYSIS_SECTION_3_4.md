@@ -305,7 +305,7 @@ public function index(Request $request)
       "total_salary": 27083.33,
       "total_pvd": 3750.00,
       "total_saving_fund": 0.00,
-      "salary_bonus": 0.00,
+      "salary_increase": 0.00,
       "total_income": 27083.33,
       "employer_contribution": 2325.00,
       "total_deduction": 2800.00,

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\DeletionBlockedException;
 use App\Imports\EmployeesImport;
 use App\Models\Employee;
+use App\Models\EmployeeIdentification;
 use App\Models\GrantItem;
 use App\Models\Site;
 use App\Notifications\EmployeeActionNotification;
@@ -65,12 +66,22 @@ class EmployeeDataService
         $sortBy = $validated['sort_by'] ?? 'created_at';
         $sortOrder = $validated['sort_order'] ?? 'desc';
 
-        if (in_array($sortBy, ['organization', 'staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
+        if ($sortBy === 'organization') {
+            $query->join('employments', function ($join) {
+                $join->on('employees.id', '=', 'employments.employee_id')
+                    ->whereNull('employments.end_date');
+            })->orderBy('employments.organization', $sortOrder)->select('employees.*');
+        } elseif (in_array($sortBy, ['staff_id', 'first_name_en', 'last_name_en', 'gender', 'date_of_birth', 'status'])) {
             $query->orderBy('employees.'.$sortBy, $sortOrder);
         } elseif ($sortBy === 'age') {
             $query->orderBy('employees.date_of_birth', $sortOrder === 'asc' ? 'desc' : 'asc');
         } elseif ($sortBy === 'identification_type') {
-            $query->orderBy('employees.identification_type', $sortOrder);
+            $query->leftJoin('employee_identifications', function ($join) {
+                $join->on('employees.id', '=', 'employee_identifications.employee_id')
+                    ->where('employee_identifications.is_primary', true);
+            })
+                ->orderBy('employee_identifications.identification_type', $sortOrder)
+                ->select('employees.*');
         } else {
             $query->orderBy('employees.created_at', 'desc');
         }
@@ -109,6 +120,8 @@ class EmployeeDataService
             'employeeLanguages',
             'leaveBalances',
             'leaveBalances.leaveType',
+            'identifications',
+            'primaryIdentification',
         ]);
     }
 
@@ -117,7 +130,23 @@ class EmployeeDataService
      */
     public function store(array $validated): Employee
     {
+        $identificationData = $this->extractIdentificationData($validated);
+
         $employee = Employee::create($validated);
+
+        if (! empty($identificationData)) {
+            $createdBy = $validated['created_by'] ?? auth()->user()->name ?? 'System';
+            $identificationData['employee_id'] = $employee->id;
+            $identificationData['is_primary'] = true;
+            $identificationData['created_by'] = $createdBy;
+            $identificationData['updated_by'] = $createdBy;
+
+            foreach (EmployeeIdentification::NAME_FIELDS as $field) {
+                $identificationData[$field] = $validated[$field] ?? null;
+            }
+
+            EmployeeIdentification::create($identificationData);
+        }
 
         $this->invalidateCache();
         $this->notifyAction('created', $employee);
@@ -130,9 +159,15 @@ class EmployeeDataService
      */
     public function fullUpdate(Employee $employee, array $validated): Employee
     {
+        $identificationData = $this->extractIdentificationData($validated);
+
         $employee->update($validated + [
             'updated_by' => auth()->user()->name ?? 'system',
         ]);
+
+        if (! empty($identificationData)) {
+            $this->upsertPrimaryIdentification($employee, $identificationData);
+        }
 
         $this->invalidateCache();
         $employee->refresh();
@@ -175,8 +210,10 @@ class EmployeeDataService
         $succeeded = [];
         $failed = [];
 
+        $employees = Employee::whereIn('id', $ids)->get()->keyBy('id');
+
         foreach ($ids as $id) {
-            $employee = Employee::find($id);
+            $employee = $employees->get($id);
             if (! $employee) {
                 $failed[] = ['id' => $id, 'blockers' => ['Employee not found']];
 
@@ -239,15 +276,15 @@ class EmployeeDataService
      */
     public function searchForOrgTree(): array
     {
-        $employees = Employee::select('id', 'organization', 'staff_id', 'first_name_en', 'last_name_en', 'status')
+        $employees = Employee::select('id', 'staff_id', 'first_name_en', 'last_name_en', 'status')
             ->with([
-                'employment:id,employee_id,department_id,position_id',
+                'employment:id,employee_id,department_id,position_id,organization',
                 'employment.department:id,name',
                 'employment.position:id,title',
             ])
             ->get();
 
-        return $employees->groupBy('organization')->map(function ($organizationEmployees, $organization) {
+        return $employees->groupBy(fn ($emp) => $emp->employment?->organization ?? 'Unassigned')->map(function ($organizationEmployees, $organization) {
             return [
                 'key' => "organization-{$organization}",
                 'title' => $organization,
@@ -296,12 +333,12 @@ class EmployeeDataService
     public function showByStaffId(string $staffId)
     {
         $employees = Employee::select([
-            'id', 'organization', 'staff_id', 'initial_en',
+            'id', 'staff_id', 'initial_en',
             'first_name_en', 'last_name_en', 'gender', 'date_of_birth',
             'status', 'social_security_number', 'tax_number', 'mobile_phone',
         ])
             ->with([
-                'employment:id,employee_id,start_date,end_probation_date',
+                'employment:id,employee_id,organization,start_date,end_probation_date',
                 'employeeEducation:id,employee_id,school_name,degree,start_date,end_date',
             ])
             ->where('staff_id', $staffId)
@@ -329,7 +366,7 @@ class EmployeeDataService
             $query->where('status', $validated['status']);
         }
         if (! empty($validated['organization'])) {
-            $query->where('organization', $validated['organization']);
+            $query->whereHas('employment', fn ($q) => $q->where('organization', $validated['organization']));
         }
 
         $employees = $query->get();
@@ -404,21 +441,25 @@ class EmployeeDataService
         DB::beginTransaction();
 
         try {
-            // Handle identification fields - support both direct and legacy nested format
-            if (isset($data['employee_identification']) && ! isset($data['identification_type'])) {
-                $identData = $data['employee_identification'];
-                if (isset($identData['id_type'])) {
-                    $data['identification_type'] = $identData['id_type'];
+            $identificationData = $this->extractIdentificationData($data);
+
+            if (isset($data['employee_identification'])) {
+                $legacyData = $data['employee_identification'];
+                if (isset($legacyData['id_type'])) {
+                    $identificationData['identification_type'] = $legacyData['id_type'];
                 }
-                if (isset($identData['document_number'])) {
-                    $data['identification_number'] = $identData['document_number'];
+                if (isset($legacyData['document_number'])) {
+                    $identificationData['identification_number'] = $legacyData['document_number'];
                 }
             }
 
-            // Remove relation keys before updating main table
             unset($data['employee_identification'], $data['languages']);
 
             $employee->update($data);
+
+            if (! empty($identificationData)) {
+                $this->upsertPrimaryIdentification($employee, $identificationData, isset($identificationData['identification_type']));
+            }
 
             // Update languages
             if ($languages !== null) {
@@ -532,6 +573,38 @@ class EmployeeDataService
     }
 
     /**
+     * Transfer an employee between organizations (SMRU <-> BHF).
+     * Updates employments.organization (not employees).
+     */
+    public function transfer(Employee $employee, array $validated): Employee
+    {
+        $employment = $employee->employment;
+        $oldOrganization = $employment?->organization;
+        $newOrganization = $validated['new_organization'];
+
+        if ($employment) {
+            $employment->update([
+                'organization' => $newOrganization,
+                'updated_by' => auth()->user()->name ?? 'system',
+            ]);
+        }
+
+        $employee->logActivity('transferred', [
+            'from_organization' => $oldOrganization,
+            'to_organization' => $newOrganization,
+            'effective_date' => $validated['effective_date'],
+            'reason' => $validated['reason'] ?? null,
+        ], "Organization transfer: {$oldOrganization} → {$newOrganization}");
+
+        $this->invalidateCache();
+        $this->notifyAction('transferred', $employee);
+
+        $employee->refresh();
+
+        return $employee;
+    }
+
+    /**
      * Clear employee statistics cache.
      */
     private function invalidateCache(): void
@@ -559,6 +632,43 @@ class EmployeeDataService
     /**
      * Build applied filters array from validated input.
      */
+    private function extractIdentificationData(array &$data): array
+    {
+        $identificationFields = [
+            'identification_type',
+            'identification_number',
+            'identification_issue_date',
+            'identification_expiry_date',
+        ];
+
+        $identificationData = [];
+
+        foreach ($identificationFields as $field) {
+            if (array_key_exists($field, $data)) {
+                $identificationData[$field] = $data[$field];
+                unset($data[$field]);
+            }
+        }
+
+        return $identificationData;
+    }
+
+    private function upsertPrimaryIdentification(Employee $employee, array $identificationData, bool $requireTypeForCreate = false): void
+    {
+        $primary = $employee->primaryIdentification;
+        $updatedBy = auth()->user()->name ?? 'system';
+
+        if ($primary) {
+            $primary->update($identificationData + ['updated_by' => $updatedBy]);
+        } elseif (! $requireTypeForCreate || isset($identificationData['identification_type'])) {
+            $identificationData['employee_id'] = $employee->id;
+            $identificationData['is_primary'] = true;
+            $identificationData['created_by'] = $updatedBy;
+            $identificationData['updated_by'] = $updatedBy;
+            EmployeeIdentification::create($identificationData);
+        }
+    }
+
     private function buildAppliedFilters(array $validated): array
     {
         $appliedFilters = [];

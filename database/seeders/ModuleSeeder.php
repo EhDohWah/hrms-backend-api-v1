@@ -42,7 +42,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/dashboard',
                 'active_link' => '/dashboard',
                 'read_permission' => 'dashboard.read',
-                'edit_permissions' => ['dashboard.edit'],
+                'edit_permissions' => ['dashboard.create', 'dashboard.update', 'dashboard.delete'],
                 'order' => 1,
             ],
 
@@ -59,7 +59,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/grant/list',
                 'active_link' => '/grant/list',
                 'read_permission' => 'grants_list.read',
-                'edit_permissions' => ['grants_list.edit'],
+                'edit_permissions' => ['grants_list.create', 'grants_list.update', 'grants_list.delete'],
                 'order' => 10,
             ],
             [
@@ -71,7 +71,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/grant/grant-position',
                 'active_link' => '/grant/grant-position',
                 'read_permission' => 'grant_position.read',
-                'edit_permissions' => ['grant_position.edit'],
+                'edit_permissions' => ['grant_position.create', 'grant_position.update', 'grant_position.delete'],
                 'order' => 11,
             ],
 
@@ -88,7 +88,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/recruitment/interviews-list',
                 'active_link' => '/recruitment/interviews-list',
                 'read_permission' => 'interviews.read',
-                'edit_permissions' => ['interviews.edit'],
+                'edit_permissions' => ['interviews.create', 'interviews.update', 'interviews.delete'],
                 'order' => 20,
             ],
             [
@@ -100,7 +100,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/recruitment/job-offers-list',
                 'active_link' => '/recruitment/job-offers-list',
                 'read_permission' => 'job_offers.read',
-                'edit_permissions' => ['job_offers.edit'],
+                'edit_permissions' => ['job_offers.create', 'job_offers.update', 'job_offers.delete'],
                 'order' => 21,
             ],
 
@@ -117,7 +117,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/employee/employee-list',
                 'active_link' => '/employee/employee-list',
                 'read_permission' => 'employees.read',
-                'edit_permissions' => ['employees.edit'],
+                'edit_permissions' => ['employees.create', 'employees.update', 'employees.delete'],
                 'order' => 30,
             ],
             [
@@ -129,7 +129,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/employee/employment-list',
                 'active_link' => '/employee/employment-list',
                 'read_permission' => 'employment_records.read',
-                'edit_permissions' => ['employment_records.edit'],
+                'edit_permissions' => ['employment_records.create', 'employment_records.update', 'employment_records.delete'],
                 'order' => 31,
             ],
             [
@@ -141,7 +141,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/employee/funding-allocations',
                 'active_link' => '/employee/funding-allocations',
                 'read_permission' => 'employee_funding_allocations.read',
-                'edit_permissions' => ['employee_funding_allocations.edit'],
+                'edit_permissions' => ['employee_funding_allocations.create', 'employee_funding_allocations.update', 'employee_funding_allocations.delete'],
                 'order' => 32,
             ],
             [
@@ -153,7 +153,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/employee/employee-resignation',
                 'active_link' => '/employee/employee-resignation',
                 'read_permission' => 'employee_resignation.read',
-                'edit_permissions' => ['employee_resignation.edit'],
+                'edit_permissions' => ['employee_resignation.create', 'employee_resignation.update', 'employee_resignation.delete'],
                 'order' => 33,
             ],
 
@@ -170,7 +170,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/hrm/holidays',
                 'active_link' => '/hrm/holidays',
                 'read_permission' => 'holidays.read',
-                'edit_permissions' => ['holidays.edit'],
+                'edit_permissions' => ['holidays.create', 'holidays.update', 'holidays.delete'],
                 'order' => 40,
             ],
 
@@ -187,7 +187,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/leave/admin/leaves-admin',
                 'active_link' => '/leave/admin/leaves-admin',
                 'read_permission' => 'leaves_admin.read',
-                'edit_permissions' => ['leaves_admin.edit'],
+                'edit_permissions' => ['leaves_admin.create', 'leaves_admin.update', 'leaves_admin.delete'],
                 'order' => 50,
             ],
             [
@@ -199,7 +199,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/leave/admin/leave-types',
                 'active_link' => '/leave/admin/leave-types',
                 'read_permission' => 'leave_types.read',
-                'edit_permissions' => ['leave_types.edit'],
+                'edit_permissions' => ['leave_types.create', 'leave_types.update', 'leave_types.delete'],
                 'order' => 53,
             ],
             [
@@ -211,7 +211,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/leave/admin/leave-balances',
                 'active_link' => '/leave/admin/leave-balances',
                 'read_permission' => 'leave_balances.read',
-                'edit_permissions' => ['leave_balances.edit'],
+                'edit_permissions' => ['leave_balances.create', 'leave_balances.update', 'leave_balances.delete'],
                 'order' => 54,
             ],
 
@@ -228,7 +228,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/requests/travel/admin',
                 'active_link' => '/requests/travel/admin',
                 'read_permission' => 'travel_admin.read',
-                'edit_permissions' => ['travel_admin.edit'],
+                'edit_permissions' => ['travel_admin.create', 'travel_admin.update', 'travel_admin.delete'],
                 'order' => 60,
             ],
 
@@ -245,7 +245,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/attendance/attendance-list',
                 'active_link' => '/attendance/attendance-list',
                 'read_permission' => 'attendance_admin.read',
-                'edit_permissions' => ['attendance_admin.edit'],
+                'edit_permissions' => ['attendance_admin.create', 'attendance_admin.update', 'attendance_admin.delete'],
                 'order' => 70,
             ],
             [
@@ -257,7 +257,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/attendance/timesheets',
                 'active_link' => '/attendance/timesheets',
                 'read_permission' => 'timesheets.read',
-                'edit_permissions' => ['timesheets.edit'],
+                'edit_permissions' => ['timesheets.create', 'timesheets.update', 'timesheets.delete'],
                 'order' => 72,
             ],
             [
@@ -269,7 +269,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/attendance/schedule-timing',
                 'active_link' => '/attendance/schedule-timing',
                 'read_permission' => 'shift_schedule.read',
-                'edit_permissions' => ['shift_schedule.edit'],
+                'edit_permissions' => ['shift_schedule.create', 'shift_schedule.update', 'shift_schedule.delete'],
                 'order' => 73,
             ],
             [
@@ -281,7 +281,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/attendance/overtime',
                 'active_link' => '/attendance/overtime',
                 'read_permission' => 'overtime.read',
-                'edit_permissions' => ['overtime.edit'],
+                'edit_permissions' => ['overtime.create', 'overtime.update', 'overtime.delete'],
                 'order' => 74,
             ],
 
@@ -298,7 +298,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/training/training-list',
                 'active_link' => '/training/training-list',
                 'read_permission' => 'training_list.read',
-                'edit_permissions' => ['training_list.edit'],
+                'edit_permissions' => ['training_list.create', 'training_list.update', 'training_list.delete'],
                 'order' => 80,
             ],
             [
@@ -310,8 +310,42 @@ class ModuleSeeder extends Seeder
                 'route' => '/training/employee-training-list',
                 'active_link' => '/training/employee-training-list',
                 'read_permission' => 'employee_training.read',
-                'edit_permissions' => ['employee_training.edit'],
+                'edit_permissions' => ['employee_training.create', 'employee_training.update', 'employee_training.delete'],
                 'order' => 81,
+            ],
+
+            // ============================================================================
+            // HRM > TRANSFERS (Standalone - no submenus)
+            // Employee organization transfers (SMRU <-> BHF)
+            // ============================================================================
+            [
+                'name' => 'transfer',
+                'display_name' => 'Transfers',
+                'description' => 'Manage employee organization transfers',
+                'icon' => 'swap',
+                'category' => 'HRM',
+                'route' => '/hrm/transfers',
+                'active_link' => '/hrm/transfers',
+                'read_permission' => 'transfer.read',
+                'edit_permissions' => ['transfer.create', 'transfer.update', 'transfer.delete'],
+                'order' => 88,
+            ],
+
+            // ============================================================================
+            // HRM > PERSONNEL ACTIONS (Standalone - no submenus)
+            // Separate module for managing personnel actions (promotions, transfers, etc.)
+            // ============================================================================
+            [
+                'name' => 'personnel_actions',
+                'display_name' => 'Personnel Actions',
+                'description' => 'Manage personnel actions (promotions, demotions, transfers, salary changes)',
+                'icon' => 'swap',
+                'category' => 'HRM',
+                'route' => '/hrm/personnel-actions',
+                'active_link' => '/hrm/personnel-actions',
+                'read_permission' => 'personnel_actions.read',
+                'edit_permissions' => ['personnel_actions.create', 'personnel_actions.update', 'personnel_actions.delete'],
+                'order' => 89,
             ],
 
             // ============================================================================
@@ -327,7 +361,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/hrm/resignation',
                 'active_link' => '/hrm/resignation',
                 'read_permission' => 'resignation.read',
-                'edit_permissions' => ['resignation.edit'],
+                'edit_permissions' => ['resignation.create', 'resignation.update', 'resignation.delete'],
                 'order' => 90,
             ],
 
@@ -344,7 +378,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/hrm/termination',
                 'active_link' => '/hrm/termination',
                 'read_permission' => 'termination.read',
-                'edit_permissions' => ['termination.edit'],
+                'edit_permissions' => ['termination.create', 'termination.update', 'termination.delete'],
                 'order' => 91,
             ],
 
@@ -361,7 +395,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/payroll/employee-salary',
                 'active_link' => '/payroll/employee-salary',
                 'read_permission' => 'employee_salary.read',
-                'edit_permissions' => ['employee_salary.edit'],
+                'edit_permissions' => ['employee_salary.create', 'employee_salary.update', 'employee_salary.delete'],
                 'order' => 100,
             ],
             [
@@ -373,7 +407,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/payroll/tax-settings',
                 'active_link' => '/payroll/tax-settings',
                 'read_permission' => 'tax_settings.read',
-                'edit_permissions' => ['tax_settings.edit'],
+                'edit_permissions' => ['tax_settings.create', 'tax_settings.update', 'tax_settings.delete'],
                 'order' => 101,
             ],
             [
@@ -385,7 +419,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/payroll/benefit-settings',
                 'active_link' => '/payroll/benefit-settings',
                 'read_permission' => 'benefit_settings.read',
-                'edit_permissions' => ['benefit_settings.edit'],
+                'edit_permissions' => ['benefit_settings.create', 'benefit_settings.update', 'benefit_settings.delete'],
                 'order' => 102,
             ],
             [
@@ -397,7 +431,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/payroll/payslip',
                 'active_link' => '/payroll/payslip',
                 'read_permission' => 'payslip.read',
-                'edit_permissions' => ['payslip.edit'],
+                'edit_permissions' => ['payslip.create', 'payslip.update', 'payslip.delete'],
                 'order' => 103,
             ],
             [
@@ -409,7 +443,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/payroll/payroll',
                 'active_link' => '/payroll/payroll',
                 'read_permission' => 'payroll_items.read',
-                'edit_permissions' => ['payroll_items.edit'],
+                'edit_permissions' => ['payroll_items.create', 'payroll_items.update', 'payroll_items.delete'],
                 'order' => 104,
             ],
 
@@ -426,7 +460,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/lookups/lookup-list',
                 'active_link' => '/lookups/lookup-list',
                 'read_permission' => 'lookup_list.read',
-                'edit_permissions' => ['lookup_list.edit'],
+                'edit_permissions' => ['lookup_list.create', 'lookup_list.update', 'lookup_list.delete'],
                 'order' => 110,
             ],
 
@@ -443,7 +477,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/sites',
                 'active_link' => '/sites',
                 'read_permission' => 'sites.read',
-                'edit_permissions' => ['sites.edit'],
+                'edit_permissions' => ['sites.create', 'sites.update', 'sites.delete'],
                 'order' => 120,
             ],
             [
@@ -455,7 +489,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/departments',
                 'active_link' => '/departments',
                 'read_permission' => 'departments.read',
-                'edit_permissions' => ['departments.edit'],
+                'edit_permissions' => ['departments.create', 'departments.update', 'departments.delete'],
                 'order' => 121,
             ],
             [
@@ -467,7 +501,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/positions',
                 'active_link' => '/positions',
                 'read_permission' => 'positions.read',
-                'edit_permissions' => ['positions.edit'],
+                'edit_permissions' => ['positions.create', 'positions.update', 'positions.delete'],
                 'order' => 122,
             ],
             [
@@ -479,7 +513,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/section-departments',
                 'active_link' => '/section-departments',
                 'read_permission' => 'section_departments.read',
-                'edit_permissions' => ['section_departments.edit'],
+                'edit_permissions' => ['section_departments.create', 'section_departments.update', 'section_departments.delete'],
                 'order' => 123,
             ],
 
@@ -496,7 +530,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/user-management/users',
                 'active_link' => '/user-management/users',
                 'read_permission' => 'users.read',
-                'edit_permissions' => ['users.edit'],
+                'edit_permissions' => ['users.create', 'users.update', 'users.delete'],
                 'order' => 130,
             ],
             [
@@ -508,7 +542,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/user-management/roles',
                 'active_link' => '/user-management/roles',
                 'read_permission' => 'roles.read',
-                'edit_permissions' => ['roles.edit'],
+                'edit_permissions' => ['roles.create', 'roles.update', 'roles.delete'],
                 'order' => 131,
             ],
 
@@ -525,7 +559,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/report-list',
                 'active_link' => '/reports/report-list',
                 'read_permission' => 'report_list.read',
-                'edit_permissions' => ['report_list.edit'],
+                'edit_permissions' => ['report_list.create', 'report_list.update', 'report_list.delete'],
                 'order' => 140,
             ],
             [
@@ -537,7 +571,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/expenses-report',
                 'active_link' => '/reports/expenses-report',
                 'read_permission' => 'expense_report.read',
-                'edit_permissions' => ['expense_report.edit'],
+                'edit_permissions' => ['expense_report.create', 'expense_report.update', 'expense_report.delete'],
                 'order' => 141,
             ],
             [
@@ -549,7 +583,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/invoice-report',
                 'active_link' => '/reports/invoice-report',
                 'read_permission' => 'invoice_report.read',
-                'edit_permissions' => ['invoice_report.edit'],
+                'edit_permissions' => ['invoice_report.create', 'invoice_report.update', 'invoice_report.delete'],
                 'order' => 142,
             ],
             [
@@ -561,7 +595,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/payment-report',
                 'active_link' => '/reports/payment-report',
                 'read_permission' => 'payment_report.read',
-                'edit_permissions' => ['payment_report.edit'],
+                'edit_permissions' => ['payment_report.create', 'payment_report.update', 'payment_report.delete'],
                 'order' => 143,
             ],
             [
@@ -573,7 +607,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/project-report',
                 'active_link' => '/reports/project-report',
                 'read_permission' => 'project_report.read',
-                'edit_permissions' => ['project_report.edit'],
+                'edit_permissions' => ['project_report.create', 'project_report.update', 'project_report.delete'],
                 'order' => 144,
             ],
             [
@@ -585,7 +619,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/task-report',
                 'active_link' => '/reports/task-report',
                 'read_permission' => 'task_report.read',
-                'edit_permissions' => ['task_report.edit'],
+                'edit_permissions' => ['task_report.create', 'task_report.update', 'task_report.delete'],
                 'order' => 145,
             ],
             [
@@ -597,7 +631,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/user-report',
                 'active_link' => '/reports/user-report',
                 'read_permission' => 'user_report.read',
-                'edit_permissions' => ['user_report.edit'],
+                'edit_permissions' => ['user_report.create', 'user_report.update', 'user_report.delete'],
                 'order' => 146,
             ],
             [
@@ -609,7 +643,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/employee-report',
                 'active_link' => '/reports/employee-report',
                 'read_permission' => 'employee_report.read',
-                'edit_permissions' => ['employee_report.edit'],
+                'edit_permissions' => ['employee_report.create', 'employee_report.update', 'employee_report.delete'],
                 'order' => 147,
             ],
             [
@@ -621,7 +655,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/payslip-report',
                 'active_link' => '/reports/payslip-report',
                 'read_permission' => 'payslip_report.read',
-                'edit_permissions' => ['payslip_report.edit'],
+                'edit_permissions' => ['payslip_report.create', 'payslip_report.update', 'payslip_report.delete'],
                 'order' => 148,
             ],
             [
@@ -633,7 +667,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/attendance-report',
                 'active_link' => '/reports/attendance-report',
                 'read_permission' => 'attendance_report.read',
-                'edit_permissions' => ['attendance_report.edit'],
+                'edit_permissions' => ['attendance_report.create', 'attendance_report.update', 'attendance_report.delete'],
                 'order' => 149,
             ],
             [
@@ -645,7 +679,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/leave-report',
                 'active_link' => '/reports/leave-report',
                 'read_permission' => 'leave_report.read',
-                'edit_permissions' => ['leave_report.edit'],
+                'edit_permissions' => ['leave_report.create', 'leave_report.update', 'leave_report.delete'],
                 'order' => 150,
             ],
             [
@@ -657,7 +691,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/reports/daily-report',
                 'active_link' => '/reports/daily-report',
                 'read_permission' => 'daily_report.read',
-                'edit_permissions' => ['daily_report.edit'],
+                'edit_permissions' => ['daily_report.create', 'daily_report.update', 'daily_report.delete'],
                 'order' => 151,
             ],
 
@@ -674,7 +708,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/file-uploads',
                 'active_link' => '/file-uploads',
                 'read_permission' => 'file_uploads.read',
-                'edit_permissions' => ['file_uploads.edit'],
+                'edit_permissions' => ['file_uploads.create', 'file_uploads.update', 'file_uploads.delete'],
                 'order' => 160,
             ],
 
@@ -691,7 +725,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/letter-templates',
                 'active_link' => '/letter-templates',
                 'read_permission' => 'letter_templates.read',
-                'edit_permissions' => ['letter_templates.edit'],
+                'edit_permissions' => ['letter_templates.create', 'letter_templates.update', 'letter_templates.delete'],
                 'order' => 165,
             ],
 
@@ -708,7 +742,7 @@ class ModuleSeeder extends Seeder
                 'route' => '/recycle-bin/recycle-bin-list',
                 'active_link' => '/recycle-bin/recycle-bin-list',
                 'read_permission' => 'recycle_bin_list.read',
-                'edit_permissions' => ['recycle_bin_list.edit'],
+                'edit_permissions' => ['recycle_bin_list.create', 'recycle_bin_list.update', 'recycle_bin_list.delete'],
                 'order' => 170,
             ],
         ];

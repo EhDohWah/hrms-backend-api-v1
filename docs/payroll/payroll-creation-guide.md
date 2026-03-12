@@ -140,7 +140,7 @@ $payroll = Payroll::create([
     'compensation_refund' => 0,
     'saving_fund' => $employment->saving_fund ? 1000 : 0,
     'total_saving_fund' => $employment->saving_fund ? 1000 : 0,
-    'salary_bonus' => 5000, // From additional income
+    'salary_increase' => 5000, // From additional income
     'employer_contribution' => $payrollData['social_security']['employer_contribution'],
     'notes' => 'Generated with tax calculation system'
 ]);

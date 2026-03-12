@@ -27,6 +27,7 @@ class EmploymentFactory extends Factory
 
         return [
             'employee_id' => Employee::factory(),
+            'organization' => fake()->randomElement(['SMRU', 'BHF']),
             'pay_method' => fake()->randomElement(['Transferred to bank', 'Cash cheque']),
             'pass_probation_date' => $passProbationDate->format('Y-m-d'),
             'start_date' => $startDate,
@@ -41,6 +42,20 @@ class EmploymentFactory extends Factory
             'pvd' => fake()->boolean(60),
             'saving_fund' => fake()->boolean(40),
         ];
+    }
+
+    public function smru(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'organization' => 'SMRU',
+        ]);
+    }
+
+    public function bhf(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'organization' => 'BHF',
+        ]);
     }
 
     /**

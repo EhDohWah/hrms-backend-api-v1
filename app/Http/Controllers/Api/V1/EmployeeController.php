@@ -10,6 +10,7 @@ use App\Http\Requests\Employee\ExportEmployeesRequest;
 use App\Http\Requests\Employee\FilterEmployeesRequest;
 use App\Http\Requests\Employee\FullUpdateEmployeeRequest;
 use App\Http\Requests\Employee\ListEmployeesRequest;
+use App\Http\Requests\Employee\TransferEmployeeRequest;
 use App\Http\Requests\Employee\UploadProfilePictureRequest;
 use App\Http\Requests\ShowEmployeeRequest;
 use App\Http\Requests\StoreEmployeeRequest;
@@ -596,5 +597,18 @@ class EmployeeController extends BaseApiController
         $filename .= '_'.date('Y-m-d_His').'.xlsx';
 
         return Excel::download($export, $filename);
+    }
+
+    public function transfer(TransferEmployeeRequest $request, Employee $employee): JsonResponse
+    {
+        $validated = $request->validated();
+        $oldOrg = $employee->employment?->organization;
+        $newOrg = $validated['new_organization'];
+        $employee = $this->employeeService->transfer($employee, $validated);
+
+        return $this->successResponse(
+            new EmployeeResource($employee),
+            "Employee transferred from {$oldOrg} to {$newOrg}"
+        );
     }
 }

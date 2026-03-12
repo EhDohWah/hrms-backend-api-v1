@@ -26,7 +26,9 @@ describe('Interview Permission Middleware', function () {
 
         // Create permissions (use firstOrCreate to avoid conflicts)
         Permission::firstOrCreate(['name' => 'interviews.read']);
-        Permission::firstOrCreate(['name' => 'interviews.edit']);
+        Permission::firstOrCreate(['name' => 'interviews.create']);
+        Permission::firstOrCreate(['name' => 'interviews.update']);
+        Permission::firstOrCreate(['name' => 'interviews.delete']);
 
         // Create roles (use firstOrCreate to avoid conflicts)
         $this->adminRole = Role::firstOrCreate(['name' => 'admin']);
@@ -34,10 +36,10 @@ describe('Interview Permission Middleware', function () {
         $this->userRole = Role::firstOrCreate(['name' => 'user']);
 
         // Assign permissions to roles
-        // admin: read + edit (full access)
-        $this->adminRole->givePermissionTo(['interviews.read', 'interviews.edit']);
-        // hr: read + edit (full access including delete via edit permission)
-        $this->hrRole->givePermissionTo(['interviews.read', 'interviews.edit']);
+        // admin: read + create + update + delete (full access)
+        $this->adminRole->givePermissionTo(['interviews.read', 'interviews.create', 'interviews.update', 'interviews.delete']);
+        // hr: read + create + update + delete (full access)
+        $this->hrRole->givePermissionTo(['interviews.read', 'interviews.create', 'interviews.update', 'interviews.delete']);
         // user: read only
         $this->userRole->givePermissionTo(['interviews.read']);
 
@@ -173,7 +175,7 @@ describe('Interview Permission Middleware', function () {
         });
     });
 
-    describe('POST /api/interviews (interviews.edit permission)', function () {
+    describe('POST /api/interviews (interviews.create permission)', function () {
         it('allows admin user to create interview', function () {
             $interviewData = [
                 'candidate_name' => 'John Doe',
@@ -232,7 +234,7 @@ describe('Interview Permission Middleware', function () {
         });
     });
 
-    describe('PUT /api/interviews/{id} (interviews.edit permission)', function () {
+    describe('PUT /api/interviews/{id} (interviews.update permission)', function () {
         it('allows admin user to update interview', function () {
             $interview = Interview::factory()->create();
             $updateData = [
@@ -284,7 +286,7 @@ describe('Interview Permission Middleware', function () {
         });
     });
 
-    describe('DELETE /api/interviews/{id} (interviews.edit permission)', function () {
+    describe('DELETE /api/interviews/{id} (interviews.delete permission)', function () {
         it('allows admin user to delete interview', function () {
             $interview = Interview::factory()->create();
 
@@ -331,22 +333,30 @@ describe('Interview Permission Middleware', function () {
     describe('Direct Permission Testing', function () {
         it('verifies admin has all interview permissions', function () {
             expect($this->adminUser->can('interviews.read'))->toBeTrue()
-                ->and($this->adminUser->can('interviews.edit'))->toBeTrue();
+                ->and($this->adminUser->can('interviews.create'))->toBeTrue()
+                ->and($this->adminUser->can('interviews.update'))->toBeTrue()
+                ->and($this->adminUser->can('interviews.delete'))->toBeTrue();
         });
 
         it('verifies hr has all interview permissions', function () {
             expect($this->hrUser->can('interviews.read'))->toBeTrue()
-                ->and($this->hrUser->can('interviews.edit'))->toBeTrue();
+                ->and($this->hrUser->can('interviews.create'))->toBeTrue()
+                ->and($this->hrUser->can('interviews.update'))->toBeTrue()
+                ->and($this->hrUser->can('interviews.delete'))->toBeTrue();
         });
 
         it('verifies regular user has read-only interview permissions', function () {
             expect($this->regularUser->can('interviews.read'))->toBeTrue()
-                ->and($this->regularUser->can('interviews.edit'))->toBeFalse();
+                ->and($this->regularUser->can('interviews.create'))->toBeFalse()
+                ->and($this->regularUser->can('interviews.update'))->toBeFalse()
+                ->and($this->regularUser->can('interviews.delete'))->toBeFalse();
         });
 
         it('verifies unauthorized user has no interview permissions', function () {
             expect($this->unauthorizedUser->can('interviews.read'))->toBeFalse()
-                ->and($this->unauthorizedUser->can('interviews.edit'))->toBeFalse();
+                ->and($this->unauthorizedUser->can('interviews.create'))->toBeFalse()
+                ->and($this->unauthorizedUser->can('interviews.update'))->toBeFalse()
+                ->and($this->unauthorizedUser->can('interviews.delete'))->toBeFalse();
         });
     });
 
@@ -382,13 +392,15 @@ describe('Interview Permission Middleware', function () {
 
         it('can create custom role with specific interview permissions', function () {
             $customRole = Role::firstOrCreate(['name' => 'interviewer']);
-            $customRole->givePermissionTo(['interviews.read', 'interviews.edit']);
+            $customRole->givePermissionTo(['interviews.read', 'interviews.create', 'interviews.update', 'interviews.delete']);
 
             $customUser = User::factory()->create();
             $customUser->assignRole('interviewer');
 
             expect($customUser->can('interviews.read'))->toBeTrue()
-                ->and($customUser->can('interviews.edit'))->toBeTrue();
+                ->and($customUser->can('interviews.create'))->toBeTrue()
+                ->and($customUser->can('interviews.update'))->toBeTrue()
+                ->and($customUser->can('interviews.delete'))->toBeTrue();
         });
     });
 
@@ -399,16 +411,18 @@ describe('Interview Permission Middleware', function () {
 
             // Should have the highest permissions from any role
             expect($multiRoleUser->can('interviews.read'))->toBeTrue()
-                ->and($multiRoleUser->can('interviews.edit'))->toBeTrue();
+                ->and($multiRoleUser->can('interviews.create'))->toBeTrue()
+                ->and($multiRoleUser->can('interviews.update'))->toBeTrue()
+                ->and($multiRoleUser->can('interviews.delete'))->toBeTrue();
         });
 
         it('handles direct permissions overriding role permissions', function () {
             $specialUser = User::factory()->create();
             $specialUser->assignRole('user'); // Only has read permission
-            $specialUser->givePermissionTo('interviews.edit'); // Direct edit permission
+            $specialUser->givePermissionTo('interviews.create'); // Direct create permission
 
             expect($specialUser->can('interviews.read'))->toBeTrue()
-                ->and($specialUser->can('interviews.edit'))->toBeTrue();
+                ->and($specialUser->can('interviews.create'))->toBeTrue();
         });
     });
 });

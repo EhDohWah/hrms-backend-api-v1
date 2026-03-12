@@ -14,15 +14,18 @@ class PersonnelAction extends Model
     protected $fillable = [
         'form_number', 'reference_number', 'employment_id',
         'current_employee_no',
-        'current_department_id', 'current_position_id', 'current_work_location_id',
+        'current_department_id', 'current_position_id', 'current_site_id',
         'current_salary', 'current_employment_date',
-        'effective_date', 'action_type', 'action_subtype', 'is_transfer',
-        'transfer_type',
-        'new_department_id', 'new_position_id', 'new_work_location_id',
+        'effective_date', 'action_type', 'action_subtype',
+        'new_department_id', 'new_position_id', 'new_site_id',
         'new_work_schedule', 'new_report_to',
         'new_pay_plan', 'new_salary', 'new_phone_ext', 'new_email',
-        'comments', 'change_details',
-        'dept_head_approved', 'coo_approved', 'hr_approved', 'accountant_approved',
+        'comments', 'change_details', 'acknowledged_by',
+        'dept_head_approved', 'dept_head_approved_date',
+        'coo_approved', 'coo_approved_date',
+        'hr_approved', 'hr_approved_date',
+        'accountant_approved', 'accountant_approved_date',
+        'implemented_at',
         'created_by', 'updated_by',
     ];
 
@@ -33,36 +36,35 @@ class PersonnelAction extends Model
             'new_salary' => 'decimal:2',
             'effective_date' => 'date',
             'current_employment_date' => 'date',
-            'is_transfer' => 'boolean',
             'dept_head_approved' => 'boolean',
+            'dept_head_approved_date' => 'date',
             'coo_approved' => 'boolean',
+            'coo_approved_date' => 'date',
             'hr_approved' => 'boolean',
+            'hr_approved_date' => 'date',
             'accountant_approved' => 'boolean',
+            'accountant_approved_date' => 'date',
+            'implemented_at' => 'datetime',
         ];
     }
 
-    // Action Type Constants (instead of enum for MSSQL)
     public const ACTION_TYPES = [
         'appointment' => 'Appointment',
         'fiscal_increment' => 'Fiscal Increment',
         'title_change' => 'Title Change',
         'voluntary_separation' => 'Voluntary Separation',
-        'position_change' => 'Position Change',
-        'transfer' => 'Transfer',
-    ];
-
-    public const ACTION_SUBTYPES = [
-        're_evaluated_pay_adjustment' => 'Re-Evaluated Pay Adjustment',
+        're_evaluated_pay' => 'Re-Evaluated Pay Adjustment',
         'promotion' => 'Promotion',
         'demotion' => 'Demotion',
         'end_of_contract' => 'End of Contract',
         'work_allocation' => 'Work Allocation',
+        'transfer' => 'Transfer',
+        'position_change' => 'Position Change',
     ];
 
-    public const TRANSFER_TYPES = [
+    public const ACTION_SUBTYPES = [
         'internal_department' => 'Internal Department',
         'site_to_site' => 'From Site to Site',
-        'attachment_position' => 'Attachment Position',
     ];
 
     public const STATUSES = [
@@ -111,14 +113,9 @@ class PersonnelAction extends Model
         return $this->belongsTo(Position::class, 'current_position_id');
     }
 
-    public function currentWorkLocation(): BelongsTo
-    {
-        return $this->belongsTo(Site::class, 'current_work_location_id');
-    }
-
     public function currentSite(): BelongsTo
     {
-        return $this->currentWorkLocation();
+        return $this->belongsTo(Site::class, 'current_site_id');
     }
 
     // New State Relationships
@@ -132,14 +129,9 @@ class PersonnelAction extends Model
         return $this->belongsTo(Position::class, 'new_position_id');
     }
 
-    public function newWorkLocation(): BelongsTo
-    {
-        return $this->belongsTo(Site::class, 'new_work_location_id');
-    }
-
     public function newSite(): BelongsTo
     {
-        return $this->newWorkLocation();
+        return $this->belongsTo(Site::class, 'new_site_id');
     }
 
     // Helper methods
@@ -166,20 +158,24 @@ class PersonnelAction extends Model
      */
     public function populateCurrentEmploymentData(): void
     {
-        $employment = $this->employment()->with(['department', 'position', 'workLocation', 'employee'])->first();
+        $employment = $this->employment()->with(['department', 'position', 'site', 'employee'])->first();
 
         if ($employment) {
             $this->current_employee_no = $employment->employee->staff_id ?? null;
             $this->current_department_id = $employment->department_id;
             $this->current_position_id = $employment->position_id;
             $this->current_salary = $employment->pass_probation_salary;
-            $this->current_work_location_id = $employment->site_id;
+            $this->current_site_id = $employment->site_id;
             $this->current_employment_date = $employment->start_date;
         }
     }
 
     public function getStatusAttribute(): string
     {
+        if ($this->implemented_at) {
+            return 'implemented';
+        }
+
         if ($this->isFullyApproved()) {
             return 'fully_approved';
         }

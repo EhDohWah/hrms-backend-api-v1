@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\StorePayrollPolicySettingRequest;
 use App\Http\Requests\UpdatePayrollPolicySettingRequest;
 use App\Http\Resources\PayrollPolicySettingResource;
+use App\Models\PayrollPolicySetting;
 use App\Services\PayrollPolicySettingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
- * Manages payroll policy settings such as 13th month pay and salary increase rules.
+ * Manages payroll policy settings (one row per policy).
  */
 class PayrollPolicySettingController extends BaseApiController
 {
@@ -20,17 +22,22 @@ class PayrollPolicySettingController extends BaseApiController
     /**
      * List all payroll policy settings.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $result = $this->payrollPolicySettingService->list();
+        $filters = $request->only(['filter_category', 'filter_is_active']);
+
+        // Cast filter_is_active to boolean if present
+        if (array_key_exists('filter_is_active', $filters) && $filters['filter_is_active'] !== null) {
+            $filters['filter_is_active'] = filter_var($filters['filter_is_active'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $settings = $this->payrollPolicySettingService->list($filters);
 
         return response()->json([
             'success' => true,
             'message' => 'Payroll policy settings retrieved successfully',
-            'data' => PayrollPolicySettingResource::collection($result['policies']),
-            'active_policy' => $result['active_policy']
-                ? new PayrollPolicySettingResource($result['active_policy'])
-                : null,
+            'data' => PayrollPolicySettingResource::collection($settings),
+            'categories' => PayrollPolicySetting::getCategories(),
         ]);
     }
 

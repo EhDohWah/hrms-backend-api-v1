@@ -15,7 +15,6 @@ return new class extends Migration
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('organization', 10);
             $table->string('staff_id', 50);
             $table->string('initial_en', 10)->nullable();
             $table->string('initial_th', 10)->nullable();
@@ -63,8 +62,8 @@ return new class extends Migration
         // Filtered unique index: only enforces uniqueness among non-deleted rows
         // (standard UNIQUE would block re-creating a record with same staff_id after soft-delete)
         DB::statement('
-            CREATE UNIQUE INDEX [employees_staff_id_organization_unique]
-            ON [employees] ([staff_id], [organization])
+            CREATE UNIQUE INDEX [employees_staff_id_unique]
+            ON [employees] ([staff_id])
             WHERE [deleted_at] IS NULL
         ');
     }

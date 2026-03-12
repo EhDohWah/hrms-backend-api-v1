@@ -28,14 +28,6 @@ class UpdateEmployeePersonalRequest extends FormRequest
             'languages.*' => ['string', 'max:30'],
             'current_address' => ['required', 'string'],
             'permanent_address' => ['required', 'string'],
-            'identification_type' => ['nullable', 'string', 'in:10YearsID,BurmeseID,CI,Borderpass,ThaiID,Passport,Other'],
-            'identification_number' => ['nullable', 'string', 'max:50', 'required_with:identification_type'],
-            'identification_issue_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'identification_expiry_date' => ['nullable', 'date', 'after:identification_issue_date'],
-            // Support legacy nested format for backward compatibility
-            'employee_identification' => ['nullable', 'array'],
-            'employee_identification.id_type' => ['nullable', 'string', 'max:30'],
-            'employee_identification.document_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

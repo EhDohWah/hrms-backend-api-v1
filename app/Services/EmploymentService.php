@@ -58,7 +58,7 @@ class EmploymentService
             'created_by',
             'updated_by',
         ])->with([
-            'employee:id,staff_id,organization,first_name_en,last_name_en',
+            'employee:id,staff_id,first_name_en,last_name_en',
             'department:id,name',
             'position:id,title,department_id',
             'site:id,name',
@@ -76,9 +76,7 @@ class EmploymentService
         // Apply organization filter
         if (! empty($validated['filter_organization'])) {
             $subsidiaries = array_map('trim', explode(',', $validated['filter_organization']));
-            $query->whereHas('employee', function ($q) use ($subsidiaries) {
-                $q->whereIn('organization', $subsidiaries);
-            });
+            $query->whereIn('organization', $subsidiaries);
         }
 
         // Apply site filter
@@ -200,7 +198,7 @@ class EmploymentService
     public function searchByStaffId(string $staffId, bool $includeInactive): array
     {
         $employee = Employee::where('staff_id', $staffId)
-            ->select('id', 'staff_id', 'organization', 'first_name_en', 'last_name_en')
+            ->select('id', 'staff_id', 'first_name_en', 'last_name_en')
             ->first();
 
         if (! $employee) {
@@ -208,7 +206,7 @@ class EmploymentService
         }
 
         $employmentsQuery = Employment::with([
-            'employee:id,staff_id,organization,first_name_en,last_name_en',
+            'employee:id,staff_id,first_name_en,last_name_en',
             'department:id,name',
             'position:id,title,department_id',
             'site:id,name',
@@ -217,8 +215,8 @@ class EmploymentService
 
         if (! $includeInactive) {
             $employmentsQuery->where(function ($query) {
-                $query->whereNull('end_probation_date')
-                    ->orWhere('end_probation_date', '>', now());
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>', now());
             });
         }
 
@@ -226,7 +224,7 @@ class EmploymentService
 
         $totalEmployments = $employments->count();
         $activeEmployments = $employments->filter(function ($employment) {
-            return ! $employment->end_probation_date || $employment->end_probation_date > now();
+            return $employment->end_date === null;
         })->count();
 
         return [
@@ -234,7 +232,7 @@ class EmploymentService
             'employee_summary' => [
                 'staff_id' => $employee->staff_id,
                 'full_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
-                'organization' => $employee->organization,
+                'organization' => $employee->employment?->organization,
             ],
             'statistics' => [
                 'total_employments' => $totalEmployments,

@@ -212,8 +212,8 @@ Every monetary column is stored as SQL `text` because Laravel's `'encrypted'` ca
 | `total_salary` | text (encrypted) | No | Total cost to company = `gross_by_FTE + retro + 13th + bonus + employer_ss + employer_hw` |
 | `total_pvd` | text (encrypted) | No | Combined PVD: employee + employer match |
 | `total_saving_fund` | text (encrypted) | No | Combined Saving Fund: employee + employer match |
-| `salary_bonus` | text (encrypted) | Yes | Annual salary increase bonus (currently hardcoded `0` in auto-calc; set only via import or manual edit) |
-| `total_income` | text (encrypted) | No | Total employee income = `gross_by_FTE + retro + 13th_month + salary_bonus` |
+| `salary_increase` | text (encrypted) | Yes | Annual salary increase bonus (currently hardcoded `0` in auto-calc; set only via import or manual edit) |
+| `total_income` | text (encrypted) | No | Total employee income = `gross_by_FTE + retro + 13th_month + salary_increase` |
 | `employer_contribution` | text (encrypted) | No | Total employer cost = `employer_ss + employer_hw + pvd_employer_portion` |
 | `total_deduction` | text (encrypted) | No | Total employee deductions = `pvd + saving_fund + employee_ss + employee_hw + tax` |
 | `notes` | text (plain, unencrypted) | Yes | Free-text notes shown in payslip footer |
@@ -336,7 +336,7 @@ net_salary = round(total_income - total_deduction)
 Total cost to company:
 
 ```
-total_salary = round(gross_by_FTE + retroactive + thirteen_month + salary_bonus + employer_ss + employer_hw)
+total_salary = round(gross_by_FTE + retroactive + thirteen_month + salary_increase + employer_ss + employer_hw)
 ```
 
 ### Step 13 — `total_pvd` / `total_saving_fund` (line 1677)
@@ -353,7 +353,7 @@ Since both default to 7.5%, this typically equals `pvd × 2`.
 
 | Field | Formula |
 |---|---|
-| `total_income` | `gross_by_FTE + retroactive_adjustment + thirteen_month_salary + salary_bonus` |
+| `total_income` | `gross_by_FTE + retroactive_adjustment + thirteen_month_salary + salary_increase` |
 | `total_deduction` | `pvd + saving_fund + employee_social_security + employee_health_welfare + tax` |
 | `employer_contribution` | `employer_social_security + employer_health_welfare + pvd_employer_portion` |
 | `thirteen_month_salary_accured` | `round((ytdGrossByFTE + currentMonthGrossByFTE) / divisor)` — monthly running accrual |
@@ -530,7 +530,7 @@ The import accepts an Excel file with all 22 monetary fields pre-computed by the
 | `total_salary` | `total_salary` | |
 | `total_pvd` | `total_pvd` | |
 | `total_saving_fund` | `total_saving_fund` | |
-| `salary_bonus` | `salary_bonus` | |
+| `salary_increase` | `salary_increase` | |
 | `total_income` | `total_income` | |
 | `employer_contribution` | `employer_contribution` | |
 | `total_deduction` | `total_deduction` | |

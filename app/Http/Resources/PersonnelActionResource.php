@@ -22,17 +22,15 @@ class PersonnelActionResource extends JsonResource
             'current_employee_no' => $this->current_employee_no,
             'current_department_id' => $this->current_department_id,
             'current_position_id' => $this->current_position_id,
-            'current_work_location_id' => $this->current_work_location_id,
+            'current_site_id' => $this->current_site_id,
             'current_salary' => $this->current_salary,
             'current_employment_date' => $this->current_employment_date?->format('Y-m-d'),
             'effective_date' => $this->effective_date?->format('Y-m-d'),
             'action_type' => $this->action_type,
             'action_subtype' => $this->action_subtype,
-            'is_transfer' => $this->is_transfer,
-            'transfer_type' => $this->transfer_type,
             'new_department_id' => $this->new_department_id,
             'new_position_id' => $this->new_position_id,
-            'new_work_location_id' => $this->new_work_location_id,
+            'new_site_id' => $this->new_site_id,
             'new_work_schedule' => $this->new_work_schedule,
             'new_report_to' => $this->new_report_to,
             'new_pay_plan' => $this->new_pay_plan,
@@ -41,11 +39,17 @@ class PersonnelActionResource extends JsonResource
             'new_email' => $this->new_email,
             'comments' => $this->comments,
             'change_details' => $this->change_details,
+            'acknowledged_by' => $this->acknowledged_by,
             'dept_head_approved' => $this->dept_head_approved,
+            'dept_head_approved_date' => $this->dept_head_approved_date?->format('Y-m-d'),
             'coo_approved' => $this->coo_approved,
+            'coo_approved_date' => $this->coo_approved_date?->format('Y-m-d'),
             'hr_approved' => $this->hr_approved,
+            'hr_approved_date' => $this->hr_approved_date?->format('Y-m-d'),
             'accountant_approved' => $this->accountant_approved,
+            'accountant_approved_date' => $this->accountant_approved_date?->format('Y-m-d'),
             'status' => $this->status,
+            'implemented_at' => $this->implemented_at?->toIso8601String(),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at?->toIso8601String(),
@@ -74,10 +78,10 @@ class PersonnelActionResource extends JsonResource
                     'title' => $this->currentPosition->title,
                 ];
             }),
-            'current_work_location' => $this->whenLoaded('currentWorkLocation', function () {
+            'current_site' => $this->whenLoaded('currentSite', function () {
                 return [
-                    'id' => $this->currentWorkLocation->id,
-                    'name' => $this->currentWorkLocation->name,
+                    'id' => $this->currentSite->id,
+                    'name' => $this->currentSite->name,
                 ];
             }),
             'new_department' => $this->whenLoaded('newDepartment', function () {
@@ -92,10 +96,10 @@ class PersonnelActionResource extends JsonResource
                     'title' => $this->newPosition->title,
                 ];
             }),
-            'new_work_location' => $this->whenLoaded('newWorkLocation', function () {
+            'new_site' => $this->whenLoaded('newSite', function () {
                 return [
-                    'id' => $this->newWorkLocation->id,
-                    'name' => $this->newWorkLocation->name,
+                    'id' => $this->newSite->id,
+                    'name' => $this->newSite->name,
                 ];
             }),
         ];

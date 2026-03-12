@@ -17,8 +17,8 @@ class PermissionRoleSeeder extends Seeder
         // Clear cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Define simplified actions: read and edit only
-        $defaultActions = ['read', 'edit'];
+        // Define standard CRUD actions
+        $defaultActions = ['read', 'create', 'update', 'delete'];
 
         // Get permission module names from Module table's read_permission field
         // Extract unique permission prefixes (e.g., 'admin', 'user', 'grant')
@@ -54,8 +54,10 @@ class PermissionRoleSeeder extends Seeder
                 'employment_records',
                 'employee_resignation',
                 'employee_funding_allocations', // new module
-                // HRM standalone items (3)
+                // HRM standalone items (5)
                 'holidays',
+                'transfer',
+                'personnel_actions',
                 'resignation',
                 'termination',
                 // Leaves submenus (5)

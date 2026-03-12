@@ -87,6 +87,7 @@ class ProcessBulkPayroll implements ShouldQueue
                 'employee.employeeChildren',  // For tax allowances (child deduction)
                 'department',
                 'position',
+                'site',
             ])->whereIn('id', $this->employmentIds)->get();
 
             // Load employeeFundingAllocations with their relationships separately
@@ -362,6 +363,17 @@ class ProcessBulkPayroll implements ShouldQueue
                 $advancesCreated += $this->createAdvancesForPayrolls($insertedPayrolls, $payrollService, $payPeriodDate);
             }
 
+            // Apply annual salary increase after January payroll is complete
+            $salaryIncreaseResult = ['updated' => 0, 'skipped' => 0];
+            if ($payPeriodDate->month === 1) {
+                $salaryIncreaseResult = $payrollService->applyAnnualSalaryIncrease(
+                    $this->employmentIds,
+                    $payPeriodDate
+                );
+
+                Log::info('ProcessBulkPayroll: Annual salary increase applied', $salaryIncreaseResult);
+            }
+
             // Update batch with final results
             $batch->update([
                 'status' => 'completed',
@@ -378,6 +390,7 @@ class ProcessBulkPayroll implements ShouldQueue
                     'successful' => $successfulCount,
                     'failed' => $failedCount,
                     'advances_created' => $advancesCreated,
+                    'salary_increase_applied' => $salaryIncreaseResult['updated'],
                     'completed_at' => now()->toDateTimeString(),
                 ],
             ]);
@@ -427,32 +440,39 @@ class ProcessBulkPayroll implements ShouldQueue
     {
         $calculations = $payrollData['calculations'];
 
-        return [
-            'employment_id' => $employment->id,
-            'employee_funding_allocation_id' => $allocation->id,
-            'pay_period_date' => $payPeriodDate->format('Y-m-d'),
-            'gross_salary' => $calculations['gross_salary'],
-            'gross_salary_by_FTE' => $calculations['gross_salary_by_fte'], // Maps to uppercase column
-            'retroactive_adjustment' => $calculations['retroactive_adjustment'] ?? 0,
-            'thirteen_month_salary' => $calculations['thirteen_month_salary'],
-            'thirteen_month_salary_accured' => $calculations['thirteen_month_salary_accured'],
-            'pvd' => $calculations['pvd'],
-            'saving_fund' => $calculations['saving_fund'],
-            'employer_social_security' => $calculations['employer_social_security'],
-            'employee_social_security' => $calculations['employee_social_security'],
-            'employer_health_welfare' => $calculations['employer_health_welfare'],
-            'employee_health_welfare' => $calculations['employee_health_welfare'],
-            'tax' => $calculations['income_tax'], // Maps income_tax to tax column
-            'net_salary' => $calculations['net_salary'],
-            'total_salary' => $calculations['total_salary'],
-            'total_pvd' => $calculations['total_pvd'],
-            'total_saving_fund' => $calculations['total_saving_fund'],
-            'salary_bonus' => $calculations['salary_bonus'],
-            'total_income' => $calculations['total_income'],
-            'employer_contribution' => $calculations['employer_contribution'],
-            'total_deduction' => $calculations['total_deduction'],
-            'notes' => null,
-        ];
+        return array_merge(
+            [
+                'employment_id' => $employment->id,
+                'employee_funding_allocation_id' => $allocation->id,
+                'organization' => $employment->organization,
+            ],
+            Payroll::buildSnapshotFields($employment, $allocation),
+            [
+                'pay_period_date' => $payPeriodDate->format('Y-m-d'),
+                'gross_salary' => $calculations['gross_salary'],
+                'gross_salary_by_FTE' => $calculations['gross_salary_by_fte'], // Maps to uppercase column
+                'retroactive_salary' => $calculations['retroactive_salary'] ?? 0,
+                'thirteen_month_salary' => $calculations['thirteen_month_salary'],
+                'thirteen_month_salary_accured' => $calculations['thirteen_month_salary_accured'],
+                'pvd' => $calculations['pvd'],
+                'saving_fund' => $calculations['saving_fund'],
+                'study_loan' => $calculations['study_loan'] ?? 0,
+                'employer_social_security' => $calculations['employer_social_security'],
+                'employee_social_security' => $calculations['employee_social_security'],
+                'employer_health_welfare' => $calculations['employer_health_welfare'],
+                'employee_health_welfare' => $calculations['employee_health_welfare'],
+                'tax' => $calculations['income_tax'], // Maps income_tax to tax column
+                'net_salary' => $calculations['net_salary'],
+                'total_salary' => $calculations['total_salary'],
+                'total_pvd' => $calculations['total_pvd'],
+                'total_saving_fund' => $calculations['total_saving_fund'],
+                'salary_increase' => $calculations['salary_increase'],
+                'total_income' => $calculations['total_income'],
+                'employer_contribution' => $calculations['employer_contribution'],
+                'total_deduction' => $calculations['total_deduction'],
+                'notes' => null,
+            ]
+        );
     }
 
     /**
@@ -486,9 +506,10 @@ class ProcessBulkPayroll implements ShouldQueue
     {
         $advancesCount = 0;
 
-        foreach ($payrolls as $payroll) {
-            $payroll->load(['employment.employee', 'employeeFundingAllocation.grantItem.grant']);
+        $payrollCollection = collect($payrolls);
+        $payrollCollection->load(['employment.employee', 'employeeFundingAllocation.grantItem.grant']);
 
+        foreach ($payrollCollection as $payroll) {
             $employee = $payroll->employment->employee;
             $allocation = $payroll->employeeFundingAllocation;
 

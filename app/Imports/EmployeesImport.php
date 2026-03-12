@@ -35,7 +35,8 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
     use Importable, RegistersEventListeners;
 
     /**
-     * Valid organization values (SMRU and BHF only)
+     * Valid organization values (used by EmploymentsImport)
+     * Kept here for reference only — organization is no longer on employees table.
      */
     public const VALID_ORGANIZATIONS = ['SMRU', 'BHF'];
 
@@ -132,22 +133,17 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
     public $importId;
 
     /**
-     * Existing staff IDs grouped by organization for duplicate checking
-     * Structure: ['SMRU' => ['EMP001', 'EMP002'], 'BHF' => ['EMP003']]
+     * Existing staff IDs for duplicate checking (globally unique)
      */
-    protected $existingStaffIdsByOrg = [];
+    protected $existingStaffIds = [];
 
     public function __construct(string $importId, int $userId)
     {
         $this->importId = $importId;
         $this->userId = $userId;
 
-        // Prefetch staff_ids grouped by organization for duplicate checking
-        // Database has unique constraint on (staff_id, organization) combination
-        $employees = Employee::select('staff_id', 'organization')->get();
-        $this->existingStaffIdsByOrg = $employees->groupBy('organization')->map(function ($group) {
-            return $group->pluck('staff_id')->map('strval')->toArray();
-        })->toArray();
+        // Prefetch staff_ids for duplicate checking (staff_id is globally unique)
+        $this->existingStaffIds = Employee::pluck('staff_id')->map('strval')->toArray();
 
         // Initialize cache keys for this import (1 hour TTL)
         Cache::put("import_{$this->importId}_errors", [], 3600);
@@ -280,11 +276,11 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
 
                 $validatedEmployees = [];
                 $validatedBeneficiaries = [];
+                $validatedIdentifications = [];
                 $errors = [];
                 $warnings = [];
 
-                // Seen staff IDs in this import, keyed by organization
-                // Structure: ['SMRU' => ['EMP001', 'EMP002'], 'BHF' => ['EMP003']]
+                // Seen staff IDs in this import (globally unique)
                 $seenStaffIds = Cache::get("import_{$this->importId}_seen_staff_ids", []);
 
                 foreach ($normalized as $index => $row) {
@@ -302,10 +298,7 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                     $rowWarnings = [];
 
                     // --- Validate each field using helper methods ---
-                    $orgValidation = $this->validateOrganization($row['org'] ?? '', $actualRow);
-                    if (! $orgValidation['valid']) {
-                        $rowErrors[] = $orgValidation['error'];
-                    }
+                    // Note: organization is no longer on employees — it belongs on employments
 
                     $staffIdValidation = $this->validateStaffId($row['staff_id'] ?? '', $actualRow);
                     if (! $staffIdValidation['valid']) {
@@ -345,11 +338,10 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                         $rowErrors[] = $identificationTypeValidation['error'];
                     }
 
-                    // --- Duplicate checking (only if org and staff_id both valid) ---
-                    if ($orgValidation['valid'] && $staffIdValidation['valid']) {
+                    // --- Duplicate checking (staff_id is globally unique) ---
+                    if ($staffIdValidation['valid']) {
                         $dupValidation = $this->validateDuplicateStaffId(
                             $staffIdValidation['staffId'],
-                            $orgValidation['organization'],
                             $actualRow,
                             $seenStaffIds
                         );
@@ -374,25 +366,16 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                     // --- If row passes all validation, prepare data for insertion ---
                     if (empty($rowErrors)) {
                         // Track this staff_id as seen for duplicate detection
-                        $org = $orgValidation['organization'];
-                        if (! isset($seenStaffIds[$org])) {
-                            $seenStaffIds[$org] = [];
-                        }
-                        $seenStaffIds[$org][] = $staffIdValidation['staffId'];
+                        $seenStaffIds[] = $staffIdValidation['staffId'];
 
                         // Build employee data using validated values
                         $validatedEmployees[] = [
-                            'organization' => $orgValidation['organization'],
                             'staff_id' => $staffIdValidation['staffId'],
                             'first_name_en' => $firstNameValidation['firstName'],
                             'gender' => $genderValidation['gender'],
                             'date_of_birth' => $dobValidation['dateOfBirth'],
                             'status' => $statusValidation['status'],
                             'marital_status' => $maritalValidation['maritalStatus'],
-                            'identification_type' => $identificationTypeValidation['identificationType'],
-                            'identification_number' => $this->trimOrNull($row['id_number'] ?? null),
-                            'identification_issue_date' => $this->parseDate($row['id_issue_date'] ?? null),
-                            'identification_expiry_date' => $this->parseDate($row['id_expiry_date'] ?? null),
                             'military_status' => $this->convertMilitaryStatusToBoolean($row['military_status'] ?? null),
                             'initial_en' => $this->trimOrNull($row['initial'] ?? null),
                             'last_name_en' => $this->trimOrNull($row['last_name'] ?? null),
@@ -443,10 +426,29 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                         $kin2Name = $this->trimOrNull($row['kin_2_name'] ?? null);
                         if ($kin2Name) {
                             $validatedBeneficiaries[] = [
-                                '_staff_id' => $staffIdValidation['staffId'], // Temporary key for linking
+                                '_staff_id' => $staffIdValidation['staffId'],
                                 'beneficiary_name' => $kin2Name,
                                 'beneficiary_relationship' => $this->trimOrNull($row['kin_2_relationship'] ?? null),
                                 'phone_number' => $this->trimOrNull($row['kin_2_mobile'] ?? null),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+
+                        if ($identificationTypeValidation['identificationType'] !== null) {
+                            $validatedIdentifications[] = [
+                                '_staff_id' => $staffIdValidation['staffId'],
+                                'identification_type' => $identificationTypeValidation['identificationType'],
+                                'identification_number' => $this->trimOrNull($row['id_number'] ?? null),
+                                'identification_issue_date' => $this->parseDate($row['id_issue_date'] ?? null),
+                                'identification_expiry_date' => $this->parseDate($row['id_expiry_date'] ?? null),
+                                'first_name_en' => $firstNameValidation['firstName'],
+                                'last_name_en' => $this->trimOrNull($row['last_name'] ?? null),
+                                'first_name_th' => $this->trimOrNull($row['first_name_th'] ?? null),
+                                'last_name_th' => $this->trimOrNull($row['last_name_th'] ?? null),
+                                'initial_en' => $this->trimOrNull($row['initial'] ?? null),
+                                'initial_th' => $this->trimOrNull($row['initial_th'] ?? null),
+                                'is_primary' => true,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ];
@@ -532,6 +534,24 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
                     if (! empty($beneficiariesToInsert)) {
                         DB::table('employee_beneficiaries')->insert($beneficiariesToInsert);
                         Log::info('Inserted beneficiaries', ['count' => count($beneficiariesToInsert), 'import_id' => $this->importId]);
+                    }
+                }
+
+                if (! empty($validatedIdentifications)) {
+                    $identificationsToInsert = [];
+                    foreach ($validatedIdentifications as $ident) {
+                        $staffId = $ident['_staff_id'];
+                        unset($ident['_staff_id']);
+
+                        if (isset($employeeIdMap[$staffId])) {
+                            $ident['employee_id'] = $employeeIdMap[$staffId];
+                            $identificationsToInsert[] = $ident;
+                        }
+                    }
+
+                    if (! empty($identificationsToInsert)) {
+                        DB::table('employee_identifications')->insert($identificationsToInsert);
+                        Log::info('Inserted identifications', ['count' => count($identificationsToInsert), 'import_id' => $this->importId]);
                     }
                 }
 
@@ -1168,30 +1188,29 @@ class EmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, Skip
     }
 
     /**
-     * Check staff ID uniqueness within organization for both current import and database.
-     * Database has unique constraint on (staff_id, organization) combination.
+     * Check staff ID uniqueness globally for both current import and database.
+     * Staff ID is globally unique (not per-organization).
      *
      * @param  string  $staffId  The staff ID to check
-     * @param  string  $organization  The organization to check within
      * @param  int  $rowNumber  Excel row number for error messages
-     * @param  array  $seenInCurrentImport  Staff IDs seen so far in this import, keyed by organization
+     * @param  array  $seenInCurrentImport  Staff IDs seen so far in this import
      * @return array{valid: bool, error: string|null}
      */
-    protected function validateDuplicateStaffId(string $staffId, string $organization, int $rowNumber, array $seenInCurrentImport): array
+    protected function validateDuplicateStaffId(string $staffId, int $rowNumber, array $seenInCurrentImport): array
     {
-        // Check if staffId exists in current import for same organization
-        if (isset($seenInCurrentImport[$organization]) && in_array($staffId, $seenInCurrentImport[$organization])) {
+        // Check if staffId exists in current import
+        if (in_array($staffId, $seenInCurrentImport)) {
             return [
                 'valid' => false,
-                'error' => "Row {$rowNumber} Column staff_id: Duplicate staff_id '{$staffId}' found in import file for organization '{$organization}' (Cell B{$rowNumber})",
+                'error' => "Row {$rowNumber} Column staff_id: Duplicate staff_id '{$staffId}' found in import file (Cell B{$rowNumber})",
             ];
         }
 
-        // Check if staffId exists in database for same organization
-        if (isset($this->existingStaffIdsByOrg[$organization]) && in_array($staffId, $this->existingStaffIdsByOrg[$organization])) {
+        // Check if staffId exists in database
+        if (in_array($staffId, $this->existingStaffIds)) {
             return [
                 'valid' => false,
-                'error' => "Row {$rowNumber} Column staff_id: Staff ID '{$staffId}' already exists in database for organization '{$organization}' (Cell B{$rowNumber})",
+                'error' => "Row {$rowNumber} Column staff_id: Staff ID '{$staffId}' already exists in database (Cell B{$rowNumber})",
             ];
         }
 

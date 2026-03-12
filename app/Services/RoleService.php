@@ -16,7 +16,17 @@ class RoleService
      */
     public function list(): Collection
     {
-        return Role::query()->orderBy('name')->get();
+        $roles = Role::query()->orderBy('name')->get();
+
+        // Count users per role via pivot table (avoids Spatie morphedByMany guard resolution issue)
+        $userCounts = DB::table('model_has_roles')
+            ->select('role_id', DB::raw('COUNT(*) as users_count'))
+            ->groupBy('role_id')
+            ->pluck('users_count', 'role_id');
+
+        return $roles->each(function ($role) use ($userCounts) {
+            $role->users_count = $userCounts[$role->id] ?? 0;
+        });
     }
 
     /**

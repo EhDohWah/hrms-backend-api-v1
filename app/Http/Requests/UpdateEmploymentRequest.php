@@ -24,6 +24,7 @@ class UpdateEmploymentRequest extends FormRequest
     {
         return [
             // Employment fields (matching actual database schema)
+            'organization' => ['sometimes', 'string', Rule::in(['SMRU', 'BHF'])],
             'position_id' => ['sometimes', 'integer', 'exists:positions,id'],
             'department_id' => ['sometimes', 'integer', 'exists:departments,id'],
             'section_department_id' => ['nullable', 'integer', 'exists:section_departments,id'],
@@ -37,6 +38,8 @@ class UpdateEmploymentRequest extends FormRequest
             'health_welfare' => ['sometimes', 'boolean'],
             'pvd' => ['sometimes', 'boolean'],
             'saving_fund' => ['sometimes', 'boolean'],
+            'study_loan' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'retroactive_salary' => ['nullable', 'numeric', 'min:-999999.99', 'max:999999.99'],
             'probation_required' => ['nullable', 'boolean'],
             // NOTE: Benefit percentages are managed globally in benefit_settings table
             'end_date' => ['sometimes', 'nullable', 'date'],

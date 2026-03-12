@@ -31,7 +31,7 @@ The `preparePayrollRecord()` method was missing:
 - `thirteen_month_salary_accured`
 - `total_pvd`
 - `total_saving_fund`
-- `salary_bonus`
+- `salary_increase`
 - `total_income`
 - `employer_contribution`
 - `total_deduction`
@@ -105,7 +105,7 @@ private function preparePayrollRecord(Employment $employment, $allocation, array
         'total_salary' => $calculations['total_salary'],
         'total_pvd' => $calculations['pvd'], // ✅ Added
         'total_saving_fund' => $calculations['saving_fund'], // ✅ Added
-        'salary_bonus' => 0, // ✅ Added
+        'salary_increase' => 0, // ✅ Added
         'total_income' => $calculations['total_income'] ?? (...), // ✅ Added with fallback
         'employer_contribution' => $calculations['employer_contribution'] ?? (...), // ✅ Added with fallback
         'total_deduction' => $calculations['total_deduction'] ?? (...), // ✅ Added with fallback
@@ -237,7 +237,7 @@ Batch table:
 | `income_tax` | `tax` | Key change |
 | `net_salary` | `net_salary` | Direct |
 | `total_salary` | `total_salary` | Direct |
-| (calculated) | `salary_bonus` | Default: 0 |
+| (calculated) | `salary_increase` | Default: 0 |
 | `total_income` | `total_income` | With fallback |
 | `employer_contribution` | `employer_contribution` | With fallback |
 | `total_deduction` | `total_deduction` | With fallback |
@@ -264,7 +264,7 @@ The following fields are automatically encrypted by Laravel when using `Payroll:
 - ✅ total_salary
 - ✅ total_pvd
 - ✅ total_saving_fund
-- ✅ salary_bonus
+- ✅ salary_increase
 - ✅ total_income
 - ✅ employer_contribution
 - ✅ total_deduction
@@ -314,7 +314,7 @@ public function test_prepare_payroll_record_has_all_required_columns()
         'total_salary',
         'total_pvd',
         'total_saving_fund',
-        'salary_bonus',
+        'salary_increase',
         'total_income',
         'employer_contribution',
         'total_deduction',

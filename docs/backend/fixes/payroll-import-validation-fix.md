@@ -82,7 +82,7 @@ Made validation rules more flexible for fields that can be negative or zero:
 '*.net_salary' => 'required|numeric',  // Removed min:0 (can be negative)
 '*.total_pvd' => 'nullable|numeric',  // Removed min:0 (can be negative)
 '*.total_saving_fund' => 'nullable|numeric',  // Removed min:0 (can be negative)
-'*.salary_bonus' => 'nullable|numeric',  // Removed min:0 (can be negative)
+'*.salary_increase' => 'nullable|numeric',  // Removed min:0 (can be negative)
 '*.total_deduction' => 'nullable|numeric',  // Removed min:0 (can be negative)
 ```
 

@@ -50,7 +50,9 @@ class UserSeeder extends Seeder
         $adminPermissions = [];
         foreach ($adminModules as $module) {
             $adminPermissions[] = "{$module}.read";
-            $adminPermissions[] = "{$module}.edit";
+            $adminPermissions[] = "{$module}.create";
+            $adminPermissions[] = "{$module}.update";
+            $adminPermissions[] = "{$module}.delete";
         }
         $admin->syncPermissions($adminPermissions);
 

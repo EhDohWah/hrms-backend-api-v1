@@ -17,27 +17,27 @@ Route::middleware('auth:sanctum')->group(function () {
         // Grant upload
         Route::post('/grant', [GrantController::class, 'upload'])
             ->name('uploads.grant')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.create');
 
         // Employee upload
         Route::post('/employee', [EmployeeController::class, 'uploadEmployeeData'])
             ->name('uploads.employee')
-            ->middleware('permission:employees.edit');
+            ->middleware('permission:employees.create');
 
         // Employment upload
         Route::post('/employment', [EmploymentController::class, 'upload'])
             ->name('uploads.employment')
-            ->middleware('permission:employment_records.edit');
+            ->middleware('permission:employment_records.create');
 
         // Employee funding allocation upload
         Route::post('/employee-funding-allocation', [EmployeeFundingAllocationController::class, 'upload'])
             ->name('uploads.employee-funding-allocation')
-            ->middleware('permission:employee_funding_allocations.edit');
+            ->middleware('permission:employee_funding_allocations.create');
 
         // Payroll upload
         Route::post('/payroll', [PayrollController::class, 'upload'])
             ->name('uploads.payroll')
-            ->middleware('permission:employee_salary.edit');
+            ->middleware('permission:employee_salary.create');
     });
 
     // ========================================

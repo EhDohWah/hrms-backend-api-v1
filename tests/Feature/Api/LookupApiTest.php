@@ -25,9 +25,11 @@ describe('Lookup API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'lookup_list.read']);
-        Permission::firstOrCreate(['name' => 'lookup_list.edit']);
+        Permission::firstOrCreate(['name' => 'lookup_list.create']);
+        Permission::firstOrCreate(['name' => 'lookup_list.update']);
+        Permission::firstOrCreate(['name' => 'lookup_list.delete']);
 
-        $this->user->givePermissionTo(['lookup_list.read', 'lookup_list.edit']);
+        $this->user->givePermissionTo(['lookup_list.read', 'lookup_list.create', 'lookup_list.update', 'lookup_list.delete']);
 
         $this->actingAs($this->user);
     });
@@ -253,7 +255,7 @@ describe('Lookup API', function () {
             $response->assertStatus(401);
         });
 
-        it('returns 403 for write operations without edit permission', function () {
+        it('returns 403 for write operations without create permission', function () {
             $readOnlyUser = User::factory()->create();
             $readOnlyUser->givePermissionTo('lookup_list.read');
             $this->actingAs($readOnlyUser);

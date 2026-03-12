@@ -235,7 +235,6 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
                     $employeeBatch[] = [
                         'staff_id' => $staffId,
-                        'organization' => $row['org'] ?? null,
                         'initial_en' => $row['initial'] ?? null,
                         'first_name_en' => $row['first_name'] ?? null,
                         'last_name_en' => $row['last_name'] ?? null,
@@ -247,8 +246,6 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                         'status' => $row['status'] ?? null,
                         'nationality' => $row['nationality'] ?? null,
                         'religion' => $row['religion'] ?? null,
-                        'identification_type' => $row['identification_type'] ?? null,
-                        'identification_number' => $row['identification_number'] ?? null,
                         'social_security_number' => $row['social_security_no'] ?? null,
                         'tax_number' => $row['tax_no'] ?? null,
                         'driver_license_number' => $row['driver_license'] ?? null,
@@ -306,7 +303,8 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
 
                 Log::info('Retrieved employee IDs', ['count' => count($employeeMap)]);
 
-                // 4) Build beneficiaries batch (identification is now stored directly in employees table)
+                // 4) Build beneficiaries and identifications batches
+                $identBatch = [];
                 foreach ($normalized as $index => $row) {
                     if (! isset($row['staff_id'])) {
                         continue;
@@ -343,6 +341,24 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                             'updated_at' => now(),
                         ];
                     }
+
+                    $idType = $row['identification_type'] ?? null;
+                    if (! empty($idType)) {
+                        $identBatch[] = [
+                            'employee_id' => $empId,
+                            'identification_type' => $idType,
+                            'identification_number' => $row['identification_number'] ?? null,
+                            'first_name_en' => $row['first_name'] ?? null,
+                            'last_name_en' => $row['last_name'] ?? null,
+                            'first_name_th' => $row['first_name_th'] ?? null,
+                            'last_name_th' => $row['last_name_th'] ?? null,
+                            'initial_en' => $row['initial'] ?? null,
+                            'initial_th' => $row['initial_th'] ?? null,
+                            'is_primary' => true,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
                 }
 
                 // 5) Bulk‐insert beneficiaries
@@ -353,6 +369,17 @@ class DevEmployeesImport extends DefaultValueBinder implements SkipsEmptyRows, S
                     } catch (\Exception $e) {
                         Log::error('Failed to insert beneficiaries', ['error' => $e->getMessage()]);
                         $this->errors[] = 'Failed to insert beneficiaries: '.$e->getMessage();
+                    }
+                }
+
+                // 6) Bulk-insert identifications
+                if (count($identBatch)) {
+                    Log::info('Inserting identification batch', ['count' => count($identBatch)]);
+                    try {
+                        DB::table('employee_identifications')->insert($identBatch);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to insert identifications', ['error' => $e->getMessage()]);
+                        $this->errors[] = 'Failed to insert identifications: '.$e->getMessage();
                     }
                 }
 

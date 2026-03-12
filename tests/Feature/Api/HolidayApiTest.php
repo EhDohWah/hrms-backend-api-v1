@@ -12,9 +12,11 @@ describe('Holiday API', function () {
         $this->user = User::factory()->create();
 
         Permission::firstOrCreate(['name' => 'holidays.read']);
-        Permission::firstOrCreate(['name' => 'holidays.edit']);
+        Permission::firstOrCreate(['name' => 'holidays.create']);
+        Permission::firstOrCreate(['name' => 'holidays.update']);
+        Permission::firstOrCreate(['name' => 'holidays.delete']);
 
-        $this->user->givePermissionTo(['holidays.read', 'holidays.edit']);
+        $this->user->givePermissionTo(['holidays.read', 'holidays.create', 'holidays.update', 'holidays.delete']);
 
         $this->actingAs($this->user);
     });

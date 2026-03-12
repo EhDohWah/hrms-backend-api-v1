@@ -25,9 +25,11 @@ describe('Site API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'sites.read']);
-        Permission::firstOrCreate(['name' => 'sites.edit']);
+        Permission::firstOrCreate(['name' => 'sites.create']);
+        Permission::firstOrCreate(['name' => 'sites.update']);
+        Permission::firstOrCreate(['name' => 'sites.delete']);
 
-        $this->user->givePermissionTo(['sites.read', 'sites.edit']);
+        $this->user->givePermissionTo(['sites.read', 'sites.create', 'sites.update', 'sites.delete']);
 
         $this->actingAs($this->user);
     });

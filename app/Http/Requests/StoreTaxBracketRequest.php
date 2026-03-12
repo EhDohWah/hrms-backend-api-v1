@@ -12,7 +12,7 @@ class StoreTaxBracketRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('tax_settings.edit') ?? false;
+        return $this->user()?->can('tax_settings.create') ?? false;
     }
 
     /**

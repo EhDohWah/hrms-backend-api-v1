@@ -218,8 +218,16 @@ class AdminService
                     $desiredPermissions[] = $module->read_permission;
                 }
 
-                if (isset($access['edit']) && $access['edit']) {
-                    $desiredPermissions[] = "{$moduleName}.edit";
+                if (isset($access['create']) && $access['create']) {
+                    $desiredPermissions[] = "{$moduleName}.create";
+                }
+
+                if (isset($access['update']) && $access['update']) {
+                    $desiredPermissions[] = "{$moduleName}.update";
+                }
+
+                if (isset($access['delete']) && $access['delete']) {
+                    $desiredPermissions[] = "{$moduleName}.delete";
                 }
             }
         }
@@ -271,7 +279,9 @@ class AdminService
         $desiredPermissions = [];
         foreach ($adminModules as $module) {
             $desiredPermissions[] = "{$module}.read";
-            $desiredPermissions[] = "{$module}.edit";
+            $desiredPermissions[] = "{$module}.create";
+            $desiredPermissions[] = "{$module}.update";
+            $desiredPermissions[] = "{$module}.delete";
         }
 
         $existingPermissions = Permission::whereIn('name', $desiredPermissions)
@@ -293,7 +303,9 @@ class AdminService
 
         foreach ($modules as $module) {
             $desiredPermissions[] = $module->read_permission;
-            $desiredPermissions[] = "{$module->name}.edit";
+            $desiredPermissions[] = "{$module->name}.create";
+            $desiredPermissions[] = "{$module->name}.update";
+            $desiredPermissions[] = "{$module->name}.delete";
         }
 
         $existingPermissions = Permission::whereIn('name', $desiredPermissions)

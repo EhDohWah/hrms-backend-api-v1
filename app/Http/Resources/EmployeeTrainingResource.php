@@ -40,7 +40,7 @@ class EmployeeTrainingResource extends JsonResource
                     'staff_id' => $this->employee->staff_id,
                     'first_name_en' => $this->employee->first_name_en,
                     'last_name_en' => $this->employee->last_name_en,
-                    'organization' => $this->employee->organization,
+                    'organization' => $this->employee->employment?->organization,
                 ];
             }),
         ];

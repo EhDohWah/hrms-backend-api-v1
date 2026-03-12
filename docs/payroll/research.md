@@ -418,7 +418,7 @@ When an employee has multiple allocations during the year, 13th month is calcula
 - Can be positive (underpaid) or negative (overpaid)
 - Most commonly triggered during probation-to-pass-probation transitions
 
-### 5.3 Salary Bonus
+### 5.3 Salary Increase
 
 Additional bonus amounts when applicable.
 
@@ -431,7 +431,7 @@ Four derived totals:
 ```
 total_deductions = pvd + saving_fund + social_security_employee + health_welfare_employee + tax
 
-total_income = gross_salary_by_fte + thirteen_month_salary + retroactive_adjustment + salary_bonus
+total_income = gross_salary_by_fte + thirteen_month_salary + retroactive_adjustment + salary_increase
 
 net_salary = total_income - total_deductions
 
@@ -532,7 +532,7 @@ HR **manually selects** the pay date using a date picker. The system does NOT au
 | 13th Month Salary |
 | 13th Month Accrued (manually entered by HR) |
 | Retroactive Adjustment |
-| Salary Bonus |
+| Salary Increase |
 | Total Income |
 
 **Deductions Section:**

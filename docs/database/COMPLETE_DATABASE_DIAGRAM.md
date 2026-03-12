@@ -771,7 +771,7 @@ Table payrolls {
   total_salary text [note: "Encrypted - decimal"]
   total_pvd text [note: "Encrypted - decimal"]
   total_saving_fund text [note: "Encrypted - decimal"]
-  salary_bonus text [note: "Encrypted - decimal"]
+  salary_increase text [note: "Encrypted - decimal"]
   notes text [note: "Notes for the payslip"]
   total_income text [note: "Encrypted - decimal"]
   employer_contribution text [note: "Encrypted - decimal"]

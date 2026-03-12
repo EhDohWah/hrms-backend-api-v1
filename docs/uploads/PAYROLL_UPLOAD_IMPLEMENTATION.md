@@ -56,7 +56,7 @@ Implemented a complete bulk upload system for payroll records with 24 data field
 | 17 | `total_salary` | Decimal(15,2) | Optional | Total salary |
 | 18 | `total_pvd` | Decimal(15,2) | Optional | Total PVD |
 | 19 | `total_saving_fund` | Decimal(15,2) | Optional | Total saving fund |
-| 20 | `salary_bonus` | Decimal(15,2) | Optional | Salary bonus |
+| 20 | `salary_increase` | Decimal(15,2) | Optional | Salary increase |
 | 21 | `total_income` | Decimal(15,2) | Optional | Total income |
 | 22 | `employer_contribution` | Decimal(15,2) | Optional | Employer contribution |
 | 23 | `total_deduction` | Decimal(15,2) | Optional | Total deduction |
@@ -177,7 +177,7 @@ net_salary: 41250.00
 total_salary: 50000.00
 total_pvd: 3750.00
 total_saving_fund: 0.00
-salary_bonus: 0.00
+salary_increase: 0.00
 total_income: 50000.00
 employer_contribution: 4500.00
 total_deduction: 9500.00

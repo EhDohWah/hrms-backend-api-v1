@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\Employee;
 use App\Models\EmployeeFundingAllocation;
+use App\Models\EmployeeIdentification;
 use App\Models\Employment;
 use App\Models\JobOffer;
 use App\Observers\EmployeeFundingAllocationObserver;
+use App\Observers\EmployeeIdentificationObserver;
 use App\Observers\EmployeeObserver;
 use App\Observers\EmploymentObserver;
 use App\Observers\JobOfferObserver;
@@ -57,5 +59,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register observer to track funding allocation changes for audit trail
         EmployeeFundingAllocation::observe(EmployeeFundingAllocationObserver::class);
+
+        EmployeeIdentification::observe(EmployeeIdentificationObserver::class);
     }
 }

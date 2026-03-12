@@ -116,106 +116,135 @@ class User extends Authenticatable
      */
     public function canReadModule(string $moduleNameOrPrefix): bool
     {
-        // Try to find module by name first
-        $module = Module::where('name', $moduleNameOrPrefix)->where('is_active', true)->first();
+        $prefix = $this->resolvePermissionPrefix($moduleNameOrPrefix);
 
-        // If not found by name, try to find by permission prefix
-        if (! $module) {
-            $module = Module::where('read_permission', "{$moduleNameOrPrefix}.read")
-                ->where('is_active', true)
-                ->first();
-        }
-
-        // If module found, check its read permission
-        if ($module) {
-            return $this->can($module->read_permission);
-        }
-
-        // Fallback: treat identifier as permission prefix and check directly
-        return $this->can("{$moduleNameOrPrefix}.read");
+        return $this->can("{$prefix}.read");
     }
 
     /**
-     * Check if user can edit (create/update/delete) a specific module.
-     *
-     * Accepts either module name (e.g., 'user_management') or permission prefix (e.g., 'user').
+     * Check if user can create records in a specific module.
      *
      * @param  string  $moduleNameOrPrefix  Module name or permission prefix
      */
-    public function canEditModule(string $moduleNameOrPrefix): bool
+    public function canCreateModule(string $moduleNameOrPrefix): bool
     {
-        // Try to find module by name first
-        $module = Module::where('name', $moduleNameOrPrefix)->where('is_active', true)->first();
+        $prefix = $this->resolvePermissionPrefix($moduleNameOrPrefix);
 
-        // If not found by name, try to find by permission prefix
-        if (! $module) {
-            $module = Module::where('read_permission', "{$moduleNameOrPrefix}.read")
-                ->where('is_active', true)
-                ->first();
-        }
+        return $this->can("{$prefix}.create");
+    }
 
-        // If module found, extract permission prefix and check edit permission
-        if ($module) {
-            $permissionPrefix = str_replace('.read', '', $module->read_permission);
+    /**
+     * Check if user can update records in a specific module.
+     *
+     * @param  string  $moduleNameOrPrefix  Module name or permission prefix
+     */
+    public function canUpdateModule(string $moduleNameOrPrefix): bool
+    {
+        $prefix = $this->resolvePermissionPrefix($moduleNameOrPrefix);
 
-            return $this->can("{$permissionPrefix}.edit");
-        }
+        return $this->can("{$prefix}.update");
+    }
 
-        // Fallback: treat identifier as permission prefix and check directly
-        return $this->can("{$moduleNameOrPrefix}.edit");
+    /**
+     * Check if user can delete records in a specific module.
+     *
+     * @param  string  $moduleNameOrPrefix  Module name or permission prefix
+     */
+    public function canDeleteModule(string $moduleNameOrPrefix): bool
+    {
+        $prefix = $this->resolvePermissionPrefix($moduleNameOrPrefix);
+
+        return $this->can("{$prefix}.delete");
     }
 
     /**
      * Get module access level for a specific module.
      *
-     * Returns array with 'read' and 'edit' boolean flags.
-     * Accepts either module name (e.g., 'user_management') or permission prefix (e.g., 'user').
+     * Returns array with 'read', 'create', 'update', and 'delete' boolean flags.
      *
      * @param  string  $moduleNameOrPrefix  Module name or permission prefix
-     * @return array{read: bool, edit: bool}
+     * @return array{read: bool, create: bool, update: bool, delete: bool}
      */
     public function getModuleAccess(string $moduleNameOrPrefix): array
     {
+        $prefix = $this->resolvePermissionPrefix($moduleNameOrPrefix);
+
         return [
-            'read' => $this->canReadModule($moduleNameOrPrefix),
-            'edit' => $this->canEditModule($moduleNameOrPrefix),
+            'read' => $this->can("{$prefix}.read"),
+            'create' => $this->can("{$prefix}.create"),
+            'update' => $this->can("{$prefix}.update"),
+            'delete' => $this->can("{$prefix}.delete"),
         ];
     }
 
     /**
-     * Check if user has any access (read or edit) to a module.
+     * Check if user has any access (read, create, update, or delete) to a module.
      *
      * @param  string  $moduleName  Module identifier
      */
     public function hasModuleAccess(string $moduleName): bool
     {
-        return $this->canReadModule($moduleName) || $this->canEditModule($moduleName);
+        $access = $this->getModuleAccess($moduleName);
+
+        return $access['read'] || $access['create'] || $access['update'] || $access['delete'];
     }
 
     /**
-     * Check if user has read-only access (can read but cannot edit).
+     * Check if user has read-only access (can read but has no write permissions).
      *
      * @param  string  $moduleName  Module identifier
      */
     public function hasReadOnlyAccess(string $moduleName): bool
     {
-        return $this->canReadModule($moduleName) && ! $this->canEditModule($moduleName);
+        $access = $this->getModuleAccess($moduleName);
+
+        return $access['read'] && ! $access['create'] && ! $access['update'] && ! $access['delete'];
     }
 
     /**
-     * Check if user has full access (both read and edit).
+     * Check if user has full access (all CRUD permissions).
      *
      * @param  string  $moduleName  Module identifier
      */
     public function hasFullAccess(string $moduleName): bool
     {
-        return $this->canReadModule($moduleName) && $this->canEditModule($moduleName);
+        $access = $this->getModuleAccess($moduleName);
+
+        return $access['read'] && $access['create'] && $access['update'] && $access['delete'];
+    }
+
+    /**
+     * Resolve the permission prefix for a module name or prefix.
+     */
+    private array $resolvedPrefixCache = [];
+
+    private function resolvePermissionPrefix(string $moduleNameOrPrefix): string
+    {
+        if (isset($this->resolvedPrefixCache[$moduleNameOrPrefix])) {
+            return $this->resolvedPrefixCache[$moduleNameOrPrefix];
+        }
+
+        $module = Module::where('name', $moduleNameOrPrefix)->where('is_active', true)->first();
+
+        if (! $module) {
+            $module = Module::where('read_permission', "{$moduleNameOrPrefix}.read")
+                ->where('is_active', true)
+                ->first();
+        }
+
+        $prefix = $module
+            ? str_replace('.read', '', $module->read_permission)
+            : $moduleNameOrPrefix;
+
+        $this->resolvedPrefixCache[$moduleNameOrPrefix] = $prefix;
+
+        return $prefix;
     }
 
     /**
      * Get all modules user has access to with their access levels.
      *
-     * @return array<string, array{read: bool, edit: bool, display_name: string}>
+     * @return array<string, array{read: bool, create: bool, update: bool, delete: bool, display_name: string}>
      */
     public function getAccessibleModules(): array
     {
@@ -223,17 +252,22 @@ class User extends Authenticatable
         $accessibleModules = [];
 
         foreach ($modules as $module) {
-            $access = $this->getModuleAccess($module->name);
+            $prefix = str_replace('.read', '', $module->read_permission);
 
-            if ($access['read'] || $access['edit']) {
-                $accessibleModules[$module->name] = [
-                    'read' => $access['read'],
-                    'edit' => $access['edit'],
+            $access = [
+                'read' => $this->can("{$prefix}.read"),
+                'create' => $this->can("{$prefix}.create"),
+                'update' => $this->can("{$prefix}.update"),
+                'delete' => $this->can("{$prefix}.delete"),
+            ];
+
+            if ($access['read'] || $access['create'] || $access['update'] || $access['delete']) {
+                $accessibleModules[$module->name] = array_merge($access, [
                     'display_name' => $module->display_name,
                     'category' => $module->category,
                     'icon' => $module->icon,
                     'route' => $module->route,
-                ];
+                ]);
             }
         }
 

@@ -9,8 +9,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('benefit-settings')->group(function () {
         Route::get('/', [BenefitSettingController::class, 'index'])->middleware('permission:benefit_settings.read');
         Route::get('/{benefitSetting}', [BenefitSettingController::class, 'show'])->middleware('permission:benefit_settings.read');
-        Route::post('/', [BenefitSettingController::class, 'store'])->middleware('permission:benefit_settings.edit');
-        Route::put('/{benefitSetting}', [BenefitSettingController::class, 'update'])->middleware('permission:benefit_settings.edit');
-        Route::delete('/{benefitSetting}', [BenefitSettingController::class, 'destroy'])->middleware('permission:benefit_settings.edit');
+        Route::post('/', [BenefitSettingController::class, 'store'])->middleware('permission:benefit_settings.create');
+        Route::put('/{benefitSetting}', [BenefitSettingController::class, 'update'])->middleware('permission:benefit_settings.update');
+        Route::delete('/{benefitSetting}', [BenefitSettingController::class, 'destroy'])->middleware('permission:benefit_settings.delete');
     });
 });

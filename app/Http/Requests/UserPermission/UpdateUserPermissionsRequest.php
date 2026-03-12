@@ -16,7 +16,9 @@ class UpdateUserPermissionsRequest extends FormRequest
         return [
             'modules' => ['required', 'array'],
             'modules.*.read' => ['required', 'boolean'],
-            'modules.*.edit' => ['required', 'boolean'],
+            'modules.*.create' => ['required', 'boolean'],
+            'modules.*.update' => ['required', 'boolean'],
+            'modules.*.delete' => ['required', 'boolean'],
         ];
     }
 }

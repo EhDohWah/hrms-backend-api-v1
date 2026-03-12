@@ -11,28 +11,21 @@ return new class extends Migration
         Schema::create('payroll_policy_settings', function (Blueprint $table) {
             $table->id();
 
-            // 13th Month Salary policy
-            $table->boolean('thirteenth_month_enabled')->default(true);
-            $table->integer('thirteenth_month_divisor')->default(12);
-            $table->integer('thirteenth_month_min_months')->default(6);
-            $table->string('thirteenth_month_accrual_method', 50)->default('monthly');
-
-            // Annual Salary Increase policy
-            $table->boolean('salary_increase_enabled')->default(true);
-            $table->decimal('salary_increase_rate', 5, 2)->default(1.00);
-            $table->integer('salary_increase_min_working_days')->default(365);
-            $table->integer('salary_increase_effective_month')->nullable();
-
-            // Policy metadata
-            $table->date('effective_date');
-            $table->boolean('is_active')->default(true);
+            $table->string('policy_key', 100);
+            $table->decimal('policy_value', 10, 2)->nullable();
+            $table->string('setting_type', 50)->default('numeric');
+            $table->string('category', 50)->nullable();
             $table->string('description')->nullable();
+            $table->date('effective_date')->nullable();
+            $table->boolean('is_active')->default(true);
 
             $table->string('created_by', 100)->nullable();
             $table->string('updated_by', 100)->nullable();
             $table->timestamps();
             $table->softDeletes();
 
+            $table->index('policy_key');
+            $table->index('category');
             $table->index('effective_date');
             $table->index('is_active');
         });

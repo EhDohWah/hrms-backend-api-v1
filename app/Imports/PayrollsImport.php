@@ -144,11 +144,12 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                 'employee_funding_allocation_id',
                 'gross_salary',
                 'gross_salary_by_fte',
-                'retroactive_adjustment',
+                'retroactive_salary',
                 'thirteen_month_salary',
                 'thirteen_month_salary_accured',
                 'pvd',
                 'saving_fund',
+                'study_loan',
                 'employer_social_security',
                 'employee_social_security',
                 'employer_health_welfare',
@@ -158,7 +159,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                 'total_salary',
                 'total_pvd',
                 'total_saving_fund',
-                'salary_bonus',
+                'salary_increase',
                 'total_income',
                 'employer_contribution',
                 'total_deduction',
@@ -220,8 +221,33 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
             Log::info('Starting payroll import process', ['rows_count' => $rows->count()]);
 
             DB::transaction(function () use ($normalized) {
-                $payrollBatch = [];
                 $errors = Cache::get("import_{$this->importId}_errors", []);
+                $insertedCount = 0;
+
+                // Collect IDs needed for snapshot lookups in this chunk
+                $employmentIds = [];
+                $allocationIds = [];
+                foreach ($normalized as $row) {
+                    $staffId = trim($row['staff_id'] ?? '');
+                    if ($staffId && isset($this->existingEmployments[$staffId])) {
+                        $employmentIds[] = $this->existingEmployments[$staffId];
+                    }
+                    $allocId = (int) ($row['employee_funding_allocation_id'] ?? 0);
+                    if ($allocId) {
+                        $allocationIds[] = $allocId;
+                    }
+                }
+
+                // Load only the models needed for this chunk (with relationships for snapshots)
+                $employmentModels = Employment::with(['employee', 'department', 'position', 'site'])
+                    ->whereIn('id', array_unique($employmentIds))
+                    ->get()
+                    ->keyBy('id');
+
+                $allocationModels = EmployeeFundingAllocation::with(['grantItem.grant'])
+                    ->whereIn('id', array_unique($allocationIds))
+                    ->get()
+                    ->keyBy('id');
 
                 foreach ($normalized as $index => $row) {
                     if (! $row->filter()->count()) {
@@ -274,52 +300,65 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
                         continue;
                     }
 
-                    // Prepare payroll data (all values provided by user, no auto-calculation)
-                    $payrollData = [
-                        'employment_id' => $employmentId,
-                        'employee_funding_allocation_id' => $fundingAllocationId,
-                        'pay_period_date' => $payPeriodDate,
-                        'gross_salary' => $this->parseNumeric($row['gross_salary'] ?? 0),
-                        'gross_salary_by_FTE' => $this->parseNumeric($row['gross_salary_by_fte'] ?? 0),
-                        'retroactive_adjustment' => $this->parseNumeric($row['retroactive_adjustment'] ?? 0),
-                        'thirteen_month_salary' => $this->parseNumeric($row['thirteen_month_salary'] ?? 0),
-                        'thirteen_month_salary_accured' => $this->parseNumeric($row['thirteen_month_salary_accured'] ?? 0),
-                        'pvd' => $this->parseNumeric($row['pvd'] ?? null),
-                        'saving_fund' => $this->parseNumeric($row['saving_fund'] ?? null),
-                        'employer_social_security' => $this->parseNumeric($row['employer_social_security'] ?? 0),
-                        'employee_social_security' => $this->parseNumeric($row['employee_social_security'] ?? 0),
-                        'employer_health_welfare' => $this->parseNumeric($row['employer_health_welfare'] ?? 0),
-                        'employee_health_welfare' => $this->parseNumeric($row['employee_health_welfare'] ?? 0),
-                        'tax' => $this->parseNumeric($row['tax'] ?? 0),
-                        'net_salary' => $this->parseNumeric($row['net_salary'] ?? 0),
-                        'total_salary' => $this->parseNumeric($row['total_salary'] ?? 0),
-                        'total_pvd' => $this->parseNumeric($row['total_pvd'] ?? 0),
-                        'total_saving_fund' => $this->parseNumeric($row['total_saving_fund'] ?? 0),
-                        'salary_bonus' => $this->parseNumeric($row['salary_bonus'] ?? null),
-                        'total_income' => $this->parseNumeric($row['total_income'] ?? 0),
-                        'employer_contribution' => $this->parseNumeric($row['employer_contribution'] ?? 0),
-                        'total_deduction' => $this->parseNumeric($row['total_deduction'] ?? 0),
-                        'notes' => $row['notes'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
+                    // Resolve models for snapshot data (loaded per-chunk above)
+                    $employmentModel = $employmentModels[$employmentId] ?? null;
+                    $allocationModel = $allocationModels[$fundingAllocationId] ?? null;
 
-                    // No duplicate detection - each row creates a new record
-                    $payrollBatch[] = $payrollData;
+                    // Build snapshot fields via shared helper
+                    $snapshotFields = ($employmentModel && $allocationModel)
+                        ? Payroll::buildSnapshotFields($employmentModel, $allocationModel)
+                        : [];
+
+                    // Prepare payroll data (all values provided by user, no auto-calculation)
+                    // Uses Payroll::create() to ensure encrypted casts are applied
+                    $payrollData = array_merge(
+                        [
+                            'employment_id' => $employmentId,
+                            'employee_funding_allocation_id' => $fundingAllocationId,
+                            'organization' => $employmentModel?->organization,
+                        ],
+                        $snapshotFields,
+                        [
+                            'pay_period_date' => $payPeriodDate,
+                            'gross_salary' => $this->parseNumeric($row['gross_salary'] ?? 0),
+                            'gross_salary_by_FTE' => $this->parseNumeric($row['gross_salary_by_fte'] ?? 0),
+                            'retroactive_salary' => $this->parseNumeric($row['retroactive_salary'] ?? 0),
+                            'thirteen_month_salary' => $this->parseNumeric($row['thirteen_month_salary'] ?? 0),
+                            'thirteen_month_salary_accured' => $this->parseNumeric($row['thirteen_month_salary_accured'] ?? 0),
+                            'pvd' => $this->parseNumeric($row['pvd'] ?? null),
+                            'saving_fund' => $this->parseNumeric($row['saving_fund'] ?? null),
+                            'study_loan' => $this->parseNumeric($row['study_loan'] ?? 0),
+                            'employer_social_security' => $this->parseNumeric($row['employer_social_security'] ?? 0),
+                            'employee_social_security' => $this->parseNumeric($row['employee_social_security'] ?? 0),
+                            'employer_health_welfare' => $this->parseNumeric($row['employer_health_welfare'] ?? 0),
+                            'employee_health_welfare' => $this->parseNumeric($row['employee_health_welfare'] ?? 0),
+                            'tax' => $this->parseNumeric($row['tax'] ?? 0),
+                            'net_salary' => $this->parseNumeric($row['net_salary'] ?? 0),
+                            'total_salary' => $this->parseNumeric($row['total_salary'] ?? 0),
+                            'total_pvd' => $this->parseNumeric($row['total_pvd'] ?? 0),
+                            'total_saving_fund' => $this->parseNumeric($row['total_saving_fund'] ?? 0),
+                            'salary_increase' => $this->parseNumeric($row['salary_increase'] ?? null),
+                            'total_income' => $this->parseNumeric($row['total_income'] ?? 0),
+                            'employer_contribution' => $this->parseNumeric($row['employer_contribution'] ?? 0),
+                            'total_deduction' => $this->parseNumeric($row['total_deduction'] ?? 0),
+                            'notes' => $row['notes'] ?? null,
+                        ]
+                    );
+
+                    // Use create() instead of insert() to ensure encrypted casts are applied
+                    Payroll::create($payrollData);
+                    $insertedCount++;
                 }
 
                 // Update cache
                 Cache::put("import_{$this->importId}_errors", $errors, 3600);
 
-                // Insert new payroll records
-                if (count($payrollBatch)) {
-                    Payroll::insert($payrollBatch);
-
+                if ($insertedCount > 0) {
                     $currentCount = Cache::get("import_{$this->importId}_processed_count", 0);
-                    Cache::put("import_{$this->importId}_processed_count", $currentCount + count($payrollBatch), 3600);
+                    Cache::put("import_{$this->importId}_processed_count", $currentCount + $insertedCount, 3600);
 
-                    Log::info('Inserted payroll batch', [
-                        'count' => count($payrollBatch),
+                    Log::info('Inserted payroll records', [
+                        'count' => $insertedCount,
                         'import_id' => $this->importId,
                     ]);
                 }
@@ -351,11 +390,12 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
             '*.pay_period_date' => 'required|date',
             '*.gross_salary' => 'required|numeric|min:0',
             '*.gross_salary_by_fte' => 'required|numeric|min:0',
-            '*.retroactive_adjustment' => 'nullable|numeric',
+            '*.retroactive_salary' => 'nullable|numeric',
             '*.thirteen_month_salary' => 'nullable|numeric|min:0',
             '*.thirteen_month_salary_accured' => 'nullable|numeric|min:0',
             '*.pvd' => 'nullable|numeric',
             '*.saving_fund' => 'nullable|numeric',
+            '*.study_loan' => 'nullable|numeric|min:0',
             '*.employer_social_security' => 'nullable|numeric|min:0',
             '*.employee_social_security' => 'nullable|numeric|min:0',
             '*.employer_health_welfare' => 'nullable|numeric|min:0',
@@ -365,7 +405,7 @@ class PayrollsImport extends DefaultValueBinder implements ShouldQueue, SkipsEmp
             '*.total_salary' => 'nullable|numeric|min:0',
             '*.total_pvd' => 'nullable|numeric',
             '*.total_saving_fund' => 'nullable|numeric',
-            '*.salary_bonus' => 'nullable|numeric',
+            '*.salary_increase' => 'nullable|numeric',
             '*.total_income' => 'nullable|numeric|min:0',
             '*.employer_contribution' => 'nullable|numeric|min:0',
             '*.total_deduction' => 'nullable|numeric',

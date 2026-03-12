@@ -20,6 +20,17 @@ class DashboardController extends BaseApiController
     ) {}
 
     /**
+     * Quick stats for the dashboard header cards.
+     */
+    public function quickStats(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $this->dashboardService->quickStats(),
+        ]);
+    }
+
+    /**
      * Get all available widgets (for admin widget management).
      */
     public function index(): JsonResponse

@@ -16,7 +16,9 @@ beforeEach(function () {
     // Create permissions
     $permissions = [
         'grants_list.read',
-        'grants_list.edit',
+        'grants_list.create',
+        'grants_list.update',
+        'grants_list.delete',
     ];
 
     foreach ($permissions as $permission) {
@@ -108,8 +110,8 @@ describe('Grant Bulk Delete', function () {
             ]);
     });
 
-    it('requires grants_list.edit permission', function () {
-        // Create a user without edit permission
+    it('requires grants_list.delete permission', function () {
+        // Create a user without delete permission
         $readOnlyUser = User::factory()->create();
         Permission::firstOrCreate(['name' => 'grants_list.read']);
         $readOnlyUser->givePermissionTo('grants_list.read');

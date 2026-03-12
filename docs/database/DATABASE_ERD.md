@@ -304,7 +304,7 @@ erDiagram
         text total_salary "encrypted"
         text total_pvd "encrypted"
         text total_saving_fund "encrypted"
-        text salary_bonus "encrypted"
+        text salary_increase "encrypted"
         text total_income "encrypted"
         text employer_contribution "encrypted"
         text total_deduction "encrypted"

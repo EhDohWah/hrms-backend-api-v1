@@ -23,6 +23,7 @@ Route::prefix('v1')->group(function () {
     require __DIR__.'/api/resignations.php';
     require __DIR__.'/api/letter-templates.php';
     require __DIR__.'/api/attendance.php';
+    require __DIR__.'/api/transfers.php';
 });
 
 // v2 scaffold for mobile-focused endpoints

@@ -36,6 +36,7 @@ return [
         'http://localhost:8081',                  // Local Vue dev (Vite port)
         'http://127.0.0.1:8081',                  // Local fallback (Vite port)
         'https://hrmsfe.netlify.app',             // Netlify production
+        'https://fehrms.netlify.app/',            // New netlify production
         // Add any preview branches if needed, eg:
         // 'https://deploy-preview-123--hrmsfe.netlify.app'
     ],

@@ -22,7 +22,7 @@ use Illuminate\Http\JsonResponse;
  *
  *     public function store(Request $request)
  *     {
- *         if (!$this->userCanEditModule()) {
+ *         if (!$this->userCanCreateModule()) {
  *             return $this->unauthorizedResponse('create');
  *         }
  *         // ... rest of store logic
@@ -47,11 +47,27 @@ trait HasModulePermissions
     }
 
     /**
-     * Check if current user can edit the module.
+     * Check if current user can create in the module.
      */
-    protected function userCanEditModule(): bool
+    protected function userCanCreateModule(): bool
     {
-        return auth()->user()?->canEditModule($this->getModuleName()) ?? false;
+        return auth()->user()?->canCreateModule($this->getModuleName()) ?? false;
+    }
+
+    /**
+     * Check if current user can update in the module.
+     */
+    protected function userCanUpdateModule(): bool
+    {
+        return auth()->user()?->canUpdateModule($this->getModuleName()) ?? false;
+    }
+
+    /**
+     * Check if current user can delete in the module.
+     */
+    protected function userCanDeleteModule(): bool
+    {
+        return auth()->user()?->canDeleteModule($this->getModuleName()) ?? false;
     }
 
     /**
@@ -81,11 +97,13 @@ trait HasModulePermissions
     /**
      * Get module access information for current user.
      *
-     * @return array{read: bool, edit: bool}
+     * @return array{read: bool, create: bool, update: bool, delete: bool}
      */
     protected function getUserModuleAccess(): array
     {
-        return auth()->user()?->getModuleAccess($this->getModuleName()) ?? ['read' => false, 'edit' => false];
+        return auth()->user()?->getModuleAccess($this->getModuleName()) ?? [
+            'read' => false, 'create' => false, 'update' => false, 'delete' => false,
+        ];
     }
 
     /**
@@ -150,12 +168,32 @@ trait HasModulePermissions
     }
 
     /**
-     * Abort with 403 if user cannot edit module.
+     * Abort with 403 if user cannot create in module.
      */
-    protected function authorizeEdit(): void
+    protected function authorizeCreate(): void
     {
-        if (! $this->userCanEditModule()) {
+        if (! $this->userCanCreateModule()) {
+            abort(403, $this->unauthorizedResponse('create')->getData()->message);
+        }
+    }
+
+    /**
+     * Abort with 403 if user cannot update in module.
+     */
+    protected function authorizeUpdate(): void
+    {
+        if (! $this->userCanUpdateModule()) {
             abort(403, $this->unauthorizedResponse('update')->getData()->message);
+        }
+    }
+
+    /**
+     * Abort with 403 if user cannot delete in module.
+     */
+    protected function authorizeDelete(): void
+    {
+        if (! $this->userCanDeleteModule()) {
+            abort(403, $this->unauthorizedResponse('delete')->getData()->message);
         }
     }
 }

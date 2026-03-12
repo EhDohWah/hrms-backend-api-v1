@@ -104,7 +104,7 @@ class LeaveRequestService
     public function show(LeaveRequest $leaveRequest): LeaveRequest
     {
         $leaveRequest->loadMissing([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
             'employee.employment:id,employee_id,department_id,position_id',
             'employee.employment.department:id,name',
             'employee.employment.position:id,title',

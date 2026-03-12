@@ -1290,7 +1290,7 @@ Schema::create('payrolls', function (Blueprint $table) {
     $table->text('total_salary'); // Encrypted
     $table->text('total_pvd')->nullable(); // Encrypted
     $table->text('total_saving_fund')->nullable(); // Encrypted
-    $table->text('salary_bonus')->nullable(); // Encrypted
+    $table->text('salary_increase')->nullable(); // Encrypted
     $table->text('total_income')->nullable(); // Encrypted
     $table->text('employer_contribution')->nullable(); // Encrypted
     $table->text('total_deduction')->nullable(); // Encrypted

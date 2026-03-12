@@ -86,7 +86,9 @@ class DynamicModulePermission
     {
         return match ($method) {
             'GET', 'HEAD' => [$module->read_permission],
-            'POST', 'PUT', 'PATCH', 'DELETE' => $module->edit_permissions ?? ["{$module->name}.edit"],
+            'POST' => ["{$module->name}.create"],
+            'PUT', 'PATCH' => ["{$module->name}.update"],
+            'DELETE' => ["{$module->name}.delete"],
             default => [],
         };
     }
@@ -98,7 +100,7 @@ class DynamicModulePermission
     {
         return match ($method) {
             'GET', 'HEAD' => "You do not have permission to view {$moduleName} records",
-            'POST' => "You do not have permission to create {$moduleName} records",
+            'POST' => "You do not have permission to create new {$moduleName} records",
             'PUT', 'PATCH' => "You do not have permission to update {$moduleName} records",
             'DELETE' => "You do not have permission to delete {$moduleName} records",
             default => "You do not have permission to perform this action on {$moduleName}",

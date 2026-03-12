@@ -217,11 +217,11 @@ class InterOrganizationAdvanceService
                 $grant = $allocation->grantItem->grant;
             }
 
-            if ($fundingOrganization && $grant && $fundingOrganization !== $employee->organization) {
+            if ($fundingOrganization && $grant && $fundingOrganization !== $employee->employment?->organization) {
                 $advanceData = [
                     'payroll_id' => $payroll->id,
                     'from_organization' => $fundingOrganization,
-                    'to_organization' => $employee->organization,
+                    'to_organization' => $employee->employment?->organization,
                     'via_grant_id' => $grant->id,
                     'amount' => $payroll->net_salary,
                     'advance_date' => $payrollDate,

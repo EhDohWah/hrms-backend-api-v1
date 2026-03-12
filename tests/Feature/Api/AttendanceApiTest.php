@@ -26,9 +26,11 @@ describe('Attendance API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'attendance_admin.read']);
-        Permission::firstOrCreate(['name' => 'attendance_admin.edit']);
+        Permission::firstOrCreate(['name' => 'attendance_admin.create']);
+        Permission::firstOrCreate(['name' => 'attendance_admin.update']);
+        Permission::firstOrCreate(['name' => 'attendance_admin.delete']);
 
-        $this->user->givePermissionTo(['attendance_admin.read', 'attendance_admin.edit']);
+        $this->user->givePermissionTo(['attendance_admin.read', 'attendance_admin.create', 'attendance_admin.update', 'attendance_admin.delete']);
 
         $this->actingAs($this->user);
     });

@@ -9,18 +9,21 @@ use Illuminate\Support\Facades\Auth;
 class PayrollPolicySettingService
 {
     /**
-     * List all payroll policy settings ordered by effective date.
-     *
-     * @return array{policies: Collection, active_policy: PayrollPolicySetting|null}
+     * List all payroll policy settings with optional filters.
      */
-    public function list(): array
+    public function list(array $filters = []): Collection
     {
-        return [
-            'policies' => PayrollPolicySetting::query()
-                ->orderBy('effective_date', 'desc')
-                ->get(),
-            'active_policy' => PayrollPolicySetting::getActivePolicy(),
-        ];
+        $query = PayrollPolicySetting::query();
+
+        if (array_key_exists('filter_is_active', $filters)) {
+            $query->where('is_active', $filters['filter_is_active']);
+        }
+
+        if (! empty($filters['filter_category'])) {
+            $query->where('category', $filters['filter_category']);
+        }
+
+        return $query->orderBy('policy_key')->get();
     }
 
     /**

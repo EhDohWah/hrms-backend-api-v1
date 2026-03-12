@@ -27,13 +27,21 @@ beforeEach(function () {
     $employeeRole->syncPermissions([
         'dashboard.read',
         'users.read',
-        'users.edit',
+        'users.create',
+        'users.update',
+        'users.delete',
         'attendance_admin.read',
-        'attendance_admin.edit',
+        'attendance_admin.create',
+        'attendance_admin.update',
+        'attendance_admin.delete',
         'travel_admin.read',
-        'travel_admin.edit',
+        'travel_admin.create',
+        'travel_admin.update',
+        'travel_admin.delete',
         'leaves_admin.read',
-        'leaves_admin.edit',
+        'leaves_admin.create',
+        'leaves_admin.update',
+        'leaves_admin.delete',
     ]);
 
     // Create test user
@@ -42,7 +50,7 @@ beforeEach(function () {
 });
 
 describe('Permission System Structure', function () {
-    it('creates only read and edit permissions for each permission prefix', function () {
+    it('creates CRUD permissions for each permission prefix', function () {
         // Get unique permission prefixes from modules
         $modules = Module::all();
         $permissionPrefixes = $modules->pluck('read_permission')
@@ -53,17 +61,14 @@ describe('Permission System Structure', function () {
 
         foreach ($permissionPrefixes as $prefix) {
             $readPermission = Permission::where('name', "{$prefix}.read")->first();
-            $editPermission = Permission::where('name', "{$prefix}.edit")->first();
+            $createPermission = Permission::where('name', "{$prefix}.create")->first();
+            $updatePermission = Permission::where('name', "{$prefix}.update")->first();
+            $deletePermission = Permission::where('name', "{$prefix}.delete")->first();
 
             expect($readPermission)->not->toBeNull()
-                ->and($editPermission)->not->toBeNull();
-
-            // Verify no granular permissions exist for this prefix
-            $granularActions = ['create', 'update', 'delete', 'import', 'export'];
-            foreach ($granularActions as $action) {
-                $granularPerm = Permission::where('name', "{$prefix}.{$action}")->first();
-                expect($granularPerm)->toBeNull();
-            }
+                ->and($createPermission)->not->toBeNull()
+                ->and($updatePermission)->not->toBeNull()
+                ->and($deletePermission)->not->toBeNull();
         }
     });
 
@@ -80,17 +85,25 @@ describe('Permission System Structure', function () {
 
         expect($employeeRole)->not->toBeNull();
 
-        // Employee should have specific read/edit permissions
+        // Employee should have specific CRUD permissions
         $expectedPermissions = [
             'dashboard.read',
             'users.read',
-            'users.edit',
+            'users.create',
+            'users.update',
+            'users.delete',
             'attendance_admin.read',
-            'attendance_admin.edit',
+            'attendance_admin.create',
+            'attendance_admin.update',
+            'attendance_admin.delete',
             'travel_admin.read',
-            'travel_admin.edit',
+            'travel_admin.create',
+            'travel_admin.update',
+            'travel_admin.delete',
             'leaves_admin.read',
-            'leaves_admin.edit',
+            'leaves_admin.create',
+            'leaves_admin.update',
+            'leaves_admin.delete',
         ];
 
         foreach ($expectedPermissions as $permission) {
@@ -102,7 +115,6 @@ describe('Permission System Structure', function () {
 describe('User Permission Assignment', function () {
     it('can assign read permission to user', function () {
         $module = Module::first();
-        // Extract permission prefix from read_permission (e.g., 'admin.read' => 'admin')
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
         $readPermission = "{$permissionPrefix}.read";
 
@@ -112,65 +124,80 @@ describe('User Permission Assignment', function () {
             ->and($this->user->can($readPermission))->toBeTrue();
     });
 
-    it('can assign edit permission to user', function () {
+    it('can assign create permission to user', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
-        $editPermission = "{$permissionPrefix}.edit";
+        $createPermission = "{$permissionPrefix}.create";
 
-        $this->user->givePermissionTo($editPermission);
+        $this->user->givePermissionTo($createPermission);
 
-        expect($this->user->hasPermissionTo($editPermission))->toBeTrue()
-            ->and($this->user->can($editPermission))->toBeTrue();
+        expect($this->user->hasPermissionTo($createPermission))->toBeTrue()
+            ->and($this->user->can($createPermission))->toBeTrue();
     });
 
-    it('read and edit permissions are independent', function () {
+    it('all CRUD permissions are independent', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
-        // Give only edit permission
-        $this->user->givePermissionTo("{$permissionPrefix}.edit");
+        // Give only create permission
+        $this->user->givePermissionTo("{$permissionPrefix}.create");
 
-        // User should have edit but NOT read
-        expect($this->user->can("{$permissionPrefix}.edit"))->toBeTrue()
-            ->and($this->user->can("{$permissionPrefix}.read"))->toBeFalse();
+        // User should have create but NOT read, update, or delete
+        expect($this->user->can("{$permissionPrefix}.create"))->toBeTrue()
+            ->and($this->user->can("{$permissionPrefix}.read"))->toBeFalse()
+            ->and($this->user->can("{$permissionPrefix}.update"))->toBeFalse()
+            ->and($this->user->can("{$permissionPrefix}.delete"))->toBeFalse();
     });
 });
 
 describe('User Model Helper Methods', function () {
-    it('canEditModule returns true when user has edit permission', function () {
+    it('canCreateModule returns true when user has create permission', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
-        $this->user->givePermissionTo("{$permissionPrefix}.edit");
+        $this->user->givePermissionTo("{$permissionPrefix}.create");
 
-        expect($this->user->canEditModule($permissionPrefix))->toBeTrue();
+        expect($this->user->canCreateModule($permissionPrefix))->toBeTrue();
     });
 
-    it('canEditModule returns false when user lacks edit permission', function () {
+    it('canUpdateModule returns false when user lacks update permission', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
         // Give only read permission
         $this->user->givePermissionTo("{$permissionPrefix}.read");
 
-        expect($this->user->canEditModule($permissionPrefix))->toBeFalse();
+        expect($this->user->canUpdateModule($permissionPrefix))->toBeFalse();
     });
 
-    it('getModuleAccess returns correct read/edit flags', function () {
+    it('canDeleteModule returns true when user has delete permission', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
-        // Give both read and edit permissions
+        $this->user->givePermissionTo("{$permissionPrefix}.delete");
+
+        expect($this->user->canDeleteModule($permissionPrefix))->toBeTrue();
+    });
+
+    it('getModuleAccess returns correct CRUD flags', function () {
+        $module = Module::first();
+        $permissionPrefix = str_replace('.read', '', $module->read_permission);
+
+        // Give all CRUD permissions
         $this->user->givePermissionTo([
             "{$permissionPrefix}.read",
-            "{$permissionPrefix}.edit",
+            "{$permissionPrefix}.create",
+            "{$permissionPrefix}.update",
+            "{$permissionPrefix}.delete",
         ]);
 
         $access = $this->user->getModuleAccess($permissionPrefix);
 
         expect($access)->toBeArray()
             ->and($access['read'])->toBeTrue()
-            ->and($access['edit'])->toBeTrue();
+            ->and($access['create'])->toBeTrue()
+            ->and($access['update'])->toBeTrue()
+            ->and($access['delete'])->toBeTrue();
     });
 
     it('getModuleAccess returns correct flags for read-only', function () {
@@ -184,19 +211,42 @@ describe('User Model Helper Methods', function () {
 
         expect($access)->toBeArray()
             ->and($access['read'])->toBeTrue()
-            ->and($access['edit'])->toBeFalse();
+            ->and($access['create'])->toBeFalse()
+            ->and($access['update'])->toBeFalse()
+            ->and($access['delete'])->toBeFalse();
+    });
+
+    it('hasFullAccess requires all 4 CRUD permissions', function () {
+        $module = Module::first();
+        $permissionPrefix = str_replace('.read', '', $module->read_permission);
+
+        // Give only 3 of 4 permissions
+        $this->user->givePermissionTo([
+            "{$permissionPrefix}.read",
+            "{$permissionPrefix}.create",
+            "{$permissionPrefix}.update",
+        ]);
+
+        expect($this->user->hasFullAccess($permissionPrefix))->toBeFalse();
+
+        // Now add the 4th
+        $this->user->givePermissionTo("{$permissionPrefix}.delete");
+
+        expect($this->user->hasFullAccess($permissionPrefix))->toBeTrue();
     });
 });
 
 describe('API Endpoint - Get My Permissions', function () {
-    it('returns permissions in module format', function () {
+    it('returns permissions in module format with CRUD flags', function () {
         $module = Module::first();
         $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
         // Give permissions
         $this->user->givePermissionTo([
             "{$permissionPrefix}.read",
-            "{$permissionPrefix}.edit",
+            "{$permissionPrefix}.create",
+            "{$permissionPrefix}.update",
+            "{$permissionPrefix}.delete",
         ]);
 
         $response = $this->getJson('/api/v1/me/permissions');
@@ -209,11 +259,12 @@ describe('API Endpoint - Get My Permissions', function () {
 
         $data = $response->json('data');
 
-        // The API uses module->name as the key, not permission prefix
         expect($data)->toBeArray()
             ->and($data[$module->name])->toBeArray()
             ->and($data[$module->name]['read'])->toBeTrue()
-            ->and($data[$module->name]['edit'])->toBeTrue()
+            ->and($data[$module->name]['create'])->toBeTrue()
+            ->and($data[$module->name]['update'])->toBeTrue()
+            ->and($data[$module->name]['delete'])->toBeTrue()
             ->and($data[$module->name]['display_name'])->toBe($module->display_name);
     });
 
@@ -245,35 +296,34 @@ describe('API Endpoint - Get My Permissions', function () {
         $data = $response->json('data');
 
         expect($data[$module->name]['read'])->toBeTrue()
-            ->and($data[$module->name]['edit'])->toBeFalse();
+            ->and($data[$module->name]['create'])->toBeFalse()
+            ->and($data[$module->name]['update'])->toBeFalse()
+            ->and($data[$module->name]['delete'])->toBeFalse();
     });
 });
 
 describe('DynamicModulePermission Middleware', function () {
     it('allows GET requests with read permission', function () {
-        // Create a module with a test route
-        $module = Module::where('name', 'user')->first();
+        $module = Module::where('name', 'users')->first();
 
         if ($module) {
             $this->user->givePermissionTo("{$module->name}.read");
 
-            // Test endpoint that uses GET (list users)
-            $response = $this->getJson('/api/v1/users');
+            $response = $this->getJson('/api/v1/admin/users');
 
             // Should not get 403 Forbidden
             expect($response->status())->not->toBe(403);
         }
     });
 
-    it('blocks POST requests without edit permission', function () {
-        $module = Module::where('name', 'user')->first();
+    it('blocks POST requests without create permission', function () {
+        $module = Module::where('name', 'users')->first();
 
         if ($module) {
             // Give only read permission
             $this->user->givePermissionTo("{$module->name}.read");
 
-            // Test endpoint that uses POST (create user)
-            $response = $this->postJson('/api/v1/users', [
+            $response = $this->postJson('/api/v1/admin/users', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
                 'password' => 'password123',
@@ -284,26 +334,43 @@ describe('DynamicModulePermission Middleware', function () {
         }
     });
 
-    it('allows POST requests with edit permission', function () {
-        $module = Module::where('name', 'user')->first();
+    it('allows POST requests with create permission', function () {
+        $module = Module::where('name', 'users')->first();
 
         if ($module) {
-            // Give edit permission (and read for potential checks)
             $this->user->givePermissionTo([
                 "{$module->name}.read",
-                "{$module->name}.edit",
+                "{$module->name}.create",
             ]);
 
-            // Test endpoint that uses POST
-            $response = $this->postJson('/api/v1/users', [
+            $response = $this->postJson('/api/v1/admin/users', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
                 'password' => 'password123',
+                'password_confirmation' => 'password123',
                 'role' => 'employee',
             ]);
 
             // Should not get 403 Forbidden (might get validation error, but not permission error)
             expect($response->status())->not->toBe(403);
+        }
+    });
+
+    it('blocks DELETE requests without delete permission', function () {
+        $module = Module::where('name', 'roles')->first();
+
+        if ($module) {
+            // Give read and create but NOT delete
+            $this->user->givePermissionTo([
+                "{$module->name}.read",
+                "{$module->name}.create",
+            ]);
+
+            $role = \Spatie\Permission\Models\Role::create(['name' => 'test-deletable']);
+
+            $response = $this->deleteJson("/api/v1/admin/roles/{$role->id}");
+
+            $response->assertForbidden();
         }
     });
 });
@@ -329,15 +396,17 @@ describe('Permission Cache', function () {
 });
 
 describe('Module Edit Permissions Field', function () {
-    it('stores edit permission as single-item array', function () {
+    it('stores CRUD write permissions as 3-item array', function () {
         $modules = Module::all();
 
         foreach ($modules as $module) {
             $permissionPrefix = str_replace('.read', '', $module->read_permission);
 
             expect($module->edit_permissions)->toBeArray()
-                ->and($module->edit_permissions)->toHaveCount(1)
-                ->and($module->edit_permissions[0])->toBe("{$permissionPrefix}.edit");
+                ->and($module->edit_permissions)->toHaveCount(3)
+                ->and($module->edit_permissions[0])->toBe("{$permissionPrefix}.create")
+                ->and($module->edit_permissions[1])->toBe("{$permissionPrefix}.update")
+                ->and($module->edit_permissions[2])->toBe("{$permissionPrefix}.delete");
         }
     });
 });

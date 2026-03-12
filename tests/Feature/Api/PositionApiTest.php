@@ -26,9 +26,11 @@ describe('Position API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'positions.read']);
-        Permission::firstOrCreate(['name' => 'positions.edit']);
+        Permission::firstOrCreate(['name' => 'positions.create']);
+        Permission::firstOrCreate(['name' => 'positions.update']);
+        Permission::firstOrCreate(['name' => 'positions.delete']);
 
-        $this->user->givePermissionTo(['positions.read', 'positions.edit']);
+        $this->user->givePermissionTo(['positions.read', 'positions.create', 'positions.update', 'positions.delete']);
 
         $this->actingAs($this->user);
     });

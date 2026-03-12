@@ -48,7 +48,8 @@ class AttendanceService
     public function list(array $filters): LengthAwarePaginator
     {
         $query = Attendance::with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
         ]);
 
         // Filter by employee
@@ -104,7 +105,10 @@ class AttendanceService
      */
     public function show(Attendance $attendance): Attendance
     {
-        return $attendance->load('employee:id,staff_id,first_name_en,last_name_en,organization');
+        return $attendance->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+        ]);
     }
 
     /**
@@ -117,7 +121,10 @@ class AttendanceService
 
         $attendance = Attendance::create($data);
 
-        return $attendance->load('employee:id,staff_id,first_name_en,last_name_en,organization');
+        return $attendance->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+        ]);
     }
 
     /**
@@ -129,7 +136,10 @@ class AttendanceService
 
         $attendance->update($data);
 
-        return $attendance->load('employee:id,staff_id,first_name_en,last_name_en,organization');
+        return $attendance->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+        ]);
     }
 
     /**

@@ -58,22 +58,23 @@ class ProbationAllocationSeeder extends Seeder
         $orgGrant = Grant::create([
             'name' => 'Organization Core Fund',
             'code' => 'ORG-CORE-100',
-            'organization' => 'SMRU',
+
             'description' => 'Internal funding for org-only hires',
         ]);
 
         $employee = Employee::create([
             'staff_id' => 'EMP-ORG-100',
-            'organization' => 'SMRU',
+
             'first_name_en' => 'Olivia',
             'last_name_en' => 'Orgseed',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1992-01-20',
             'status' => 'Local ID',
         ]);
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
+            'organization' => 'SMRU',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',
@@ -132,7 +133,7 @@ class ProbationAllocationSeeder extends Seeder
         $grant = Grant::create([
             'name' => 'Hybrid Education Grant',
             'code' => 'GRANT-7030',
-            'organization' => 'SMRU',
+
             'description' => 'Covers 30% of the role',
         ]);
 
@@ -150,22 +151,23 @@ class ProbationAllocationSeeder extends Seeder
         $orgGrant = Grant::create([
             'name' => 'Hybrid Org Fund',
             'code' => 'ORG-HYB-70',
-            'organization' => 'SMRU',
+
             'description' => 'Org funding for 70% of hybrid position',
         ]);
 
         $employee = Employee::create([
             'staff_id' => 'EMP-HYB-7030',
-            'organization' => 'SMRU',
+
             'first_name_en' => 'Harper',
             'last_name_en' => 'Hybrid',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1991-07-12',
             'status' => 'Local ID',
         ]);
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
+            'organization' => 'SMRU',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-02-01',
             'pass_probation_date' => '2025-05-01',
@@ -281,21 +283,21 @@ class ProbationAllocationSeeder extends Seeder
         $orgGrant = Grant::create([
             'name' => 'Strategic Org Fund',
             'code' => 'ORG-3030',
-            'organization' => 'SMRU',
+
             'description' => 'Org contribution for research staff',
         ]);
 
         $grantA = Grant::create([
             'name' => 'Global Health Grant A',
             'code' => 'GRA-30A',
-            'organization' => 'SMRU',
+
             'description' => 'Supports malaria research',
         ]);
 
         $grantB = Grant::create([
             'name' => 'Global Health Grant B',
             'code' => 'GRA-30B',
-            'organization' => 'SMRU',
+
             'description' => 'Supports TB research',
         ]);
 
@@ -321,16 +323,17 @@ class ProbationAllocationSeeder extends Seeder
 
         $employee = Employee::create([
             'staff_id' => 'EMP-RES-303030',
-            'organization' => 'SMRU',
+
             'first_name_en' => 'Riley',
             'last_name_en' => 'Researcher',
-            'gender' => 'Male',
+            'gender' => 'M',
             'date_of_birth' => '1989-03-03',
             'status' => 'Expats',
         ]);
 
         $employment = Employment::create([
             'employee_id' => $employee->id,
+            'organization' => 'SMRU',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-03-15',
             'pass_probation_date' => '2025-06-15',
@@ -413,7 +416,7 @@ class ProbationAllocationSeeder extends Seeder
                 'pay_period_date' => $payPeriod->toDateString(),
                 'gross_salary' => $employment->pass_probation_salary,
                 'gross_salary_by_FTE' => $allocation->allocated_amount,
-                'retroactive_adjustment' => 0,
+                'retroactive_salary' => 0,
                 'thirteen_month_salary' => 0,
                 'thirteen_month_salary_accured' => 0,
                 'pvd' => 0,
@@ -427,7 +430,7 @@ class ProbationAllocationSeeder extends Seeder
                 'total_salary' => $allocation->allocated_amount,
                 'total_pvd' => 0,
                 'total_saving_fund' => 0,
-                'salary_bonus' => 0,
+                'salary_increase' => 0,
                 'total_income' => $allocation->allocated_amount,
                 'employer_contribution' => 0,
                 'total_deduction' => 0,

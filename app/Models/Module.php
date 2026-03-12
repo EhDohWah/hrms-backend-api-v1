@@ -152,9 +152,9 @@ class Module extends Model
     }
 
     /**
-     * Check if a user can edit this module.
+     * Check if a user can perform any write operation on this module.
      */
-    public function userCanEdit($user): bool
+    public function userCanWrite($user): bool
     {
         if (! $user || empty($this->edit_permissions)) {
             return false;
@@ -172,13 +172,21 @@ class Module extends Model
     /**
      * Get user access level for this module.
      *
-     * @return array{read: bool, edit: bool}
+     * @return array{read: bool, create: bool, update: bool, delete: bool}
      */
     public function getUserAccess($user): array
     {
+        if (! $user) {
+            return ['read' => false, 'create' => false, 'update' => false, 'delete' => false];
+        }
+
+        $baseModule = explode('.', $this->read_permission)[0];
+
         return [
             'read' => $this->userCanRead($user),
-            'edit' => $this->userCanEdit($user),
+            'create' => $user->can("{$baseModule}.create"),
+            'update' => $user->can("{$baseModule}.update"),
+            'delete' => $user->can("{$baseModule}.delete"),
         ];
     }
 

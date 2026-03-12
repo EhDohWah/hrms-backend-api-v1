@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\IdentificationType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,10 +16,6 @@ class StoreEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Organization - required, SMRU or BHF only
-            'organization' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
-
-            // Staff ID - unique per organization
             'staff_id' => [
                 'required',
                 'string',
@@ -26,7 +23,6 @@ class StoreEmployeeRequest extends FormRequest
                 'max:50',
                 'regex:/^[A-Za-z0-9-]+$/',
                 Rule::unique('employees')
-                    ->where(fn ($query) => $query->where('organization', $this->input('organization')))
                     ->whereNull('deleted_at'),
             ],
 
@@ -41,11 +37,11 @@ class StoreEmployeeRequest extends FormRequest
             'date_of_birth' => ['required', 'date', 'before:-18 years', 'after:1940-01-01'],
             'status' => ['required', 'string', 'in:Expats (Local),Local ID Staff,Local non ID Staff'],
 
-            // Identification - direct columns (not separate table)
-            'identification_type' => ['nullable', 'string', 'in:10YearsID,BurmeseID,CI,Borderpass,ThaiID,Passport,Other'],
+            // Identification (stored in employee_identifications table via service)
+            'identification_type' => ['nullable', 'string', Rule::in(IdentificationType::values())],
             'identification_number' => ['nullable', 'string', 'max:50', 'required_with:identification_type'],
-            'identification_issue_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'identification_expiry_date' => ['nullable', 'date', 'after:identification_issue_date'],
+            'identification_issue_date' => ['nullable', 'date'],
+            'identification_expiry_date' => ['nullable', 'date', 'after_or_equal:identification_issue_date'],
 
             // Additional info
             'nationality' => ['nullable', 'string', 'max:100'],

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\ResignationAcknowledgementStatus;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +21,6 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'integer', format: 'int64', readOnly: true),
         new OA\Property(property: 'staff_id', type: 'string', maxLength: 50),
-        new OA\Property(property: 'organization', type: 'string', default: 'SMRU', enum: ['SMRU', 'BHF']),
         new OA\Property(property: 'initial_en', type: 'string', maxLength: 10, nullable: true),
         new OA\Property(property: 'initial_th', type: 'string', maxLength: 10, nullable: true),
         new OA\Property(property: 'first_name_en', type: 'string', maxLength: 255),
@@ -30,10 +32,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'status', type: 'string', default: 'Local ID Staff', enum: ['Expats (Local)', 'Local ID Staff', 'Local non ID Staff']),
         new OA\Property(property: 'nationality', type: 'string', maxLength: 100, nullable: true),
         new OA\Property(property: 'religion', type: 'string', maxLength: 100, nullable: true),
-        new OA\Property(property: 'identification_type', type: 'string', maxLength: 50, nullable: true),
-        new OA\Property(property: 'identification_number', type: 'string', maxLength: 50, nullable: true),
-        new OA\Property(property: 'identification_issue_date', type: 'string', format: 'date', nullable: true),
-        new OA\Property(property: 'identification_expiry_date', type: 'string', format: 'date', nullable: true),
         new OA\Property(property: 'social_security_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'tax_number', type: 'string', maxLength: 50, nullable: true),
         new OA\Property(property: 'bank_name', type: 'string', maxLength: 100, nullable: true),
@@ -76,7 +74,6 @@ class Employee extends Model
     const STATUS_EXPATS = 'Expats (Local)';             // Expatriates
 
     protected $fillable = [
-        'organization',
         'staff_id',
         'initial_en',
         'initial_th',
@@ -89,10 +86,6 @@ class Employee extends Model
         'status',
         'nationality',
         'religion',
-        'identification_type',
-        'identification_number',
-        'identification_issue_date',
-        'identification_expiry_date',
         'social_security_number',
         'tax_number',
         'bank_name',
@@ -127,8 +120,6 @@ class Employee extends Model
      */
     protected $casts = [
         'date_of_birth' => 'date',
-        'identification_issue_date' => 'date',
-        'identification_expiry_date' => 'date',
         'military_status' => 'boolean',
         'eligible_parents_count' => 'integer',
         'status' => \App\Enums\EmployeeStatus::class,
@@ -167,7 +158,6 @@ class Employee extends Model
             // Payroll children (blocker should have prevented these, but handle gracefully)
             $payrollIds = DB::table('payrolls')->whereIn('employment_id', $employmentIds)->pluck('id');
             if ($payrollIds->isNotEmpty()) {
-                DB::table('payroll_grant_allocations')->whereIn('payroll_id', $payrollIds)->delete();
                 DB::table('inter_organization_advances')->whereIn('payroll_id', $payrollIds)->delete();
                 DB::table('payrolls')->whereIn('id', $payrollIds)->delete();
             }
@@ -280,12 +270,26 @@ class Employee extends Model
         return $this->hasMany(Resignation::class);
     }
 
+    public function transfers()
+    {
+        return $this->hasMany(Transfer::class);
+    }
+
+    public function identifications(): HasMany
+    {
+        return $this->hasMany(EmployeeIdentification::class);
+    }
+
+    public function primaryIdentification(): HasOne
+    {
+        return $this->hasOne(EmployeeIdentification::class)->where('is_primary', true);
+    }
+
     // Query optimization scopes
     public function scopeForPagination($query)
     {
         return $query->select([
             'employees.id',
-            'employees.organization',
             'employees.staff_id',
             'employees.initial_en',
             'employees.first_name_en',
@@ -304,7 +308,8 @@ class Employee extends Model
     public function scopeWithOptimizedRelations($query)
     {
         return $query->with([
-            'employment:id,employee_id,start_date,end_probation_date',
+            'employment:id,employee_id,organization,start_date,end_probation_date',
+            'primaryIdentification:id,employee_id,identification_type,identification_number,identification_issue_date,identification_expiry_date',
         ]);
     }
 
@@ -314,7 +319,9 @@ class Employee extends Model
             $organizations = explode(',', $organizations);
         }
 
-        return $query->whereIn('organization', array_filter($organizations));
+        return $query->whereHas('employment', function ($q) use ($organizations) {
+            $q->whereIn('organization', array_filter($organizations));
+        });
     }
 
     public function scopeByStatus($query, $statuses)
@@ -352,7 +359,18 @@ class Employee extends Model
             $idTypes = explode(',', $idTypes);
         }
 
-        return $query->whereIn('identification_type', array_filter($idTypes));
+        return $query->whereHas('identifications', function ($q) use ($idTypes) {
+            $q->whereIn('identification_type', array_filter($idTypes));
+        });
+    }
+
+    /**
+     * Backward-compatible accessor: organization lives on employments, not employees.
+     * Returns the organization from the active employment record.
+     */
+    public function getOrganizationAttribute()
+    {
+        return $this->employment?->organization;
     }
 
     // Computed attributes
@@ -363,11 +381,6 @@ class Employee extends Model
         }
 
         return now()->diffInYears($this->date_of_birth);
-    }
-
-    public function getIdTypeAttribute()
-    {
-        return $this->identification_type;
     }
 
     // Helper methods for statistics
@@ -399,9 +412,14 @@ class Employee extends Model
                     ->whereNull('employees.deleted_at')
                     ->whereBetween('employments.start_date', [$threeMonthsAgo, $now])
                     ->count(),
+                'resignedCount' => DB::table('resignations')
+                    ->join('employees', 'employees.id', '=', 'resignations.employee_id')
+                    ->whereNull('employees.deleted_at')
+                    ->where('resignations.acknowledgement_status', ResignationAcknowledgementStatus::Acknowledged->value)
+                    ->count(),
                 'organizationCount' => [
-                    'SMRU_count' => Employee::where('organization', 'SMRU')->count(),
-                    'BHF_count' => Employee::where('organization', 'BHF')->count(),
+                    'SMRU_count' => Employment::where('organization', 'SMRU')->whereNull('end_date')->count(),
+                    'BHF_count' => Employment::where('organization', 'BHF')->whereNull('end_date')->count(),
                 ],
             ];
         });
@@ -427,12 +445,18 @@ class Employee extends Model
     }
 
     /**
+     * Full English name accessor — "FirstName LastName".
+     */
+    public function getFullNameEnAttribute(): string
+    {
+        return trim(($this->first_name_en ?? '').' '.($this->last_name_en ?? ''));
+    }
+
+    /**
      * Get the display name for activity logs
      */
     public function getActivityLogName(): string
     {
-        $fullName = trim(($this->first_name_en ?? '').' '.($this->last_name_en ?? ''));
-
-        return $fullName ?: ($this->staff_id ?? "Employee #{$this->id}");
+        return $this->full_name_en ?: ($this->staff_id ?? "Employee #{$this->id}");
     }
 }

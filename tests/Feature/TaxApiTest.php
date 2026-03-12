@@ -25,7 +25,7 @@ class TaxApiTest extends TestCase
         parent::setUp();
 
         // Create permissions before assigning them
-        $permissions = ['tax_settings.read', 'tax_settings.edit'];
+        $permissions = ['tax_settings.read', 'tax_settings.create', 'tax_settings.update', 'tax_settings.delete'];
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }

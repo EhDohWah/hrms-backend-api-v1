@@ -30,6 +30,8 @@ return new class extends Migration
             $table->boolean('health_welfare')->default(false); // Required - health benefits flag
             $table->boolean('pvd')->default(false); // Required - provident fund flag
             $table->boolean('saving_fund')->default(false); // Required - saving fund flag
+            $table->decimal('study_loan', 10, 2)->nullable()->default(0);
+            $table->decimal('retroactive_salary', 10, 2)->nullable()->default(0);
             $table->date('change_date')->nullable(); // Optional - date when change occurred
 
             // Change tracking fields

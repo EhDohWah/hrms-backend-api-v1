@@ -19,15 +19,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/', [GrantItemController::class, 'store'])
             ->name('grant-items.store')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.create');
 
         Route::put('/{grantItem}', [GrantItemController::class, 'update'])
             ->name('grant-items.update')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.update');
 
         Route::delete('/{grantItem}', [GrantItemController::class, 'destroy'])
             ->name('grant-items.destroy')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.delete');
     });
 
     // =========================================================================
@@ -51,22 +51,24 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('grants.showByCode')
             ->middleware('permission:grants_list.read');
 
-        // Edit routes:
+        // Create routes:
         Route::post('/', [GrantController::class, 'store'])
             ->name('grants.store')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.create');
 
-        Route::delete('/batch', [GrantController::class, 'destroyBatch'])
-            ->name('grants.destroy.selected')
-            ->middleware('permission:grants_list.edit');
-
+        // Update routes:
         Route::put('/{grant}', [GrantController::class, 'update'])
             ->name('grants.update')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.update');
+
+        // Delete routes:
+        Route::delete('/batch', [GrantController::class, 'destroyBatch'])
+            ->name('grants.destroy.selected')
+            ->middleware('permission:grants_list.delete');
 
         Route::delete('/{grant}', [GrantController::class, 'destroy'])
             ->name('grants.destroy')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.delete');
 
         // =====================================================================
         // LEGACY ROUTES - Backward compatibility for /grants/items/*
@@ -83,14 +85,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/items', [GrantItemController::class, 'store'])
             ->name('grants.items.store')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.create');
 
         Route::put('/items/{grantItem}', [GrantItemController::class, 'update'])
             ->name('grants.items.update')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.update');
 
         Route::delete('/items/{grantItem}', [GrantItemController::class, 'destroy'])
             ->name('grants.items.destroy')
-            ->middleware('permission:grants_list.edit');
+            ->middleware('permission:grants_list.delete');
     });
 });

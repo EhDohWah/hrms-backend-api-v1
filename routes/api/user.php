@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---- Dashboard (Current User) ----
     Route::prefix('dashboard')->group(function () {
+        Route::get('/quick-stats', [DashboardController::class, 'quickStats']);
         Route::get('/my-widgets', [DashboardController::class, 'show']);
         Route::put('/my-widgets', [DashboardController::class, 'updateUserDashboard']);
         Route::get('/available-widgets', [DashboardController::class, 'available']);

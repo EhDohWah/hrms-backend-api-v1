@@ -20,8 +20,8 @@ class EmploymentProbationAllocationTest extends TestCase
     public function test_employment_store_creates_probation_record(): void
     {
         $user = User::factory()->create();
-        Permission::findOrCreate('employment_records.edit', 'web');
-        $user->givePermissionTo('employment_records.edit');
+        Permission::findOrCreate('employment_records.create', 'web');
+        $user->givePermissionTo('employment_records.create');
 
         Sanctum::actingAs($user);
 
@@ -44,17 +44,17 @@ class EmploymentProbationAllocationTest extends TestCase
         ]);
 
         $employee = Employee::create([
-            'organization' => 'SMRU',
             'staff_id' => 'EMP-UNIT-001',
             'first_name_en' => 'Unit',
             'last_name_en' => 'Tester',
-            'gender' => 'Female',
+            'gender' => 'F',
             'date_of_birth' => '1990-01-01',
             'status' => 'Local ID Staff',
         ]);
 
         $response = $this->postJson('/api/v1/employments', [
             'employee_id' => $employee->id,
+            'organization' => 'SMRU',
             'pay_method' => 'Transferred to bank',
             'start_date' => '2025-01-01',
             'pass_probation_date' => '2025-04-01',

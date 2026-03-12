@@ -25,6 +25,7 @@ class StoreEmploymentRequest extends FormRequest
         return [
             // Employment fields (matching actual database schema)
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
+            'organization' => ['required', 'string', Rule::in(['SMRU', 'BHF'])],
             'position_id' => ['required', 'integer', 'exists:positions,id', Rule::exists('positions', 'id')->where(fn ($q) => $q->where('department_id', $this->department_id))],
             'department_id' => ['required', 'integer', 'exists:departments,id'],
             'section_department_id' => ['nullable', 'integer', 'exists:section_departments,id'],
@@ -38,6 +39,8 @@ class StoreEmploymentRequest extends FormRequest
             'health_welfare' => ['boolean'],
             'pvd' => ['boolean'],
             'saving_fund' => ['boolean'],
+            'study_loan' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'retroactive_salary' => ['nullable', 'numeric', 'min:-999999.99', 'max:999999.99'],
             'probation_required' => ['nullable', 'boolean'],
             // NOTE: Benefit percentages are managed globally in benefit_settings table
             'end_date' => ['nullable', 'date'],

@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\FundingAllocationStatus;
 use App\Models\Employment;
 use App\Services\FundingAllocationService;
 use Carbon\Carbon;
@@ -123,10 +124,7 @@ class EmploymentObserver
     {
         // Check if employment has active funding allocations
         $activeAllocations = $employment->employeeFundingAllocations()
-            ->where(function ($query) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>', now());
-            })
+            ->where('status', FundingAllocationStatus::Active->value)
             ->count();
 
         if ($activeAllocations > 0) {
@@ -244,10 +242,7 @@ class EmploymentObserver
     private function validateFundingAllocationImpact(Employment $employment): void
     {
         $activeAllocations = $employment->employeeFundingAllocations()
-            ->where(function ($query) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>', now());
-            })
+            ->where('status', FundingAllocationStatus::Active->value)
             ->count();
 
         if ($activeAllocations === 0) {
@@ -271,24 +266,13 @@ class EmploymentObserver
             }
         }
 
-        // If end date is moved backward, check if it affects allocations
+        // If end probation date is set, warn about potential allocation impact
         if (isset($changes['end_probation_date']) && $changes['end_probation_date']) {
-            $newEndDate = Carbon::parse($changes['end_probation_date']);
-
-            $affectedAllocations = $employment->employeeFundingAllocations()
-                ->where(function ($query) use ($newEndDate) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>', $newEndDate);
-                })
-                ->count();
-
-            if ($affectedAllocations > 0) {
-                Log::warning('Employment end date may affect funding allocations', [
-                    'employment_id' => $employment->id,
-                    'new_end_date' => $newEndDate->format('Y-m-d'),
-                    'affected_allocations' => $affectedAllocations,
-                ]);
-            }
+            Log::warning('Employment end probation date changed with active allocations', [
+                'employment_id' => $employment->id,
+                'new_end_probation_date' => $changes['end_probation_date'],
+                'active_allocations' => $activeAllocations,
+            ]);
         }
     }
 
@@ -303,36 +287,17 @@ class EmploymentObserver
             return;
         }
 
-        $allocationsToUpdate = $employment->employeeFundingAllocations()
-            ->where(function ($query) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>', now());
-            })
-            ->get();
+        // Log the change for audit trail; allocations use status-based lifecycle, not date-based
+        $activeAllocations = $employment->employeeFundingAllocations()
+            ->where('status', FundingAllocationStatus::Active->value)
+            ->count();
 
-        foreach ($allocationsToUpdate as $allocation) {
-            $updateData = [];
-
-            // Update start date if employment start date changed
-            if (isset($changes['start_date'])) {
-                $updateData['start_date'] = $employment->start_date;
-            }
-
-            // Update end date if employment end date changed
-            if (isset($changes['end_probation_date'])) {
-                $updateData['end_date'] = $employment->end_probation_date;
-            }
-
-            if (! empty($updateData)) {
-                $updateData['updated_by'] = $employment->updated_by ?? 'system';
-                $allocation->update($updateData);
-
-                Log::info('Updated funding allocation dates', [
-                    'allocation_id' => $allocation->id,
-                    'employment_id' => $employment->id,
-                    'updates' => array_keys($updateData),
-                ]);
-            }
+        if ($activeAllocations > 0) {
+            Log::info('Employment dates changed with active funding allocations', [
+                'employment_id' => $employment->id,
+                'active_allocations' => $activeAllocations,
+                'changes' => array_intersect_key($changes, array_flip(['start_date', 'end_probation_date'])),
+            ]);
         }
     }
 }

@@ -2,9 +2,8 @@
 
 use App\Http\Controllers\Api\V1\InterOrganizationAdvanceController;
 use App\Http\Controllers\Api\V1\PayrollController;
-use App\Http\Controllers\Api\V1\PayrollGrantAllocationController;
-use App\Http\Controllers\Api\V1\PayslipController;
 use App\Http\Controllers\Api\V1\PayrollPolicySettingController;
+use App\Http\Controllers\Api\V1\PayslipController;
 use App\Http\Controllers\Api\V1\TaxBracketController;
 use App\Http\Controllers\Api\V1\TaxCalculationController;
 use App\Http\Controllers\Api\V1\TaxSettingController;
@@ -23,17 +22,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{payroll}/payslip', [PayslipController::class, 'show'])->middleware('permission:employee_salary.read');
         Route::get('/{payroll}', [PayrollController::class, 'show'])->middleware('permission:employee_salary.read');
 
-        // Edit routes (update, delete)
-        Route::put('/{payroll}', [PayrollController::class, 'update'])->middleware('permission:employee_salary.edit');
-        Route::delete('/batch', [PayrollController::class, 'destroyBatch'])->middleware('permission:employee_salary.edit');
-        Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->middleware('permission:employee_salary.edit');
+        // Update routes
+        Route::put('/{payroll}', [PayrollController::class, 'update'])->middleware('permission:employee_salary.update');
+
+        // Delete routes
+        Route::delete('/batch', [PayrollController::class, 'destroyBatch'])->middleware('permission:employee_salary.delete');
+        Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->middleware('permission:employee_salary.delete');
 
         // Bulk Payroll Creation routes
-        Route::prefix('bulk')->middleware('permission:employee_salary.edit')->group(function () {
-            Route::post('/preview', [PayrollController::class, 'bulkPreview']);
-            Route::post('/create', [PayrollController::class, 'bulkStore']);
-            Route::get('/status/{batch}', [PayrollController::class, 'bulkStatus']);
-            Route::get('/errors/{batch}', [PayrollController::class, 'bulkDownloadErrors']);
+        Route::prefix('bulk')->group(function () {
+            Route::post('/preview', [PayrollController::class, 'bulkPreview'])->middleware('permission:employee_salary.create');
+            Route::post('/create', [PayrollController::class, 'bulkStore'])->middleware('permission:employee_salary.create');
+            Route::get('/status/{batch}', [PayrollController::class, 'bulkStatus'])->middleware('permission:employee_salary.read');
+            Route::get('/errors/{batch}', [PayrollController::class, 'bulkDownloadErrors'])->middleware('permission:employee_salary.read');
         });
     });
 
@@ -41,27 +42,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('inter-organization-advances')->group(function () {
         Route::get('/', [InterOrganizationAdvanceController::class, 'index'])->middleware('permission:payroll_items.read');
         Route::get('/{id}', [InterOrganizationAdvanceController::class, 'show'])->middleware('permission:payroll_items.read');
-        Route::post('/', [InterOrganizationAdvanceController::class, 'store'])->middleware('permission:payroll_items.edit');
-        Route::put('/{id}', [InterOrganizationAdvanceController::class, 'update'])->middleware('permission:payroll_items.edit');
-        Route::delete('/{id}', [InterOrganizationAdvanceController::class, 'destroy'])->middleware('permission:payroll_items.edit');
-    });
-
-    // Payroll grant allocation routes - Uses payroll_items permission
-    Route::prefix('payroll-grant-allocations')->group(function () {
-        Route::get('/', [PayrollGrantAllocationController::class, 'index'])->middleware('permission:payroll_items.read');
-        Route::get('/{allocation}', [PayrollGrantAllocationController::class, 'show'])->middleware('permission:payroll_items.read');
-        Route::post('/', [PayrollGrantAllocationController::class, 'store'])->middleware('permission:payroll_items.edit');
-        Route::put('/{allocation}', [PayrollGrantAllocationController::class, 'update'])->middleware('permission:payroll_items.edit');
-        Route::delete('/{allocation}', [PayrollGrantAllocationController::class, 'destroy'])->middleware('permission:payroll_items.edit');
+        Route::post('/', [InterOrganizationAdvanceController::class, 'store'])->middleware('permission:payroll_items.create');
+        Route::put('/{id}', [InterOrganizationAdvanceController::class, 'update'])->middleware('permission:payroll_items.update');
+        Route::delete('/{id}', [InterOrganizationAdvanceController::class, 'destroy'])->middleware('permission:payroll_items.delete');
     });
 
     // Payroll Policy Settings routes - Uses payroll_items permission
     Route::prefix('payroll-policy-settings')->group(function () {
         Route::get('/', [PayrollPolicySettingController::class, 'index'])->middleware('permission:payroll_items.read');
         Route::get('/{id}', [PayrollPolicySettingController::class, 'show'])->middleware('permission:payroll_items.read');
-        Route::post('/', [PayrollPolicySettingController::class, 'store'])->middleware('permission:payroll_items.edit');
-        Route::put('/{id}', [PayrollPolicySettingController::class, 'update'])->middleware('permission:payroll_items.edit');
-        Route::delete('/{id}', [PayrollPolicySettingController::class, 'destroy'])->middleware('permission:payroll_items.edit');
+        Route::post('/', [PayrollPolicySettingController::class, 'store'])->middleware('permission:payroll_items.create');
+        Route::put('/{id}', [PayrollPolicySettingController::class, 'update'])->middleware('permission:payroll_items.update');
+        Route::delete('/{id}', [PayrollPolicySettingController::class, 'destroy'])->middleware('permission:payroll_items.delete');
     });
 
     // Tax Bracket routes - Uses tax_settings permission
@@ -70,9 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/search', [TaxBracketController::class, 'search'])->middleware('permission:tax_settings.read');
         Route::get('/calculate/{income}', [TaxBracketController::class, 'calculateTax'])->middleware('permission:tax_settings.read');
         Route::get('/{taxBracket}', [TaxBracketController::class, 'show'])->middleware('permission:tax_settings.read');
-        Route::post('/', [TaxBracketController::class, 'store'])->middleware('permission:tax_settings.edit');
-        Route::put('/{taxBracket}', [TaxBracketController::class, 'update'])->middleware('permission:tax_settings.edit');
-        Route::delete('/{taxBracket}', [TaxBracketController::class, 'destroy'])->middleware('permission:tax_settings.edit');
+        Route::post('/', [TaxBracketController::class, 'store'])->middleware('permission:tax_settings.create');
+        Route::put('/{taxBracket}', [TaxBracketController::class, 'update'])->middleware('permission:tax_settings.update');
+        Route::delete('/{taxBracket}', [TaxBracketController::class, 'destroy'])->middleware('permission:tax_settings.delete');
     });
 
     // Tax Setting routes - Uses tax_settings permission
@@ -81,11 +73,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/by-year/{year}', [TaxSettingController::class, 'byYear'])->middleware('permission:tax_settings.read');
         Route::get('/value/{key}', [TaxSettingController::class, 'value'])->middleware('permission:tax_settings.read');
         Route::get('/{taxSetting}', [TaxSettingController::class, 'show'])->middleware('permission:tax_settings.read');
-        Route::post('/', [TaxSettingController::class, 'store'])->middleware('permission:tax_settings.edit');
-        Route::put('/{taxSetting}', [TaxSettingController::class, 'update'])->middleware('permission:tax_settings.edit');
-        Route::delete('/{taxSetting}', [TaxSettingController::class, 'destroy'])->middleware('permission:tax_settings.edit');
-        Route::patch('/{taxSetting}/toggle', [TaxSettingController::class, 'toggleSelection'])->middleware('permission:tax_settings.edit');
-        Route::post('/bulk-update', [TaxSettingController::class, 'bulkUpdate'])->middleware('permission:tax_settings.edit');
+        Route::post('/', [TaxSettingController::class, 'store'])->middleware('permission:tax_settings.create');
+        Route::put('/{taxSetting}', [TaxSettingController::class, 'update'])->middleware('permission:tax_settings.update');
+        Route::delete('/{taxSetting}', [TaxSettingController::class, 'destroy'])->middleware('permission:tax_settings.delete');
+        Route::patch('/{taxSetting}/toggle', [TaxSettingController::class, 'toggleSelection'])->middleware('permission:tax_settings.update');
+        Route::post('/bulk-update', [TaxSettingController::class, 'bulkUpdate'])->middleware('permission:tax_settings.update');
     });
 
     // Tax Calculation routes - Uses tax_settings permission

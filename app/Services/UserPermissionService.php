@@ -24,11 +24,15 @@ class UserPermissionService
 
         foreach ($modules as $module) {
             $hasRead = in_array($module->read_permission, $userPermissions);
-            $hasEdit = in_array("{$module->name}.edit", $userPermissions);
+            $hasCreate = in_array("{$module->name}.create", $userPermissions);
+            $hasUpdate = in_array("{$module->name}.update", $userPermissions);
+            $hasDelete = in_array("{$module->name}.delete", $userPermissions);
 
             $permissionsByModule[$module->name] = [
                 'read' => $hasRead,
-                'edit' => $hasEdit,
+                'create' => $hasCreate,
+                'update' => $hasUpdate,
+                'delete' => $hasDelete,
                 'display_name' => $module->display_name,
                 'category' => $module->category,
                 'icon' => $module->icon,
@@ -68,12 +72,20 @@ class UserPermissionService
                 continue;
             }
 
-            if ($access['read']) {
+            if ($access['read'] ?? false) {
                 $permissions[] = $module->read_permission;
             }
 
-            if ($access['edit']) {
-                $permissions[] = "{$moduleName}.edit";
+            if ($access['create'] ?? false) {
+                $permissions[] = "{$moduleName}.create";
+            }
+
+            if ($access['update'] ?? false) {
+                $permissions[] = "{$moduleName}.update";
+            }
+
+            if ($access['delete'] ?? false) {
+                $permissions[] = "{$moduleName}.delete";
             }
         }
 
@@ -114,18 +126,26 @@ class UserPermissionService
         $totalModules = $modules->count();
         $readOnlyCount = 0;
         $fullAccessCount = 0;
+        $partialAccessCount = 0;
         $noAccessCount = 0;
 
         foreach ($modules as $module) {
             $hasRead = in_array($module->read_permission, $userPermissions);
-            $hasEdit = in_array("{$module->name}.edit", $userPermissions);
+            $hasCreate = in_array("{$module->name}.create", $userPermissions);
+            $hasUpdate = in_array("{$module->name}.update", $userPermissions);
+            $hasDelete = in_array("{$module->name}.delete", $userPermissions);
 
-            if (! $hasRead && ! $hasEdit) {
+            $hasAnyWrite = $hasCreate || $hasUpdate || $hasDelete;
+            $hasAllWrite = $hasCreate && $hasUpdate && $hasDelete;
+
+            if (! $hasRead && ! $hasAnyWrite) {
                 $noAccessCount++;
-            } elseif ($hasRead && ! $hasEdit) {
-                $readOnlyCount++;
-            } elseif ($hasRead && $hasEdit) {
+            } elseif ($hasRead && $hasAllWrite) {
                 $fullAccessCount++;
+            } elseif ($hasRead && ! $hasAnyWrite) {
+                $readOnlyCount++;
+            } else {
+                $partialAccessCount++;
             }
         }
 
@@ -138,6 +158,7 @@ class UserPermissionService
             'summary' => [
                 'total_modules' => $totalModules,
                 'full_access' => $fullAccessCount,
+                'partial_access' => $partialAccessCount,
                 'read_only' => $readOnlyCount,
                 'no_access' => $noAccessCount,
                 'total_permissions' => count($userPermissions),

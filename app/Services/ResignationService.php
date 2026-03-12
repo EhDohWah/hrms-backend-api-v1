@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Concerns\UsesQueryBuilder;
+use App\Enums\FundingAllocationStatus;
 use App\Enums\ResignationAcknowledgementStatus;
+use App\Exceptions\Resignation\ResignationNoEmploymentException;
 use App\Exceptions\Resignation\ResignationNotAcknowledgedException;
 use App\Exceptions\Resignation\ResignationNotPendingException;
 use App\Models\Employee;
@@ -44,7 +46,7 @@ class ResignationService
     public function show(Resignation $resignation): Resignation
     {
         $resignation->loadMissing([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
             'employee.employment:id,employee_id,department_id,position_id',
             'employee.employment.department:id,name',
             'employee.employment.position:id,title',
@@ -68,7 +70,7 @@ class ResignationService
             $resignation = Resignation::create($validated);
 
             $resignation->load([
-                'employee:id,staff_id,first_name_en,last_name_en,organization',
+                'employee:id,staff_id,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title',
                 'acknowledgedBy:id,name',
@@ -89,7 +91,7 @@ class ResignationService
             $resignation->update($validated);
 
             $resignation->load([
-                'employee:id,staff_id,first_name_en,last_name_en,organization',
+                'employee:id,staff_id,first_name_en,last_name_en',
                 'department:id,name',
                 'position:id,title',
                 'acknowledgedBy:id,name',
@@ -110,7 +112,12 @@ class ResignationService
     /**
      * Acknowledge or reject a resignation.
      *
+     * When acknowledged:
+     * - Sets employment.end_date to the resignation's last_working_date
+     * - Closes all active funding allocations for that employment
+     *
      * @throws ResignationNotPendingException
+     * @throws ResignationNoEmploymentException
      */
     public function acknowledge(Resignation $resignation, string $action): Resignation
     {
@@ -126,20 +133,33 @@ class ResignationService
                 'reject' => $resignation->reject($user),
             };
 
-            // Set employment end_date when resignation is acknowledged
             if ($action === 'acknowledge') {
-                $employment = Employment::where('employee_id', $resignation->employee_id)->first();
-                if ($employment) {
-                    $employment->update([
-                        'end_date' => $resignation->last_working_date,
+                $employment = Employment::where('employee_id', $resignation->employee_id)
+                    ->whereNull('end_date')
+                    ->first();
+
+                if (! $employment) {
+                    throw new ResignationNoEmploymentException;
+                }
+
+                // Set employment end date to last working date
+                $employment->update([
+                    'end_date' => $resignation->last_working_date,
+                    'updated_by' => $user->name ?? 'System',
+                ]);
+
+                // Close all active funding allocations for this employment
+                $employment->employeeFundingAllocations()
+                    ->where('status', FundingAllocationStatus::Active->value)
+                    ->update([
+                        'status' => FundingAllocationStatus::Closed->value,
                         'updated_by' => $user->name ?? 'System',
                     ]);
-                }
             }
         });
 
         $resignation->load([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
             'department:id,name',
             'position:id,title',
             'acknowledgedBy:id,name',
@@ -157,7 +177,16 @@ class ResignationService
         $search = $validated['search'] ?? '';
 
         $query = Employee::query()
-            ->with(['employment.department:id,name', 'employment.position:id,title']);
+            ->with(['employment.department:id,name', 'employment.position:id,title'])
+            ->whereHas('employment', function ($q) {
+                $q->whereNull('end_date');
+            })
+            ->whereDoesntHave('resignations', function ($q) {
+                $q->whereIn('acknowledgement_status', [
+                    ResignationAcknowledgementStatus::Pending->value,
+                    ResignationAcknowledgementStatus::Acknowledged->value,
+                ]);
+            });
 
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -173,7 +202,7 @@ class ResignationService
                 'full_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
                 'department' => $employee->employment?->department?->name,
                 'position' => $employee->employment?->position?->title,
-                'organization' => $employee->organization,
+                'organization' => $employee->employment?->organization,
             ];
         });
     }
@@ -214,7 +243,7 @@ class ResignationService
             'date' => now()->format('jS F, Y'),
             'employee_name' => trim($employee->first_name_en.' '.$employee->last_name_en),
             'staff_id' => $employee->staff_id,
-            'organization' => $employee->organization ?? 'SMRU',
+            'organization' => $employee->employment?->organization ?? 'SMRU',
             'current_position' => $resignation->position?->title ?? 'N/A',
             'current_department' => $resignation->department?->name ?? 'N/A',
             'start_date' => $startDate ? Carbon::parse($startDate)->format('jS F, Y') : 'N/A',

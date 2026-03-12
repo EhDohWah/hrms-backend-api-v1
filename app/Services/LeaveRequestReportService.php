@@ -99,7 +99,6 @@ class LeaveRequestReportService
             'employees.staff_id',
             'employees.first_name_en',
             'employees.last_name_en',
-            'employees.organization',
         ]);
 
         // Filter by employees whose employment has the specified site

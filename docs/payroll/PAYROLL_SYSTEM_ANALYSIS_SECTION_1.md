@@ -25,7 +25,7 @@
 - total_salary (text, encrypted)
 - total_pvd (text, encrypted)
 - total_saving_fund (text, encrypted)
-- salary_bonus (text, encrypted, nullable)
+- salary_increase (text, encrypted, nullable)
 - total_income (text, encrypted)
 - employer_contribution (text, encrypted)
 - total_deduction (text, encrypted)

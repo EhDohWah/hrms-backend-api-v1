@@ -170,7 +170,7 @@ $payroll = Payroll::create([
     'compensation_refund' => 0,
     'saving_fund' => $employment->saving_fund ? 1000 : 0,
     'total_saving_fund' => $employment->saving_fund ? 1000 : 0,
-    'salary_bonus' => 7000, // Performance + Overtime bonuses
+    'salary_increase' => 7000, // Performance + Overtime bonuses
     'employer_contribution' => $payrollData['social_security']['employer_contribution'],
 
     'notes' => 'Demo payroll created with automated tax calculation system',

@@ -55,8 +55,7 @@ class TravelRequestFeatureTest extends TestCase
             'staff_id' => 'EMP001',
             'first_name_en' => 'John',
             'last_name_en' => 'Doe',
-            'organization' => 'SMRU',
-            'gender' => 'Male',
+            'gender' => 'M',
             'date_of_birth' => '1990-01-01',
             'status' => 'Local ID Staff',
         ]);

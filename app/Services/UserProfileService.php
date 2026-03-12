@@ -117,12 +117,16 @@ class UserProfileService
             $hasRead = $user->can($module->read_permission);
 
             $permissionPrefix = str_replace('.read', '', $module->read_permission);
-            $hasEdit = $user->can("{$permissionPrefix}.edit");
+            $hasCreate = $user->can("{$permissionPrefix}.create");
+            $hasUpdate = $user->can("{$permissionPrefix}.update");
+            $hasDelete = $user->can("{$permissionPrefix}.delete");
 
-            if ($hasRead || $hasEdit) {
+            if ($hasRead || $hasCreate || $hasUpdate || $hasDelete) {
                 $permissions[$module->name] = [
                     'read' => $hasRead,
-                    'edit' => $hasEdit,
+                    'create' => $hasCreate,
+                    'update' => $hasUpdate,
+                    'delete' => $hasDelete,
                     'display_name' => $module->display_name,
                     'category' => $module->category,
                     'icon' => $module->icon,
@@ -143,7 +147,7 @@ class UserProfileService
         try {
             event($event);
         } catch (\Throwable $e) {
-            Log::warning('Broadcast failed: ' . $e->getMessage());
+            Log::warning('Broadcast failed: '.$e->getMessage());
         }
     }
 }

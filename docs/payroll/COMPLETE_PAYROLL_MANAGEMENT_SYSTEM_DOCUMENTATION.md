@@ -194,7 +194,7 @@ CREATE TABLE payrolls (
     total_salary TEXT ENCRYPTED,
     total_pvd TEXT ENCRYPTED,
     total_saving_fund TEXT ENCRYPTED,
-    salary_bonus TEXT ENCRYPTED,
+    salary_increase TEXT ENCRYPTED,
     total_income TEXT ENCRYPTED,
     employer_contribution TEXT ENCRYPTED,
     total_deduction TEXT ENCRYPTED,

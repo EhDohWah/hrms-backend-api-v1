@@ -274,9 +274,16 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
                     $isPVD = $this->parseBoolean($row['pvd'] ?? '0');
                     $isSavingFund = $this->parseBoolean($row['saving_fund'] ?? '0');
 
+                    // Parse organization (defaults to SMRU if not provided)
+                    $organization = strtoupper(trim($row['organization'] ?? 'SMRU'));
+                    if (! in_array($organization, ['SMRU', 'BHF'])) {
+                        $organization = 'SMRU';
+                    }
+
                     // Prepare employment data
                     $employmentData = [
                         'employee_id' => $employeeId,
+                        'organization' => $organization,
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'pass_probation_date' => $passProbDate,
@@ -361,6 +368,7 @@ class EmploymentsImport extends DefaultValueBinder implements ShouldQueue, Skips
     {
         return [
             '*.staff_id' => 'required|string',
+            '*.organization' => 'nullable|string|in:SMRU,BHF',
             '*.start_date' => 'required|date',
             '*.pass_probation_salary' => 'required|numeric',
             '*.pass_probation_date' => 'nullable|date',

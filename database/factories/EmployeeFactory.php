@@ -22,12 +22,11 @@ class EmployeeFactory extends Factory
     {
         return [
             'staff_id' => 'EMP'.$this->faker->unique()->numberBetween(1000, 9999),
-            'organization' => $this->faker->randomElement(['SMRU', 'BHF']),
             'first_name_en' => $this->faker->firstName(),
             'last_name_en' => $this->faker->lastName(),
             'first_name_th' => null,
             'last_name_th' => null,
-            'gender' => $this->faker->randomElement(['Male', 'Female']),
+            'gender' => $this->faker->randomElement(['M', 'F']),
             'date_of_birth' => $this->faker->dateTimeBetween('-60 years', '-18 years')->format('Y-m-d'),
             'status' => $this->faker->randomElement(EmployeeStatus::values()),
             'nationality' => $this->faker->country(),
@@ -46,32 +45,12 @@ class EmployeeFactory extends Factory
     }
 
     /**
-     * Indicate that the employee is from SMRU organization.
-     */
-    public function smru(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'organization' => 'SMRU',
-        ]);
-    }
-
-    /**
-     * Indicate that the employee is from BHF organization.
-     */
-    public function bhf(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'organization' => 'BHF',
-        ]);
-    }
-
-    /**
      * Indicate that the employee is male.
      */
     public function male(): static
     {
         return $this->state(fn (array $attributes) => [
-            'gender' => 'Male',
+            'gender' => 'M',
         ]);
     }
 
@@ -81,7 +60,7 @@ class EmployeeFactory extends Factory
     public function female(): static
     {
         return $this->state(fn (array $attributes) => [
-            'gender' => 'Female',
+            'gender' => 'F',
         ]);
     }
 }

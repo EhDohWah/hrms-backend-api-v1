@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\ResignationAcknowledgementStatus;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateResignationRequest extends FormRequest
 {
@@ -19,12 +17,15 @@ class UpdateResignationRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
+     * Note: acknowledgement_status is intentionally excluded.
+     * Status changes must go through PUT /resignations/{id}/acknowledge
+     * which triggers the proper business logic (employment end_date, funding allocation closure).
+     *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            // Core fields as per schema
             'employee_id' => 'sometimes|exists:employees,id',
             'department_id' => 'nullable|exists:departments,id',
             'position_id' => 'nullable|exists:positions,id',
@@ -32,11 +33,6 @@ class UpdateResignationRequest extends FormRequest
             'last_working_date' => 'sometimes|date|after_or_equal:resignation_date',
             'reason' => 'sometimes|string|max:50',
             'reason_details' => 'nullable|string',
-            'acknowledgement_status' => [
-                'sometimes',
-                'string',
-                Rule::enum(ResignationAcknowledgementStatus::class),
-            ],
         ];
     }
 
@@ -52,7 +48,6 @@ class UpdateResignationRequest extends FormRequest
             'resignation_date.before_or_equal' => 'Resignation date cannot be in the future.',
             'last_working_date.after_or_equal' => 'Last working date must be on or after resignation date.',
             'reason.max' => 'Reason cannot exceed 50 characters.',
-            'acknowledgement_status.Illuminate\Validation\Rules\Enum' => 'Invalid acknowledgement status.',
         ];
     }
 
@@ -68,7 +63,6 @@ class UpdateResignationRequest extends FormRequest
             'resignation_date' => 'resignation date',
             'last_working_date' => 'last working date',
             'reason_details' => 'reason details',
-            'acknowledgement_status' => 'acknowledgement status',
         ];
     }
 }

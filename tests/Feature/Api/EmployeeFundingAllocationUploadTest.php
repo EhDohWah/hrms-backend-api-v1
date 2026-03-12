@@ -33,10 +33,10 @@ class EmployeeFundingAllocationUploadTest extends TestCase
         // Create a test user
         $this->user = User::factory()->create();
 
-        // Create permissions for upload/download routes
+        // Create permissions matching route middleware
         $permissions = [
             'employee_funding_allocations.read',
-            'employee_funding_allocations.edit',
+            'employee_funding_allocations.create',
         ];
 
         foreach ($permissions as $permission) {

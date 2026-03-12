@@ -26,9 +26,11 @@ describe('Department API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'departments.read']);
-        Permission::firstOrCreate(['name' => 'departments.edit']);
+        Permission::firstOrCreate(['name' => 'departments.create']);
+        Permission::firstOrCreate(['name' => 'departments.update']);
+        Permission::firstOrCreate(['name' => 'departments.delete']);
 
-        $this->user->givePermissionTo(['departments.read', 'departments.edit']);
+        $this->user->givePermissionTo(['departments.read', 'departments.create', 'departments.update', 'departments.delete']);
 
         $this->actingAs($this->user);
     });

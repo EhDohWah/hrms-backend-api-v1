@@ -34,10 +34,17 @@ class EmployeeDetailResource extends JsonResource
             'status' => $this->status,
             'nationality' => $this->nationality,
             'religion' => $this->religion,
-            'identification_type' => $this->identification_type,
-            'identification_number' => $this->identification_number,
-            'identification_issue_date' => $this->identification_issue_date,
-            'identification_expiry_date' => $this->identification_expiry_date,
+            'identification_type' => $this->primaryIdentification?->identification_type,
+            'identification_number' => $this->primaryIdentification?->identification_number,
+            'identification_issue_date' => $this->primaryIdentification?->identification_issue_date,
+            'identification_expiry_date' => $this->primaryIdentification?->identification_expiry_date,
+
+            'primary_identification' => $this->whenLoaded('primaryIdentification', function () {
+                return new EmployeeIdentificationResource($this->primaryIdentification);
+            }),
+            'identifications' => EmployeeIdentificationResource::collection(
+                $this->whenLoaded('identifications')
+            ),
             'social_security_number' => $this->social_security_number,
             'tax_number' => $this->tax_number,
             'bank_name' => $this->bank_name,
@@ -66,6 +73,7 @@ class EmployeeDetailResource extends JsonResource
             // — Employment & Position —
             'employment' => $this->whenLoaded('employment', function () {
                 return [
+                    'organization' => $this->employment->organization,
                     'start_date' => $this->employment->start_date,
                     'pass_probation_date' => $this->employment->pass_probation_date,
                     'end_probation_date' => $this->employment->end_probation_date,

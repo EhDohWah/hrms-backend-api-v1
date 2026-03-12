@@ -64,10 +64,10 @@ it('returns budget history data grouped by employee and grant allocation', funct
         'staff_id' => 'TEST001',
         'first_name_en' => 'John',
         'last_name_en' => 'Doe',
-        'organization' => 'SMRU',
     ]);
 
     $employment = Employment::factory()
+        ->smru()
         ->for($employee)
         ->for($department)
         ->create();
@@ -153,15 +153,17 @@ it('returns budget history data grouped by employee and grant allocation', funct
 
 it('filters budget history by organization', function () {
     $department = Department::factory()->create();
-    $employeeSMRU = Employee::factory()->create(['organization' => 'SMRU']);
-    $employeeBHF = Employee::factory()->create(['organization' => 'BHF']);
+    $employeeSMRU = Employee::factory()->create();
+    $employeeBHF = Employee::factory()->create();
 
     $employmentSMRU = Employment::factory()
+        ->smru()
         ->for($employeeSMRU, 'employee')
         ->for($department)
         ->create();
 
     $employmentBHF = Employment::factory()
+        ->bhf()
         ->for($employeeBHF, 'employee')
         ->for($department)
         ->create();
@@ -191,12 +193,14 @@ it('filters budget history by organization', function () {
     Payroll::factory()->create([
         'employment_id' => $employmentSMRU->id,
         'employee_funding_allocation_id' => $allocationSMRU->id,
+        'organization' => 'SMRU',
         'pay_period_date' => Carbon::create(2024, 1, 31),
     ]);
 
     Payroll::factory()->create([
         'employment_id' => $employmentBHF->id,
         'employee_funding_allocation_id' => $allocationBHF->id,
+        'organization' => 'BHF',
         'pay_period_date' => Carbon::create(2024, 1, 31),
     ]);
 

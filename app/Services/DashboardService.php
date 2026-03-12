@@ -2,14 +2,44 @@
 
 namespace App\Services;
 
+use App\Enums\LeaveRequestStatus;
 use App\Models\DashboardWidget;
+use App\Models\Employee;
+use App\Models\Employment;
+use App\Models\LeaveRequest;
+use App\Models\Payroll;
 use App\Models\User;
 use App\Models\UserDashboardWidget;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
+    /**
+     * Get quick stats for the dashboard header cards.
+     * Cached for 5 minutes to avoid hitting the DB on every page load.
+     */
+    public function quickStats(): array
+    {
+        return Cache::remember('dashboard_quick_stats', 300, function () {
+            $today = now()->toDateString();
+            $now = now();
+
+            return [
+                'total_employees' => Employee::count(),
+                'on_leave_today' => LeaveRequest::where('status', LeaveRequestStatus::Approved)
+                    ->where('start_date', '<=', $today)
+                    ->where('end_date', '>=', $today)
+                    ->count(),
+                'pending_requests' => LeaveRequest::where('status', LeaveRequestStatus::Pending)->count(),
+                'payroll_this_month' => Payroll::whereYear('pay_period_date', $now->year)
+                    ->whereMonth('pay_period_date', $now->month)
+                    ->count(),
+            ];
+        });
+    }
+
     /**
      * Get all widgets with categories and sizes (admin listing).
      */

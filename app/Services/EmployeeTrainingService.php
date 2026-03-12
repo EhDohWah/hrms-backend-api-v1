@@ -19,7 +19,8 @@ class EmployeeTrainingService
         $page = $params['page'] ?? 1;
 
         $query = EmployeeTraining::with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
             'training:id,title,organizer,start_date,end_date',
         ]);
 
@@ -110,7 +111,13 @@ class EmployeeTrainingService
         $data['created_by'] = Auth::user()->name ?? 'system';
         $data['updated_by'] = Auth::user()->name ?? 'system';
 
-        return EmployeeTraining::create($data);
+        $employeeTraining = EmployeeTraining::create($data);
+
+        return $employeeTraining->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+            'training:id,title,organizer,start_date,end_date',
+        ]);
     }
 
     /**
@@ -118,7 +125,11 @@ class EmployeeTrainingService
      */
     public function show(EmployeeTraining $employeeTraining): EmployeeTraining
     {
-        return $employeeTraining->load('training');
+        return $employeeTraining->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+            'training:id,title,organizer,start_date,end_date',
+        ]);
     }
 
     /**
@@ -129,7 +140,11 @@ class EmployeeTrainingService
         $data['updated_by'] = Auth::user()->name ?? 'system';
         $employeeTraining->update($data);
 
-        return $employeeTraining;
+        return $employeeTraining->load([
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employee.employment:id,employee_id,organization',
+            'training:id,title,organizer,start_date,end_date',
+        ]);
     }
 
     /**
@@ -190,7 +205,7 @@ class EmployeeTrainingService
                 'staff_id' => $employee->staff_id,
                 'first_name_en' => $employee->first_name_en,
                 'last_name_en' => $employee->last_name_en,
-                'organization' => $employee->organization,
+                'organization' => $employee->employment?->organization,
                 'site' => $site,
                 'department' => $department,
             ],
@@ -210,7 +225,7 @@ class EmployeeTrainingService
     public function attendanceList(Training $training, array $params): array
     {
         $attendanceQuery = EmployeeTraining::with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
         ])
             ->where('training_id', $training->id);
 

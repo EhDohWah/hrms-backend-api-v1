@@ -153,7 +153,7 @@ class PayrollService
                 'staff_id' => $employee->staff_id,
                 'first_name_en' => $employee->first_name_en,
                 'last_name_en' => $employee->last_name_en,
-                'organization' => $employee->organization,
+                'organization' => $firstPayroll->employment?->organization,
                 'employment' => [
                     'id' => $firstPayroll->employment->id,
                     'department' => [
@@ -231,9 +231,8 @@ class PayrollService
         $startDate = Carbon::createFromFormat('Y-m', $params['start_date'])->startOfMonth();
         $endDate = Carbon::createFromFormat('Y-m', $params['end_date'])->endOfMonth();
 
-        $startMonth = Carbon::createFromFormat('Y-m', $params['start_date'])->startOfMonth();
-        $endMonth = Carbon::createFromFormat('Y-m', $params['end_date'])->startOfMonth();
-        $monthsDiff = $startMonth->diffInMonths($endMonth) + 1;
+        $endMonth = $endDate->copy()->startOfMonth();
+        $monthsDiff = $startDate->diffInMonths($endMonth) + 1;
 
         if ($monthsDiff > 12) {
             throw new BudgetHistoryDateRangeException;
@@ -242,7 +241,8 @@ class PayrollService
         $query = Payroll::query()
             ->select(['id', 'employment_id', 'employee_funding_allocation_id', 'gross_salary', 'net_salary', 'pay_period_date'])
             ->with([
-                'employment.employee:id,staff_id,first_name_en,last_name_en,organization',
+                'employment.employee:id,staff_id,first_name_en,last_name_en,status',
+                'employment:id,employee_id,department_id,organization',
                 'employment.department:id,name',
                 'employeeFundingAllocation:id,fte,grant_item_id',
                 'employeeFundingAllocation.grantItem:id,grant_id',
@@ -251,7 +251,7 @@ class PayrollService
             ->whereBetween('pay_period_date', [$startDate, $endDate]);
 
         if (! empty($params['organization'])) {
-            $query->whereHas('employment.employee', fn ($q) => $q->where('organization', $params['organization']));
+            $query->where('payrolls.organization', $params['organization']);
         }
 
         if (! empty($params['department'])) {
@@ -274,7 +274,7 @@ class PayrollService
                     'employee_funding_allocation_id' => $allocationId,
                     'employee_name' => $this->getEmployeeNameFromPayroll($payroll),
                     'staff_id' => $payroll->employment->employee->staff_id ?? 'N/A',
-                    'organization' => $payroll->employment->employee->organization ?? 'N/A',
+                    'organization' => $payroll->organization ?? $payroll->employment?->organization ?? 'N/A',
                     'department' => $payroll->employment->department->name ?? 'N/A',
                     'grant_name' => $grantName,
                     'fte' => $payroll->employeeFundingAllocation->fte ?? 0,
@@ -325,14 +325,13 @@ class PayrollService
             'employment.position:id,title',
             'employment.site:id,name',
             'employeeFundingAllocation.grantItem.grant',
-            'grantAllocations',
         ]);
 
         $data = $this->buildPayslipData($payroll);
         $employee = $data['employee'];
 
-        // Select template based on employee's organization (SMRU or BHF)
-        $view = $employee?->organization === 'BHF' ? 'pdf.bhf-payslip' : 'pdf.smru-payslip';
+        // Select template based on payroll's organization snapshot (SMRU or BHF)
+        $view = ($payroll->organization ?? $payroll->employment?->organization) === 'BHF' ? 'pdf.bhf-payslip' : 'pdf.smru-payslip';
         $pdf = Pdf::loadView($view, $data);
         $pdf->setPaper('a5', 'landscape');
 
@@ -348,7 +347,7 @@ class PayrollService
      * Generate a combined PDF of all payslips for an organisation and pay month.
      * One A5-landscape page per payroll record, ordered by employment_id.
      *
-     * @param  string  $organization   'SMRU' or 'BHF'
+     * @param  string  $organization  'SMRU' or 'BHF'
      * @param  string  $payPeriodDate  Pay period in 'YYYY-MM' format (e.g. '2025-02')
      */
     public function generateBulkPayslips(string $organization, string $payPeriodDate)
@@ -359,7 +358,7 @@ class PayrollService
         $periodDate = Carbon::createFromFormat('Y-m', $payPeriodDate);
 
         $payrolls = Payroll::query()
-            ->whereHas('employment.employee', fn ($q) => $q->where('organization', $organization))
+            ->where('payrolls.organization', $organization)
             ->whereYear('pay_period_date', $periodDate->year)
             ->whereMonth('pay_period_date', $periodDate->month)
             ->with([
@@ -368,7 +367,6 @@ class PayrollService
                 'employment.position:id,title',
                 'employment.site:id,name',
                 'employeeFundingAllocation.grantItem.grant',
-                'grantAllocations',
             ])
             ->orderBy('employment_id')
             ->get();
@@ -381,9 +379,9 @@ class PayrollService
         $payslips = $payrolls->map(fn ($payroll) => $this->buildPayslipData($payroll))->all();
 
         $pdf = Pdf::loadView('pdf.bulk-payslip', [
-            'payslips'     => $payslips,
+            'payslips' => $payslips,
             'organization' => $organization,
-            'period'       => $periodDate->format('F Y'),
+            'period' => $periodDate->format('F Y'),
         ]);
         $pdf->setPaper('a5', 'landscape');
 
@@ -402,30 +400,30 @@ class PayrollService
         $employee = $payroll->employment?->employee;
         $employment = $payroll->employment;
 
-        // Two-tier fallback: historical snapshot → live funding chain → 'N/A'
-        $grantAllocation = $payroll->grantAllocations->first();
+        // Snapshot columns → live relationship fallback (for pre-snapshot payrolls)
         $fundingAllocation = $payroll->employeeFundingAllocation;
 
-        $grantCode = $grantAllocation?->grant_code ?? $fundingAllocation?->grantItem?->grant?->code ?? 'N/A';
-        $grantName = $grantAllocation?->grant_name ?? $fundingAllocation?->grantItem?->grant?->name ?? 'N/A';
-        $budgetLineCode = $grantAllocation?->budget_line_code ?? $fundingAllocation?->grantItem?->budgetline_code ?? 'N/A';
-        $grantPosition = $grantAllocation?->grant_position ?? $fundingAllocation?->grantItem?->grant_position ?? 'N/A';
-        $fte = $grantAllocation?->fte ?? $fundingAllocation?->fte ?? 0;
+        $department = $payroll->snapshot_department ?? $employment?->department?->name ?? 'N/A';
+        $position = $payroll->snapshot_position ?? $employment?->position?->title ?? 'N/A';
+        $site = $payroll->snapshot_site ?? $employment?->site?->name ?? 'N/A';
+        $grantCode = $payroll->snapshot_grant_code ?? $fundingAllocation?->grantItem?->grant?->code ?? 'N/A';
+        $grantName = $payroll->snapshot_grant_name ?? $fundingAllocation?->grantItem?->grant?->name ?? 'N/A';
+        $budgetLineCode = $payroll->snapshot_budget_line_code ?? $fundingAllocation?->grantItem?->budgetline_code ?? 'N/A';
+        $fte = $payroll->snapshot_fte ?? $fundingAllocation?->fte ?? 0;
 
         return [
-            'payroll'        => $payroll,
-            'employee'       => $employee,
-            'employment'     => $employment,
-            'department'     => $employment?->department?->name ?? 'N/A',
-            'position'       => $employment?->position?->title ?? 'N/A',
-            'site'           => $employment?->site?->name ?? 'N/A',
-            'grantCode'      => $grantCode,
-            'grantName'      => $grantName,
+            'payroll' => $payroll,
+            'employee' => $employee,
+            'employment' => $employment,
+            'department' => $department,
+            'position' => $position,
+            'site' => $site,
+            'grantCode' => $grantCode,
+            'grantName' => $grantName,
             'budgetLineCode' => $budgetLineCode,
-            'grantPosition'  => $grantPosition,
-            'fte'            => $fte,
-            'ftePercentage'  => round((float) $fte * 100, 2),
-            'payPeriod'      => Carbon::parse($payroll->pay_period_date)->format('F Y'),
+            'fte' => $fte,
+            'ftePercentage' => round((float) $fte * 100, 2),
+            'payPeriod' => Carbon::parse($payroll->pay_period_date)->format('F Y'),
         ];
     }
 
@@ -452,12 +450,12 @@ class PayrollService
 
         $headers = [
             'staff_id', 'employee_funding_allocation_id', 'pay_period_date',
-            'gross_salary', 'gross_salary_by_FTE', 'retroactive_adjustment',
+            'gross_salary', 'gross_salary_by_FTE', 'retroactive_salary',
             'thirteen_month_salary', 'thirteen_month_salary_accured', 'pvd',
             'saving_fund', 'employer_social_security', 'employee_social_security',
             'employer_health_welfare', 'employee_health_welfare', 'tax',
             'net_salary', 'total_salary', 'total_pvd', 'total_saving_fund',
-            'salary_bonus', 'total_income', 'employer_contribution', 'total_deduction', 'notes',
+            'salary_increase', 'total_income', 'employer_contribution', 'total_deduction', 'notes',
         ];
 
         $validationRules = [
@@ -480,7 +478,7 @@ class PayrollService
             'Decimal(15,2) - NULLABLE - Total salary',
             'Decimal(15,2) - NULLABLE - Total PVD',
             'Decimal(15,2) - NULLABLE - Total saving fund',
-            'Decimal(15,2) - NULLABLE - Salary bonus',
+            'Decimal(15,2) - NULLABLE - Salary increase',
             'Decimal(15,2) - NULLABLE - Total income',
             'Decimal(15,2) - NULLABLE - Employer contribution',
             'Decimal(15,2) - NULLABLE - Total deduction',
@@ -651,7 +649,8 @@ class PayrollService
         }
 
         $allocations = EmployeeFundingAllocation::with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization',
+            'employee:id,staff_id,first_name_en,last_name_en',
+            'employment:id,organization',
             'grantItem.grant:id,name,code',
         ])
             ->where('status', FundingAllocationStatus::Active)
@@ -679,7 +678,7 @@ class PayrollService
             $sheet->setCellValue("G{$row}", round($allocation->fte * 100, 2));
             $sheet->setCellValue("H{$row}", $allocation->allocated_amount);
             $sheet->setCellValue("I{$row}", ucfirst($allocation->status));
-            $sheet->setCellValue("J{$row}", $allocation->employee->organization ?? 'N/A');
+            $sheet->setCellValue("J{$row}", $allocation->employment?->organization ?? 'N/A');
 
             $row++;
         }
@@ -788,7 +787,7 @@ class PayrollService
      * Tie-breaker: lowest allocation ID (oldest).
      *
      * @param  \Illuminate\Support\Collection  $allocations  Active funding allocations
-     * @return int|null  The allocation ID that should bear all tax, or null if empty
+     * @return int|null The allocation ID that should bear all tax, or null if empty
      */
     public function determineTaxAllocationId($allocations): ?int
     {
@@ -833,10 +832,9 @@ class PayrollService
             return null;
         }
 
-        // Check policy
-        $policy = PayrollPolicySetting::getActivePolicy();
-        $enabled = $policy?->thirteenth_month_enabled ?? true;
-        if (! $enabled) {
+        // Check policy — is_active toggle on the thirteenth_month row
+        $enabled = PayrollPolicySetting::getActiveSetting(PayrollPolicySetting::KEY_THIRTEENTH_MONTH);
+        if ($enabled === false) {
             return null;
         }
 
@@ -873,8 +871,7 @@ class PayrollService
             return null;
         }
 
-        $divisor = $policy?->thirteenth_month_divisor ?? 12;
-        $thirteenthMonthAmount = round($totalYearGrossByFTE / $divisor);
+        $thirteenthMonthAmount = round($totalYearGrossByFTE / 12);
 
         if ($thirteenthMonthAmount <= 0) {
             return null;
@@ -895,7 +892,8 @@ class PayrollService
                 'gross_salary_by_fte' => 0,
                 'gross_salary_by_FTE' => 0,
                 'salary_increase_1_percent' => 0,
-                'retroactive_adjustment' => 0,
+                'retroactive_salary' => 0,
+                'deferred_salary' => 0,
                 'thirteen_month_salary' => $thirteenthMonthAmount,
                 'thirteen_month_salary_accured' => $thirteenthMonthAmount,
                 'pvd_saving_fund_employee' => 0,
@@ -904,12 +902,13 @@ class PayrollService
                 'employer_health_welfare' => 0,
                 'employee_health_welfare' => 0,
                 'income_tax' => 0,
-                'salary_bonus' => 0,
+                'salary_increase' => 0,
                 'net_salary' => $thirteenthMonthAmount,
                 'total_salary' => $thirteenthMonthAmount,
                 'total_pvd_saving_fund' => 0,
                 'pvd' => 0,
                 'saving_fund' => 0,
+                'study_loan' => 0,
                 'pvd_employer' => 0,
                 'saving_fund_employer' => 0,
                 'tax' => 0,
@@ -945,23 +944,24 @@ class PayrollService
         // Calculate pro-rated salary for probation transition
         $salaryCalculation = $this->calculateProRatedSalaryForProbation($employment, $payPeriodDate);
 
-        // Calculate annual salary increase
+        // Calculate annual salary increase (full amount, before FTE split)
         $annualIncrease = $this->calculateAnnualSalaryIncrease($employee, $employment, $payPeriodDate);
         $adjustedGrossSalary = $salaryCalculation['gross_salary'] + $annualIncrease;
+
+        // FTE-proportional annual increase for display/reporting
+        // The actual calculation is already correct (adjustedGrossSalary × FTE in grossByFTE),
+        // but we need the per-allocation increase amount for UI display.
+        $annualIncreaseByFTE = round($annualIncrease * $allocation->fte);
 
         // ===== CALCULATE ALL 13 PAYROLL ITEMS USING DEDICATED METHODS =====
 
         // 1. Gross Salary
         $grossSalary = $this->calculateGrossSalary($employment, $payPeriodDate);
 
-        // 2. Gross Salary of Current Year by FTE (includes pro-rating and LOE)
-        // Uses 30-day standardized month, mid-month start rule (day >= 16 → deferred)
-        $grossSalaryCurrentYearByFTE = $this->calculateGrossSalaryCurrentYearByFTE($employment, $allocation, $payPeriodDate, $adjustedGrossSalary);
-
-        // 3. Retroactive Adjustment (deferred salary from previous month)
-        // e.g., employee started on 17th last month → 13 days carried to this month
-        // Positive = under-paid (add to payroll), Negative = over-paid (deduct from payroll)
-        $retroactiveAdjustment = $this->calculateRetroactiveAdjustment($employment, $allocation, $payPeriodDate, $adjustedGrossSalary);
+        // 2. Gross Salary of Current Year by FTE (includes pro-rating, LOE, and deferred salary)
+        // Uses 30-day standardized month, mid-month start rule (day >= 16 → deferred to next month)
+        // Deferred salary from previous month is automatically folded into this value
+        [$grossSalaryCurrentYearByFTE, $deferredSalary] = $this->calculateGrossSalaryCurrentYearByFTE($employment, $allocation, $payPeriodDate, $adjustedGrossSalary);
 
         // 4. 13th Month Salary (December only, post-probation, YTD-based per allocation)
         $thirteenthMonthSalary = $this->calculateThirteenthMonthSalaryAmount($employee, $employment, $payPeriodDate, $grossSalaryCurrentYearByFTE, $allocation);
@@ -993,27 +993,48 @@ class PayrollService
             $isTaxAllocation
         );
 
-        // Salary bonus (currently 0 — set manually by HR or via import)
-        $salaryBonus = 0.0;
+        // Salary increase line item (manual HR override or import-provided).
+        // NOTE: This is NOT the annual policy-driven raise — that is $annualIncrease,
+        // which is already folded into gross_salary above. This column is for
+        // ad-hoc salary adjustments that HR enters manually or via payroll import.
+        $salaryIncrease = 0.0;
 
-        // 11. Net Salary (includes salary_bonus in total income)
+        // Study Loan Deduction
+        // Fixed monthly amount from employment record; not FTE-proportional, not tax-deductible.
+        // Applied to the tax-bearing allocation only (same pattern as income tax) to avoid
+        // double-deducting when an employee has multiple funding allocations.
+        $studyLoan = 0.0;
+        if ($isTaxAllocation && (float) ($employment->study_loan ?? 0) > 0) {
+            $studyLoan = round((float) $employment->study_loan);
+        }
+
+        // Manual Retroactive Salary (HR payroll correction)
+        // Can be positive (underpaid → add to income) or negative (overpaid → deduct from income).
+        // Applied to tax-bearing allocation only (same pattern as study_loan, income_tax).
+        $retroactiveSalary = 0.0;
+        if ($isTaxAllocation && (float) ($employment->retroactive_salary ?? 0) != 0) {
+            $retroactiveSalary = round((float) $employment->retroactive_salary);
+        }
+
+        // 11. Net Salary (includes salary_increase in total income)
         $netSalary = $this->calculateNetSalary(
             $grossSalaryCurrentYearByFTE,
-            $retroactiveAdjustment,
+            $retroactiveSalary,
             $thirteenthMonthSalary,
-            $salaryBonus,
+            $salaryIncrease,
             $pvdSavingEmployee,
             $employeeSocialSecurity,
             $healthWelfareEmployee,
-            $incomeTax
+            $incomeTax,
+            $studyLoan
         );
 
-        // 12. Total Salary (Total Cost to Company — includes salary_bonus)
+        // 12. Total Salary (Total Cost to Company — includes salary_increase)
         $totalSalary = $this->calculateTotalSalary(
             $grossSalaryCurrentYearByFTE,
-            $retroactiveAdjustment,
+            $retroactiveSalary,
             $thirteenthMonthSalary,
-            $salaryBonus,
+            $salaryIncrease,
             $employerSocialSecurity,
             $healthWelfareEmployer
         );
@@ -1025,18 +1046,16 @@ class PayrollService
         $pvdEmployerPortion = $totalPVDSaving - $pvdSavingEmployee;
 
         // ===== DERIVED TOTALS =====
-        $totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveAdjustment + $thirteenthMonthSalary + $salaryBonus;
-        $totalDeductions = $pvdSavingEmployee + $employeeSocialSecurity + $healthWelfareEmployee + $incomeTax;
+        $totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveSalary + $thirteenthMonthSalary + $salaryIncrease;
+        $totalDeductions = $pvdSavingEmployee + $employeeSocialSecurity + $healthWelfareEmployee + $incomeTax + $studyLoan;
         $employerContributions = $employerSocialSecurity + $healthWelfareEmployer + $pvdEmployerPortion;
 
         // 13th month accrued projection — disabled for now
         // TODO: Re-enable when accrual projection is needed
-        // $policy = PayrollPolicySetting::getActivePolicy();
-        // $thirteenthMonthEnabled = $policy?->thirteenth_month_enabled ?? true;
-        // $divisor = $policy?->thirteenth_month_divisor ?? 12;
-        // if ($thirteenthMonthEnabled) {
+        // $enabled = PayrollPolicySetting::getActiveSetting(PayrollPolicySetting::KEY_THIRTEENTH_MONTH);
+        // if ($enabled !== false) {
         //     $ytdGrossByFTE = $this->getYtdGrossSalaryByFTE($employment, $allocation, $payPeriodDate);
-        //     $thirteenthMonthAccrued = round(($ytdGrossByFTE + $grossSalaryCurrentYearByFTE) / $divisor);
+        //     $thirteenthMonthAccrued = round(($ytdGrossByFTE + $grossSalaryCurrentYearByFTE) / 12);
         // } else {
         //     $thirteenthMonthAccrued = 0;
         // }
@@ -1052,11 +1071,12 @@ class PayrollService
         $calculationBreakdown = [
             'inputs' => [
                 'employee_status' => $employee->status,
-                'organization' => $employee->organization,
+                'organization' => $employment->organization,
                 'employment_start_date' => $startDate->format('Y-m-d'),
                 'employment_end_date' => $endDate?->format('Y-m-d'),
                 'probation_salary' => $employment->probation_salary,
                 'pass_probation_salary' => $employment->pass_probation_salary,
+                'previous_year_salary' => $employment->previous_year_salary,
                 'probation_pass_date' => $probationPassDate?->format('Y-m-d'),
                 'has_passed_probation' => $probationPassDate && $payPeriodDate->gte($probationPassDate),
                 'pay_period_date' => $payPeriodDate->format('Y-m-d'),
@@ -1064,7 +1084,9 @@ class PayrollService
             ],
             'step_1_salary_determination' => [
                 'pro_rated_salary_result' => $salaryCalculation,
-                'annual_increase_rate' => $annualIncrease,
+                'annual_increase_full' => $annualIncrease,
+                'annual_increase_by_fte' => $annualIncreaseByFTE,
+                'fte' => $allocation->fte,
                 'adjusted_gross_salary' => $adjustedGrossSalary,
                 'salary_from_getSalaryAmountForDate' => $grossSalary,
             ],
@@ -1078,11 +1100,16 @@ class PayrollService
                 'resign_day' => $isResignMonth ? $endDate->day : null,
                 'result' => $grossSalaryCurrentYearByFTE,
             ],
-            'step_3_retroactive' => [
+            'step_3_deferred_salary' => [
                 'previous_month_start_day' => null,
                 'deferred_days' => 0,
-                'adjusted_gross_salary_input' => $adjustedGrossSalary,
-                'result' => $retroactiveAdjustment,
+                'deferred_amount' => $deferredSalary,
+                'included_in_gross_by_fte' => true,
+            ],
+            'step_3b_retroactive_salary' => [
+                'manual_amount' => $retroactiveSalary,
+                'employment_value' => (float) ($employment->retroactive_salary ?? 0),
+                'is_tax_allocation' => $isTaxAllocation,
             ],
             'step_4_thirteen_month' => [
                 'is_december' => $payPeriodDate->month === 12,
@@ -1131,24 +1158,25 @@ class PayrollService
                 'result_tax_by_fte' => $incomeTax,
             ],
             'step_9_totals' => [
-                'total_income_formula' => 'gross_by_fte + retro + 13th_month + bonus',
+                'total_income_formula' => 'gross_by_fte(includes deferred) + retro_salary + 13th_month + salary_increase',
                 'total_income' => $totalIncome,
-                'total_deductions_formula' => 'pvd_saving + employee_ss + employee_hw + tax',
+                'total_deductions_formula' => 'pvd_saving + employee_ss + employee_hw + tax + study_loan',
                 'total_deductions' => $totalDeductions,
+                'study_loan' => $studyLoan,
                 'employer_contributions_formula' => 'employer_ss + employer_hw + pvd_sf_employer',
                 'employer_contributions' => $employerContributions,
                 'net_salary_formula' => 'total_income - total_deductions',
                 'net_salary' => $netSalary,
-                'total_salary_formula' => 'gross_by_fte + retro + 13th_month + bonus + employer_ss + employer_hw',
+                'total_salary_formula' => 'gross_by_fte(includes deferred) + retro_salary + 13th_month + salary_increase + employer_ss + employer_hw',
                 'total_salary' => $totalSalary,
             ],
         ];
 
-        // Fill retroactive details
+        // Fill deferred salary details
         $previousMonth = $payPeriodDate->copy()->subMonth();
         if ($startDate->year == $previousMonth->year && $startDate->month == $previousMonth->month && $startDate->day >= 16) {
-            $calculationBreakdown['step_3_retroactive']['previous_month_start_day'] = $startDate->day;
-            $calculationBreakdown['step_3_retroactive']['deferred_days'] = 30 - $startDate->day + 1;
+            $calculationBreakdown['step_3_deferred_salary']['previous_month_start_day'] = $startDate->day;
+            $calculationBreakdown['step_3_deferred_salary']['deferred_days'] = 30 - $startDate->day + 1;
         }
 
         return [
@@ -1164,8 +1192,9 @@ class PayrollService
                 'gross_salary' => $grossSalary,
                 'gross_salary_by_fte' => $grossSalaryCurrentYearByFTE,
                 'gross_salary_by_FTE' => $grossSalaryCurrentYearByFTE, // Legacy compatibility
-                'salary_increase_1_percent' => $annualIncrease,
-                'retroactive_adjustment' => $retroactiveAdjustment,
+                'salary_increase_1_percent' => $annualIncreaseByFTE,
+                'retroactive_salary' => $retroactiveSalary,
+                'deferred_salary' => $deferredSalary,
                 'thirteen_month_salary' => $thirteenthMonthSalary,
                 'thirteen_month_salary_accured' => $thirteenthMonthAccrued,
                 'pvd_saving_fund_employee' => $pvdSavingEmployee,
@@ -1174,7 +1203,7 @@ class PayrollService
                 'employer_health_welfare' => $healthWelfareEmployer,
                 'employee_health_welfare' => $healthWelfareEmployee,
                 'income_tax' => $incomeTax,
-                'salary_bonus' => $salaryBonus,
+                'salary_increase' => $salaryIncrease,
                 'net_salary' => $netSalary,
                 'total_salary' => $totalSalary,
                 'total_pvd_saving_fund' => $totalPVDSaving,
@@ -1182,6 +1211,7 @@ class PayrollService
                 // ===== ADDITIONAL CALCULATED FIELDS =====
                 'pvd' => $pvdSavingCalculations['pvd_employee'],
                 'saving_fund' => $pvdSavingCalculations['saving_fund'],
+                'study_loan' => $studyLoan,
                 'pvd_employer' => round($pvdSavingCalculations['pvd_employee'] > 0 ? $pvdEmployerPortion : 0),
                 'saving_fund_employer' => round($pvdSavingCalculations['saving_fund'] > 0 ? $pvdEmployerPortion : 0),
                 'tax' => $incomeTax,
@@ -1211,7 +1241,7 @@ class PayrollService
         }
 
         $fundingOrganization = $projectGrant->organization;
-        $employeeOrganization = $employee->organization;
+        $employeeOrganization = $employee->employment?->organization;
 
         // No advance needed if subsidiaries match
         if ($fundingOrganization === $employeeOrganization) {
@@ -1313,11 +1343,14 @@ class PayrollService
      * Mid-month start rule (client req Scenario 2-3):
      *   - Start day 1: full 30 days
      *   - Start day 2-15: pay for (30 - startDay) days
-     *   - Start day >= 16: no pay this month (deferred to next month as retroactive adjustment)
+     *   - Start day >= 16: no pay this month (deferred to next month via calculateDeferredSalary)
      * Resignation mid-month (client req Scenario 4):
      *   - Pay through the resignation day based on 30-day month
      */
-    private function calculateGrossSalaryCurrentYearByFTE($employment, EmployeeFundingAllocation $allocation, Carbon $payPeriodDate, float $adjustedGrossSalary): float
+    /**
+     * @return array{0: float, 1: float} [grossSalaryByFTE, deferredSalary]
+     */
+    private function calculateGrossSalaryCurrentYearByFTE($employment, EmployeeFundingAllocation $allocation, Carbon $payPeriodDate, float $adjustedGrossSalary): array
     {
         $daysWorked = 30; // Full month default (30-day standardized)
 
@@ -1330,8 +1363,8 @@ class PayrollService
                 $daysWorked = 30;
             } elseif ($startDate->day >= 16) {
                 // Client Scenario 3: start day >= 16 means no pay this month.
-                // The deferred amount is handled by calculateRetroactiveAdjustment() next month.
-                return 0.0;
+                // Deferred salary will be added next month via calculateDeferredSalary().
+                return [0.0, 0.0];
             } else {
                 // Client Scenario 2: e.g., start day 15 → 30 - 15 + 1 = 16 pay days (inclusive of start day)
                 $daysWorked = 30 - $startDate->day + 1;
@@ -1348,7 +1381,7 @@ class PayrollService
         }
 
         if ($daysWorked <= 0) {
-            return 0.0;
+            return [0.0, 0.0];
         }
 
         // Pro-rate on FULL salary first, then apply FTE
@@ -1358,17 +1391,21 @@ class PayrollService
             $proRatedSalary = round($adjustedGrossSalary / 30) * $daysWorked;
         }
 
-        return round($proRatedSalary * $allocation->fte);
+        $currentMonthPay = round($proRatedSalary * $allocation->fte);
+
+        // Add deferred salary from previous month (day-16 start rule)
+        $deferredSalary = $this->calculateDeferredSalary($employment, $allocation, $payPeriodDate, $adjustedGrossSalary);
+
+        return [$currentMonthPay + $deferredSalary, $deferredSalary];
     }
 
     /**
-     * 3. Calculate Retroactive Adjustment
+     * 3. Calculate Deferred Salary (auto-calculated, folded into gross_salary_by_FTE)
      * Handles deferred salary from previous month when employee started on day >= 16.
      * Client Scenario 3: "Start Date: 17 | Don't get paid on the start month
      * but will be calculated back on the next month paid. Additional 13 days."
-     * Positive = under-paid (repay to employee), Negative = over-paid (deduct from employee).
      */
-    private function calculateRetroactiveAdjustment($employment, EmployeeFundingAllocation $allocation, Carbon $payPeriodDate, float $adjustedGrossSalary): float
+    private function calculateDeferredSalary($employment, EmployeeFundingAllocation $allocation, Carbon $payPeriodDate, float $adjustedGrossSalary): float
     {
         $startDate = Carbon::parse($employment->start_date);
         $previousMonth = $payPeriodDate->copy()->subMonth();
@@ -1394,7 +1431,7 @@ class PayrollService
      * 4. Calculate 13th Month Salary (per-allocation, YTD-based)
      *
      * Paid once a year in the December payroll only.
-     * Eligibility: employee must have passed probation by the pay period.
+     * Eligibility: from start_date — no probation completion required.
      *
      * Formula (confirmed by client whiteboard):
      *   SUM(gross_salary_by_FTE for all payroll records of this allocation in the year) / divisor
@@ -1419,10 +1456,8 @@ class PayrollService
         float $grossSalaryCurrentYearByFTE,
         ?EmployeeFundingAllocation $allocation = null
     ): float {
-        $policy = PayrollPolicySetting::getActivePolicy();
-
-        $enabled = $policy?->thirteenth_month_enabled ?? true;
-        if (! $enabled) {
+        $enabled = PayrollPolicySetting::getActiveSetting(PayrollPolicySetting::KEY_THIRTEENTH_MONTH);
+        if ($enabled === false) {
             return 0.0;
         }
 
@@ -1442,9 +1477,7 @@ class PayrollService
             return 0.0;
         }
 
-        $divisor = $policy?->thirteenth_month_divisor ?? 12;
-
-        return round($totalYearGrossByFTE / $divisor);
+        return round($totalYearGrossByFTE / 12);
     }
 
     /**
@@ -1568,7 +1601,7 @@ class PayrollService
         $eligibleOrgs = $eligibility['eligible_organizations'] ?? [];
 
         // Employer pays health welfare ONLY for eligible statuses in eligible organizations
-        if (! in_array($employee->organization, $eligibleOrgs) ||
+        if (! in_array($employee->employment?->organization, $eligibleOrgs) ||
             ! in_array($employee->status?->value, $eligibleStatuses)) {
             return 0.0;
         }
@@ -1727,20 +1760,21 @@ class PayrollService
 
     /**
      * 11. Calculate Net Salary
-     * Formula: (Salary by FTE + Retroactive + 13th Month + Bonus) - (PVD/Saving + Employee SSF + Employee HW + Tax)
+     * Formula: (Salary by FTE + Retroactive Salary + 13th Month + Salary Increase) - (PVD/Saving + Employee SSF + Employee HW + Tax + Study Loan)
      */
     private function calculateNetSalary(
         float $grossSalaryCurrentYearByFTE,
-        float $retroactiveAdjustment,
+        float $retroactiveSalary,
         float $thirteenthMonthSalary,
-        float $salaryBonus,
+        float $salaryIncrease,
         float $pvdSavingEmployee,
         float $employeeSocialSecurity,
         float $healthWelfareEmployee,
-        float $incomeTax
+        float $incomeTax,
+        float $studyLoan = 0.0
     ): float {
-        $totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveAdjustment + $thirteenthMonthSalary + $salaryBonus;
-        $totalDeductions = $pvdSavingEmployee + $employeeSocialSecurity + $healthWelfareEmployee + $incomeTax;
+        $totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveSalary + $thirteenthMonthSalary + $salaryIncrease;
+        $totalDeductions = $pvdSavingEmployee + $employeeSocialSecurity + $healthWelfareEmployee + $incomeTax + $studyLoan;
 
         // Net salary cannot be negative per business logic
         return max(0, round($totalIncome - $totalDeductions));
@@ -1748,21 +1782,21 @@ class PayrollService
 
     /**
      * 12. Calculate Total Salary (Total Cost to Company)
-     * Formula: Salary by FTE + Retroactive + 13th Month + Bonus + Employer SSF + Employer HW
+     * Formula: Salary by FTE + Retroactive Salary + 13th Month + Salary Increase + Employer SSF + Employer HW
      */
     private function calculateTotalSalary(
         float $grossSalaryCurrentYearByFTE,
-        float $retroactiveAdjustment,
+        float $retroactiveSalary,
         float $thirteenthMonthSalary,
-        float $salaryBonus,
+        float $salaryIncrease,
         float $employerSocialSecurity,
         float $healthWelfareEmployer
     ): float {
         return round(
             $grossSalaryCurrentYearByFTE +
-            $retroactiveAdjustment +
+            $retroactiveSalary +
             $thirteenthMonthSalary +
-            $salaryBonus +
+            $salaryIncrease +
             $employerSocialSecurity +
             $healthWelfareEmployer
         );
@@ -1841,44 +1875,124 @@ class PayrollService
     /**
      * Calculate annual salary increase based on payroll policy settings.
      *
-     * Business logic rules:
-     * - Uses 365 CALENDAR days (not working days)
-     * - 15th cutoff: if start_date day > 15, effective counting starts from 1st of next month
-     * - Salary increase only applies in the configured effective month (if set)
+     * Business rules:
+     * - Only applies in January payroll
+     * - Employee must have started BEFORE this calendar year to be eligible
+     *   (e.g. start_date in 2025 → eligible for Jan 2026 increase;
+     *    start_date in Jan 2026 → first eligible for Jan 2027 increase)
+     * - 15th cutoff is handled by payroll generation itself (start after 15th = first payroll next month)
+     * - Rate comes from salary_increase policy_value (e.g., 1.00 = 1%)
      */
     private function calculateAnnualSalaryIncrease(Employee $employee, $employment, Carbon $payPeriodDate): float
     {
-        $policy = PayrollPolicySetting::getActivePolicy();
-
-        $enabled = $policy?->salary_increase_enabled ?? true;
-        if (! $enabled) {
+        // Only applies in January
+        if ($payPeriodDate->month !== 1) {
             return 0.0;
         }
 
-        // Salary increase only applies in the configured effective month (e.g., October)
-        $effectiveMonth = $policy?->salary_increase_effective_month;
-        if ($effectiveMonth && $payPeriodDate->month !== $effectiveMonth) {
-            return 0.0;
-        }
-
-        $rate = ($policy?->salary_increase_rate ?? 1.00) / 100; // Convert percentage to decimal
-        $minDays = $policy?->salary_increase_min_working_days ?? 365;
-
-        $startDate = Carbon::parse($employment->start_date);
-
-        // 15th cutoff rule: if start day > 15, effective start = 1st of next month
-        $effectiveStartDate = $startDate->day > 15
+        // 365-day eligibility: start date on 1st–15th counts that month,
+        // start date on 16th+ pushes effective start to the following month.
+        // Must have a full year of effective service by the pay period month.
+        $startDate = $employment->start_date;
+        $effectiveStart = $startDate->day >= 16
             ? $startDate->copy()->startOfMonth()->addMonth()
-            : $startDate->copy();
+            : $startDate->copy()->startOfMonth();
 
-        // Calculate calendar days (not working days)
-        $calendarDays = $effectiveStartDate->diffInDays($payPeriodDate);
-
-        if ($calendarDays >= $minDays) {
-            return round($employment->pass_probation_salary * $rate);
+        if ($effectiveStart->gt($payPeriodDate->copy()->startOfMonth()->subYear())) {
+            return 0.0;
         }
 
-        return 0.0;
+        // Check policy — is_active toggle + read rate from policy_value
+        $setting = PayrollPolicySetting::getActiveSetting(PayrollPolicySetting::KEY_SALARY_INCREASE);
+        if ($setting === false) {
+            return 0.0;
+        }
+
+        $rate = ((float) ($setting['policy_value'] ?? 1.00)) / 100;
+
+        // Use previous_year_salary as base if available (set before January payroll runs).
+        // Fall back to pass_probation_salary for first-year employees.
+        $baseSalary = $employment->previous_year_salary ?? $employment->pass_probation_salary;
+
+        return round($baseSalary * $rate);
+    }
+
+    /**
+     * Apply annual salary increase to employments after January payroll completes.
+     *
+     * 1. Snapshot pass_probation_salary → previous_year_salary
+     * 2. Update pass_probation_salary to new salary (old + increase)
+     * 3. Recalculate funding allocation amounts
+     *
+     * Idempotent: skips employments where previous_year_salary is already set.
+     */
+    public function applyAnnualSalaryIncrease(array $employmentIds, Carbon $payPeriodDate): array
+    {
+        if ($payPeriodDate->month !== 1) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $setting = PayrollPolicySetting::getActiveSetting(PayrollPolicySetting::KEY_SALARY_INCREASE);
+        if ($setting === false) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $rate = ((float) ($setting['policy_value'] ?? 1.00)) / 100;
+        $updated = 0;
+        $skipped = 0;
+
+        $employments = Employment::whereIn('id', $employmentIds)
+            ->whereNull('end_date')
+            ->with(['employeeFundingAllocations' => fn ($q) => $q->where('status', FundingAllocationStatus::Active->value)])
+            ->get();
+
+        // Pre-compute the eligibility threshold once (same for every employment)
+        $yearAgo = $payPeriodDate->copy()->startOfMonth()->subYear();
+
+        foreach ($employments as $employment) {
+            if ($employment->previous_year_salary !== null) {
+                $skipped++;
+
+                continue;
+            }
+
+            // 365-day eligibility (per business docs Section 2.5 + HR notes):
+            // - Start date on 1st–15th → that month counts (e.g., Jan 3 → eligible next Jan)
+            // - Start date on 16th+ → that month does NOT count, clock starts next month
+            // Since this only runs for January payrolls, a Jan 16 starter misses
+            // the increase for that cycle entirely — eligible the following January.
+            $startDate = $employment->start_date;
+            $effectiveStart = $startDate->day >= 16
+                ? $startDate->copy()->startOfMonth()->addMonth()
+                : $startDate->copy()->startOfMonth();
+
+            if ($effectiveStart->gt($yearAgo)) {
+                $skipped++;
+
+                continue;
+            }
+
+            $currentSalary = (float) $employment->pass_probation_salary;
+            $increase = round($currentSalary * $rate);
+            $newSalary = $currentSalary + $increase;
+
+            $employment->update([
+                'previous_year_salary' => $currentSalary,
+                'pass_probation_salary' => $newSalary,
+                'updated_by' => 'system:annual_increase',
+            ]);
+
+            // Update allocation amounts (already eager-loaded with active filter)
+            foreach ($employment->employeeFundingAllocations as $allocation) {
+                $allocation->update([
+                    'allocated_amount' => round($newSalary * $allocation->fte, 2),
+                ]);
+            }
+
+            $updated++;
+        }
+
+        return ['updated' => $updated, 'skipped' => $skipped];
     }
 
     /**

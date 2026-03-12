@@ -44,8 +44,13 @@ class EmployeeFundingAllocationApiTest extends TestCase
         // Create and authenticate user
         $this->user = User::factory()->create();
 
-        // Create permissions
-        $permissions = ['employees.read', 'employees.edit'];
+        // Create permissions matching route middleware
+        $permissions = [
+            'employee_funding_allocations.read',
+            'employee_funding_allocations.create',
+            'employee_funding_allocations.update',
+            'employee_funding_allocations.delete',
+        ];
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
@@ -74,11 +79,10 @@ class EmployeeFundingAllocationApiTest extends TestCase
         ]);
 
         $this->employee = Employee::create([
-            'organization' => 'SMRU',
             'staff_id' => 'EMP001',
             'first_name_en' => 'John',
             'last_name_en' => 'Doe',
-            'gender' => 'Male',
+            'gender' => 'M',
             'date_of_birth' => '1990-01-01',
             'status' => 'Local ID Staff',
         ]);

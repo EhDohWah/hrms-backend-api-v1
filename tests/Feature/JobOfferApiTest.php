@@ -27,9 +27,11 @@ describe('Job Offer API', function () {
 
         // Create permissions and assign to user
         Permission::firstOrCreate(['name' => 'job_offers.read']);
-        Permission::firstOrCreate(['name' => 'job_offers.edit']);
+        Permission::firstOrCreate(['name' => 'job_offers.create']);
+        Permission::firstOrCreate(['name' => 'job_offers.update']);
+        Permission::firstOrCreate(['name' => 'job_offers.delete']);
 
-        $this->user->givePermissionTo(['job_offers.read', 'job_offers.edit']);
+        $this->user->givePermissionTo(['job_offers.read', 'job_offers.create', 'job_offers.update', 'job_offers.delete']);
 
         $this->actingAs($this->user);
     });

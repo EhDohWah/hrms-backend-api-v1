@@ -148,14 +148,14 @@ In the `calculateAllocationPayroll()` method, the 13th month is included in:
 
 ```php
 // Line 1028: Added to total income
-$totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveAdjustment + $thirteenthMonthSalary + $salaryBonus;
+$totalIncome = $grossSalaryCurrentYearByFTE + $retroactiveAdjustment + $thirteenthMonthSalary + $salaryIncrease;
 
 // Line 969-978: Included in net salary calculation
 $netSalary = calculateNetSalary(
     $grossSalaryCurrentYearByFTE,
     $retroactiveAdjustment,
     $thirteenthMonthSalary,  // ← included here
-    $salaryBonus,
+    $salaryIncrease,
     ...deductions...
 );
 ```

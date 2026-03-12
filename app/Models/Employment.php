@@ -17,6 +17,7 @@ class Employment extends Model
     /** Mass-assignable attributes */
     protected $fillable = [
         'employee_id',
+        'organization',
         'position_id',
         'department_id',
         'section_department_id',
@@ -28,9 +29,12 @@ class Employment extends Model
         'end_probation_date',
         'probation_salary',
         'pass_probation_salary',
+        'previous_year_salary',
         'health_welfare',
         'pvd',
         'saving_fund',
+        'study_loan',
+        'retroactive_salary',
         'probation_required',
         // NOTE: probation_status removed - use probation_records table instead
         // NOTE: Benefit percentages are managed globally in benefit_settings table
@@ -47,9 +51,12 @@ class Employment extends Model
         'end_probation_date' => 'date:Y-m-d',
         'probation_salary' => 'decimal:2',
         'pass_probation_salary' => 'decimal:2',
+        'previous_year_salary' => 'decimal:2',
         'health_welfare' => 'boolean',
         'pvd' => 'boolean',
         'saving_fund' => 'boolean',
+        'study_loan' => 'decimal:2',
+        'retroactive_salary' => 'decimal:2',
         'probation_required' => 'boolean',
     ];
 
@@ -97,7 +104,6 @@ class Employment extends Model
             'employment_id' => $this->id,
             'employee_id' => $this->employee_id,
             'start_date' => $this->start_date,
-            'end_date' => $this->end_date,
             'pass_probation_date' => $this->pass_probation_date,
             'pay_method' => $this->pay_method,
             'department_id' => $this->department_id,
@@ -109,6 +115,8 @@ class Employment extends Model
             'health_welfare' => $this->health_welfare,
             'pvd' => $this->pvd,
             'saving_fund' => $this->saving_fund,
+            'study_loan' => $this->study_loan,
+            'retroactive_salary' => $this->retroactive_salary,
             'change_date' => now(),
             'change_reason' => $reason,
             'changed_by_user' => Auth::user()?->name ?? $this->updated_by ?? 'system',
@@ -165,7 +173,6 @@ class Employment extends Model
             'employment_id' => $this->id,
             'employee_id' => $this->employee_id,
             'start_date' => $this->start_date,
-            'end_date' => $this->end_date,
             'pass_probation_date' => $this->pass_probation_date,
             'pay_method' => $this->pay_method,
             'department_id' => $this->department_id,
@@ -177,6 +184,8 @@ class Employment extends Model
             'health_welfare' => $this->health_welfare,
             'pvd' => $this->pvd,
             'saving_fund' => $this->saving_fund,
+            'study_loan' => $this->study_loan,
+            'retroactive_salary' => $this->retroactive_salary,
             'change_date' => now(),
             'change_reason' => $reason,
             'changed_by_user' => $changedBy ?? Auth::user()?->name ?? 'Manual Entry',
@@ -468,6 +477,15 @@ class Employment extends Model
 
     // — Query Scopes —
 
+    public function scopeByOrganization($query, $organizations)
+    {
+        if (is_string($organizations)) {
+            $organizations = explode(',', $organizations);
+        }
+
+        return $query->whereIn('organization', array_filter($organizations));
+    }
+
     public function scopeByDepartment($query, int $departmentId)
     {
         return $query->where('department_id', $departmentId);
@@ -530,7 +548,7 @@ class Employment extends Model
     public function scopeForPayroll($query)
     {
         return $query->with([
-            'employee:id,staff_id,first_name_en,last_name_en,organization,status',
+            'employee:id,staff_id,first_name_en,last_name_en,status',
             'department:id,name',
             'position:id,title,department_id',
             'employeeFundingAllocations' => function ($q) {

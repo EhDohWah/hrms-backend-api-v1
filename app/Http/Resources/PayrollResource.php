@@ -16,15 +16,28 @@ class PayrollResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'organization' => $this->organization,
             'employment_id' => $this->employment_id,
             'employee_funding_allocation_id' => $this->employee_funding_allocation_id,
+
+            // Snapshot fields (immutable point-in-time data)
+            'snapshot_staff_id' => $this->snapshot_staff_id,
+            'snapshot_employee_name' => $this->snapshot_employee_name,
+            'snapshot_department' => $this->snapshot_department,
+            'snapshot_position' => $this->snapshot_position,
+            'snapshot_site' => $this->snapshot_site,
+            'snapshot_grant_code' => $this->snapshot_grant_code,
+            'snapshot_grant_name' => $this->snapshot_grant_name,
+            'snapshot_budget_line_code' => $this->snapshot_budget_line_code,
+            'snapshot_fte' => $this->snapshot_fte,
             'gross_salary' => $this->gross_salary,
             'gross_salary_by_FTE' => $this->gross_salary_by_FTE,
-            'retroactive_adjustment' => $this->retroactive_adjustment,
+            'retroactive_salary' => $this->retroactive_salary,
             'thirteen_month_salary' => $this->thirteen_month_salary,
             // 'thirteen_month_salary_accured' => $this->thirteen_month_salary_accured, // Disabled — accrual projection not needed for now
             'pvd' => $this->pvd,
             'saving_fund' => $this->saving_fund,
+            'study_loan' => $this->study_loan,
             'employer_social_security' => $this->employer_social_security,
             'employee_social_security' => $this->employee_social_security,
             'employer_health_welfare' => $this->employer_health_welfare,
@@ -34,7 +47,7 @@ class PayrollResource extends JsonResource
             'total_salary' => $this->total_salary,
             'total_pvd' => $this->total_pvd,
             'total_saving_fund' => $this->total_saving_fund,
-            'salary_bonus' => $this->salary_bonus,
+            'salary_increase' => $this->salary_increase,
             'total_income' => $this->total_income,
             'employer_contribution' => $this->employer_contribution,
             'total_deduction' => $this->total_deduction,
@@ -60,7 +73,7 @@ class PayrollResource extends JsonResource
                     'initial_en' => $this->employment->employee->initial_en,
                     'first_name_en' => $this->employment->employee->first_name_en,
                     'last_name_en' => $this->employment->employee->last_name_en,
-                    'organization' => $this->employment->employee->organization,
+                    'organization' => $this->employment->organization,
                     'status' => $this->employment->employee->status,
                 ]),
                 'department' => $this->when($this->employment->relationLoaded('department'), fn () => [

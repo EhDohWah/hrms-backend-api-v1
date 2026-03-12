@@ -12,9 +12,11 @@ describe('Leave Type API', function () {
         $this->user = User::factory()->create();
 
         Permission::firstOrCreate(['name' => 'leave_types.read']);
-        Permission::firstOrCreate(['name' => 'leave_types.edit']);
+        Permission::firstOrCreate(['name' => 'leave_types.create']);
+        Permission::firstOrCreate(['name' => 'leave_types.update']);
+        Permission::firstOrCreate(['name' => 'leave_types.delete']);
 
-        $this->user->givePermissionTo(['leave_types.read', 'leave_types.edit']);
+        $this->user->givePermissionTo(['leave_types.read', 'leave_types.create', 'leave_types.update', 'leave_types.delete']);
 
         $this->actingAs($this->user);
     });

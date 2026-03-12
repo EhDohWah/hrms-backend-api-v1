@@ -25,9 +25,11 @@ describe('Role API', function () {
         ]);
 
         Permission::firstOrCreate(['name' => 'roles.read']);
-        Permission::firstOrCreate(['name' => 'roles.edit']);
+        Permission::firstOrCreate(['name' => 'roles.create']);
+        Permission::firstOrCreate(['name' => 'roles.update']);
+        Permission::firstOrCreate(['name' => 'roles.delete']);
 
-        $this->user->givePermissionTo(['roles.read', 'roles.edit']);
+        $this->user->givePermissionTo(['roles.read', 'roles.create', 'roles.update', 'roles.delete']);
 
         $this->actingAs($this->user);
     });

@@ -14,26 +14,23 @@ class StorePayrollPolicySettingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'thirteenth_month_enabled' => 'boolean',
-            'thirteenth_month_divisor' => 'integer|min:1|max:24',
-            'thirteenth_month_min_months' => 'integer|min:0|max:24',
-            'thirteenth_month_accrual_method' => 'string|in:monthly,quarterly,annual',
-            'salary_increase_enabled' => 'boolean',
-            'salary_increase_rate' => 'numeric|min:0|max:100',
-            'salary_increase_min_working_days' => 'integer|min:0|max:730',
-            'salary_increase_effective_month' => 'nullable|integer|min:1|max:12',
-            'effective_date' => 'required|date',
-            'is_active' => 'boolean',
-            'description' => 'nullable|string|max:255',
+            'policy_key' => ['required', 'string', 'max:100'],
+            'policy_value' => ['nullable', 'numeric'],
+            'setting_type' => ['required', 'string', 'in:percentage,boolean,numeric'],
+            'category' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'effective_date' => ['required', 'date'],
+            'is_active' => ['boolean'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'policy_key.required' => 'Policy key is required.',
+            'setting_type.required' => 'Setting type is required.',
+            'setting_type.in' => 'Setting type must be one of: percentage, boolean, numeric.',
             'effective_date.required' => 'Effective date is required.',
-            'thirteenth_month_divisor.min' => 'Divisor must be at least 1.',
-            'salary_increase_rate.max' => 'Salary increase rate cannot exceed 100%.',
         ];
     }
 }

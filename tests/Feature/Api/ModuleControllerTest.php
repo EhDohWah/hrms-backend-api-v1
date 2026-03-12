@@ -107,7 +107,7 @@ it('returns all unique permissions from modules', function () {
     $permissions = $response->json('data');
     expect($permissions)->toBeArray();
     expect($permissions)->not->toBeEmpty();
-    expect($permissions)->toContain('users.read', 'users.edit', 'employees.read', 'employees.edit');
+    expect($permissions)->toContain('users.read', 'users.create', 'employees.read', 'employees.create');
 });
 
 it('requires authentication to access modules', function () {

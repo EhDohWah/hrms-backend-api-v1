@@ -14,9 +14,10 @@ describe('Leave Balance API', function () {
         $this->user = User::factory()->create();
 
         Permission::firstOrCreate(['name' => 'leave_balances.read']);
-        Permission::firstOrCreate(['name' => 'leave_balances.edit']);
+        Permission::firstOrCreate(['name' => 'leave_balances.create']);
+        Permission::firstOrCreate(['name' => 'leave_balances.update']);
 
-        $this->user->givePermissionTo(['leave_balances.read', 'leave_balances.edit']);
+        $this->user->givePermissionTo(['leave_balances.read', 'leave_balances.create', 'leave_balances.update']);
 
         $this->actingAs($this->user);
     });

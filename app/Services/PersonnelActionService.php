@@ -17,10 +17,10 @@ class PersonnelActionService
         'creator',
         'currentDepartment',
         'currentPosition',
-        'currentWorkLocation',
+        'currentSite',
         'newDepartment',
         'newPosition',
-        'newWorkLocation',
+        'newSite',
     ];
 
     public function __construct(
@@ -53,7 +53,6 @@ class PersonnelActionService
         return [
             'action_types' => PersonnelAction::ACTION_TYPES,
             'action_subtypes' => PersonnelAction::ACTION_SUBTYPES,
-            'transfer_types' => PersonnelAction::TRANSFER_TYPES,
             'statuses' => PersonnelAction::STATUSES,
         ];
     }
@@ -112,139 +111,109 @@ class PersonnelActionService
                 'reference_number' => $personnelAction->generateReferenceNumber(),
             ]);
 
+            // Apply employment changes immediately on save
+            $this->applyToEmployment($personnelAction);
+            $personnelAction->update(['implemented_at' => now()]);
+
             // Add employment history entry
-            $employment = $personnelAction->employment;
+            $employment = $personnelAction->employment->fresh();
             $employment->addHistoryEntry(
-                "Personnel Action {$personnelAction->reference_number} created: {$personnelAction->action_type}",
+                "Personnel Action {$personnelAction->reference_number} applied: {$personnelAction->action_type}",
                 $personnelAction->comments
             );
+
+            $this->clearEmploymentCaches($employment->id);
 
             return $personnelAction->fresh();
         });
     }
 
-    public function updateApproval(PersonnelAction $personnelAction, string $approvalType, bool $approved): bool
+    public function updateApproval(PersonnelAction $personnelAction, string $approvalType, bool $approved, ?string $approvalDate = null): bool
     {
-        return DB::transaction(function () use ($personnelAction, $approvalType, $approved) {
-            // Validate approval type
+        return DB::transaction(function () use ($personnelAction, $approvalType, $approved, $approvalDate) {
             $validApprovalTypes = ['dept_head', 'coo', 'hr', 'accountant'];
             if (! in_array($approvalType, $validApprovalTypes)) {
                 throw new \InvalidArgumentException("Invalid approval type: {$approvalType}");
             }
 
-            // Update the specific approval field
-            $personnelAction->update([
+            $updateData = [
                 $approvalType.'_approved' => $approved,
+                $approvalType.'_approved_date' => $approved ? ($approvalDate ?? now()->toDateString()) : null,
                 'updated_by' => Auth::id(),
-            ]);
+            ];
 
-            // Check if all approvals are complete and implement if so
-            if ($personnelAction->fresh()->isFullyApproved()) {
-                $this->implementAction($personnelAction);
-            }
+            $personnelAction->update($updateData);
 
             return true;
         });
     }
 
-    public function implementAction(PersonnelAction $personnelAction): bool
+    private function applyToEmployment(PersonnelAction $action): void
     {
-        return DB::transaction(function () use ($personnelAction) {
-            $employment = $personnelAction->employment;
+        $emp = $action->employment;
+        $updatedBy = Auth::user()?->name ?? 'Personnel Action';
 
-            // Update employment record based on action type
-            switch ($personnelAction->action_type) {
-                case 'appointment':
-                    $this->handleAppointment($employment, $personnelAction);
-                    break;
-                case 'fiscal_increment':
-                case 'position_change':
-                    $this->handlePositionChange($employment, $personnelAction);
-                    break;
-                case 'transfer':
-                    $this->handleTransfer($employment, $personnelAction);
-                    break;
-                case 'voluntary_separation':
-                    $this->handleSeparation($employment, $personnelAction);
-                    break;
-                case 'title_change':
-                    $this->handleTitleChange($employment, $personnelAction);
-                    break;
-                default:
-                    Log::warning("Unknown personnel action type: {$personnelAction->action_type}");
-            }
-
-            // Clear relevant caches
-            $this->clearEmploymentCaches($employment->id);
-
-            return true;
-        });
-    }
-
-    private function handleAppointment(Employment $employment, PersonnelAction $action): void
-    {
-        // For appointments, update position, department, salary, and location
-        $updateData = array_filter([
-            'position_id' => $action->new_position_id,
-            'department_id' => $action->new_department_id,
-            'pass_probation_salary' => $action->new_salary,
-            'work_location_id' => $action->new_work_location_id,
-            'updated_by' => Auth::user()?->name ?? 'Personnel Action',
-        ], fn ($value) => $value !== null);
-
-        if (! empty($updateData)) {
-            $employment->update($updateData);
-        }
-    }
-
-    private function handlePositionChange(Employment $employment, PersonnelAction $action): void
-    {
-        // For position changes and fiscal increments, update position, department, and salary
-        $updateData = array_filter([
-            'position_id' => $action->new_position_id,
-            'department_id' => $action->new_department_id,
-            'pass_probation_salary' => $action->new_salary,
-            'updated_by' => Auth::user()?->name ?? 'Personnel Action',
-        ], fn ($value) => $value !== null);
-
-        if (! empty($updateData)) {
-            $employment->update($updateData);
-        }
-    }
-
-    private function handleTransfer(Employment $employment, PersonnelAction $action): void
-    {
-        // For transfers, update department, location, and optionally position
-        $updateData = array_filter([
-            'department_id' => $action->new_department_id,
-            'work_location_id' => $action->new_work_location_id,
-            'position_id' => $action->new_position_id,
-            'updated_by' => Auth::user()?->name ?? 'Personnel Action',
-        ], fn ($value) => $value !== null);
-
-        if (! empty($updateData)) {
-            $employment->update($updateData);
-        }
-    }
-
-    private function handleSeparation(Employment $employment, PersonnelAction $action): void
-    {
-        // Handle separation - set end date
-        $employment->update([
-            'end_date' => $action->effective_date,
-            'updated_by' => Auth::user()?->name ?? 'Personnel Action',
-        ]);
-    }
-
-    private function handleTitleChange(Employment $employment, PersonnelAction $action): void
-    {
-        // For title changes, only update position if provided
-        if ($action->new_position_id) {
-            $employment->update([
+        match ($action->action_type) {
+            'appointment' => $emp->update(array_filter([
                 'position_id' => $action->new_position_id,
-                'updated_by' => Auth::user()?->name ?? 'Personnel Action',
-            ]);
-        }
+                'department_id' => $action->new_department_id,
+                'site_id' => $action->new_site_id,
+                'pass_probation_salary' => $action->new_salary,
+                'updated_by' => $updatedBy,
+            ], fn ($v) => $v !== null)),
+
+            'fiscal_increment', 're_evaluated_pay' => $emp->update(array_filter([
+                'previous_year_salary' => $emp->pass_probation_salary,
+                'pass_probation_salary' => $action->new_salary,
+                'updated_by' => $updatedBy,
+            ], fn ($v) => $v !== null)),
+
+            'promotion', 'demotion' => $emp->update(array_filter([
+                'position_id' => $action->new_position_id,
+                'department_id' => $action->new_department_id,
+                'previous_year_salary' => $emp->pass_probation_salary,
+                'pass_probation_salary' => $action->new_salary ?? $emp->pass_probation_salary,
+                'updated_by' => $updatedBy,
+            ], fn ($v) => $v !== null)),
+
+            'position_change' => $emp->update(array_filter([
+                'position_id' => $action->new_position_id,
+                'department_id' => $action->new_department_id,
+                'pass_probation_salary' => $action->new_salary,
+                'updated_by' => $updatedBy,
+            ], fn ($v) => $v !== null)),
+
+            'title_change' => $action->new_position_id ? $emp->update([
+                'position_id' => $action->new_position_id,
+                'updated_by' => $updatedBy,
+            ]) : null,
+
+            'voluntary_separation', 'end_of_contract' => $emp->update([
+                'end_date' => $action->effective_date,
+                'updated_by' => $updatedBy,
+            ]),
+
+            'work_allocation' => $emp->update(array_filter([
+                'department_id' => $action->new_department_id,
+                'site_id' => $action->new_site_id,
+                'updated_by' => $updatedBy,
+            ], fn ($v) => $v !== null)),
+
+            'transfer' => match ($action->action_subtype) {
+                'internal_department' => $emp->update(array_filter([
+                    'department_id' => $action->new_department_id,
+                    'position_id' => $action->new_position_id,
+                    'updated_by' => $updatedBy,
+                ], fn ($v) => $v !== null)),
+                'site_to_site' => $emp->update(array_filter([
+                    'site_id' => $action->new_site_id,
+                    'updated_by' => $updatedBy,
+                ], fn ($v) => $v !== null)),
+                default => null,
+            },
+
+            default => Log::warning("Unknown personnel action type: {$action->action_type}"),
+        };
     }
 
     private function clearEmploymentCaches(int $employmentId): void

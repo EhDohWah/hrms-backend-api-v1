@@ -68,6 +68,7 @@ function createEmployment(array $deps, array $overrides = []): Employment
 {
     $defaults = [
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,
@@ -94,6 +95,7 @@ it('auto-calculates pass_probation_date to 3 months from start_date', function (
 
     $employment = $this->service->create([
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,
@@ -118,6 +120,7 @@ it('respects explicit pass_probation_date', function () {
 
     $employment = $this->service->create([
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,
@@ -144,6 +147,7 @@ it('creates initial probation record on create', function () {
 
     $this->service->create([
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,
@@ -168,6 +172,7 @@ it('throws ActiveEmploymentExistsException when employee has active employment',
 
     $this->service->create([
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,
@@ -190,6 +195,7 @@ it('returns employment with loaded relationships on create', function () {
 
     $employment = $this->service->create([
         'employee_id' => $deps['employee']->id,
+        'organization' => 'SMRU',
         'department_id' => $deps['department']->id,
         'position_id' => $deps['position']->id,
         'site_id' => $deps['site']->id,

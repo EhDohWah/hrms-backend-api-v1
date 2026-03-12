@@ -21,11 +21,12 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'pay_period_date', type: 'string', format: 'date'),
         new OA\Property(property: 'gross_salary', type: 'number', format: 'float'),
         new OA\Property(property: 'gross_salary_by_FTE', type: 'number', format: 'float'),
-        new OA\Property(property: 'retroactive_adjustment', type: 'number', format: 'float', description: 'Retroactive adjustment: +ve=under-paid, -ve=over-paid'),
+        new OA\Property(property: 'retroactive_salary', type: 'number', format: 'float', description: 'Retroactive adjustment: +ve=under-paid, -ve=over-paid'),
         new OA\Property(property: 'thirteen_month_salary', type: 'number', format: 'float'),
         new OA\Property(property: 'thirteen_month_salary_accured', type: 'number', format: 'float'),
         new OA\Property(property: 'pvd', type: 'number', format: 'float'),
         new OA\Property(property: 'saving_fund', type: 'number', format: 'float'),
+        new OA\Property(property: 'study_loan', type: 'number', format: 'float', nullable: true, description: 'Monthly study loan deduction'),
         new OA\Property(property: 'employer_social_security', type: 'number', format: 'float'),
         new OA\Property(property: 'employee_social_security', type: 'number', format: 'float'),
         new OA\Property(property: 'employer_health_welfare', type: 'number', format: 'float'),
@@ -35,7 +36,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'total_salary', type: 'number', format: 'float'),
         new OA\Property(property: 'total_pvd', type: 'number', format: 'float'),
         new OA\Property(property: 'total_saving_fund', type: 'number', format: 'float'),
-        new OA\Property(property: 'salary_bonus', type: 'number', format: 'float'),
+        new OA\Property(property: 'salary_increase', type: 'number', format: 'float'),
         new OA\Property(property: 'total_income', type: 'number', format: 'float'),
         new OA\Property(property: 'employer_contribution', type: 'number', format: 'float'),
         new OA\Property(property: 'total_deduction', type: 'number', format: 'float'),
@@ -53,13 +54,27 @@ class Payroll extends Model
     protected $fillable = [
         'employment_id',
         'employee_funding_allocation_id',
+        'organization',
+
+        // Snapshot fields (immutable after creation — point-in-time data)
+        'snapshot_staff_id',
+        'snapshot_employee_name',
+        'snapshot_department',
+        'snapshot_position',
+        'snapshot_site',
+        'snapshot_grant_code',
+        'snapshot_grant_name',
+        'snapshot_budget_line_code',
+        'snapshot_fte',
+
         'gross_salary',
         'gross_salary_by_FTE',
-        'retroactive_adjustment',
+        'retroactive_salary',
         'thirteen_month_salary',
         'thirteen_month_salary_accured',
         'pvd',
         'saving_fund',
+        'study_loan',
         'employer_social_security',
         'employee_social_security',
         'employer_health_welfare',
@@ -69,7 +84,7 @@ class Payroll extends Model
         'total_salary',
         'total_pvd',
         'total_saving_fund',
-        'salary_bonus',
+        'salary_increase',
         'total_income',
         'employer_contribution',
         'total_deduction',
@@ -83,11 +98,12 @@ class Payroll extends Model
     protected $casts = [
         'gross_salary' => 'encrypted',
         'gross_salary_by_FTE' => 'encrypted',
-        'retroactive_adjustment' => 'encrypted',
+        'retroactive_salary' => 'encrypted',
         'thirteen_month_salary' => 'encrypted',
         'thirteen_month_salary_accured' => 'encrypted',
         'pvd' => 'encrypted',
         'saving_fund' => 'encrypted',
+        'study_loan' => 'encrypted',
         'employer_social_security' => 'encrypted',
         'employee_social_security' => 'encrypted',
         'employer_health_welfare' => 'encrypted',
@@ -97,11 +113,12 @@ class Payroll extends Model
         'total_salary' => 'encrypted',
         'total_pvd' => 'encrypted',
         'total_saving_fund' => 'encrypted',
-        'salary_bonus' => 'encrypted',
+        'salary_increase' => 'encrypted',
         'total_income' => 'encrypted',
         'employer_contribution' => 'encrypted',
         'total_deduction' => 'encrypted',
         'pay_period_date' => 'date',
+        'snapshot_fte' => 'decimal:4',
     ];
 
     /**
@@ -116,7 +133,6 @@ class Payroll extends Model
     /**
      * Clean up child records before permanent deletion (forceDelete).
      *
-     * payroll_grant_allocations: CASCADE FK — handled automatically by DB.
      * inter_organization_advances: NO ACTION FK — must delete manually.
      */
     protected function pruning(): void
@@ -127,6 +143,25 @@ class Payroll extends Model
             ->delete();
 
         Log::info("Pruning payroll #{$this->id} (pay period: {$this->pay_period_date})");
+    }
+
+    /**
+     * Build the 9 snapshot fields from an employment + allocation pair.
+     * Used by ProcessBulkPayroll and PayrollsImport to stamp point-in-time data.
+     */
+    public static function buildSnapshotFields(Employment $employment, EmployeeFundingAllocation $allocation): array
+    {
+        return [
+            'snapshot_staff_id' => $employment->employee?->staff_id,
+            'snapshot_employee_name' => $employment->employee?->full_name_en,
+            'snapshot_department' => $employment->department?->name,
+            'snapshot_position' => $employment->position?->title,
+            'snapshot_site' => $employment->site?->name,
+            'snapshot_grant_code' => $allocation->grantItem?->grant?->code,
+            'snapshot_grant_name' => $allocation->grantItem?->grant?->name,
+            'snapshot_budget_line_code' => $allocation->grantItem?->budgetline_code,
+            'snapshot_fte' => $allocation->fte,
+        ];
     }
 
     // Define relationships
@@ -146,11 +181,6 @@ class Payroll extends Model
         return $this->hasOneThrough(Employee::class, Employment::class, 'id', 'id', 'employment_id', 'employee_id');
     }
 
-    public function grantAllocations()
-    {
-        return $this->hasMany(PayrollGrantAllocation::class, 'payroll_id');
-    }
-
     // Query optimization scopes
     public function scopeForPagination($query)
     {
@@ -158,9 +188,19 @@ class Payroll extends Model
             'id',
             'employment_id',
             'employee_funding_allocation_id',
+            'organization',
+            'snapshot_staff_id',
+            'snapshot_employee_name',
+            'snapshot_department',
+            'snapshot_position',
+            'snapshot_site',
+            'snapshot_grant_code',
+            'snapshot_grant_name',
+            'snapshot_budget_line_code',
+            'snapshot_fte',
             'gross_salary',
             'gross_salary_by_FTE',
-            'retroactive_adjustment',
+            'retroactive_salary',
             'thirteen_month_salary',
             'thirteen_month_salary_accured',
             'pvd',
@@ -174,7 +214,7 @@ class Payroll extends Model
             'total_salary',
             'total_pvd',
             'total_saving_fund',
-            'salary_bonus',
+            'salary_increase',
             'total_income',
             'employer_contribution',
             'total_deduction',
@@ -188,7 +228,7 @@ class Payroll extends Model
     public function scopeWithOptimizedRelations($query)
     {
         return $query->with([
-            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
+            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,status',
             'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',
@@ -205,9 +245,7 @@ class Payroll extends Model
         }
         $subsidiaries = array_map('trim', array_filter($subsidiaries));
 
-        return $query->whereHas('employment.employee', function ($q) use ($subsidiaries) {
-            $q->whereIn('organization', $subsidiaries);
-        });
+        return $query->whereIn('payrolls.organization', $subsidiaries);
     }
 
     public function scopeByOrganization($query, $organizations)
@@ -217,9 +255,7 @@ class Payroll extends Model
         }
         $organizations = array_map('trim', array_filter($organizations));
 
-        return $query->whereHas('employment.employee', function ($q) use ($organizations) {
-            $q->whereIn('organization', $organizations);
-        });
+        return $query->whereIn('payrolls.organization', $organizations);
     }
 
     public function scopeByDepartment($query, $departments)
@@ -259,11 +295,7 @@ class Payroll extends Model
     {
         switch ($sortBy) {
             case 'organization':
-                return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
-                    ->join('employees', 'employments.employee_id', '=', 'employees.id')
-                    ->whereNull('employees.deleted_at')
-                    ->orderBy('employees.organization', $sortOrder)
-                    ->select('payrolls.*');
+                return $query->orderBy('payrolls.organization', $sortOrder);
 
             case 'department':
                 return $query->join('employments', 'payrolls.employment_id', '=', 'employments.id')
@@ -302,11 +334,11 @@ class Payroll extends Model
     // Helper methods for filter options
     public static function getUniqueSubsidiaries()
     {
-        return \App\Models\Employee::select('organization')
+        return Employment::select('organization')
             ->distinct()
             ->whereNotNull('organization')
             ->where('organization', '!=', '')
-            ->whereHas('employment.payrolls')
+            ->whereNull('end_date')
             ->orderBy('organization')
             ->pluck('organization');
     }
@@ -332,7 +364,7 @@ class Payroll extends Model
     public function scopeWithEmployeeInfo($query)
     {
         return $query->with([
-            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,organization,status',
+            'employment.employee:id,staff_id,initial_en,first_name_en,last_name_en,status',
             'employment:id,employee_id,department_id,position_id,pay_method,pvd,saving_fund,start_date,end_probation_date',
             'employment.department:id,name',
             'employment.position:id,title,department_id',

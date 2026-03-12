@@ -176,7 +176,7 @@ class BulkPayrollService
             'staff_id' => $employee->staff_id,
             'name' => $employee->first_name_en.' '.$employee->last_name_en,
             'employee_status' => $employee->status,
-            'organization' => $employee->organization,
+            'organization' => $employment->organization,
             'department' => $employment->department->name ?? 'N/A',
             'position' => $employment->position->title ?? 'N/A',
             'start_date' => $employment->start_date,
@@ -342,6 +342,7 @@ class BulkPayrollService
             'deductions' => [
                 'pvd' => round($calc['pvd']),                             // Provident Fund (employee portion)
                 'saving_fund' => round($calc['saving_fund']),             // Saving Fund (employee portion)
+                'study_loan' => round($calc['study_loan'] ?? 0),          // Study loan (fixed monthly deduction)
                 'employee_ss' => round($calc['employee_social_security']), // Social Security (5%, capped at ฿875)
                 'employee_hw' => round($calc['employee_health_welfare']),  // Health & Welfare (tiered by salary & nationality)
                 'tax' => round($calc['tax']),                             // Income tax (progressive brackets)
@@ -361,8 +362,9 @@ class BulkPayrollService
             'income_additions' => [
                 'thirteen_month' => round($calc['thirteen_month_salary']),            // 13th month salary (December payout)
                 // 'thirteen_month_accrued' => round($calc['thirteen_month_salary_accured']), // Disabled — accrual projection not needed for now
-                'retroactive_adjustment' => round($calc['retroactive_adjustment'] ?? 0),  // Deferred salary from previous month (start day >= 16)
-                'salary_bonus' => round($calc['salary_bonus'] ?? 0),                      // Annual salary increase bonus
+                'retroactive_salary' => round($calc['retroactive_salary'] ?? 0),        // Manual HR payroll correction
+                'deferred_salary' => round($calc['deferred_salary'] ?? 0),            // Auto-calculated deferred salary (day-16 start, folded into gross_by_FTE)
+                'salary_increase' => round($calc['salary_increase'] ?? 0),              // Annual salary increase
             ],
 
             // --- Summary Totals ---
@@ -375,7 +377,7 @@ class BulkPayrollService
             // --- Inter-Organization Advance ---
             'needs_advance' => $needsAdvance,  // True if grant org ≠ employee org
             'advance_from' => $needsAdvance ? $allocation->grantItem->grant->organization ?? 'N/A' : null,  // Funding source org
-            'advance_to' => $needsAdvance ? $employee->organization : null,  // Employee's home org (receives advance)
+            'advance_to' => $needsAdvance ? $employee->employment?->organization : null,  // Employee's home org (receives advance)
         ];
 
         // Append step-by-step calculation debug breakdown when available
@@ -558,7 +560,7 @@ class BulkPayrollService
      * Check if the current user is authorized to access this batch.
      *
      * Access is granted if the user created the batch OR has the
-     * 'employee_salary.edit' permission (HR admin/payroll manager).
+     * 'employee_salary.update' permission (HR admin/payroll manager).
      * Aborts with 403 if neither condition is met.
      *
      * @param  BulkPayrollBatch  $batch  The batch to check access for
@@ -567,8 +569,8 @@ class BulkPayrollService
      */
     private function authorizeBatchAccess(BulkPayrollBatch $batch): void
     {
-        // Allow access if user is the batch creator OR has payroll edit permission
-        if ($batch->created_by !== Auth::id() && ! Auth::user()->can('employee_salary.edit')) {
+        // Allow access if user is the batch creator OR has payroll update permission
+        if ((int) $batch->created_by !== (int) Auth::id() && ! Auth::user()->can('employee_salary.update')) {
             abort(403, 'Unauthorized');
         }
     }
@@ -602,9 +604,7 @@ class BulkPayrollService
 
         // Filter by subsidiary/organization (e.g., 'SMRU', 'BHF')
         if (! empty($filters['subsidiaries'])) {
-            $query->whereHas('employee', function ($q) use ($filters) {
-                $q->whereIn('organization', $filters['subsidiaries']);
-            });
+            $query->whereIn('organization', $filters['subsidiaries']);
         }
 
         return $query;
@@ -627,7 +627,7 @@ class BulkPayrollService
         // Ensure the grant relationship chain is loaded before comparing
         if ($allocation->grantItem && $allocation->grantItem->grant) {
             // Advance needed when employee org ≠ grant funding org
-            return $employee->organization !== $allocation->grantItem->grant->organization;
+            return $employee->employment?->organization !== $allocation->grantItem->grant->organization;
         }
 
         // If grant data is missing, no advance can be determined

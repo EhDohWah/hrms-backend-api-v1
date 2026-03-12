@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Employee;
+use App\Models\Employment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -19,11 +20,9 @@ class EmployeeApiTest extends TestCase
     {
         parent::setUp();
 
-        // Create and authenticate user
         $this->user = User::factory()->create();
 
-        // Create permissions
-        $permissions = ['employees.read', 'employees.edit'];
+        $permissions = ['employees.read', 'employees.create', 'employees.update', 'employees.delete'];
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
@@ -50,7 +49,6 @@ class EmployeeApiTest extends TestCase
                         'staff_id',
                         'first_name_en',
                         'last_name_en',
-                        'organization',
                         'status',
                     ],
                 ],
@@ -84,7 +82,6 @@ class EmployeeApiTest extends TestCase
     public function it_can_create_employee()
     {
         $employeeData = [
-            'organization' => 'SMRU',
             'staff_id' => 'EMP999',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
@@ -118,12 +115,12 @@ class EmployeeApiTest extends TestCase
     public function it_validates_required_fields_on_create()
     {
         $response = $this->postJson('/api/v1/employees', [
-            // Missing required fields: organization, staff_id, first_name_en, gender, date_of_birth, status
+            // Missing required fields: staff_id, first_name_en, gender, date_of_birth, status
             'last_name_en' => 'Smith',
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['organization', 'staff_id', 'first_name_en', 'gender', 'date_of_birth', 'status']);
+            ->assertJsonValidationErrors(['staff_id', 'first_name_en', 'gender', 'date_of_birth', 'status']);
     }
 
     /** @test */
@@ -167,7 +164,6 @@ class EmployeeApiTest extends TestCase
                 'success' => true,
             ]);
 
-        // The response wraps data as an array of employees via EmployeeCollection
         $data = $response->json('data');
         $this->assertNotEmpty($data);
         $this->assertEquals('1234', $data[0]['staff_id']);
@@ -183,10 +179,9 @@ class EmployeeApiTest extends TestCase
 
         $updateData = [
             'staff_id' => $employee->staff_id,
-            'organization' => $employee->organization,
             'first_name_en' => 'Updated',
             'last_name_en' => 'Name',
-            'gender' => $employee->gender === 'Male' ? 'M' : ($employee->gender === 'Female' ? 'F' : $employee->gender),
+            'gender' => $employee->gender,
             'date_of_birth' => $employee->date_of_birth->format('Y-m-d'),
             'status' => $employee->status instanceof \App\Enums\EmployeeStatus ? $employee->status->value : $employee->status,
         ];
@@ -207,7 +202,6 @@ class EmployeeApiTest extends TestCase
         $employee = Employee::factory()->create();
 
         $updateData = [
-            'organization' => $employee->organization,
             'staff_id' => $employee->staff_id,
             'first_name_en' => 'Updated First',
             'last_name_en' => 'Updated Last',
@@ -340,8 +334,11 @@ class EmployeeApiTest extends TestCase
     /** @test */
     public function it_can_filter_employees_by_organization()
     {
-        Employee::factory()->create(['organization' => 'SMRU']);
-        Employee::factory()->create(['organization' => 'BHF']);
+        $smruEmployee = Employee::factory()->create();
+        Employment::factory()->smru()->create(['employee_id' => $smruEmployee->id]);
+
+        $bhfEmployee = Employee::factory()->create();
+        Employment::factory()->bhf()->create(['employee_id' => $bhfEmployee->id]);
 
         $response = $this->getJson('/api/v1/employees?filter_organization=SMRU');
 
@@ -390,12 +387,10 @@ class EmployeeApiTest extends TestCase
     /** @test */
     public function it_checks_permissions_for_create()
     {
-        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
         $employeeData = [
-            'organization' => 'SMRU',
             'staff_id' => 'EMP999',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
@@ -414,7 +409,6 @@ class EmployeeApiTest extends TestCase
     {
         $employee = Employee::factory()->create();
 
-        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
@@ -430,7 +424,6 @@ class EmployeeApiTest extends TestCase
     {
         $employee = Employee::factory()->create();
 
-        // Create user WITHOUT edit permission (no permissions at all)
         $userWithoutPermission = User::factory()->create();
         Sanctum::actingAs($userWithoutPermission);
 
@@ -452,12 +445,10 @@ class EmployeeApiTest extends TestCase
     {
         Employee::factory()->create([
             'staff_id' => 'DUP001',
-            'organization' => 'SMRU',
         ]);
 
         $employeeData = [
-            'organization' => 'SMRU',
-            'staff_id' => 'DUP001', // Duplicate within same organization
+            'staff_id' => 'DUP001',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
             'gender' => 'F',
@@ -497,7 +488,6 @@ class EmployeeApiTest extends TestCase
     public function it_validates_date_of_birth_format()
     {
         $employeeData = [
-            'organization' => 'SMRU',
             'staff_id' => 'EMP998',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',
@@ -516,7 +506,6 @@ class EmployeeApiTest extends TestCase
     public function it_validates_gender_values()
     {
         $employeeData = [
-            'organization' => 'SMRU',
             'staff_id' => 'EMP997',
             'first_name_en' => 'Jane',
             'last_name_en' => 'Smith',

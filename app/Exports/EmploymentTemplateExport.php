@@ -99,6 +99,7 @@ class EmploymentTemplateExport
     {
         return [
             'staff_id',
+            'organization',
             'start_date',
             'pass_probation_salary',
             'pass_probation_date',
@@ -122,6 +123,7 @@ class EmploymentTemplateExport
     {
         return [
             'String - NOT NULL - Employee staff ID (must exist in system)',
+            'String - NULLABLE - SMRU or BHF (defaults to SMRU)',
             'Date (YYYY-MM-DD) - NOT NULL - Employment start date',
             'Decimal(10,2) - NOT NULL - Regular salary after probation',
             'Date (YYYY-MM-DD) - NULLABLE - Probation end date (default: 3 months after start)',
@@ -145,19 +147,20 @@ class EmploymentTemplateExport
     {
         return [
             'A' => 15,  // staff_id
-            'B' => 15,  // start_date
-            'C' => 20,  // pass_probation_salary
-            'D' => 20,  // pass_probation_date
-            'E' => 18,  // probation_salary
-            'F' => 18,  // end_date
-            'G' => 20,  // pay_method
-            'H' => 15,  // site_code
-            'I' => 20,  // department
-            'J' => 22,  // section_department_id
-            'K' => 20,  // position
-            'L' => 18,  // health_welfare
-            'M' => 12,  // pvd
-            'N' => 15,  // saving_fund
+            'B' => 15,  // organization
+            'C' => 15,  // start_date
+            'D' => 20,  // pass_probation_salary
+            'E' => 20,  // pass_probation_date
+            'F' => 18,  // probation_salary
+            'G' => 18,  // end_date
+            'H' => 20,  // pay_method
+            'I' => 15,  // site_code
+            'J' => 20,  // department
+            'K' => 22,  // section_department_id
+            'L' => 20,  // position
+            'M' => 18,  // health_welfare
+            'N' => 12,  // pvd
+            'O' => 15,  // saving_fund
         ];
     }
 
@@ -168,15 +171,15 @@ class EmploymentTemplateExport
     {
         $sampleData = [
             [
-                'EMP001', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
+                'EMP001', 'SMRU', '2025-01-15', '50000.00', '2025-04-15', '45000.00', '',
                 'Monthly', 'MRM', 'Human Resources', '', 'HR Manager', '1', '1', '0',
             ],
             [
-                'EMP002', '2025-02-01', '30000.00', '2025-05-01', '', '',
+                'EMP002', 'BHF', '2025-02-01', '30000.00', '2025-05-01', '', '',
                 'Hourly', 'BHF', 'Finance', 'Accounting', 'Accountant', '0', '1', '1',
             ],
             [
-                'EMP003', '2025-03-01', '60000.00', '', '', '2025-12-31',
+                'EMP003', 'SMRU', '2025-03-01', '60000.00', '', '', '2025-12-31',
                 'Bank Transfer', 'SMRU', 'IT', '', 'Software Developer', '1', '0', '0',
             ],
         ];
@@ -199,8 +202,22 @@ class EmploymentTemplateExport
     {
         $maxRow = 1000;
 
-        // Pay Method dropdown (Column G)
-        $payMethodValidation = $sheet->getCell('G6')->getDataValidation();
+        // Organization dropdown (Column B)
+        $orgValidation = $sheet->getCell('B6')->getDataValidation();
+        $orgValidation->setType(DataValidation::TYPE_LIST);
+        $orgValidation->setErrorStyle(DataValidation::STYLE_INFORMATION);
+        $orgValidation->setAllowBlank(true);
+        $orgValidation->setShowInputMessage(true);
+        $orgValidation->setFormula1('"SMRU,BHF"');
+        $orgValidation->setPromptTitle('Organization');
+        $orgValidation->setPrompt('Select SMRU or BHF');
+
+        for ($i = 6; $i <= $maxRow; $i++) {
+            $sheet->getCell("B{$i}")->setDataValidation(clone $orgValidation);
+        }
+
+        // Pay Method dropdown (Column H)
+        $payMethodValidation = $sheet->getCell('H6')->getDataValidation();
         $payMethodValidation->setType(DataValidation::TYPE_LIST);
         $payMethodValidation->setErrorStyle(DataValidation::STYLE_INFORMATION);
         $payMethodValidation->setAllowBlank(true);
@@ -210,11 +227,11 @@ class EmploymentTemplateExport
         $payMethodValidation->setPrompt('Select pay method');
 
         for ($i = 6; $i <= $maxRow; $i++) {
-            $sheet->getCell("G{$i}")->setDataValidation(clone $payMethodValidation);
+            $sheet->getCell("H{$i}")->setDataValidation(clone $payMethodValidation);
         }
 
         // Boolean fields (1/0) validation
-        $booleanColumns = ['L', 'M', 'N']; // health_welfare, pvd, saving_fund
+        $booleanColumns = ['M', 'N', 'O']; // health_welfare, pvd, saving_fund
         foreach ($booleanColumns as $column) {
             $booleanValidation = $sheet->getCell("{$column}6")->getDataValidation();
             $booleanValidation->setType(DataValidation::TYPE_LIST);

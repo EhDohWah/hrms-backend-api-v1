@@ -197,11 +197,13 @@ class PayrollController extends BaseApiController
     {
         $result = $this->payrollService->budgetHistory($request->validated());
 
-        return $this->successResponse([
+        return response()->json([
+            'success' => true,
+            'message' => 'Budget history retrieved successfully',
             'data' => $result['data'],
             'pagination' => $result['pagination'],
             'date_range' => $result['date_range'],
-        ], 'Budget history retrieved successfully');
+        ]);
     }
 
     /**

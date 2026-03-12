@@ -6,7 +6,7 @@
     <style>
         @page {
             margin: 0;
-            size: A5 landscape;
+            size: 228.6mm 139.7mm;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -19,7 +19,7 @@
         /* Each payslip occupies exactly one A5 landscape page */
         .payslip-page {
             /* Customized margins: Top 0.5cm, Right 1cm, Bottom 0.5cm, Left 2cm */
-            padding: 14pt 28pt 14pt 57pt;
+            padding: 14pt 36pt 14pt 36pt;
         }
 
         /* Page break after every page except the last */
@@ -48,13 +48,13 @@
         }
 
         /* ===== Date ===== */
-        .date-row { text-align: right; margin-bottom: 2pt; font-size: 9pt; }
+        .date-row { text-align: right; margin-bottom: 10pt; padding-right: 10pt; font-size: 9pt; }
 
         /* ===== Staff Info ===== */
         /* Two separate fixed-layout tables — one per info row — so each row has
            its own independent column widths. white-space: nowrap + overflow: hidden
            guarantee cells never grow beyond their fixed width. */
-        .info-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 1pt; }
+        .info-row { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4pt; }
         .info-row td { padding: 1pt 4pt; font-size: 9pt; border: none; white-space: nowrap; overflow: hidden; }
 
         /* ===== Main Table (auto layout prevents dompdf equal-width distribution) ===== */
@@ -81,7 +81,7 @@
         .no-bb { border-bottom: none !important; }
 
         .total-row td { font-weight: bold; }
-        .grand-total td { font-weight: bold; background-color: #d9d9d9; }
+        .grand-total td { font-weight: bold; }
     </style>
 </head>
 <body>
@@ -144,27 +144,27 @@
     {{-- ===== Date ===== --}}
     <div class="date-row">Date: {{ $payDate }}</div>
 
-    {{-- ===== Staff Info Row 1: Staff ID / Name / Position ===== --}}
-    {{-- Fixed 3-column layout: 18% / 45% / 37% --}}
+    {{-- ===== Staff Info Row 1: Staff ID / Name / Position / FTE ===== --}}
+    {{-- Fixed 4-column layout: 18% / 38% / 30% / 14% = 100% --}}
     <table class="info-row">
         <tr>
             <td style="width: 18%;">Staff ID: {{ $employee?->staff_id ?? 'N/A' }}</td>
-            <td style="width: 45%;">Name: {{ $employee?->first_name_en }} {{ $employee?->last_name_en }}</td>
-            <td style="width: 37%;">Position: {{ $position }}</td>
+            <td style="width: 38%;">Name: {{ $employee?->first_name_en }} {{ $employee?->last_name_en }}</td>
+            <td style="width: 30%;">Position: {{ $position }}</td>
+            <td style="width: 14%;">FTE: {{ $ftePercentage }}%</td>
         </tr>
     </table>
 
-    {{-- ===== Staff Info Row 2: Grant / BL / Basic Salary / FTE ===== --}}
-    {{-- Fixed 5-column layout: 22% / 24% / 12% / 28% / 14% = 100%
+    {{-- ===== Staff Info Row 2: Grant / BL / Basic Salary ===== --}}
+    {{-- Fixed 4-column layout: 24% / 28% / 13% / 35% = 100%
          Grant code and Grant name are truncated server-side with "..." since
          dompdf does not support CSS text-overflow: ellipsis reliably. --}}
     <table class="info-row">
         <tr>
-            <td style="width: 22%;">Grant code: {{ strlen($grantCode) > 8 ? substr($grantCode, 0, 8) . '...' : $grantCode }}</td>
-            <td style="width: 24%;">Grant name: {{ strlen($grantName) > 12 ? substr($grantName, 0, 12) . '...' : $grantName }}</td>
+            <td style="width: 25%;">Grant code: {{ strlen($grantCode) > 15 ? substr($grantCode, 0, 15) . '...' : $grantCode }}</td>
+            <td style="width: 45%;">Grant name: {{ strlen($grantName) > 50 ? substr($grantName, 0, 50) . '...' : $grantName }}</td>
             <td style="width: 12%;">BL:{{ $budgetLineCode }}</td>
-            <td style="width: 28%;">Basic Salary: {{ number_format((float) $payroll->gross_salary, 2) }}</td>
-            <td style="width: 14%;">FTE: {{ $ftePercentage }}%</td>
+            <td style="width: 17%;">Basic Salary: {{ number_format((float) $payroll->gross_salary) }}</td>
         </tr>
     </table>
 
@@ -219,8 +219,13 @@
 
         {{-- Row 3 --}}
         <tr>
-            <td class="no-bt no-bb">Retroactive Sal.</td>
-            <td class="text-end no-bt no-bb">{{ number_format((float) $payroll->retroactive_adjustment, 2) }}</td>
+            @if((float) $payroll->retroactive_salary)
+                <td class="no-bt no-bb">Retroactive Sal.</td>
+                <td class="text-end no-bt no-bb">{{ number_format((float) $payroll->retroactive_salary, 2) }}</td>
+            @else
+                <td class="no-bt no-bb"></td>
+                <td class="no-bt no-bb"></td>
+            @endif
             <td class="no-bt no-bb">Social security: {{ $orgLabel }} 5%</td>
             <td class="text-end no-bt no-bb">{{ number_format((float) $payroll->employer_social_security, 2) }}</td>
             <td class="no-bt no-bb">Health Welfare: staff</td>
@@ -237,7 +242,17 @@
             <td class="text-end no-bt no-bb">{{ number_format((float) $payroll->tax, 2) }}</td>
         </tr>
 
-        {{-- Row 5 --}}
+        {{-- Row 5: Study Loan --}}
+        <tr>
+            <td class="no-bt no-bb"></td>
+            <td class="no-bt no-bb"></td>
+            <td class="no-bt no-bb"></td>
+            <td class="no-bt no-bb"></td>
+            <td class="no-bt no-bb">Study Loan</td>
+            <td class="text-end no-bt no-bb">{{ number_format((float) ($payroll->study_loan ?? 0), 2) }}</td>
+        </tr>
+
+        {{-- Row 6 --}}
         <tr>
             <td class="no-bt no-bb"></td>
             <td class="no-bt no-bb"></td>

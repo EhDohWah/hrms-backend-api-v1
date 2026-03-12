@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\PersonnelAction\ApprovePersonnelActionRequest;
 use App\Http\Requests\PersonnelAction\IndexPersonnelActionRequest;
+use App\Http\Requests\PersonnelAction\UpdatePersonnelActionRequest;
 use App\Http\Requests\StorePersonnelActionRequest;
 use App\Models\PersonnelAction;
 use App\Services\PersonnelActionService;
@@ -52,7 +53,7 @@ class PersonnelActionController extends BaseApiController
         operationId: 'createPersonnelAction',
         security: [['bearerAuth' => []]],
         tags: ['Personnel Actions'],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PersonnelAction')),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(type: 'object')),
         responses: [
             new OA\Response(response: 201, description: 'Personnel action created successfully'),
             new OA\Response(response: 422, description: 'Validation error'),
@@ -105,15 +106,19 @@ class PersonnelActionController extends BaseApiController
         parameters: [
             new OA\Parameter(name: 'personnelAction', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/PersonnelAction')),
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(type: 'object')),
         responses: [
             new OA\Response(response: 200, description: 'Personnel action updated successfully'),
             new OA\Response(response: 404, description: 'Personnel action not found'),
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function update(StorePersonnelActionRequest $request, PersonnelAction $personnelAction): JsonResponse
+    public function update(UpdatePersonnelActionRequest $request, PersonnelAction $personnelAction): JsonResponse
     {
+        if ($personnelAction->implemented_at) {
+            return $this->errorResponse('Cannot update an implemented personnel action.', 422);
+        }
+
         $personnelAction = $this->personnelActionService->update(
             $personnelAction,
             array_merge($request->validated(), ['updated_by' => auth()->id()])
@@ -159,13 +164,36 @@ class PersonnelActionController extends BaseApiController
             $personnelAction,
             $validated['approval_type'],
             $validated['approved'],
+            $validated['approval_date'] ?? null,
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Approval status updated successfully',
-            'data' => $personnelAction,
-        ]);
+        return $this->successResponse($personnelAction, 'Approval status updated successfully');
+    }
+
+    #[OA\Delete(
+        path: '/personnel-actions/{personnelAction}',
+        summary: 'Delete a personnel action',
+        operationId: 'deletePersonnelAction',
+        security: [['bearerAuth' => []]],
+        tags: ['Personnel Actions'],
+        parameters: [
+            new OA\Parameter(name: 'personnelAction', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Personnel action deleted successfully'),
+            new OA\Response(response: 404, description: 'Personnel action not found'),
+            new OA\Response(response: 422, description: 'Cannot delete implemented action'),
+        ]
+    )]
+    public function destroy(PersonnelAction $personnelAction): JsonResponse
+    {
+        if ($personnelAction->implemented_at) {
+            return $this->errorResponse('Cannot delete an implemented personnel action.', 422);
+        }
+
+        $personnelAction->delete();
+
+        return $this->successResponse(null, 'Personnel action deleted successfully');
     }
 
     #[OA\Get(

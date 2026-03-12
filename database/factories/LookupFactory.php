@@ -20,7 +20,7 @@ class LookupFactory extends Factory
     public function definition(): array
     {
         $types = [
-            'gender' => ['Male', 'Female', 'Other'],
+            'gender' => ['M', 'F'],
             'organization' => ['SMRU', 'BHF'],
             'religion' => ['Buddhism', 'Christianity', 'Islam', 'Hinduism', 'Other'],
             'marital_status' => ['Single', 'Married', 'Divorced', 'Widowed'],

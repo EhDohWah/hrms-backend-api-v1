@@ -41,10 +41,7 @@ return new class extends Migration
                 $table->index('staff_id', 'idx_employees_staff_id');
             }
 
-            // Index for organization filtering
-            if (! Schema::hasIndex('employees', 'idx_employees_organization')) {
-                $table->index('organization', 'idx_employees_organization');
-            }
+            // Note: organization column moved to employments table — index removed
 
             // Composite index for name sorting
             $table->index(['first_name_en', 'last_name_en'], 'idx_employees_full_name');
@@ -96,9 +93,6 @@ return new class extends Migration
         Schema::table('employees', function (Blueprint $table) {
             if (Schema::hasIndex('employees', 'idx_employees_staff_id')) {
                 $table->dropIndex('idx_employees_staff_id');
-            }
-            if (Schema::hasIndex('employees', 'idx_employees_organization')) {
-                $table->dropIndex('idx_employees_organization');
             }
             if (Schema::hasIndex('employees', 'idx_employees_full_name')) {
                 $table->dropIndex('idx_employees_full_name');

@@ -41,11 +41,10 @@ class EmploymentTemplateImportTest extends TestCase
 
         // Create permissions
         $permissions = [
-            'employment.read',
-            'employment.create',
-            'employment.update',
             'employment_records.read',
-            'employment_records.edit',
+            'employment_records.create',
+            'employment_records.update',
+            'employment_records.delete',
         ];
 
         foreach ($permissions as $permission) {
@@ -85,11 +84,10 @@ class EmploymentTemplateImportTest extends TestCase
         ]);
 
         $this->employee = Employee::create([
-            'organization' => 'SMRU',
             'staff_id' => 'EMP001',
             'first_name_en' => 'John',
             'last_name_en' => 'Doe',
-            'gender' => 'Male',
+            'gender' => 'M',
             'date_of_birth' => '1990-01-01',
             'status' => 'Local ID Staff',
         ]);

@@ -26,10 +26,8 @@ return new class extends Migration
             $table->date('effective_date');
 
             // Section 2: Action Type (using string constants instead of enum)
-            $table->string('action_type'); // appointment, fiscal_increment, etc.
-            $table->string('action_subtype')->nullable(); // re_evaluated_pay, promotion, etc.
-            $table->boolean('is_transfer')->default(false);
-            $table->string('transfer_type')->nullable(); // internal_department, site_to_site, etc.
+            $table->string('action_type'); // appointment, fiscal_increment, promotion, etc.
+            $table->string('action_subtype')->nullable(); // internal_department, site_to_site (only when action_type = 'transfer')
 
             // Section 3: New Employment Information (proposed changes with foreign keys)
             $table->unsignedBigInteger('new_department_id')->nullable();
@@ -47,12 +45,18 @@ return new class extends Migration
             // Section 4: Comments/Details
             $table->text('comments')->nullable();
             $table->text('change_details')->nullable();
+            $table->string('acknowledged_by')->nullable();
 
-            // Four Simple Boolean Approvals
+            // Four Simple Boolean Approvals with dates from paper signatures
             $table->boolean('dept_head_approved')->default(false);
+            $table->date('dept_head_approved_date')->nullable();
             $table->boolean('coo_approved')->default(false);
+            $table->date('coo_approved_date')->nullable();
             $table->boolean('hr_approved')->default(false);
+            $table->date('hr_approved_date')->nullable();
             $table->boolean('accountant_approved')->default(false);
+            $table->date('accountant_approved_date')->nullable();
+            $table->timestamp('implemented_at')->nullable();
 
             // Metadata
             $table->unsignedBigInteger('created_by');
